@@ -59,7 +59,12 @@ func process_unit_combat(unit, tile, delta):
 		if unit.unit_data.attackType == "melee":
 			target.take_damage(unit.damage)
 		else:
-			spawn_projectile(unit, tile.global_position, target)
+			# Check for Multi-shot (projCount)
+			var proj_count = unit.unit_data.get("projCount", 1)
+			if proj_count > 1:
+				spawn_multishot_projectile(unit, tile.global_position, target, proj_count, unit.unit_data.get("spread", 0.5))
+			else:
+				spawn_projectile(unit, tile.global_position, target)
 
 func find_nearest_enemy(pos: Vector2, range_val: float):
 	var nearest = null
@@ -74,6 +79,39 @@ func find_nearest_enemy(pos: Vector2, range_val: float):
 	return nearest
 
 func spawn_projectile(source_unit, pos, target):
+	_spawn_single_projectile(source_unit, pos, target, {})
+
+func spawn_multishot_projectile(source_unit, pos, target, count, spread):
+	var base_angle = (target.global_position - pos).angle()
+	var start_angle = base_angle - spread / 2.0
+	var step = spread / max(1, count - 1)
+
+	for i in range(count):
+		var angle = start_angle + (i * step)
+		# We pass specific angle. But Projectile.setup normally looks at target.
+		# We can pass angle in stats to override.
+		_spawn_single_projectile(source_unit, pos, target, {"angle": angle})
+
+func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	var proj = PROJECTILE_SCENE.instantiate()
-	proj.setup(pos, target, source_unit.damage, 400.0, source_unit.unit_data.proj)
+
+	# Gather stats from unit data + active buffs
+	var stats = {
+		"pierce": source_unit.unit_data.get("pierce", 0),
+		"bounce": source_unit.unit_data.get("bounce", 0),
+		"split": source_unit.unit_data.get("split", 0), # Default split prop?
+		"chain": source_unit.unit_data.get("chain", 0)
+	}
+
+	# Merge buffs from Unit.gd (if present)
+	if "active_buffs" in source_unit:
+		for buff in source_unit.active_buffs:
+			if buff == "bounce": stats.bounce += 1
+			if buff == "split": stats.split += 1
+			# ... other buffs
+
+	# Merge extra stats (like angle from multishot)
+	stats.merge(extra_stats, true)
+
+	proj.setup(pos, target, source_unit.damage, 400.0, source_unit.unit_data.proj, stats)
 	add_child(proj)
