@@ -18,6 +18,14 @@ func create_initial_grid():
 	create_tile(1, 0)
 	create_tile(-1, 0)
 
+	# Ensure enough tiles for tests (e.g. 1,1 for placement, 2,2 for bench drop)
+	# MainGame.gd loop adds -2..2 in both axis when buying.
+	# But manual test might need specific tiles if not auto-generated.
+	# Let's add a few more for robustness.
+	for x in range(-2, 3):
+		for y in range(-2, 3):
+			create_tile(x, y)
+
 func create_tile(x: int, y: int, type: String = "normal"):
 	var key = get_tile_key(x, y)
 	if tiles.has(key): return
@@ -107,12 +115,8 @@ func _on_tile_clicked(tile):
 	print("Clicked tile: ", tile.x, ",", tile.y)
 
 # Drag and Drop Logic
-func handle_unit_drop(unit):
+func handle_unit_drop(unit) -> bool:
 	# Calculate target grid coords
-	# Unit position is local to GridManager
-	# The unit's position is its center.
-	# To get the top-left tile coordinate, we need to adjust for size.
-
 	var w = unit.unit_data.size.x
 	var h = unit.unit_data.size.y
 
@@ -124,23 +128,47 @@ func handle_unit_drop(unit):
 
 	var target_tile_key = get_tile_key(grid_x, grid_y)
 	if !tiles.has(target_tile_key):
-		unit.return_to_start()
-		return
+		# Returning false indicates grid didn't handle it
+		return false
 
 	var target_tile = tiles[target_tile_key]
 	var from_tile_key = get_tile_key(unit.grid_pos.x, unit.grid_pos.y)
-	var from_tile = tiles[from_tile_key] # Should exist
+	var from_tile = tiles[from_tile_key]
 
 	if try_move_unit(unit, from_tile, target_tile):
-		# Success
-		pass
+		return true
 	else:
-		unit.return_to_start()
+		return false
+
+func handle_bench_drop(ghost_unit, unit_key, bench_index) -> bool:
+	# Calculate target grid coords from ghost position
+	# Ghost position is center
+	var unit_data = Constants.UNIT_TYPES[unit_key]
+	var w = unit_data.size.x
+	var h = unit_data.size.y
+
+	var offset = Vector2((w-1) * TILE_SIZE * 0.5, (h-1) * TILE_SIZE * 0.5)
+	# Ghost global position needs to be converted to local
+	var local_pos = to_local(ghost_unit.global_position)
+	var top_left_pos = local_pos - offset
+
+	var grid_x = round(top_left_pos.x / TILE_SIZE)
+	var grid_y = round(top_left_pos.y / TILE_SIZE)
+
+	if place_unit(unit_key, grid_x, grid_y):
+		if GameManager.main_game:
+			GameManager.main_game.remove_from_bench(bench_index)
+		return true
+
+	return false
 
 func try_move_unit(unit, from_tile, to_tile) -> bool:
 	if unit == null or from_tile == null or to_tile == null: return false
 
-	if from_tile == to_tile: return false
+	if from_tile == to_tile:
+		# Dropped on same tile, technically a success (no move needed)
+		unit.return_to_start()
+		return true
 
 	var x = to_tile.x
 	var y = to_tile.y
@@ -148,37 +176,29 @@ func try_move_unit(unit, from_tile, to_tile) -> bool:
 	var h = unit.unit_data.size.y
 
 	# Case 1: Empty Target
-	# Check if we can place unit there (ignoring itself)
 	if can_place_unit(x, y, w, h, unit):
 		_move_unit_internal(unit, x, y)
 		return true
 
 	# Case 2: Target Occupied
-	# Get the unit at target position
-	# It might be `to_tile.unit` or `to_tile` might be `occupied_by` another unit.
 	var target_unit = to_tile.unit
 	if target_unit == null and to_tile.occupied_by != Vector2i.ZERO:
-		# Find the origin of the unit occupying this tile
 		var origin_key = get_tile_key(to_tile.occupied_by.x, to_tile.occupied_by.y)
 		if tiles.has(origin_key):
 			target_unit = tiles[origin_key].unit
 
-	if target_unit == null: return false # Should have been caught by can_place_unit if truly empty or invalid
+	if target_unit == null: return false
 
-	if target_unit == unit: return false # Same unit
+	if target_unit == unit: return false
 
 	# Merge
 	if target_unit.type_key == unit.type_key:
-		# Check if merge-able (usually check max level etc, but simplified here)
 		target_unit.merge_with(unit)
-
-		# Remove source unit
 		_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
 		unit.queue_free()
 		return true
 
 	# Devour
-	# If target can devour source
 	if can_devour(target_unit, unit):
 		target_unit.devour(unit)
 		_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
@@ -186,7 +206,6 @@ func try_move_unit(unit, from_tile, to_tile) -> bool:
 		return true
 
 	# Swap
-	# Only if both are movable and fit
 	if can_swap(unit, target_unit):
 		_perform_swap(unit, target_unit)
 		return true
@@ -207,7 +226,7 @@ func _move_unit_internal(unit, new_x, new_y):
 	# Update position visual
 	var tile = tiles[get_tile_key(new_x, new_y)]
 	unit.position = tile.position + Vector2((w-1) * TILE_SIZE * 0.5, (h-1) * TILE_SIZE * 0.5)
-	unit.start_position = unit.position # Update start pos for next drag
+	unit.start_position = unit.position
 
 func can_devour(eater, food) -> bool:
 	if food.unit_data.has("isFood") and food.unit_data.isFood:
@@ -215,34 +234,13 @@ func can_devour(eater, food) -> bool:
 	return false
 
 func can_swap(unit_a, unit_b) -> bool:
-	# Check if unit_a fits in unit_b's spot AND unit_b fits in unit_a's spot
-	# ignoring each other.
-
 	var pos_a = unit_a.grid_pos
 	var size_a = unit_a.unit_data.size
 
 	var pos_b = unit_b.grid_pos
 	var size_b = unit_b.unit_data.size
 
-	# To check accurately, we need to pretend both are removed, then check if they fit in swapped pos.
-	# But `can_place_unit` only excludes ONE unit.
-	# We need `can_place_unit` to exclude BOTH.
-
-	# Temporary simpler check: if same size, always swap?
 	if size_a == size_b: return true
-
-	# If different sizes, it's complicated.
-	# Let's try to verify A fits at B (excluding B) and B fits at A (excluding A).
-	# BUT `can_place_unit(pos_b..., exclude=unit_a)` is wrong, because unit_a is at pos_a.
-	# We want to place A at pos_b. We should exclude unit_b (currently at pos_b) from collision check.
-	# AND we should exclude unit_a (because it's moving).
-
-	# Actually, if we are swapping A and B:
-	# Check A at pos_b, excluding B. (A is moving there, B is moving away).
-	# Check B at pos_a, excluding A. (B is moving there, A is moving away).
-
-	# However, if there are OTHER units overlapping?
-	# `can_place_unit` checks against ALL tiles in the rect.
 
 	if !can_place_unit_custom(pos_b.x, pos_b.y, size_a.x, size_a.y, [unit_a, unit_b]): return false
 	if !can_place_unit_custom(pos_a.x, pos_a.y, size_b.x, size_b.y, [unit_a, unit_b]): return false
