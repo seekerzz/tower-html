@@ -183,6 +183,10 @@ func build_ui():
     selection.name = "Selection"
     selection.anchor_right = 1
     selection.anchor_bottom = 1
+    selection.offset_left = 40
+    selection.offset_top = 40
+    selection.offset_right = -40
+    selection.offset_bottom = -40
     var vbox := VBoxContainer.new()
     vbox.anchor_right = 1
     vbox.anchor_bottom = 1
@@ -210,6 +214,9 @@ func build_ui():
     var hud := Control.new()
     hud.name = "HUD"
     hud.anchor_right = 1
+    hud.offset_left = 20
+    hud.offset_top = 20
+    hud.offset_right = -20
     hud.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     hud.visible = false
     var hud_box := HBoxContainer.new()
@@ -256,12 +263,18 @@ func build_ui():
     var bottom := VBoxContainer.new()
     bottom.name = "Bottom"
     bottom.anchor_right = 1
+    bottom.anchor_top = 1
     bottom.anchor_bottom = 1
+    bottom.offset_left = 20
+    bottom.offset_right = -20
+    bottom.offset_top = -220
+    bottom.offset_bottom = -20
     bottom.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    bottom.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    bottom.custom_minimum_size = Vector2(0, 200)
     bottom.visible = false
     var shop_label := Label.new()
     shop_label.text = "补给站"
+    shop_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     bottom.add_child(shop_label)
     var shop_grid := GridContainer.new()
     shop_grid.name = "ShopGrid"
@@ -280,6 +293,8 @@ func build_ui():
     tooltip.name = "Tooltip"
     tooltip.visible = false
     tooltip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    tooltip.offset_left = 16
+    tooltip.offset_top = 16
     ui.add_child(tooltip)
     els["tooltip"] = tooltip
 
