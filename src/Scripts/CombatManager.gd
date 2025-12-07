@@ -327,6 +327,10 @@ func spawn_multishot_projectile(source_unit, pos, target, count, spread):
 		_spawn_single_projectile(source_unit, pos, target, {"angle": angle})
 
 func _spawn_single_projectile(source_unit, pos, target, extra_stats):
+	# FIX: Shotgun logic - force straight flight by removing target
+	if source_unit.unit_data.get("proj") == "pellet":
+		target = null
+
 	var proj = PROJECTILE_SCENE.instantiate()
 
 	# Gather stats from unit data + active buffs

@@ -51,6 +51,10 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 	elif has_node("Polygon2D"):
 		visual_node = get_node("Polygon2D")
 
+	# Swarm Wave Visuals
+	if type == "swarm_wave":
+		_setup_swarm_wave()
+
 func _process(delta):
 	# Blackhole Logic
 	if type == "blackhole":
@@ -64,8 +68,11 @@ func _process(delta):
 
 	# Swarm Logic
 	if type == "swarm_wave":
-		scale += Vector2(delta, delta) * 2.0 # Growth rate
-		modulate.a = max(0, modulate.a - delta * 0.5)
+		scale += Vector2(delta, delta) * speed * 0.01 # Adjusted growth based on speed
+		modulate.a = max(0, modulate.a - delta * 0.8) # Faster fade
+		if has_node("WaveLine"):
+			var line = get_node("WaveLine")
+			line.width += delta * 15.0
 
 	var direction = Vector2.RIGHT.rotated(rotation)
 
@@ -144,6 +151,30 @@ func _on_area_2d_area_entered(area):
 				if split > 0:
 					perform_split()
 				queue_free()
+
+func _setup_swarm_wave():
+	# Hide default visuals if any
+	if visual_node: visual_node.hide()
+
+	var line = Line2D.new()
+	line.name = "WaveLine"
+	line.width = 3.0
+	line.default_color = Color(0.2, 0.8, 0.4, 0.8)
+
+	# Create Arc
+	var points_arr = []
+	var radius = 20.0
+	var segments = 12
+	var start_angle = deg_to_rad(-60)
+	var end_angle = deg_to_rad(60)
+
+	for i in range(segments + 1):
+		var t = float(i) / segments
+		var angle = lerp(start_angle, end_angle, t)
+		points_arr.append(Vector2(cos(angle), sin(angle)) * radius)
+
+	line.points = PackedVector2Array(points_arr)
+	add_child(line)
 
 func perform_split():
 	# Spawn 2 projectiles at +/- 0.5 radians (~28 degrees)
