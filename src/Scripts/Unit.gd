@@ -76,8 +76,7 @@ func apply_buff(buff_type: String):
 			range_val *= 1.25
 		"speed":
 			atk_speed *= 1.2 # Higher is faster? "atkSpeed" in data seems to be attacks per second?
-			# In Constants: mouse 0.15? Wait.
-			# mouse: atkSpeed 0.15. If it's delay, lower is faster.
+			# In Constants: mouse 0.15. If it's delay, lower is faster.
 			# turtle: 1.8.
 			# Let's check CombatManager or Unit to see how atkSpeed is used.
 			pass
@@ -123,31 +122,41 @@ func activate_skill():
 		GameManager.spawn_floating_text(global_position, "No Mana!", Color.BLUE)
 
 func update_visuals():
-	$Label.text = unit_data.icon
+	if has_node("Label"):
+		$Label.text = unit_data.icon
 	# Size update
-	var size = unit_data.size
-	$ColorRect.size = Vector2(size.x * 60 - 4, size.y * 60 - 4)
-	$ColorRect.position = -($ColorRect.size / 2)
-	$Label.position = $ColorRect.position
-	$Label.size = $ColorRect.size
+	if has_node("ColorRect"):
+		var size = unit_data.size
+		$ColorRect.size = Vector2(size.x * 60 - 4, size.y * 60 - 4)
+		$ColorRect.position = -($ColorRect.size / 2)
+		if has_node("Label"):
+			$Label.position = $ColorRect.position
+			$Label.size = $ColorRect.size
 
 	if level > 1:
-		$StarLabel.text = "⭐%d" % level
-		$StarLabel.show()
+		if has_node("StarLabel"):
+			$StarLabel.text = "⭐%d" % level
+			$StarLabel.show()
 	else:
-		$StarLabel.hide()
+		if has_node("StarLabel"):
+			$StarLabel.hide()
 
 	_update_buff_icons()
 
 func _update_buff_icons():
 	# Simple visualization: a small label or HBox at the bottom of the unit
-	var buff_container = $BuffContainer
+	var buff_container = get_node_or_null("BuffContainer")
 	if !buff_container:
 		buff_container = HBoxContainer.new()
 		buff_container.name = "BuffContainer"
 		buff_container.alignment = BoxContainer.ALIGNMENT_CENTER
-		buff_container.position = Vector2(-$ColorRect.size.x/2, $ColorRect.size.y/2 - 15)
-		buff_container.size = Vector2($ColorRect.size.x, 15)
+		# Check if ColorRect exists to base position
+		if has_node("ColorRect"):
+			buff_container.position = Vector2(-$ColorRect.size.x/2, $ColorRect.size.y/2 - 15)
+			buff_container.size = Vector2($ColorRect.size.x, 15)
+		else:
+			buff_container.position = Vector2(0, 20)
+
 		buff_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(buff_container)
 
@@ -156,7 +165,7 @@ func _update_buff_icons():
 
 	for buff in active_buffs:
 		var lbl = Label.new()
-		lbl.theme_override_font_sizes/font_size = 10
+		lbl.add_theme_font_size_override("font_size", 10)
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
@@ -281,10 +290,12 @@ func end_drag():
 func create_ghost():
 	if ghost_node: return
 	ghost_node = Node2D.new()
-	var rect = $ColorRect.duplicate()
-	var lbl = $Label.duplicate()
-	ghost_node.add_child(rect)
-	ghost_node.add_child(lbl)
+	if has_node("ColorRect"):
+		var rect = $ColorRect.duplicate()
+		ghost_node.add_child(rect)
+	if has_node("Label"):
+		var lbl = $Label.duplicate()
+		ghost_node.add_child(lbl)
 	# Visual copies need to be reset in position because they were children of unit centered at 0,0
 	# Wait, rect position is -size/2.
 	# If I add them to ghost_node, and set ghost_node position to start_position, it should match.
