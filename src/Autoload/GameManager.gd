@@ -89,5 +89,15 @@ func add_gold(amount: int):
 	gold += amount
 	resource_changed.emit()
 
+func activate_cheat():
+	gold += 1000
+	food = max_food
+	mana = max_mana
+
+	for key in materials:
+		materials[key] = 99
+
+	resource_changed.emit()
+
 func spawn_floating_text(pos: Vector2, value: String, color: Color):
 	ftext_spawn_requested.emit(pos, value, color)
