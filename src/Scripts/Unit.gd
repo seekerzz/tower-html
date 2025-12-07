@@ -127,6 +127,7 @@ func update_visuals():
 		if has_node("Label"):
 			$Label.position = $ColorRect.position
 			$Label.size = $ColorRect.size
+			$Label.pivot_offset = $Label.size / 2
 
 	if level > 1:
 		if has_node("StarLabel"):
@@ -213,7 +214,7 @@ func _process(delta):
 var breathe_tween: Tween = null
 
 func start_breathe_anim():
-	visual_node = get_node_or_null("ColorRect")
+	visual_node = get_node_or_null("Label")
 	if !visual_node: return
 
 	if breathe_tween: breathe_tween.kill()
@@ -223,7 +224,7 @@ func start_breathe_anim():
 	breathe_tween.tween_property(visual_node, "scale", Vector2(1.0, 1.0), 1.0).set_trans(Tween.TRANS_SINE)
 
 func play_attack_anim(attack_type: String, target_pos: Vector2):
-	if !visual_node: visual_node = get_node_or_null("ColorRect")
+	if !visual_node: visual_node = get_node_or_null("Label")
 	if !visual_node: return
 
 	if breathe_tween: breathe_tween.kill()
@@ -233,9 +234,11 @@ func play_attack_anim(attack_type: String, target_pos: Vector2):
 	if attack_type == "melee":
 		# Lunge
 		var dir = (target_pos - global_position).normalized()
-		var original_pos = -(visual_node.size / 2) # ColorRect is centered by position offset in update_visuals
-		# Wait, update_visuals sets $ColorRect.position = -($ColorRect.size / 2)
-		# So original_pos should be that.
+		var original_pos = -(visual_node.size / 2)
+
+		# Ensure original position is correct
+		if has_node("ColorRect"):
+			original_pos = $ColorRect.position
 
 		var lunge_pos = original_pos + dir * 15.0
 
