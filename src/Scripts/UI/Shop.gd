@@ -15,6 +15,7 @@ const SHOP_SIZE = 4
 signal unit_bought(unit_key)
 
 const BENCH_UNIT_SCRIPT = preload("res://src/Scripts/UI/BenchUnit.gd")
+const SELL_SLOT_SCRIPT = preload("res://src/Scripts/UI/SellSlot.gd")
 
 func _ready():
 	GameManager.resource_changed.connect(update_ui)
@@ -22,30 +23,34 @@ func _ready():
 	GameManager.wave_ended.connect(on_wave_ended)
 	refresh_shop(true)
 	update_ui()
-	# Initial Bench UI update handled by MainGame calling update_bench_ui or we can trigger it
+
+	_create_sell_slot()
+
+func _create_sell_slot():
+	var sell = Panel.new()
+	sell.set_script(SELL_SLOT_SCRIPT)
+	# Position it somewhere? e.g. right side of panel
+	sell.position = Vector2(900, 20) # Approximate, layout depends on scene
+	# Or add to Panel
+	$Panel.add_child(sell)
+	sell.anchors_preset = Control.PRESET_CENTER_RIGHT
+	sell.position.x -= 100
 
 func update_ui():
 	gold_label.text = "💰 %d" % GameManager.gold
 
 func update_bench_ui(bench_data: Array):
-	# Clear bench
 	for child in bench_container.get_children():
 		child.queue_free()
 
-	# Rebuild bench
 	for i in range(bench_data.size()):
 		var data = bench_data[i]
 		if data != null:
-			var item = Control.new() # Use a container or our BenchUnit
-			# Actually we want our BenchUnit
-			item = Control.new()
+			var item = Control.new()
 			item.set_script(BENCH_UNIT_SCRIPT)
-			# Need to set properties before ready or use setup
-			# script is set, but not ready yet.
 			item.setup(data.key, i)
 			bench_container.add_child(item)
 		else:
-			# Placeholder
 			var placeholder = Control.new()
 			placeholder.custom_minimum_size = Vector2(60, 60)
 			var rect = ColorRect.new()
@@ -70,11 +75,9 @@ func refresh_shop(force: bool = false):
 
 	shop_items = new_items
 
-	# Clear previous UI
 	for child in shop_container.get_children():
 		child.queue_free()
 
-	# Create new UI
 	for i in range(SHOP_SIZE):
 		create_shop_card(i, shop_items[i])
 
@@ -83,17 +86,17 @@ func create_shop_card(index, unit_key):
 	var btn = Button.new()
 	btn.text = "%s\n%s\n%d💰" % [proto.icon, proto.name, proto.cost]
 	btn.custom_minimum_size = Vector2(80, 100)
-	btn.pressed.connect(func(): buy_unit(index, unit_key))
+	btn.pressed.connect(func(): buy_unit(index, unit_key, btn))
 	shop_container.add_child(btn)
 
-func buy_unit(index, unit_key):
+func buy_unit(index, unit_key, btn: Button):
 	if GameManager.is_wave_active: return
 	var proto = Constants.UNIT_TYPES[unit_key]
 	if GameManager.gold >= proto.cost:
-		# Call MainGame to add to bench
 		if GameManager.main_game and GameManager.main_game.add_to_bench(unit_key):
 			GameManager.spend_gold(proto.cost)
 			unit_bought.emit(unit_key)
+			btn.disabled = true # Disable button
 		else:
 			print("Bench Full or MainGame missing")
 	else:
@@ -117,3 +120,27 @@ func _on_start_wave_button_pressed():
 
 func _on_refresh_button_pressed():
 	refresh_shop(false)
+
+func _on_expand_button_pressed():
+	# Trigger GridManager expand mode
+	if GameManager.grid_manager:
+		GameManager.grid_manager.toggle_expand_mode()
+
+# Drag Drop Support for Bench Area
+func _can_drop_data(_at_position, data):
+	if typeof(data) == TYPE_DICTIONARY and data.get("type") == "grid_unit":
+		return true
+	return false
+
+func _drop_data(_at_position, data):
+	var unit = data.unit
+	# Check if dropped on SellSlot? SellSlot handles its own drops if it's on top.
+	# If we are here, it wasn't caught by SellSlot (or SellSlot didn't consume it? No, drop consumes).
+	# So we treat this as "Drop on Shop" -> Bench.
+
+	if GameManager.main_game.try_add_to_bench_from_grid(unit):
+		return # Success
+	else:
+		# Failed to bench (full?)
+		# Unit stays on grid (UnitDragHandler handles visibility restore)
+		pass

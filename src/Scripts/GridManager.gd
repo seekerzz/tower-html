@@ -7,6 +7,11 @@ const TILE_SIZE = 60
 var tiles: Dictionary = {} # Key: "x,y", Value: Tile Instance
 var selected_unit = null
 
+var expand_mode: bool = false
+var ghost_tiles: Array = []
+
+const EXPAND_COST = 50
+
 func _ready():
 	GameManager.grid_manager = self
 	create_initial_grid()
@@ -17,14 +22,7 @@ func create_initial_grid():
 	create_tile(0, -1)
 	create_tile(1, 0)
 	create_tile(-1, 0)
-
-	# Ensure enough tiles for tests (e.g. 1,1 for placement, 2,2 for bench drop)
-	# MainGame.gd loop adds -2..2 in both axis when buying.
-	# But manual test might need specific tiles if not auto-generated.
-	# Let's add a few more for robustness.
-	for x in range(-2, 3):
-		for y in range(-2, 3):
-			create_tile(x, y)
+	# No loop for test tiles
 
 func create_tile(x: int, y: int, type: String = "normal"):
 	var key = get_tile_key(x, y)
@@ -99,13 +97,9 @@ func can_place_unit(x: int, y: int, w: int, h: int, exclude_unit = null) -> bool
 			var tile = tiles[key]
 			if tile.type == "core": return false
 
-			# If checking for swap (exclude_unit is set), we are more permissive?
-			# Actually, standard check:
 			if tile.unit and tile.unit != exclude_unit: return false
 
-			# Occupied by multi-tile unit
 			if tile.occupied_by != Vector2i.ZERO:
-				# If we are excluding a unit, we should also ignore occupancy from that unit
 				if exclude_unit and tile.occupied_by == exclude_unit.grid_pos:
 					continue
 				return false
@@ -113,62 +107,102 @@ func can_place_unit(x: int, y: int, w: int, h: int, exclude_unit = null) -> bool
 
 func _on_tile_clicked(tile):
 	if GameManager.is_wave_active: return
-	# Handling selection/movement logic would go here
+
+	if expand_mode and tile.is_in_group("ghost_tile"):
+		# Buy expansion
+		if GameManager.gold >= EXPAND_COST:
+			GameManager.spend_gold(EXPAND_COST)
+			var tx = tile.x
+			var ty = tile.y
+
+			# Remove ghost
+			tile.queue_free()
+
+			# Create real tile
+			create_tile(tx, ty, "normal")
+
+			# Refresh ghosts
+			call_deferred("update_ghost_tiles")
+		else:
+			print("Not enough gold to expand")
+		return
+
 	print("Clicked tile: ", tile.x, ",", tile.y)
 
-# Drag and Drop Logic
-func handle_unit_drop(unit) -> bool:
-	# Calculate target grid coords
-	var w = unit.unit_data.size.x
-	var h = unit.unit_data.size.y
+# Expansion Logic
+func toggle_expand_mode():
+	set_expand_mode(!expand_mode)
 
-	var offset = Vector2((w-1) * TILE_SIZE * 0.5, (h-1) * TILE_SIZE * 0.5)
-	var top_left_pos = unit.position - offset
-
-	var grid_x = round(top_left_pos.x / TILE_SIZE)
-	var grid_y = round(top_left_pos.y / TILE_SIZE)
-
-	var target_tile_key = get_tile_key(grid_x, grid_y)
-	if !tiles.has(target_tile_key):
-		# Returning false indicates grid didn't handle it
-		return false
-
-	var target_tile = tiles[target_tile_key]
-	var from_tile_key = get_tile_key(unit.grid_pos.x, unit.grid_pos.y)
-	var from_tile = tiles[from_tile_key]
-
-	if try_move_unit(unit, from_tile, target_tile):
-		return true
+func set_expand_mode(active: bool):
+	expand_mode = active
+	if expand_mode:
+		update_ghost_tiles()
 	else:
-		return false
+		clear_ghost_tiles()
 
-func handle_bench_drop(ghost_unit, unit_key, bench_index) -> bool:
-	# Calculate target grid coords from ghost position
-	# Ghost position is center
-	var unit_data = Constants.UNIT_TYPES[unit_key]
-	var w = unit_data.size.x
-	var h = unit_data.size.y
+func _unhandled_input(event):
+	if expand_mode:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+			set_expand_mode(false)
 
-	var offset = Vector2((w-1) * TILE_SIZE * 0.5, (h-1) * TILE_SIZE * 0.5)
-	# Ghost global position needs to be converted to local
-	var local_pos = to_local(ghost_unit.global_position)
-	var top_left_pos = local_pos - offset
+func clear_ghost_tiles():
+	for t in ghost_tiles:
+		if is_instance_valid(t):
+			t.queue_free()
+	ghost_tiles.clear()
 
-	var grid_x = round(top_left_pos.x / TILE_SIZE)
-	var grid_y = round(top_left_pos.y / TILE_SIZE)
+func update_ghost_tiles():
+	clear_ghost_tiles()
 
-	if place_unit(unit_key, grid_x, grid_y):
+	var candidates = {} # Set of "x,y"
+
+	# Find neighbors of all existing tiles
+	for key in tiles:
+		var t = tiles[key]
+		var neighbors = [
+			Vector2i(t.x + 1, t.y),
+			Vector2i(t.x - 1, t.y),
+			Vector2i(t.x, t.y + 1),
+			Vector2i(t.x, t.y - 1)
+		]
+
+		for n in neighbors:
+			var n_key = get_tile_key(n.x, n.y)
+			if !tiles.has(n_key):
+				candidates[n_key] = n
+
+	for key in candidates:
+		var pos = candidates[key]
+		var ghost = TILE_SCENE.instantiate()
+		ghost.setup(pos.x, pos.y, "normal")
+		ghost.modulate.a = 0.5
+		ghost.position = Vector2(pos.x * TILE_SIZE, pos.y * TILE_SIZE)
+		ghost.add_to_group("ghost_tile")
+		ghost.get_node("ColorRect").color = Color.GREEN # Visual cue
+
+		add_child(ghost)
+		ghost.tile_clicked.connect(_on_tile_clicked)
+		ghost_tiles.append(ghost)
+
+# Refactored Drop Logic called by TileDropHandler
+func handle_unit_drop_on_tile(unit, target_tile):
+	if !unit or !target_tile: return
+	var from_tile_key = get_tile_key(unit.grid_pos.x, unit.grid_pos.y)
+	var from_tile = tiles.get(from_tile_key)
+
+	try_move_unit(unit, from_tile, target_tile)
+
+func handle_bench_drop_on_tile(unit_key, bench_index, target_tile):
+	# Try to place
+	if place_unit(unit_key, target_tile.x, target_tile.y):
 		if GameManager.main_game:
 			GameManager.main_game.remove_from_bench(bench_index)
-		return true
 
-	return false
-
+# Original Drop Logic (kept as helper)
 func try_move_unit(unit, from_tile, to_tile) -> bool:
 	if unit == null or from_tile == null or to_tile == null: return false
 
 	if from_tile == to_tile:
-		# Dropped on same tile, technically a success (no move needed)
 		unit.return_to_start()
 		return true
 
@@ -190,7 +224,6 @@ func try_move_unit(unit, from_tile, to_tile) -> bool:
 			target_unit = tiles[origin_key].unit
 
 	if target_unit == null: return false
-
 	if target_unit == unit: return false
 
 	# Merge
@@ -220,17 +253,14 @@ func _move_unit_internal(unit, new_x, new_y):
 	var w = unit.unit_data.size.x
 	var h = unit.unit_data.size.y
 
-	# Clear old
 	_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
 
-	# Set new
 	unit.grid_pos = Vector2i(new_x, new_y)
 	_set_tiles_occupied(new_x, new_y, w, h, unit)
 
-	# Update position visual
 	var tile = tiles[get_tile_key(new_x, new_y)]
 	unit.position = tile.position + Vector2((w-1) * TILE_SIZE * 0.5, (h-1) * TILE_SIZE * 0.5)
-	unit.start_position = unit.position
+	# unit.start_position = unit.position # Not needed with new drag
 
 	recalculate_buffs()
 
@@ -278,32 +308,24 @@ func _perform_swap(unit_a, unit_b):
 	var size_a = unit_a.unit_data.size
 	var size_b = unit_b.unit_data.size
 
-	# Clear both
 	_clear_tiles_occupied(pos_a.x, pos_a.y, size_a.x, size_a.y)
 	_clear_tiles_occupied(pos_b.x, pos_b.y, size_b.x, size_b.y)
 
-	# Place A at B's old pos
 	unit_a.grid_pos = pos_b
 	_set_tiles_occupied(pos_b.x, pos_b.y, size_a.x, size_a.y, unit_a)
 
-	# Place B at A's old pos
 	unit_b.grid_pos = pos_a
 	_set_tiles_occupied(pos_a.x, pos_a.y, size_b.x, size_b.y, unit_b)
 
-	# Update visuals
 	var tile_for_a = tiles[get_tile_key(pos_b.x, pos_b.y)]
 	unit_a.position = tile_for_a.position + Vector2((size_a.x-1) * TILE_SIZE * 0.5, (size_a.y-1) * TILE_SIZE * 0.5)
-	unit_a.start_position = unit_a.position
 
 	var tile_for_b = tiles[get_tile_key(pos_a.x, pos_a.y)]
 	unit_b.position = tile_for_b.position + Vector2((size_b.x-1) * TILE_SIZE * 0.5, (size_b.y-1) * TILE_SIZE * 0.5)
-	unit_b.start_position = unit_b.position
 
 	recalculate_buffs()
 
 func recalculate_buffs():
-	# 1. Reset all units stats
-	# We need to collect unique units first to avoid multiple resets for multi-tile units
 	var processed_units = []
 	for key in tiles:
 		var tile = tiles[key]
@@ -311,13 +333,11 @@ func recalculate_buffs():
 			tile.unit.reset_stats()
 			processed_units.append(tile.unit)
 
-	# 2. Iterate to find buff providers and apply buffs
 	for unit in processed_units:
 		if "buffProvider" in unit.unit_data:
 			var buff_type = unit.unit_data["buffProvider"]
 			_apply_buff_to_neighbors(unit, buff_type)
 
-	# 3. Update visuals for all units
 	for unit in processed_units:
 		unit.update_visuals()
 
@@ -328,16 +348,12 @@ func _apply_buff_to_neighbors(provider_unit, buff_type):
 	var h = provider_unit.unit_data.size.y
 
 	var neighbors = []
-
-	# Top & Bottom
 	for dx in range(w):
-		neighbors.append(Vector2i(cx + dx, cy - 1)) # Top
-		neighbors.append(Vector2i(cx + dx, cy + h)) # Bottom
-
-	# Left & Right
+		neighbors.append(Vector2i(cx + dx, cy - 1))
+		neighbors.append(Vector2i(cx + dx, cy + h))
 	for dy in range(h):
-		neighbors.append(Vector2i(cx - 1, cy + dy)) # Left
-		neighbors.append(Vector2i(cx + w, cy + dy)) # Right
+		neighbors.append(Vector2i(cx - 1, cy + dy))
+		neighbors.append(Vector2i(cx + w, cy + dy))
 
 	for n_pos in neighbors:
 		var n_key = get_tile_key(n_pos.x, n_pos.y)
