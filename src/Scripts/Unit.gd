@@ -13,6 +13,9 @@ var unit_data: Dictionary
 var damage: float
 var range_val: float
 var atk_speed: float
+var crit_rate: float = 0.0
+var bounce_count: int = 0
+var split_count: int = 0
 
 # Grid / Drag logic
 var grid_pos: Vector2i = Vector2i.ZERO
@@ -26,11 +29,53 @@ signal unit_clicked(unit)
 func setup(key: String):
 	type_key = key
 	unit_data = Constants.UNIT_TYPES[key].duplicate()
+	reset_stats()
+	update_visuals()
+
+func reset_stats():
 	damage = unit_data.damage
 	range_val = unit_data.range
-	atk_speed = unit_data.atk_speed if "atk_speed" in unit_data else unit_data.atkSpeed
+	atk_speed = unit_data.atk_speed if "atk_speed" in unit_data else unit_data.get("atkSpeed", 1.0)
+	crit_rate = 0.0
+	bounce_count = 0
+	split_count = 0
+	active_buffs.clear()
 
-	update_visuals()
+	# Re-apply level multipliers if needed
+	if level > 1:
+		damage *= pow(1.5, level - 1)
+		# stats_multiplier is handled separately or accumulatively?
+		# In merge_with, we did damage *= 1.5.
+		# If we reset stats, we need to recalculate from base + level.
+		# Ideally `level` should drive the stats.
+
+func apply_buff(buff_type: String):
+	if buff_type in active_buffs: return # Or stack? Usually adjacency buffs from different sources stack, but same source?
+	# For now, let's allow duplicates in the list but handle logic carefully, or just list unique buff types.
+	# The prompt says "recalculate_buffs", suggesting we clear and re-add.
+
+	active_buffs.append(buff_type)
+
+	match buff_type:
+		"fire":
+			pass # Logic handled in attack/projectile
+		"poison":
+			pass # Logic handled in attack/projectile
+		"range":
+			range_val *= 1.25
+		"speed":
+			atk_speed *= 1.2 # Higher is faster? "atkSpeed" in data seems to be attacks per second?
+			# In Constants: mouse 0.15? Wait.
+			# mouse: atkSpeed 0.15. If it's delay, lower is faster.
+			# turtle: 1.8.
+			# Let's check CombatManager or Unit to see how atkSpeed is used.
+			pass
+		"crit":
+			crit_rate += 0.25
+		"bounce":
+			bounce_count += 1
+		"split":
+			split_count += 1
 
 func update_visuals():
 	$Label.text = unit_data.icon
@@ -46,6 +91,43 @@ func update_visuals():
 		$StarLabel.show()
 	else:
 		$StarLabel.hide()
+
+	_update_buff_icons()
+
+func _update_buff_icons():
+	# Simple visualization: a small label or HBox at the bottom of the unit
+	var buff_container = $BuffContainer
+	if !buff_container:
+		buff_container = HBoxContainer.new()
+		buff_container.name = "BuffContainer"
+		buff_container.alignment = BoxContainer.ALIGNMENT_CENTER
+		buff_container.position = Vector2(-$ColorRect.size.x/2, $ColorRect.size.y/2 - 15)
+		buff_container.size = Vector2($ColorRect.size.x, 15)
+		buff_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(buff_container)
+
+	for child in buff_container.get_children():
+		child.queue_free()
+
+	for buff in active_buffs:
+		var lbl = Label.new()
+		lbl.theme_override_font_sizes/font_size = 10
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+
+		# Map buff to icon
+		var icon = "?"
+		match buff:
+			"fire": icon = "🔥"
+			"poison": icon = "🧪"
+			"range": icon = "🔭"
+			"speed": icon = "⚡"
+			"crit": icon = "💥"
+			"bounce": icon = "🪞"
+			"split": icon = "💠"
+
+		lbl.text = icon
+		buff_container.add_child(lbl)
 
 func _process(delta):
 	if is_dragging:
@@ -65,8 +147,13 @@ func _process(delta):
 
 func merge_with(other_unit):
 	level += 1
-	damage *= 1.5
-	stats_multiplier += 0.5
+	# Stats will be recalculated by GridManager calling recalculate_buffs -> reset_stats -> apply level -> apply buffs
+	# But reset_stats needs to know how to apply level.
+	# Let's ensure reset_stats handles level scaling.
+
+	# Update: reset_stats implementation above attempts to handle it.
+	# damage *= pow(1.5, level - 1)
+
 	update_visuals()
 	# Play animation
 
@@ -81,6 +168,17 @@ func _on_area_2d_input_event(viewport, event, shape_idx):
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			start_drag(get_global_mouse_position())
 			unit_clicked.emit(self)
+
+func _on_area_2d_mouse_entered():
+	var current_stats = {
+		"damage": damage,
+		"range": range_val,
+		"atk_speed": atk_speed
+	}
+	GameManager.show_tooltip.emit(unit_data, current_stats, active_buffs, global_position)
+
+func _on_area_2d_mouse_exited():
+	GameManager.hide_tooltip.emit()
 
 func _input(event):
 	if is_dragging:

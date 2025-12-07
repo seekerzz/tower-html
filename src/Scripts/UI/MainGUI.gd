@@ -11,9 +11,11 @@ extends Control
 @onready var stats_header = $DamageStats/Header
 
 const FLOATING_TEXT_SCENE = preload("res://src/Scenes/UI/FloatingText.tscn")
+const TOOLTIP_SCENE = preload("res://src/Scenes/UI/Tooltip.tscn")
 
 var damage_stats = {} # unit_id -> {name, icon, amount, node}
 var last_sort_time: float = 0.0
+var tooltip_instance = null
 var sort_interval: float = 1.0
 var is_stats_collapsed: bool = false
 
@@ -28,8 +30,25 @@ func _ready():
 
 	stats_header.gui_input.connect(_on_stats_header_input)
 
+	_setup_tooltip()
+
 	update_ui()
 	update_timeline()
+
+func _setup_tooltip():
+	tooltip_instance = TOOLTIP_SCENE.instantiate()
+	add_child(tooltip_instance)
+	tooltip_instance.hide()
+	GameManager.show_tooltip.connect(_on_show_tooltip)
+	GameManager.hide_tooltip.connect(_on_hide_tooltip)
+
+func _on_show_tooltip(data, stats, buffs, pos):
+	if tooltip_instance:
+		tooltip_instance.show_tooltip(data, stats, buffs, pos)
+
+func _on_hide_tooltip():
+	if tooltip_instance:
+		tooltip_instance.hide_tooltip()
 
 func _process(delta):
 	if last_sort_time > 0:
@@ -114,7 +133,7 @@ func _on_damage_dealt(unit, amount):
 		}
 
 	damage_stats[id].amount += amount
-	damage_stats[id].dmg_lbl.text = str(floor(damage_stats[id].amount))
+	damage_stats[id].dmg_lbl.text = str(int(damage_stats[id].amount))
 
 	if last_sort_time <= 0:
 		_sort_stats()
