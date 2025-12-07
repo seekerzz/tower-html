@@ -61,9 +61,20 @@ func update_bench_ui(bench_data: Array):
 		else:
 			var placeholder = Control.new()
 			placeholder.custom_minimum_size = Vector2(60, 60)
-			var rect = ColorRect.new()
-			rect.color = Color(0, 0, 0, 0.3)
+
+			var rect = Panel.new()
+			var style = StyleBoxFlat.new()
+			style.bg_color = Color(0, 0, 0, 0.3)
+			style.border_width_left = 2
+			style.border_width_top = 2
+			style.border_width_right = 2
+			style.border_width_bottom = 2
+			style.border_color = Color(1, 1, 1, 0.3)
+			style.set_corner_radius_all(4)
+
+			rect.add_theme_stylebox_override("panel", style)
 			rect.anchors_preset = 15
+
 			placeholder.add_child(rect)
 			bench_container.add_child(placeholder)
 
