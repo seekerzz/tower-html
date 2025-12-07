@@ -223,6 +223,7 @@ func _on_area_2d_input_event(viewport, event, shape_idx):
 
 func _on_area_2d_mouse_entered():
 	var current_stats = {
+		"level": level,
 		"damage": damage,
 		"range": range_val,
 		"atk_speed": atk_speed
