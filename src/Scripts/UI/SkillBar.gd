@@ -7,6 +7,11 @@ var skill_units = []
 func _ready():
 	# Wait for grid to be ready
 	await get_tree().create_timer(0.1).timeout
+
+	if GameManager.grid_manager:
+		if !GameManager.grid_manager.grid_updated.is_connected(refresh_skills):
+			GameManager.grid_manager.grid_updated.connect(refresh_skills)
+
 	refresh_skills()
 	GameManager.unit_purchased.connect(func(_u): refresh_skills())
 	GameManager.unit_sold.connect(func(_u): refresh_skills())
