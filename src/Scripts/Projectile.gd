@@ -14,6 +14,14 @@ var bounce: int = 0
 var split: int = 0
 var chain: int = 0
 
+# Visuals
+var visual_node: Node2D = null
+
+# Blackhole State
+enum State { MOVING, HOVERING }
+var state = State.MOVING
+var blackhole_timer: float = 0.0
+
 const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
 
 func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
@@ -37,27 +45,78 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 	elif stats.get("angle") != null:
 		rotation = stats.get("angle")
 
+	# Visual Separation
+	if has_node("Sprite2D"):
+		visual_node = get_node("Sprite2D")
+	elif has_node("Polygon2D"):
+		visual_node = get_node("Polygon2D")
+
 func _process(delta):
+	# Blackhole Logic
+	if type == "blackhole":
+		_process_blackhole(delta)
+		return # Blackhole handles its own life/movement
+
 	life -= delta
 	if life <= 0:
 		queue_free()
 		return
 
+	# Swarm Logic
+	if type == "swarm_wave":
+		scale += Vector2(delta, delta) * 2.0 # Growth rate
+		modulate.a = max(0, modulate.a - delta * 0.5)
+
 	var direction = Vector2.RIGHT.rotated(rotation)
 
-	# Homing behavior (only if we have a target and we haven't just bounced/split into a non-homing state)
-	# For simplicity, and matching ref somewhat, let's say projectiles home if they have a target.
-	# But split projectiles might not have a target.
 	if is_instance_valid(target):
 		var target_dir = (target.global_position - global_position).normalized()
-		# Use a turning speed or instant turn? Ref implies instant tracking or simple move towards target.
-		# Godot implementation in read_file was: direction = target_dir; look_at(...)
 		direction = target_dir
-		look_at(target.global_position)
+		rotation = direction.angle() # Turn entire node to face target
 
 	position += direction * speed * delta
 
+	# Visual Rotation (Spin)
+	if visual_node:
+		visual_node.rotation += delta * 15.0
+
+func _process_blackhole(delta):
+	if state == State.MOVING:
+		life -= delta # Safety
+		if life <= 0: queue_free(); return
+
+		if is_instance_valid(target):
+			var dist = global_position.distance_to(target.global_position)
+			var dir = (target.global_position - global_position).normalized()
+			position += dir * speed * delta
+
+			if dist < 10.0:
+				state = State.HOVERING
+				blackhole_timer = 3.0 # Duration
+		else:
+			# Lost target, move straight or just stop
+			state = State.HOVERING
+			blackhole_timer = 2.0
+
+	elif state == State.HOVERING:
+		blackhole_timer -= delta
+		if blackhole_timer <= 0:
+			queue_free()
+			return
+
+		# Pull enemies
+		var pull_radius = 150.0
+		var enemies = get_tree().get_nodes_in_group("enemies")
+		for enemy in enemies:
+			var dist = global_position.distance_to(enemy.global_position)
+			if dist < pull_radius:
+				var pull_dir = (global_position - enemy.global_position).normalized()
+				enemy.global_position += pull_dir * 100.0 * delta # Pull speed
+				enemy.take_damage(damage * delta, source_unit) # DoT
+
 func _on_area_2d_area_entered(area):
+	if type == "blackhole": return # Blackhole damages in _process
+
 	if area.is_in_group("enemies"):
 		if area in hit_list: return
 
