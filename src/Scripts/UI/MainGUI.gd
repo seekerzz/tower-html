@@ -146,26 +146,16 @@ func _on_ftext_spawn_requested(pos, value, color):
 	# get_viewport_transform() * pos will give screen coordinates relative to the viewport.
 	# Since MainGUI is likely full rect, we can try using the viewport transform.
 
-	var canvas_pos = get_viewport().get_canvas_transform() * pos
-	# But wait, get_canvas_transform() includes the camera transform if MainGUI is in the game world.
-	# If MainGUI is in a CanvasLayer, it has its own transform (identity usually).
-	# The units are in the main viewport world.
-	# We need: (World -> Screen) -> Local.
-
-	# Assuming MainGUI is a direct child of CanvasLayer or similar which overlays the game.
-	# The units are in the game world affected by Camera2D.
-	# To get screen coordinates of a world position:
 	var screen_pos = pos
 	if get_viewport().get_camera_2d():
-		screen_pos = get_viewport().get_canvas_transform() * pos
+		screen_pos = get_viewport().canvas_transform * pos
 	else:
 		# Fallback if no camera active (or default camera)
-		# But wait, get_canvas_transform() applies the camera offset.
-		screen_pos = get_viewport().get_canvas_transform() * pos
+		screen_pos = get_viewport().canvas_transform * pos
 
 	ftext.position = screen_pos
-	ftext.setup(value, color)
 	add_child(ftext)
+	ftext.setup(value, color)
 
 func _on_stats_header_input(event):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
