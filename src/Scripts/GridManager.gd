@@ -10,6 +10,8 @@ var ghost_tiles: Array = []
 var expansion_mode: bool = false
 var expansion_cost: int = 50 # Base cost
 
+signal grid_updated
+
 func _ready():
 	GameManager.grid_manager = self
 	create_initial_grid()
@@ -246,6 +248,8 @@ func recalculate_buffs():
 	for unit in processed_units:
 		unit.update_visuals()
 
+	grid_updated.emit()
+
 func _apply_buff_to_neighbors(provider_unit, buff_type):
 	var cx = provider_unit.grid_pos.x
 	var cy = provider_unit.grid_pos.y
@@ -307,7 +311,7 @@ func spawn_expansion_ghosts():
 		ghost.set_script(GHOST_TILE_SCRIPT)
 		ghost.setup(pos.x, pos.y)
 
-		ghost.position = Vector2(pos.x * TILE_SIZE, pos.y * TILE_SIZE)
+		ghost.position = Vector2(pos.x * TILE_SIZE, pos.y * TILE_SIZE) + Vector2(-30, -30)
 		# GhostTile.gd handles size/text
 
 		# Add a tooltip or text for cost
