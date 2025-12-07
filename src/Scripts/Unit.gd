@@ -23,12 +23,11 @@ var crit_rate: float = 0.0
 var bounce_count: int = 0
 var split_count: int = 0
 
-# Grid / Drag logic
+# Grid
 var grid_pos: Vector2i = Vector2i.ZERO
-var is_dragging: bool = false
-var drag_offset: Vector2 = Vector2.ZERO
 var start_position: Vector2 = Vector2.ZERO
-var ghost_node: Node2D = null
+
+const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 
 signal unit_clicked(unit)
 
@@ -37,6 +36,12 @@ func setup(key: String):
 	unit_data = Constants.UNIT_TYPES[key].duplicate()
 	reset_stats()
 	update_visuals()
+
+	# Add Drag Handler
+	var drag_handler = Control.new()
+	drag_handler.set_script(DRAG_HANDLER_SCRIPT)
+	add_child(drag_handler)
+	drag_handler.setup(self)
 
 func reset_stats():
 	damage = unit_data.damage
@@ -47,40 +52,23 @@ func reset_stats():
 	split_count = 0
 	active_buffs.clear()
 
-	attack_cost_food = unit_data.get("foodCost", 1.0) # Default food cost to 1.0 if not specified to ensure test works or real gameplay consumes food
+	attack_cost_food = unit_data.get("foodCost", 1.0)
 	attack_cost_mana = unit_data.get("manaCost", 0.0)
 	skill_mana_cost = unit_data.get("skillCost", 30.0)
 
 	update_visuals()
-	# Re-apply level multipliers if needed
 	if level > 1:
 		damage *= pow(1.5, level - 1)
-		# stats_multiplier is handled separately or accumulatively?
-		# In merge_with, we did damage *= 1.5.
-		# If we reset stats, we need to recalculate from base + level.
-		# Ideally `level` should drive the stats.
 
 func apply_buff(buff_type: String):
-	if buff_type in active_buffs: return # Or stack? Usually adjacency buffs from different sources stack, but same source?
-	# For now, let's allow duplicates in the list but handle logic carefully, or just list unique buff types.
-	# The prompt says "recalculate_buffs", suggesting we clear and re-add.
-
+	if buff_type in active_buffs: return
 	active_buffs.append(buff_type)
 
 	match buff_type:
-		"fire":
-			pass # Logic handled in attack/projectile
-		"poison":
-			pass # Logic handled in attack/projectile
 		"range":
 			range_val *= 1.25
 		"speed":
-			atk_speed *= 1.2 # Higher is faster? "atkSpeed" in data seems to be attacks per second?
-			# In Constants: mouse 0.15? Wait.
-			# mouse: atkSpeed 0.15. If it's delay, lower is faster.
-			# turtle: 1.8.
-			# Let's check CombatManager or Unit to see how atkSpeed is used.
-			pass
+			atk_speed *= 1.2
 		"crit":
 			crit_rate += 0.25
 		"bounce":
@@ -98,22 +86,9 @@ func activate_skill():
 		is_no_mana = false
 		skill_cooldown = unit_data.get("skillCd", 10.0)
 
-		# Trigger skill effect
 		var skill_name = unit_data.skill
 		GameManager.spawn_floating_text(global_position, skill_name.capitalize() + "!", Color.CYAN)
 
-		match skill_name:
-			"rage":
-				# Simple effect: temporary visual or logic handled elsewhere
-				pass
-			"stun":
-				pass
-			"firestorm":
-				pass
-			_:
-				pass
-
-		# Visual feedback
 		var tween = create_tween()
 		tween.tween_property($ColorRect, "scale", Vector2(1.2, 1.2), 0.1)
 		tween.tween_property($ColorRect, "scale", Vector2(1.0, 1.0), 0.1)
@@ -124,7 +99,6 @@ func activate_skill():
 
 func update_visuals():
 	$Label.text = unit_data.icon
-	# Size update
 	var size = unit_data.size
 	$ColorRect.size = Vector2(size.x * 60 - 4, size.y * 60 - 4)
 	$ColorRect.position = -($ColorRect.size / 2)
@@ -140,8 +114,7 @@ func update_visuals():
 	_update_buff_icons()
 
 func _update_buff_icons():
-	# Simple visualization: a small label or HBox at the bottom of the unit
-	var buff_container = $BuffContainer
+	var buff_container = get_node_or_null("BuffContainer")
 	if !buff_container:
 		buff_container = HBoxContainer.new()
 		buff_container.name = "BuffContainer"
@@ -156,11 +129,10 @@ func _update_buff_icons():
 
 	for buff in active_buffs:
 		var lbl = Label.new()
-		lbl.theme_override_font_sizes/font_size = 10
+		lbl.add_theme_font_size_override("font_size", 10)
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
-		# Map buff to icon
 		var icon = "?"
 		match buff:
 			"fire": icon = "🔥"
@@ -175,10 +147,6 @@ func _update_buff_icons():
 		buff_container.add_child(lbl)
 
 func _process(delta):
-	if is_dragging:
-		global_position = get_global_mouse_position() + drag_offset
-		return
-
 	if !GameManager.is_wave_active: return
 
 	if cooldown > 0:
@@ -194,20 +162,9 @@ func _process(delta):
 	else:
 		modulate = Color.WHITE
 
-	# Attack Logic (simplified for now, needs Enemy reference)
-	# This will be handled by CombatManager or Unit itself if it has access to enemies
-
 func merge_with(other_unit):
 	level += 1
-	# Stats will be recalculated by GridManager calling recalculate_buffs -> reset_stats -> apply level -> apply buffs
-	# But reset_stats needs to know how to apply level.
-	# Let's ensure reset_stats handles level scaling.
-
-	# Update: reset_stats implementation above attempts to handle it.
-	# damage *= pow(1.5, level - 1)
-
 	update_visuals()
-	# Play animation
 
 func devour(food_unit):
 	level += 1
@@ -218,7 +175,6 @@ func devour(food_unit):
 func _on_area_2d_input_event(viewport, event, shape_idx):
 	if !GameManager.is_wave_active:
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			start_drag(get_global_mouse_position())
 			unit_clicked.emit(self)
 
 func _on_area_2d_mouse_entered():
@@ -231,73 +187,6 @@ func _on_area_2d_mouse_entered():
 
 func _on_area_2d_mouse_exited():
 	GameManager.hide_tooltip.emit()
-
-func _input(event):
-	if is_dragging:
-		if event is InputEventMouseButton and !event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			end_drag()
-
-func start_drag(mouse_pos_global):
-	is_dragging = true
-	start_position = position
-	drag_offset = global_position - mouse_pos_global
-	z_index = 100
-	create_ghost()
-
-func end_drag():
-	is_dragging = false
-	z_index = 0
-	remove_ghost()
-
-	if GameManager.grid_manager:
-		# Try to drop on Grid
-		if GameManager.grid_manager.handle_unit_drop(self):
-			return # Moved on grid successfully
-
-		# Try to drop on Bench
-		# Check main_game reference
-		if GameManager.main_game:
-			# Check if over shop/bench area?
-			# Actually we can just try to add to bench if it's not a valid grid drop
-			# But we only want to do this if the mouse is actually over the bench.
-
-			# HACK: check if mouse Y is in the bottom area?
-			# Shop is at bottom.
-			# Or check rect of shop.
-			var viewport_rect = get_viewport_rect()
-			var mouse_pos = get_global_mouse_position()
-			# Shop height is 150 from bottom?
-			# Need to be precise or use UI collision.
-
-			# Since Unit is Node2D and Shop is Control, we don't have built-in overlap.
-			# Assuming Shop is at bottom.
-			if mouse_pos.y > (viewport_rect.size.y - 200): # Approximate
-				if GameManager.main_game.try_add_to_bench_from_grid(self):
-					# Success, self is queue_free'd inside try_add...
-					return
-
-	return_to_start()
-
-func create_ghost():
-	if ghost_node: return
-	ghost_node = Node2D.new()
-	var rect = $ColorRect.duplicate()
-	var lbl = $Label.duplicate()
-	ghost_node.add_child(rect)
-	ghost_node.add_child(lbl)
-	# Visual copies need to be reset in position because they were children of unit centered at 0,0
-	# Wait, rect position is -size/2.
-	# If I add them to ghost_node, and set ghost_node position to start_position, it should match.
-
-	get_parent().add_child(ghost_node)
-	ghost_node.position = start_position
-	ghost_node.modulate.a = 0.5
-	ghost_node.z_index = -1
-
-func remove_ghost():
-	if ghost_node:
-		ghost_node.queue_free()
-		ghost_node = null
 
 func return_to_start():
 	position = start_position
