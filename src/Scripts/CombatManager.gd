@@ -4,6 +4,7 @@ const ENEMY_SCENE = preload("res://src/Scenes/Game/Enemy.tscn")
 const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
 
 var enemies_to_spawn: int = 0
+var total_enemies_for_wave: int = 1
 var spawn_timer: float = 0.0
 
 func _ready():
@@ -33,6 +34,7 @@ func _process(delta):
 func _on_wave_started():
 	var wave = GameManager.wave
 	enemies_to_spawn = 20 + floor(wave * 6)
+	total_enemies_for_wave = enemies_to_spawn
 
 func spawn_enemy():
 	var angle = randf() * PI * 2
