@@ -31,6 +31,7 @@ alignment = 1
 modulate = Color(1, 0, 0, 1)
 layout_mode = 2
 value = 100.0
+show_percentage = false
 
 [node name="Label" type="Label" parent="Panel/VBoxContainer/HPBar"]
 layout_mode = 1
@@ -47,6 +48,7 @@ vertical_alignment = 1
 modulate = Color(1, 1, 0, 1)
 layout_mode = 2
 value = 50.0
+show_percentage = false
 
 [node name="Label" type="Label" parent="Panel/VBoxContainer/FoodBar"]
 layout_mode = 1
@@ -65,6 +67,7 @@ vertical_alignment = 1
 modulate = Color(0, 0, 1, 1)
 layout_mode = 2
 value = 50.0
+show_percentage = false
 
 [node name="Label" type="Label" parent="Panel/VBoxContainer/ManaBar"]
 layout_mode = 1
@@ -126,13 +129,16 @@ alignment = 1
 
 [node name="DamageStats" type="Panel" parent="."]
 layout_mode = 1
-anchors_preset = 4
+anchors_preset = 6
+anchor_left = 1.0
 anchor_top = 0.5
+anchor_right = 1.0
 anchor_bottom = 0.5
-offset_left = 10.0
+offset_left = -210.0
 offset_top = -150.0
-offset_right = 210.0
+offset_right = -10.0
 offset_bottom = 150.0
+grow_horizontal = 0
 grow_vertical = 2
 
 [node name="ScrollContainer" type="ScrollContainer" parent="DamageStats"]
