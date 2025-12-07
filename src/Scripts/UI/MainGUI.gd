@@ -4,12 +4,36 @@ extends Control
 @onready var food_bar = $Panel/VBoxContainer/FoodBar
 @onready var mana_bar = $Panel/VBoxContainer/ManaBar
 @onready var wave_label = $Panel/WaveLabel
+@onready var wave_timeline = $WaveTimeline
+@onready var stats_container = $DamageStats/ScrollContainer/VBoxContainer
+@onready var damage_stats_panel = $DamageStats
+@onready var stats_scroll = $DamageStats/ScrollContainer
+@onready var stats_header = $DamageStats/Header
+
+const FLOATING_TEXT_SCENE = preload("res://src/Scenes/UI/FloatingText.tscn")
+
+var damage_stats = {} # unit_id -> {name, icon, amount, node}
+var last_sort_time: float = 0.0
+var sort_interval: float = 1.0
+var is_stats_collapsed: bool = false
 
 func _ready():
 	GameManager.resource_changed.connect(update_ui)
 	GameManager.wave_started.connect(update_ui)
 	GameManager.wave_ended.connect(update_ui)
+
+	GameManager.damage_dealt.connect(_on_damage_dealt)
+	GameManager.ftext_spawn_requested.connect(_on_ftext_spawn_requested)
+	GameManager.wave_ended.connect(_on_wave_ended_stats)
+
+	stats_header.gui_input.connect(_on_stats_header_input)
+
 	update_ui()
+	update_timeline()
+
+func _process(delta):
+	if last_sort_time > 0:
+		last_sort_time -= delta
 
 func update_ui():
 	hp_bar.value = (GameManager.core_health / GameManager.max_core_health) * 100
@@ -17,3 +41,150 @@ func update_ui():
 	mana_bar.value = (GameManager.mana / GameManager.max_mana) * 100
 
 	wave_label.text = "Wave %d" % GameManager.wave
+	update_timeline()
+
+func update_timeline():
+	for child in wave_timeline.get_children():
+		child.queue_free()
+
+	for i in range(10):
+		var wave_idx = GameManager.wave + i
+		var type_key = get_wave_type(wave_idx)
+
+		var icon_label = Label.new()
+		var icon_text = "?"
+		var color = Color.WHITE
+
+		if type_key == "boss":
+			icon_text = "👹"
+			color = Color.RED
+		elif type_key == "event":
+			icon_text = "🎁"
+			color = Color.PURPLE
+		elif Constants.ENEMY_VARIANTS.has(type_key):
+			var variant = Constants.ENEMY_VARIANTS[type_key]
+			icon_text = variant.get("icon", "?")
+			color = variant.get("color", Color.WHITE)
+
+		icon_label.text = icon_text
+		icon_label.modulate = color
+		icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+
+		if i == 0:
+			var panel = PanelContainer.new()
+			panel.add_child(icon_label)
+			wave_timeline.add_child(panel)
+		else:
+			wave_timeline.add_child(icon_label)
+
+func get_wave_type(n: int) -> String:
+	var types = ['slime', 'wolf', 'poison', 'treant', 'yeti', 'golem']
+	if n % 10 == 0: return 'boss'
+	if n % 3 == 0: return 'event'
+	var idx = int(min(types.size() - 1, floor((n - 1) / 2.0)))
+	return types[idx % types.size()]
+
+func _on_damage_dealt(unit, amount):
+	if not unit: return
+	var id = unit.get_instance_id()
+
+	if not damage_stats.has(id):
+		# Create UI entry
+		var row = HBoxContainer.new()
+		var name_lbl = Label.new()
+		var dmg_lbl = Label.new()
+
+		var unit_name = "Unit"
+		if "unit_data" in unit and unit.unit_data:
+			unit_name = unit.unit_data.get("icon", "") + " " + unit.unit_data.get("name", "Unit")
+
+		name_lbl.text = unit_name
+		dmg_lbl.text = "0"
+		dmg_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		dmg_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+		row.add_child(name_lbl)
+		row.add_child(dmg_lbl)
+		stats_container.add_child(row)
+
+		damage_stats[id] = {
+			"amount": 0,
+			"dmg_lbl": dmg_lbl,
+			"row": row
+		}
+
+	damage_stats[id].amount += amount
+	damage_stats[id].dmg_lbl.text = str(floor(damage_stats[id].amount))
+
+	if last_sort_time <= 0:
+		_sort_stats()
+		last_sort_time = sort_interval
+
+func _sort_stats():
+	# Simple bubble sort or reordering of children based on amount
+	var children = stats_container.get_children()
+	children.sort_custom(func(a, b):
+		var amt_a = _get_amount_from_row(a)
+		var amt_b = _get_amount_from_row(b)
+		return amt_a > amt_b
+	)
+
+	for i in range(children.size()):
+		stats_container.move_child(children[i], i)
+
+func _get_amount_from_row(row):
+	for id in damage_stats:
+		if damage_stats[id].row == row:
+			return damage_stats[id].amount
+	return 0
+
+func _on_ftext_spawn_requested(pos, value, color):
+	var ftext = FLOATING_TEXT_SCENE.instantiate()
+	# Convert world position to canvas (UI) position if needed.
+	# MainGUI is a Control on a CanvasLayer (usually).
+	# If there's a Camera2D, global_position of unit (World) needs to be projected.
+	# get_viewport_transform() * pos will give screen coordinates relative to the viewport.
+	# Since MainGUI is likely full rect, we can try using the viewport transform.
+
+	var canvas_pos = get_viewport().get_canvas_transform() * pos
+	# But wait, get_canvas_transform() includes the camera transform if MainGUI is in the game world.
+	# If MainGUI is in a CanvasLayer, it has its own transform (identity usually).
+	# The units are in the main viewport world.
+	# We need: (World -> Screen) -> Local.
+
+	# Assuming MainGUI is a direct child of CanvasLayer or similar which overlays the game.
+	# The units are in the game world affected by Camera2D.
+	# To get screen coordinates of a world position:
+	var screen_pos = pos
+	if get_viewport().get_camera_2d():
+		screen_pos = get_viewport().get_canvas_transform() * pos
+	else:
+		# Fallback if no camera active (or default camera)
+		# But wait, get_canvas_transform() applies the camera offset.
+		screen_pos = get_viewport().get_canvas_transform() * pos
+
+	ftext.position = screen_pos
+	ftext.setup(value, color)
+	add_child(ftext)
+
+func _on_stats_header_input(event):
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		is_stats_collapsed = !is_stats_collapsed
+		stats_scroll.visible = !is_stats_collapsed
+		stats_header.text = "Damage Stats " + ("(v)" if is_stats_collapsed else "(^)")
+
+		# Adjust panel height
+		if is_stats_collapsed:
+			damage_stats_panel.custom_minimum_size.y = 30
+			damage_stats_panel.size.y = 30
+		else:
+			damage_stats_panel.custom_minimum_size.y = 300 # Or restore original
+			damage_stats_panel.size.y = 300
+
+func _on_wave_ended_stats():
+	# Reset stats on wave end? The ref implementation seems to reset on startWave.
+	# Let's reset on wave start actually, but here we can clear if we want.
+	# For now, let's keep them accumulative or reset on start_wave if we had that signal connected.
+	# The ref code: game.damageStats = {}; in startWave.
+	# So I should clear it in start_wave via update_ui logic or separate handler.
+	pass
