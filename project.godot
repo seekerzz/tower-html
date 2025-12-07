@@ -10,6 +10,17 @@ config_version=5
 
 [application]
 
-config/name="godot-template"
+config/name="Core Ranch: Ultimate Battle"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
+
+[autoload]
+
+Constants="*res://src/Scripts/Constants.gd"
+GameManager="*res://src/Autoload/GameManager.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
