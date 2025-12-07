@@ -39,13 +39,38 @@ func spawn_enemy():
 	var distance = 600 # Offscreen
 	var spawn_pos = GameManager.grid_manager.global_position + Vector2(cos(angle), sin(angle)) * distance
 
+	show_warning_indicator(spawn_pos)
+
+	enemies_to_spawn -= 1
+
+	# Schedule spawn
+	get_tree().create_timer(1.5).timeout.connect(func(): _spawn_enemy_at(spawn_pos))
+
+func show_warning_indicator(pos: Vector2):
+	var label = Label.new()
+	label.text = "⚠️"
+	label.add_theme_font_size_override("font_size", 32)
+	label.modulate = Color.RED
+	label.global_position = pos - Vector2(16, 16) # Center approx
+	add_child(label)
+
+	# Blink animation using Tween
+	var tween = create_tween().set_loops()
+	tween.tween_property(label, "modulate:a", 0.2, 0.2)
+	tween.tween_property(label, "modulate:a", 1.0, 0.2)
+
+	# Remove after 1.5s
+	get_tree().create_timer(1.5).timeout.connect(label.queue_free)
+
+func _spawn_enemy_at(pos: Vector2):
+	if !GameManager.is_wave_active: return # Avoid spawning if wave ended? Or just let it spawn.
+
 	var type_key = "slime" # Randomize later
 
 	var enemy = ENEMY_SCENE.instantiate()
 	enemy.setup(type_key, GameManager.wave)
-	enemy.global_position = spawn_pos
+	enemy.global_position = pos
 	add_child(enemy)
-	enemies_to_spawn -= 1
 
 func process_unit_combat(unit, tile, delta):
 	if unit.cooldown > 0: return
