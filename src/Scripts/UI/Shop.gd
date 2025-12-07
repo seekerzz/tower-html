@@ -12,6 +12,8 @@ const SHOP_SIZE = 4
 @onready var start_wave_btn = $Panel/StartWaveButton
 @onready var bench_container = $Panel/BenchContainer
 
+var sell_zone = null
+
 signal unit_bought(unit_key)
 
 const BENCH_UNIT_SCRIPT = preload("res://src/Scripts/UI/BenchUnit.gd")
@@ -22,30 +24,41 @@ func _ready():
 	GameManager.wave_ended.connect(on_wave_ended)
 	refresh_shop(true)
 	update_ui()
-	# Initial Bench UI update handled by MainGame calling update_bench_ui or we can trigger it
+
+	expand_btn.pressed.connect(_on_expand_button_pressed)
+
+	_create_sell_zone()
+
+func _create_sell_zone():
+	# Create a visual area for selling
+	sell_zone = PanelContainer.new()
+	var lbl = Label.new()
+	lbl.text = "SELL\nZONE"
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sell_zone.add_child(lbl)
+
+	# Place it to the right of bench or somewhere prominent
+	$Panel.add_child(sell_zone)
+	sell_zone.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	sell_zone.position = Vector2($Panel.size.x - 100, 20)
+	sell_zone.custom_minimum_size = Vector2(80, 80)
+	sell_zone.modulate = Color(1, 0.5, 0.5)
 
 func update_ui():
 	gold_label.text = "💰 %d" % GameManager.gold
 
 func update_bench_ui(bench_data: Array):
-	# Clear bench
 	for child in bench_container.get_children():
 		child.queue_free()
 
-	# Rebuild bench
 	for i in range(bench_data.size()):
 		var data = bench_data[i]
 		if data != null:
-			var item = Control.new() # Use a container or our BenchUnit
-			# Actually we want our BenchUnit
-			item = Control.new()
+			var item = Control.new()
 			item.set_script(BENCH_UNIT_SCRIPT)
-			# Need to set properties before ready or use setup
-			# script is set, but not ready yet.
 			item.setup(data.key, i)
 			bench_container.add_child(item)
 		else:
-			# Placeholder
 			var placeholder = Control.new()
 			placeholder.custom_minimum_size = Vector2(60, 60)
 			var rect = ColorRect.new()
@@ -70,11 +83,9 @@ func refresh_shop(force: bool = false):
 
 	shop_items = new_items
 
-	# Clear previous UI
 	for child in shop_container.get_children():
 		child.queue_free()
 
-	# Create new UI
 	for i in range(SHOP_SIZE):
 		create_shop_card(i, shop_items[i])
 
@@ -83,7 +94,7 @@ func create_shop_card(index, unit_key):
 	var btn = Button.new()
 	btn.text = "%s\n%s\n%d💰" % [proto.icon, proto.name, proto.cost]
 	btn.custom_minimum_size = Vector2(80, 100)
-	btn.pressed.connect(func(): buy_unit(index, unit_key))
+	btn.pressed.connect(func(): buy_unit(index, unit_key, btn))
 
 	# Connect Tooltip signals
 	btn.mouse_entered.connect(func():
@@ -98,16 +109,17 @@ func create_shop_card(index, unit_key):
 
 	shop_container.add_child(btn)
 
-func buy_unit(index, unit_key):
+func buy_unit(index, unit_key, button_ref):
 	if GameManager.is_wave_active: return
 	var proto = Constants.UNIT_TYPES[unit_key]
 	if GameManager.gold >= proto.cost:
-		# Call MainGame to add to bench
 		if GameManager.main_game and GameManager.main_game.add_to_bench(unit_key):
 			GameManager.spend_gold(proto.cost)
 			unit_bought.emit(unit_key)
+			# Disable button
+			button_ref.disabled = true
 		else:
-			print("Bench Full or MainGame missing")
+			print("Bench Full")
 	else:
 		print("Not enough gold")
 
@@ -129,3 +141,37 @@ func _on_start_wave_button_pressed():
 
 func _on_refresh_button_pressed():
 	refresh_shop(false)
+
+func _on_expand_button_pressed():
+	if GameManager.grid_manager:
+		GameManager.grid_manager.toggle_expansion_mode()
+
+# Drag and Drop for Shop (Grid -> Bench / Sell)
+func _can_drop_data(at_position, data):
+	if !data or !data.has("source"): return false
+	if data.source == "grid": return true
+	return false
+
+func _drop_data(at_position, data):
+	if data.source == "grid":
+		# Check if over Sell Zone
+		var global_mouse = get_global_mouse_position()
+		if sell_zone.get_global_rect().has_point(global_mouse):
+			_handle_sell(data.unit)
+		else:
+			# Default: Try to add to bench
+			if GameManager.main_game:
+				GameManager.main_game.try_add_to_bench_from_grid(data.unit)
+
+func _handle_sell(unit):
+	var cost = unit.unit_data.cost
+	var refund = floor(cost * 0.5) # 50% refund?
+	GameManager.gain_gold(refund)
+	GameManager.spawn_floating_text(unit.global_position, "+%d G" % refund, Color.GOLD)
+
+	# Clear from grid
+	var w = unit.unit_data.size.x
+	var h = unit.unit_data.size.y
+	GameManager.grid_manager._clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
+	unit.queue_free()
+	GameManager.grid_manager.recalculate_buffs()
