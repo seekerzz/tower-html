@@ -119,5 +119,15 @@ func consume_resource(type: String, amount: float) -> bool:
 	resource_changed.emit()
 	return true
 
+func add_resource(type: String, amount: float):
+	if type == "food":
+		food = min(max_food, food + amount)
+	elif type == "mana":
+		mana = min(max_mana, mana + amount)
+	elif type == "gold":
+		gold += int(amount)
+
+	resource_changed.emit()
+
 func spawn_floating_text(pos: Vector2, value: String, color: Color):
 	ftext_spawn_requested.emit(pos, value, color)

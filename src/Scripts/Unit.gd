@@ -17,6 +17,9 @@ var attack_cost_food: float = 0.0
 var attack_cost_mana: float = 0.0
 var skill_mana_cost: float = 30.0
 
+var production_timer: float = 0.0
+var visual_node: CanvasItem = null
+
 var is_starving: bool = false
 var is_no_mana: bool = false
 var crit_rate: float = 0.0
@@ -37,6 +40,11 @@ func setup(key: String):
 	unit_data = Constants.UNIT_TYPES[key].duplicate()
 	reset_stats()
 	update_visuals()
+
+	if unit_data.has("produce"):
+		production_timer = 1.0 # Initial delay
+
+	start_breathe_anim()
 
 func reset_stats():
 	damage = unit_data.damage
@@ -141,7 +149,7 @@ func update_visuals():
 
 func _update_buff_icons():
 	# Simple visualization: a small label or HBox at the bottom of the unit
-	var buff_container = $BuffContainer
+	var buff_container = get_node_or_null("BuffContainer")
 	if !buff_container:
 		buff_container = HBoxContainer.new()
 		buff_container.name = "BuffContainer"
@@ -156,7 +164,7 @@ func _update_buff_icons():
 
 	for buff in active_buffs:
 		var lbl = Label.new()
-		lbl.theme_override_font_sizes/font_size = 10
+		lbl.add_theme_font_size_override("font_size", 10)
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
@@ -181,6 +189,21 @@ func _process(delta):
 
 	if !GameManager.is_wave_active: return
 
+	# Production Logic
+	if unit_data.has("produce"):
+		production_timer -= delta
+		if production_timer <= 0:
+			var p_type = unit_data.produce
+			var p_amt = unit_data.get("produceAmt", 1)
+
+			GameManager.add_resource(p_type, p_amt)
+
+			var icon = "🌽" if p_type == "food" else "💎"
+			var color = Color.YELLOW if p_type == "food" else Color.CYAN
+			GameManager.spawn_floating_text(global_position, "+%d%s" % [p_amt, icon], color)
+
+			production_timer = 1.0 # Fixed 1s interval as per reference logic often implies per second
+
 	if cooldown > 0:
 		cooldown -= delta
 
@@ -196,6 +219,43 @@ func _process(delta):
 
 	# Attack Logic (simplified for now, needs Enemy reference)
 	# This will be handled by CombatManager or Unit itself if it has access to enemies
+
+var breathe_tween: Tween = null
+
+func start_breathe_anim():
+	visual_node = get_node_or_null("ColorRect")
+	if !visual_node: return
+
+	if breathe_tween: breathe_tween.kill()
+
+	breathe_tween = create_tween().set_loops()
+	breathe_tween.tween_property(visual_node, "scale", Vector2(1.05, 1.05), 1.0).set_trans(Tween.TRANS_SINE)
+	breathe_tween.tween_property(visual_node, "scale", Vector2(1.0, 1.0), 1.0).set_trans(Tween.TRANS_SINE)
+
+func play_attack_anim(attack_type: String, target_pos: Vector2):
+	if !visual_node: visual_node = get_node_or_null("ColorRect")
+	if !visual_node: return
+
+	if breathe_tween: breathe_tween.kill()
+
+	var tween = create_tween()
+	tween.finished.connect(func(): start_breathe_anim()) # Resume breathe after attack
+	if attack_type == "melee":
+		# Lunge
+		var dir = (target_pos - global_position).normalized()
+		var original_pos = -(visual_node.size / 2) # ColorRect is centered by position offset in update_visuals
+		# Wait, update_visuals sets $ColorRect.position = -($ColorRect.size / 2)
+		# So original_pos should be that.
+
+		var lunge_pos = original_pos + dir * 15.0
+
+		tween.tween_property(visual_node, "position", lunge_pos, 0.1).set_trans(Tween.TRANS_CUBIC)
+		tween.tween_property(visual_node, "position", original_pos, 0.2).set_trans(Tween.TRANS_CUBIC)
+
+	elif attack_type == "ranged" or attack_type == "lightning":
+		# Recoil
+		tween.tween_property(visual_node, "scale", Vector2(0.8, 0.8), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.tween_property(visual_node, "scale", Vector2(1.0, 1.0), 0.2)
 
 func merge_with(other_unit):
 	level += 1
