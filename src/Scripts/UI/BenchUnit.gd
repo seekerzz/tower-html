@@ -18,7 +18,16 @@ func setup(key: String, index: int):
 	label.text = proto.icon
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+
+	# Ensure proper centering
+	label.layout_mode = 1 # Anchors
 	label.anchors_preset = 15 # Full Rect
+	label.grow_horizontal = 2
+	label.grow_vertical = 2
+
+	# Adjust font size for icon
+	label.add_theme_font_size_override("font_size", 32)
+
 	add_child(label)
 
 	custom_minimum_size = Vector2(60, 60)
