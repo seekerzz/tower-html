@@ -89,5 +89,23 @@ func add_gold(amount: int):
 	gold += amount
 	resource_changed.emit()
 
+func check_resource(type: String, amount: float) -> bool:
+	if type == "food":
+		return food >= amount
+	elif type == "mana":
+		return mana >= amount
+	return true
+
+func consume_resource(type: String, amount: float) -> bool:
+	if !check_resource(type, amount): return false
+
+	if type == "food":
+		food -= amount
+	elif type == "mana":
+		mana -= amount
+
+	resource_changed.emit()
+	return true
+
 func spawn_floating_text(pos: Vector2, value: String, color: Color):
 	ftext_spawn_requested.emit(pos, value, color)
