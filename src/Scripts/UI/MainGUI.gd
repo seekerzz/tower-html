@@ -3,6 +3,11 @@ extends Control
 @onready var hp_bar = $Panel/VBoxContainer/HPBar
 @onready var food_bar = $Panel/VBoxContainer/FoodBar
 @onready var mana_bar = $Panel/VBoxContainer/ManaBar
+@onready var enemy_bar = $Panel/VBoxContainer/EnemyProgressBar
+@onready var hp_label = $Panel/VBoxContainer/HPBar/Label
+@onready var food_label = $Panel/VBoxContainer/FoodBar/Label
+@onready var mana_label = $Panel/VBoxContainer/ManaBar/Label
+@onready var enemy_label = $Panel/VBoxContainer/EnemyProgressBar/Label
 @onready var wave_label = $Panel/WaveLabel
 @onready var debug_button = $Panel/DebugButton
 @onready var wave_timeline = $WaveTimeline
@@ -67,6 +72,29 @@ func _process(delta):
 	if last_sort_time > 0:
 		last_sort_time -= delta
 
+	_update_enemy_progress()
+
+func _update_enemy_progress():
+	if GameManager.is_wave_active and GameManager.combat_manager:
+		var total = GameManager.combat_manager.total_enemies_for_wave
+		var alive = get_tree().get_nodes_in_group("enemies").size()
+		var to_spawn = GameManager.combat_manager.enemies_to_spawn
+		var current_alive = alive + to_spawn
+
+		# Progress: How many died? (Total - Current Alive) / Total
+		# Or Remaining: Current Alive / Total
+		# User requested: enemies_alive / total_wave_enemies
+
+		if total > 0:
+			enemy_bar.max_value = total
+			enemy_bar.value = current_alive
+			enemy_label.text = "%d / %d" % [current_alive, total]
+		else:
+			enemy_label.text = "0 / 0"
+	else:
+		enemy_label.text = "Waiting..."
+		enemy_bar.value = 0
+
 func _input(event):
 	if event.is_action_pressed("ui_focus_next"): # Default F1 mapping often varies, but let's check scancode or specific action if defined
 		pass
@@ -77,6 +105,10 @@ func update_ui():
 	hp_bar.value = (GameManager.core_health / GameManager.max_core_health) * 100
 	food_bar.value = (GameManager.food / GameManager.max_food) * 100
 	mana_bar.value = (GameManager.mana / GameManager.max_mana) * 100
+
+	hp_label.text = "%d/%d" % [int(GameManager.core_health), int(GameManager.max_core_health)]
+	food_label.text = "%d/%d (+%d/s)" % [int(GameManager.food), int(GameManager.max_food), int(GameManager.base_food_rate)]
+	mana_label.text = "%d/%d (+%d/s)" % [int(GameManager.mana), int(GameManager.max_mana), int(GameManager.base_mana_rate)]
 
 	wave_label.text = "Wave %d" % GameManager.wave
 	update_timeline()
@@ -178,22 +210,23 @@ func _get_amount_from_row(row):
 
 func _on_ftext_spawn_requested(pos, value, color):
 	var ftext = FLOATING_TEXT_SCENE.instantiate()
-	# Convert world position to canvas (UI) position if needed.
-	# MainGUI is a Control on a CanvasLayer (usually).
-	# If there's a Camera2D, global_position of unit (World) needs to be projected.
-	# get_viewport_transform() * pos will give screen coordinates relative to the viewport.
-	# Since MainGUI is likely full rect, we can try using the viewport transform.
 
-	var screen_pos = pos
-	if get_viewport().get_camera_2d():
-		screen_pos = get_viewport().canvas_transform * pos
-	else:
-		# Fallback if no camera active (or default camera)
-		screen_pos = get_viewport().canvas_transform * pos
+	# Random Offset
+	var offset = Vector2(randf_range(-20, 20), randf_range(-30, -10))
+	var world_pos = pos + offset
+
+	# Convert world position to canvas (UI) position if needed.
+	var screen_pos = get_viewport().canvas_transform * world_pos
 
 	ftext.position = screen_pos
 	add_child(ftext)
-	ftext.setup(value, color)
+
+	# Ensure value is integer formatted if it looks like a number
+	var display_value = value
+	if value.is_valid_float():
+		display_value = str(int(float(value)))
+
+	ftext.setup(display_value, color)
 
 func _on_stats_header_input(event):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:

@@ -12,6 +12,8 @@ func show_tooltip(unit_data: Dictionary, current_stats: Dictionary, active_buffs
 
 	var desc = unit_data.get("desc", "")
 	var stats_text = ""
+	var level = current_stats.get("level", 1)
+	stats_text += "Level: %d\n" % level
 	stats_text += "Damage: %d\n" % floor(current_stats.get("damage", 0))
 	stats_text += "Range: %d\n" % floor(current_stats.get("range", 0))
 	stats_text += "Speed: %.2f\n" % current_stats.get("atk_speed", 0)
@@ -35,7 +37,7 @@ func show_tooltip(unit_data: Dictionary, current_stats: Dictionary, active_buffs
 	position = global_pos + Vector2(20, 20)
 
 	show()
-	z_index = 1000 # On top
+	z_index = 4096 # On top
 
 func hide_tooltip():
 	hide()

@@ -84,6 +84,18 @@ func create_shop_card(index, unit_key):
 	btn.text = "%s\n%s\n%d💰" % [proto.icon, proto.name, proto.cost]
 	btn.custom_minimum_size = Vector2(80, 100)
 	btn.pressed.connect(func(): buy_unit(index, unit_key))
+
+	# Connect Tooltip signals
+	btn.mouse_entered.connect(func():
+		var stats = {
+			"damage": proto.damage,
+			"range": proto.range,
+			"atk_speed": proto.get("atkSpeed", proto.get("atk_speed", 1.0))
+		}
+		GameManager.show_tooltip.emit(proto, stats, [], btn.get_global_mouse_position())
+	)
+	btn.mouse_exited.connect(func(): GameManager.hide_tooltip.emit())
+
 	shop_container.add_child(btn)
 
 func buy_unit(index, unit_key):
