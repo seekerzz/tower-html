@@ -1,0 +1,60 @@
+[gd_scene load_steps=5 format=3 uid="uid://b8x7x4x7x4x7x"]
+
+[ext_resource type="Script" path="res://scripts/game.gd" id="1_game"]
+[ext_resource type="Script" path="res://scripts/grid_manager.gd" id="2_grid"]
+
+[node name="Game" type="Node2D"]
+script = ExtResource("1_game")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+
+[node name="GridLayer" type="Node2D" parent="."]
+unique_name_in_owner = true
+script = ExtResource("2_grid")
+
+[node name="ProjectileLayer" type="Node2D" parent="."]
+
+[node name="BarricadeLayer" type="Node2D" parent="."]
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="HUD" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="TopBar" type="HBoxContainer" parent="CanvasLayer/HUD"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 50.0
+grow_horizontal = 2
+
+[node name="ResourceInfo" type="Label" parent="CanvasLayer/HUD/TopBar"]
+layout_mode = 2
+text = "Gold: 150 | Food: 100 | Mana: 50"
+
+[node name="WaveInfo" type="Label" parent="CanvasLayer/HUD/TopBar"]
+layout_mode = 2
+text = "Wave: 1"
+
+[node name="BottomBar" type="HBoxContainer" parent="CanvasLayer/HUD"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -100.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="Shop" type="HBoxContainer" parent="CanvasLayer/HUD/BottomBar"]
+layout_mode = 2
+
+[node name="StartWaveBtn" type="Button" parent="CanvasLayer/HUD/BottomBar"]
+layout_mode = 2
+text = "Start Wave"

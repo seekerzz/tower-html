@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://f8x7x4x7x4x7x"]
+
+[ext_resource type="Script" path="res://scripts/barricade.gd" id="1_x7x4x"]
+
+[node name="Barricade" type="StaticBody2D"]
+collision_layer = 4
+collision_mask = 2
+script = ExtResource("1_x7x4x")

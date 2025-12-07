@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://e8x7x4x7x4x7x"]
+
+[ext_resource type="Script" path="res://scripts/enemy.gd" id="1_x7x4x"]
+
+[node name="Enemy" type="CharacterBody2D" groups=["enemies"]]
+collision_layer = 2
+collision_mask = 5
+script = ExtResource("1_x7x4x")

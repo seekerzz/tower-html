@@ -11,5 +11,12 @@ config_version=5
 [application]
 
 config/name="godot-template"
-config/features=PackedStringArray("4.5", "Forward Plus")
+config/features=PackedStringArray("4.3", "Forward Plus")
 config/icon="res://icon.svg"
+
+[autoload]
+
+GameManager="*res://scripts/game_manager.gd"
+
+UnitData="*res://scripts/unit_data.gd"
+ShopManager="*res://scripts/shop_manager.gd"
