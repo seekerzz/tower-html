@@ -8,6 +8,8 @@ signal unit_purchased(unit_data)
 signal unit_sold(amount)
 signal damage_dealt(unit, amount)
 signal ftext_spawn_requested(pos, value, color)
+signal show_tooltip(data, stats, buffs, pos)
+signal hide_tooltip()
 
 var core_type: String = "cornucopia"
 var food: float = 100.0
