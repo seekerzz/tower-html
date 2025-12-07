@@ -100,9 +100,33 @@ func end_drag():
 	remove_ghost()
 
 	if GameManager.grid_manager:
-		GameManager.grid_manager.handle_unit_drop(self)
-	else:
-		return_to_start()
+		# Try to drop on Grid
+		if GameManager.grid_manager.handle_unit_drop(self):
+			return # Moved on grid successfully
+
+		# Try to drop on Bench
+		# Check main_game reference
+		if GameManager.main_game:
+			# Check if over shop/bench area?
+			# Actually we can just try to add to bench if it's not a valid grid drop
+			# But we only want to do this if the mouse is actually over the bench.
+
+			# HACK: check if mouse Y is in the bottom area?
+			# Shop is at bottom.
+			# Or check rect of shop.
+			var viewport_rect = get_viewport_rect()
+			var mouse_pos = get_global_mouse_position()
+			# Shop height is 150 from bottom?
+			# Need to be precise or use UI collision.
+
+			# Since Unit is Node2D and Shop is Control, we don't have built-in overlap.
+			# Assuming Shop is at bottom.
+			if mouse_pos.y > (viewport_rect.size.y - 200): # Approximate
+				if GameManager.main_game.try_add_to_bench_from_grid(self):
+					# Success, self is queue_free'd inside try_add...
+					return
+
+	return_to_start()
 
 func create_ghost():
 	if ghost_node: return
