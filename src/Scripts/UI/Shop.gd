@@ -10,8 +10,11 @@ const SHOP_SIZE = 4
 @onready var refresh_btn = $Panel/RefreshButton
 @onready var expand_btn = $Panel/ExpandButton
 @onready var start_wave_btn = $Panel/StartWaveButton
+@onready var bench_container = $Panel/BenchContainer
 
 signal unit_bought(unit_key)
+
+const BENCH_UNIT_SCRIPT = preload("res://src/Scripts/UI/BenchUnit.gd")
 
 func _ready():
 	GameManager.resource_changed.connect(update_ui)
@@ -19,9 +22,37 @@ func _ready():
 	GameManager.wave_ended.connect(on_wave_ended)
 	refresh_shop(true)
 	update_ui()
+	# Initial Bench UI update handled by MainGame calling update_bench_ui or we can trigger it
 
 func update_ui():
 	gold_label.text = "💰 %d" % GameManager.gold
+
+func update_bench_ui(bench_data: Array):
+	# Clear bench
+	for child in bench_container.get_children():
+		child.queue_free()
+
+	# Rebuild bench
+	for i in range(bench_data.size()):
+		var data = bench_data[i]
+		if data != null:
+			var item = Control.new() # Use a container or our BenchUnit
+			# Actually we want our BenchUnit
+			item = Control.new()
+			item.set_script(BENCH_UNIT_SCRIPT)
+			# Need to set properties before ready or use setup
+			# script is set, but not ready yet.
+			item.setup(data.key, i)
+			bench_container.add_child(item)
+		else:
+			# Placeholder
+			var placeholder = Control.new()
+			placeholder.custom_minimum_size = Vector2(60, 60)
+			var rect = ColorRect.new()
+			rect.color = Color(0, 0, 0, 0.3)
+			rect.anchors_preset = 15
+			placeholder.add_child(rect)
+			bench_container.add_child(placeholder)
 
 func refresh_shop(force: bool = false):
 	if !force and GameManager.gold < 10: return
@@ -59,21 +90,12 @@ func buy_unit(index, unit_key):
 	if GameManager.is_wave_active: return
 	var proto = Constants.UNIT_TYPES[unit_key]
 	if GameManager.gold >= proto.cost:
-		# Need to find a place to put it (Bench or Grid)
-		# For now, let's assume we emit a signal and GridManager/Bench handles it
-		# Or better, try to add to Bench first
-
-		# We need a Bench Manager.
-		# For this implementation, I'll cheat and assume we can just emit the signal and someone else handles the logic
-		# But wait, GameManager doesn't store units.
-
-		# Let's verify if we can add it.
-		unit_bought.emit(unit_key)
-		GameManager.spend_gold(proto.cost)
-
-		# Remove from shop if not locked? (Ref says it stays?)
-		# Ref: "buyUnitFromShop... if addToBench(newUnit)..."
-		# The card stays.
+		# Call MainGame to add to bench
+		if GameManager.main_game and GameManager.main_game.add_to_bench(unit_key):
+			GameManager.spend_gold(proto.cost)
+			unit_bought.emit(unit_key)
+		else:
+			print("Bench Full or MainGame missing")
 	else:
 		print("Not enough gold")
 
