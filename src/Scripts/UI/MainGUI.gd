@@ -4,6 +4,7 @@ extends Control
 @onready var food_bar = $Panel/VBoxContainer/FoodBar
 @onready var mana_bar = $Panel/VBoxContainer/ManaBar
 @onready var wave_label = $Panel/WaveLabel
+@onready var debug_button = $Panel/DebugButton
 @onready var wave_timeline = $WaveTimeline
 @onready var stats_container = $DamageStats/ScrollContainer/VBoxContainer
 @onready var damage_stats_panel = $DamageStats
@@ -29,6 +30,9 @@ func _ready():
 
 	stats_header.gui_input.connect(_on_stats_header_input)
 
+	if debug_button:
+		debug_button.pressed.connect(_on_debug_button_pressed)
+
 	update_ui()
 	update_timeline()
 	_setup_build_panel()
@@ -44,6 +48,12 @@ func _setup_build_panel():
 func _process(delta):
 	if last_sort_time > 0:
 		last_sort_time -= delta
+
+func _input(event):
+	if event.is_action_pressed("ui_focus_next"): # Default F1 mapping often varies, but let's check scancode or specific action if defined
+		pass
+	if event is InputEventKey and event.pressed and event.keycode == KEY_F1:
+		GameManager.activate_cheat()
 
 func update_ui():
 	hp_bar.value = (GameManager.core_health / GameManager.max_core_health) * 100
@@ -188,3 +198,6 @@ func _on_wave_ended_stats():
 	# The ref code: game.damageStats = {}; in startWave.
 	# So I should clear it in start_wave via update_ui logic or separate handler.
 	pass
+
+func _on_debug_button_pressed():
+	GameManager.activate_cheat()
