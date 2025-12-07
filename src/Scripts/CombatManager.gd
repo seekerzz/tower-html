@@ -2,6 +2,7 @@ extends Node
 
 const ENEMY_SCENE = preload("res://src/Scenes/Game/Enemy.tscn")
 const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
+const LIGHTNING_SCENE = preload("res://src/Scenes/Game/LightningArc.tscn")
 
 var enemies_to_spawn: int = 0
 # spawn_timer removed as we use coroutines now
@@ -248,8 +249,14 @@ func process_unit_combat(unit, tile, delta):
 		# Attack
 		unit.cooldown = unit.atk_speed
 
+		unit.play_attack_anim(unit.unit_data.attackType, target.global_position)
+
 		if unit.unit_data.attackType == "melee":
 			target.take_damage(unit.damage, unit)
+		elif unit.unit_data.attackType == "ranged" and unit.unit_data.get("proj") == "lightning":
+			# Lightning handling
+			# "tesla": "attackType": "ranged", "proj": "lightning", "chain": 4
+			perform_lightning_attack(unit, tile.global_position, target, unit.unit_data.get("chain", 0))
 		else:
 			# Check for Multi-shot (projCount)
 			var proj_count = unit.unit_data.get("projCount", 1)
@@ -263,6 +270,42 @@ func find_nearest_enemy(pos: Vector2, range_val: float):
 	var min_dist = range_val
 
 	for enemy in get_tree().get_nodes_in_group("enemies"):
+		var dist = pos.distance_to(enemy.global_position)
+		if dist < min_dist:
+			min_dist = dist
+			nearest = enemy
+
+	return nearest
+
+func perform_lightning_attack(source_unit, start_pos, target, chain_left, hit_list = null):
+	if hit_list == null: hit_list = []
+	if !is_instance_valid(target): return
+
+	# Apply damage
+	target.take_damage(source_unit.damage, source_unit)
+	hit_list.append(target)
+
+	# Visual
+	var arc = LIGHTNING_SCENE.instantiate()
+	add_child(arc)
+	arc.setup(start_pos, target.global_position)
+
+	# Chain
+	if chain_left > 0:
+		var next_target = find_nearest_enemy_excluding(target.global_position, 300.0, hit_list)
+		if next_target:
+			# Delay slightly for visual effect? Or instant recursive. Instant is fine for "chain lightning"
+			# But recursion in one frame might be too instant.
+			# Let's use a tiny delay or just recurse. Recursion is fine.
+			perform_lightning_attack(source_unit, target.global_position, next_target, chain_left - 1, hit_list)
+
+func find_nearest_enemy_excluding(pos: Vector2, range_val: float, exclude_list: Array):
+	var nearest = null
+	var min_dist = range_val
+
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if enemy in exclude_list: continue
+
 		var dist = pos.distance_to(enemy.global_position)
 		if dist < min_dist:
 			min_dist = dist
