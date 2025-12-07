@@ -6,6 +6,8 @@ signal wave_ended
 signal game_over
 signal unit_purchased(unit_data)
 signal unit_sold(amount)
+signal damage_dealt(unit, amount)
+signal ftext_spawn_requested(pos, value, color)
 
 var core_type: String = "cornucopia"
 var food: float = 100.0
@@ -86,3 +88,6 @@ func spend_gold(amount: int) -> bool:
 func add_gold(amount: int):
 	gold += amount
 	resource_changed.emit()
+
+func spawn_floating_text(pos: Vector2, value: String, color: Color):
+	ftext_spawn_requested.emit(pos, value, color)

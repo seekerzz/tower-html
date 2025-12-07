@@ -82,7 +82,7 @@ func process_unit_combat(unit, tile, delta):
 		unit.cooldown = unit.atk_speed
 
 		if unit.unit_data.attackType == "melee":
-			target.take_damage(unit.damage)
+			target.take_damage(unit.damage, unit)
 		else:
 			# Check for Multi-shot (projCount)
 			var proj_count = unit.unit_data.get("projCount", 1)
@@ -137,6 +137,7 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 
 	# Merge extra stats (like angle from multishot)
 	stats.merge(extra_stats, true)
+	stats.source = source_unit
 
 	proj.setup(pos, target, source_unit.damage, 400.0, source_unit.unit_data.proj, stats)
 	add_child(proj)
