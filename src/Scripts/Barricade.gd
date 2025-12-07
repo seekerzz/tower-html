@@ -33,5 +33,6 @@ func init(p1: Vector2, p2: Vector2, type_key: String):
 
 func take_damage(amount: float):
 	hp -= amount
+	GameManager.spawn_floating_text(global_position, str(int(amount)), Color.RED)
 	if hp <= 0:
 		queue_free()

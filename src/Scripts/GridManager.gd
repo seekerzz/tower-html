@@ -67,6 +67,8 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 	# Mark tiles as occupied
 	_set_tiles_occupied(x, y, w, h, unit)
 
+	recalculate_buffs()
+
 	return true
 
 func _set_tiles_occupied(x: int, y: int, w: int, h: int, unit):
@@ -196,6 +198,7 @@ func try_move_unit(unit, from_tile, to_tile) -> bool:
 		target_unit.merge_with(unit)
 		_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
 		unit.queue_free()
+		recalculate_buffs()
 		return true
 
 	# Devour
@@ -203,6 +206,7 @@ func try_move_unit(unit, from_tile, to_tile) -> bool:
 		target_unit.devour(unit)
 		_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
 		unit.queue_free()
+		recalculate_buffs()
 		return true
 
 	# Swap
@@ -227,6 +231,8 @@ func _move_unit_internal(unit, new_x, new_y):
 	var tile = tiles[get_tile_key(new_x, new_y)]
 	unit.position = tile.position + Vector2((w-1) * TILE_SIZE * 0.5, (h-1) * TILE_SIZE * 0.5)
 	unit.start_position = unit.position
+
+	recalculate_buffs()
 
 func can_devour(eater, food) -> bool:
 	if food.unit_data.has("isFood") and food.unit_data.isFood:
@@ -292,3 +298,57 @@ func _perform_swap(unit_a, unit_b):
 	var tile_for_b = tiles[get_tile_key(pos_a.x, pos_a.y)]
 	unit_b.position = tile_for_b.position + Vector2((size_b.x-1) * TILE_SIZE * 0.5, (size_b.y-1) * TILE_SIZE * 0.5)
 	unit_b.start_position = unit_b.position
+
+	recalculate_buffs()
+
+func recalculate_buffs():
+	# 1. Reset all units stats
+	# We need to collect unique units first to avoid multiple resets for multi-tile units
+	var processed_units = []
+	for key in tiles:
+		var tile = tiles[key]
+		if tile.unit and not (tile.unit in processed_units):
+			tile.unit.reset_stats()
+			processed_units.append(tile.unit)
+
+	# 2. Iterate to find buff providers and apply buffs
+	for unit in processed_units:
+		if "buffProvider" in unit.unit_data:
+			var buff_type = unit.unit_data["buffProvider"]
+			_apply_buff_to_neighbors(unit, buff_type)
+
+	# 3. Update visuals for all units
+	for unit in processed_units:
+		unit.update_visuals()
+
+func _apply_buff_to_neighbors(provider_unit, buff_type):
+	var cx = provider_unit.grid_pos.x
+	var cy = provider_unit.grid_pos.y
+	var w = provider_unit.unit_data.size.x
+	var h = provider_unit.unit_data.size.y
+
+	var neighbors = []
+
+	# Top & Bottom
+	for dx in range(w):
+		neighbors.append(Vector2i(cx + dx, cy - 1)) # Top
+		neighbors.append(Vector2i(cx + dx, cy + h)) # Bottom
+
+	# Left & Right
+	for dy in range(h):
+		neighbors.append(Vector2i(cx - 1, cy + dy)) # Left
+		neighbors.append(Vector2i(cx + w, cy + dy)) # Right
+
+	for n_pos in neighbors:
+		var n_key = get_tile_key(n_pos.x, n_pos.y)
+		if tiles.has(n_key):
+			var tile = tiles[n_key]
+			var target_unit = tile.unit
+
+			if target_unit == null and tile.occupied_by != Vector2i.ZERO:
+				var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
+				if tiles.has(origin_key):
+					target_unit = tiles[origin_key].unit
+
+			if target_unit and target_unit != provider_unit:
+				target_unit.apply_buff(buff_type)

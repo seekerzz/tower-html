@@ -193,7 +193,7 @@ func take_damage(amount: float, source_unit = null):
 	hit_flash_timer = 0.1
 	queue_redraw()
 
-	GameManager.spawn_floating_text(global_position, str(floor(amount)), Color.WHITE)
+	GameManager.spawn_floating_text(global_position, str(int(amount)), Color.WHITE)
 	if source_unit:
 		GameManager.damage_dealt.emit(source_unit, amount)
 
