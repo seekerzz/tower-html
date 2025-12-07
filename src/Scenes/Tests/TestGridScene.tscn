@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3 uid="uid://testgrid123"]
+
+[ext_resource type="Script" path="res://src/Scripts/TestGridScene.gd" id="1_test"]
+[ext_resource type="PackedScene" uid="uid://grid123456" path="res://src/Scenes/Game/GridManager.tscn" id="2_grid"]
+
+[node name="TestGridScene" type="Node2D"]
+script = ExtResource("1_test")
+
+[node name="GridManager" parent="." instance=ExtResource("2_grid")]
+position = Vector2(600, 300)
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(640, 360)
