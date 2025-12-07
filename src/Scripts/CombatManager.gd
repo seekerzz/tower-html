@@ -5,6 +5,7 @@ const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
 const LIGHTNING_SCENE = preload("res://src/Scenes/Game/LightningArc.tscn")
 
 var enemies_to_spawn: int = 0
+var total_enemies_for_wave: int = 0
 # spawn_timer removed as we use coroutines now
 
 func _ready():
@@ -36,13 +37,13 @@ func start_wave_logic():
 
 	# Calculate total enemies (Increased difficulty logic from ref.html)
 	# const baseCount = 20 + Math.floor(game.wave * 6);
-	var total_enemies = 20 + floor(wave * 6)
-	enemies_to_spawn = total_enemies
+	total_enemies_for_wave = 20 + floor(wave * 6)
+	enemies_to_spawn = total_enemies_for_wave
 
 	# Batch calculation
 	# const batchCount = 3 + Math.floor(game.wave / 2);
 	var batch_count = 3 + floor(wave / 2.0)
-	var enemies_per_batch = ceil(float(total_enemies) / batch_count)
+	var enemies_per_batch = ceil(float(total_enemies_for_wave) / batch_count)
 
 	_run_batch_sequence(batch_count, int(enemies_per_batch))
 
