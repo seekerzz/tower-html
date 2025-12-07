@@ -66,10 +66,15 @@ func _process(delta):
 	if type == "swarm_wave":
 		scale += Vector2(delta, delta) * 2.0 # Growth rate
 		modulate.a = max(0, modulate.a - delta * 0.5)
+		# Hide default visuals if any, since we draw manually
+		if visual_node: visual_node.visible = false
 
 	var direction = Vector2.RIGHT.rotated(rotation)
 
-	if is_instance_valid(target):
+	# Homing Logic
+	# Only home if NOT a pellet (shotgun), swarm_wave (AOE), or shuriken (linear)
+	var non_homing_types = ["pellet", "swarm_wave", "shuriken"]
+	if is_instance_valid(target) and not (type in non_homing_types):
 		var target_dir = (target.global_position - global_position).normalized()
 		direction = target_dir
 		rotation = direction.angle() # Turn entire node to face target
@@ -79,6 +84,15 @@ func _process(delta):
 	# Visual Rotation (Spin)
 	if visual_node:
 		visual_node.rotation += delta * 15.0
+
+func _draw():
+	if type == "swarm_wave":
+		# Draw a green arc (sound wave)
+		# Arc facing right (0 degrees), centered at 0,0
+		var radius = 10.0 # Base radius, will be scaled by node scale
+		var angle_width = deg_to_rad(60)
+		# draw_arc(center, radius, start_angle, end_angle, point_count, color, width)
+		draw_arc(Vector2.ZERO, radius, -angle_width/2, angle_width/2, 16, Color.GREEN, 2.0)
 
 func _process_blackhole(delta):
 	if state == State.MOVING:
