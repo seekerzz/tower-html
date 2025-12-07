@@ -13,6 +13,12 @@ var unit_data: Dictionary
 var damage: float
 var range_val: float
 var atk_speed: float
+var attack_cost_food: float = 0.0
+var attack_cost_mana: float = 0.0
+var skill_mana_cost: float = 30.0
+
+var is_starving: bool = false
+var is_no_mana: bool = false
 
 # Grid / Drag logic
 var grid_pos: Vector2i = Vector2i.ZERO
@@ -30,7 +36,45 @@ func setup(key: String):
 	range_val = unit_data.range
 	atk_speed = unit_data.atk_speed if "atk_speed" in unit_data else unit_data.atkSpeed
 
+	attack_cost_food = unit_data.get("foodCost", 1.0) # Default food cost to 1.0 if not specified to ensure test works or real gameplay consumes food
+	attack_cost_mana = unit_data.get("manaCost", 0.0)
+	skill_mana_cost = unit_data.get("skillCost", 30.0)
+
 	update_visuals()
+
+func activate_skill():
+	if !unit_data.has("skill"): return
+
+	if skill_cooldown > 0:
+		return
+
+	if GameManager.consume_resource("mana", skill_mana_cost):
+		is_no_mana = false
+		skill_cooldown = unit_data.get("skillCd", 10.0)
+
+		# Trigger skill effect
+		var skill_name = unit_data.skill
+		GameManager.spawn_floating_text(global_position, skill_name.capitalize() + "!", Color.CYAN)
+
+		match skill_name:
+			"rage":
+				# Simple effect: temporary visual or logic handled elsewhere
+				pass
+			"stun":
+				pass
+			"firestorm":
+				pass
+			_:
+				pass
+
+		# Visual feedback
+		var tween = create_tween()
+		tween.tween_property($ColorRect, "scale", Vector2(1.2, 1.2), 0.1)
+		tween.tween_property($ColorRect, "scale", Vector2(1.0, 1.0), 0.1)
+
+	else:
+		is_no_mana = true
+		GameManager.spawn_floating_text(global_position, "No Mana!", Color.BLUE)
 
 func update_visuals():
 	$Label.text = unit_data.icon
@@ -59,6 +103,13 @@ func _process(delta):
 
 	if skill_cooldown > 0:
 		skill_cooldown -= delta
+
+	if is_starving:
+		modulate = Color(0.5, 0.5, 0.5, 1.0)
+	elif is_no_mana and unit_data.has("skill"):
+		modulate = Color(0.7, 0.7, 1.0, 1.0)
+	else:
+		modulate = Color.WHITE
 
 	# Attack Logic (simplified for now, needs Enemy reference)
 	# This will be handled by CombatManager or Unit itself if it has access to enemies

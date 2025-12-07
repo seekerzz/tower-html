@@ -96,3 +96,5 @@ offset_bottom = 23.0
 grow_horizontal = 2
 text = "Damage Stats"
 horizontal_alignment = 1
+
+[node name="SkillBar" parent="." instance=ExtResource("res://src/Scenes/UI/SkillBar.tscn")]

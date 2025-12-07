@@ -75,9 +75,35 @@ func _spawn_enemy_at(pos: Vector2):
 func process_unit_combat(unit, tile, delta):
 	if unit.cooldown > 0: return
 
+	# Resource Check
+	var can_afford = true
+
+	if unit.attack_cost_food > 0:
+		if !GameManager.check_resource("food", unit.attack_cost_food):
+			unit.is_starving = true
+			# print("Unit %s is starving (Cost: %s, Food: %s)" % [unit.name, unit.attack_cost_food, GameManager.food])
+			can_afford = false
+		else:
+			unit.is_starving = false
+
+	if unit.attack_cost_mana > 0:
+		if !GameManager.check_resource("mana", unit.attack_cost_mana):
+			unit.is_no_mana = true
+			can_afford = false
+		else:
+			unit.is_no_mana = false
+
+	if !can_afford: return
+
 	# Find target
 	var target = find_nearest_enemy(tile.global_position, unit.range_val)
 	if target:
+		# Consume Resources
+		if unit.attack_cost_food > 0:
+			GameManager.consume_resource("food", unit.attack_cost_food)
+		if unit.attack_cost_mana > 0:
+			GameManager.consume_resource("mana", unit.attack_cost_mana)
+
 		# Attack
 		unit.cooldown = unit.atk_speed
 
