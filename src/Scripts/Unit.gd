@@ -141,7 +141,7 @@ func update_visuals():
 
 func _update_buff_icons():
 	# Simple visualization: a small label or HBox at the bottom of the unit
-	var buff_container = $BuffContainer
+	var buff_container = get_node_or_null("BuffContainer")
 	if !buff_container:
 		buff_container = HBoxContainer.new()
 		buff_container.name = "BuffContainer"
@@ -156,7 +156,7 @@ func _update_buff_icons():
 
 	for buff in active_buffs:
 		var lbl = Label.new()
-		lbl.theme_override_font_sizes/font_size = 10
+		lbl.add_theme_font_size_override("font_size", 10)
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 

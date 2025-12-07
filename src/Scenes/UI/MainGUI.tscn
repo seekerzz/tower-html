@@ -1,6 +1,7 @@
 [gd_scene load_steps=2 format=3 uid="uid://gui123"]
 
 [ext_resource type="Script" path="res://src/Scripts/UI/MainGUI.gd" id="1_gui"]
+[ext_resource type="PackedScene" path="res://src/Scenes/UI/SkillBar.tscn" id="2_skillbar"]
 
 [node name="MainGUI" type="Control"]
 layout_mode = 3
@@ -106,4 +107,4 @@ grow_horizontal = 2
 text = "Damage Stats"
 horizontal_alignment = 1
 
-[node name="SkillBar" parent="." instance=ExtResource("res://src/Scenes/UI/SkillBar.tscn")]
+[node name="SkillBar" parent="." instance=ExtResource("2_skillbar")]
