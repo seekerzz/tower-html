@@ -26,12 +26,17 @@ var crit_rate: float = 0.0
 var bounce_count: int = 0
 var split_count: int = 0
 
-# Grid / Drag logic
+# Grid
 var grid_pos: Vector2i = Vector2i.ZERO
+var start_position: Vector2 = Vector2.ZERO
+
+# Missing variables required for the old drag logic at the bottom to compile
+# (建议后续删除底部的旧拖拽逻辑，改用 UnitDragHandler)
 var is_dragging: bool = false
 var drag_offset: Vector2 = Vector2.ZERO
-var start_position: Vector2 = Vector2.ZERO
 var ghost_node: Node2D = null
+
+const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 
 signal unit_clicked(unit)
 
@@ -41,10 +46,19 @@ func setup(key: String):
 	reset_stats()
 	update_visuals()
 
+	# --- Merged Logic Start ---
+	# 1. Production & Animation Logic (from HEAD)
 	if unit_data.has("produce"):
 		production_timer = 1.0 # Initial delay
 
 	start_breathe_anim()
+
+	# 2. Drag Handler Component Logic (from refactor branch)
+	var drag_handler = Control.new()
+	drag_handler.set_script(DRAG_HANDLER_SCRIPT)
+	add_child(drag_handler)
+	drag_handler.setup(self)
+	# --- Merged Logic End ---
 
 func reset_stats():
 	damage = unit_data.damage
@@ -55,39 +69,23 @@ func reset_stats():
 	split_count = 0
 	active_buffs.clear()
 
-	attack_cost_food = unit_data.get("foodCost", 1.0) # Default food cost to 1.0 if not specified to ensure test works or real gameplay consumes food
+	attack_cost_food = unit_data.get("foodCost", 1.0)
 	attack_cost_mana = unit_data.get("manaCost", 0.0)
 	skill_mana_cost = unit_data.get("skillCost", 30.0)
 
 	update_visuals()
-	# Re-apply level multipliers if needed
 	if level > 1:
 		damage *= pow(1.5, level - 1)
-		# stats_multiplier is handled separately or accumulatively?
-		# In merge_with, we did damage *= 1.5.
-		# If we reset stats, we need to recalculate from base + level.
-		# Ideally `level` should drive the stats.
 
 func apply_buff(buff_type: String):
-	if buff_type in active_buffs: return # Or stack? Usually adjacency buffs from different sources stack, but same source?
-	# For now, let's allow duplicates in the list but handle logic carefully, or just list unique buff types.
-	# The prompt says "recalculate_buffs", suggesting we clear and re-add.
-
+	if buff_type in active_buffs: return
 	active_buffs.append(buff_type)
 
 	match buff_type:
-		"fire":
-			pass # Logic handled in attack/projectile
-		"poison":
-			pass # Logic handled in attack/projectile
 		"range":
 			range_val *= 1.25
 		"speed":
-			atk_speed *= 1.2 # Higher is faster? "atkSpeed" in data seems to be attacks per second?
-			# In Constants: mouse 0.15. If it's delay, lower is faster.
-			# turtle: 1.8.
-			# Let's check CombatManager or Unit to see how atkSpeed is used.
-			pass
+			atk_speed *= 1.2
 		"crit":
 			crit_rate += 0.25
 		"bounce":
@@ -105,22 +103,9 @@ func activate_skill():
 		is_no_mana = false
 		skill_cooldown = unit_data.get("skillCd", 10.0)
 
-		# Trigger skill effect
 		var skill_name = unit_data.skill
 		GameManager.spawn_floating_text(global_position, skill_name.capitalize() + "!", Color.CYAN)
 
-		match skill_name:
-			"rage":
-				# Simple effect: temporary visual or logic handled elsewhere
-				pass
-			"stun":
-				pass
-			"firestorm":
-				pass
-			_:
-				pass
-
-		# Visual feedback
 		var tween = create_tween()
 		tween.tween_property($ColorRect, "scale", Vector2(1.2, 1.2), 0.1)
 		tween.tween_property($ColorRect, "scale", Vector2(1.0, 1.0), 0.1)
@@ -130,8 +115,10 @@ func activate_skill():
 		GameManager.spawn_floating_text(global_position, "No Mana!", Color.BLUE)
 
 func update_visuals():
+	# Kept HEAD version: Safer because it checks for node existence
 	if has_node("Label"):
 		$Label.text = unit_data.icon
+	
 	# Size update
 	if has_node("ColorRect"):
 		var size = unit_data.size
@@ -152,7 +139,6 @@ func update_visuals():
 	_update_buff_icons()
 
 func _update_buff_icons():
-	# Simple visualization: a small label or HBox at the bottom of the unit
 	var buff_container = get_node_or_null("BuffContainer")
 	if !buff_container:
 		buff_container = HBoxContainer.new()
@@ -177,7 +163,6 @@ func _update_buff_icons():
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
-		# Map buff to icon
 		var icon = "?"
 		match buff:
 			"fire": icon = "🔥"
@@ -192,10 +177,6 @@ func _update_buff_icons():
 		buff_container.add_child(lbl)
 
 func _process(delta):
-	if is_dragging:
-		global_position = get_global_mouse_position() + drag_offset
-		return
-
 	if !GameManager.is_wave_active: return
 
 	# Production Logic
@@ -268,15 +249,7 @@ func play_attack_anim(attack_type: String, target_pos: Vector2):
 
 func merge_with(other_unit):
 	level += 1
-	# Stats will be recalculated by GridManager calling recalculate_buffs -> reset_stats -> apply level -> apply buffs
-	# But reset_stats needs to know how to apply level.
-	# Let's ensure reset_stats handles level scaling.
-
-	# Update: reset_stats implementation above attempts to handle it.
-	# damage *= pow(1.5, level - 1)
-
 	update_visuals()
-	# Play animation
 
 func devour(food_unit):
 	level += 1
@@ -287,7 +260,6 @@ func devour(food_unit):
 func _on_area_2d_input_event(viewport, event, shape_idx):
 	if !GameManager.is_wave_active:
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			start_drag(get_global_mouse_position())
 			unit_clicked.emit(self)
 
 func _on_area_2d_mouse_entered():
@@ -301,6 +273,14 @@ func _on_area_2d_mouse_entered():
 
 func _on_area_2d_mouse_exited():
 	GameManager.hide_tooltip.emit()
+
+# -------------------------------------------------------------------------
+# CAUTION: Old Drag Logic Logic Below
+# -------------------------------------------------------------------------
+# Since you added "UnitDragHandler" in setup(), the logic below might be redundant.
+# I added the missing variables at the top to prevent errors, but you should
+# likely delete the functions below if the DragHandler is working.
+# -------------------------------------------------------------------------
 
 func _input(event):
 	if is_dragging:

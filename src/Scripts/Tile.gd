@@ -3,16 +3,24 @@ extends Node2D
 var x: int
 var y: int
 var type: String = "normal"
-var unit = null # Reference to the unit on this tile
-var occupied_by: Vector2i # If occupied by a multi-tile unit origin
+var unit = null
+var occupied_by: Vector2i
 
 signal tile_clicked(tile)
+
+const DROP_HANDLER_SCRIPT = preload("res://src/Scripts/UI/TileDropHandler.gd")
 
 func setup(grid_x: int, grid_y: int, tile_type: String = "normal"):
 	x = grid_x
 	y = grid_y
 	type = tile_type
 	update_visuals()
+
+	# Add Drop Target
+	var drop_target = Control.new()
+	drop_target.set_script(DROP_HANDLER_SCRIPT)
+	add_child(drop_target)
+	drop_target.setup(self)
 
 func update_visuals():
 	$ColorRect.color = Constants.COLORS.grid
