@@ -14,6 +14,9 @@ var attack_timer: float = 0.0
 var attacking_wall: Node = null
 var temp_speed_mod: float = 1.0
 
+var bypass_dest = null
+var bypass_wall = null
+
 func _ready():
 	raycast = RayCast2D.new()
 	raycast.enabled = true
@@ -92,32 +95,92 @@ func move_towards_core(delta):
 	if !GameManager.grid_manager: return
 
 	var target = GameManager.grid_manager.global_position
+	var is_bypassing = false
+
+	if bypass_dest != null:
+		target = bypass_dest
+		is_bypassing = true
+		if global_position.distance_to(target) < 10:
+			bypass_dest = null
+			bypass_wall = null
+			is_bypassing = false
+			target = GameManager.grid_manager.global_position
+
 	var direction = (target - global_position).normalized()
 
 	# Raycast Check
 	raycast.target_position = Vector2(enemy_data.radius + 15, 0)
-	raycast.rotation = direction.angle() - rotation # Adjust for local rotation if any
-	# Note: Enemy scene root usually doesn't rotate, but if it did, we'd need to account for it.
-	# Assuming Enemy rotation is 0.
+	# Adjust for local rotation if any
 	raycast.global_rotation = direction.angle()
 	raycast.force_raycast_update()
 
 	if raycast.is_colliding():
 		var collider = raycast.get_collider()
 		if is_blocking_wall(collider):
-			attacking_wall = collider
-			attack_timer = 0.5 # First hit delay
-			return
+			if is_bypassing and collider == bypass_wall:
+				# Sliding logic
+				var tangent = get_slide_tangent(collider, direction)
+				direction = tangent
+			elif !is_bypassing:
+				# Check if we should bypass
+				var bypass_point = get_bypass_point(collider)
+				if bypass_point != null:
+					bypass_dest = bypass_point
+					bypass_wall = collider
+					# Don't move this frame, wait for next frame to adjust direction
+					return
+				else:
+					attacking_wall = collider
+					attack_timer = 0.5
+					return
+			else:
+				# Hit another wall
+				attacking_wall = collider
+				attack_timer = 0.5
+				return
 
 	var current_speed = speed * temp_speed_mod
 	if slow_timer > 0: current_speed *= 0.5
 
 	position += direction * current_speed * delta
 
-	var dist = global_position.distance_to(target)
-	if dist < 30: # Reached core
-		GameManager.damage_core(enemy_data.dmg)
-		queue_free()
+	if !is_bypassing:
+		var dist = global_position.distance_to(target)
+		if dist < 30: # Reached core
+			GameManager.damage_core(enemy_data.dmg)
+			queue_free()
+
+func get_bypass_point(wall):
+	if !wall.has_node("CollisionShape2D"): return null
+	var cs = wall.get_node("CollisionShape2D")
+	if !cs.shape is SegmentShape2D: return null
+
+	var p1 = cs.to_global(cs.shape.a)
+	var p2 = cs.to_global(cs.shape.b)
+
+	var core_pos = GameManager.grid_manager.global_position
+
+	# Choose closer endpoint to Core
+	var d1 = p1.distance_squared_to(core_pos)
+	var d2 = p2.distance_squared_to(core_pos)
+
+	var target = p1 if d1 < d2 else p2
+
+	# Extend target slightly
+	var center = (p1 + p2) / 2
+	var ext_dir = (target - center).normalized()
+	return target + ext_dir * 25.0
+
+func get_slide_tangent(wall, desired_dir):
+	if !wall.has_node("CollisionShape2D"): return desired_dir
+	var cs = wall.get_node("CollisionShape2D")
+	var p1 = cs.to_global(cs.shape.a)
+	var p2 = cs.to_global(cs.shape.b)
+
+	var wall_dir = (p2 - p1).normalized()
+	if wall_dir.dot(desired_dir) < 0:
+		wall_dir = -wall_dir
+	return wall_dir
 
 func is_blocking_wall(node):
 	if node.get("type") and Constants.BARRICADE_TYPES.has(node.type):
