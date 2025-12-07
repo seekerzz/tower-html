@@ -125,15 +125,21 @@ func is_blocking_wall(node):
 		return b_type == "block" or b_type == "freeze"
 	return false
 
-func take_damage(amount: float):
+func take_damage(amount: float, source_unit = null):
 	hp -= amount
 	hit_flash_timer = 0.1
 	queue_redraw()
+
+	GameManager.spawn_floating_text(global_position, str(floor(amount)), Color.WHITE)
+	if source_unit:
+		GameManager.damage_dealt.emit(source_unit, amount)
+
 	if hp <= 0:
 		die()
 
 func die():
 	GameManager.add_gold(1)
+	GameManager.spawn_floating_text(global_position, "+1💰", Color.YELLOW)
 	GameManager.food += 2
 
 	# Drop Logic

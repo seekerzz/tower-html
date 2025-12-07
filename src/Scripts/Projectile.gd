@@ -6,6 +6,7 @@ var damage: float = 10.0
 var life: float = 2.0
 var type: String = "dot"
 var hit_list = []
+var source_unit = null
 
 # Advanced Stats
 var pierce: int = 0
@@ -21,6 +22,9 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 	damage = dmg
 	speed = proj_speed
 	type = proj_type
+
+	if stats.has("source"):
+		source_unit = stats.source
 
 	pierce = stats.get("pierce", 0)
 	bounce = stats.get("bounce", 0)
@@ -58,7 +62,7 @@ func _on_area_2d_area_entered(area):
 		if area in hit_list: return
 
 		# Apply Damage
-		area.take_damage(damage)
+		area.take_damage(damage, source_unit)
 		hit_list.append(area)
 
 		# 1. Bounce/Chain Logic
@@ -93,7 +97,8 @@ func perform_split():
 			"bounce": 0,
 			"split": 0,
 			"chain": 0,
-			"angle": angle
+			"angle": angle,
+			"source": source_unit
 		}
 		# Split projectiles usually don't have a specific target unless we find one,
 		# but for now let's just make them fly in the direction.
