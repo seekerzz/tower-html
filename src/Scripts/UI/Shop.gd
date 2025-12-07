@@ -59,21 +59,11 @@ func buy_unit(index, unit_key):
 	if GameManager.is_wave_active: return
 	var proto = Constants.UNIT_TYPES[unit_key]
 	if GameManager.gold >= proto.cost:
-		# Need to find a place to put it (Bench or Grid)
-		# For now, let's assume we emit a signal and GridManager/Bench handles it
-		# Or better, try to add to Bench first
-
-		# We need a Bench Manager.
-		# For this implementation, I'll cheat and assume we can just emit the signal and someone else handles the logic
-		# But wait, GameManager doesn't store units.
-
-		# Let's verify if we can add it.
-		unit_bought.emit(unit_key)
-		GameManager.spend_gold(proto.cost)
-
-		# Remove from shop if not locked? (Ref says it stays?)
-		# Ref: "buyUnitFromShop... if addToBench(newUnit)..."
-		# The card stays.
+		if GameManager.grid_manager and GameManager.grid_manager.try_add_to_bench(unit_key):
+			GameManager.spend_gold(proto.cost)
+			unit_bought.emit(unit_key)
+		else:
+			print("Bench is full")
 	else:
 		print("Not enough gold")
 
