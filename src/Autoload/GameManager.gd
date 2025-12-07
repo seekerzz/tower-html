@@ -34,6 +34,7 @@ var tile_cost: int = 50
 var grid_manager = null
 var combat_manager = null
 var ui_manager = null
+var main_game = null
 
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
