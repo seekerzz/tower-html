@@ -1,0 +1,1811 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>核心牧场：终极战役 (v7.8 交互修复版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #1a1a2e;
+            color: #e0e0e0;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .no-select { user-select: none; -webkit-user-select: none; }
+
+        #game-container {
+            position: relative;
+            width: 100vw; height: 100vh;
+            overflow: hidden;
+            background-image: radial-gradient(#262642 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        #grid-layer {
+            position: absolute; 
+            top: 40%; 
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 0; height: 0;
+            z-index: 1; 
+        }
+
+        #battle-canvas {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none; /* 修复：默认不阻挡鼠标事件 */
+            z-index: 10; 
+        }
+
+        .z-50 { z-index: 50; }
+
+        .tile {
+            position: absolute;
+            width: 60px; height: 60px;
+            background-color: #303045;
+            border: 2px solid #4a4a6a;
+            border-radius: 8px;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.2s;
+            box-sizing: border-box;
+        }
+        .tile.core {
+            background-color: #4a3045; border-color: #ff6b6b;
+            box-shadow: 0 0 15px rgba(255, 107, 107, 0.3); z-index: 5;
+        }
+        .tile:hover { background-color: #3d3d5c; z-index: 6; }
+        .tile.ghost {
+            background-color: rgba(46, 204, 113, 0.2);
+            border: 2px dashed #2ecc71; cursor: crosshair; z-index: 4;
+        }
+        .tile.ghost:hover { background-color: rgba(46, 204, 113, 0.5); }
+
+        .bench-slot {
+            width: 60px; height: 60px;
+            background-color: #2c3e50;
+            border: 2px dashed #5d6d7e;
+            border-radius: 8px;
+            display: flex; justify-content: center; align-items: center;
+            position: relative;
+        }
+
+        .sell-slot {
+            width: 60px; height: 60px;
+            background-color: rgba(231, 76, 60, 0.1);
+            border: 2px dashed #e74c3c;
+            border-radius: 8px;
+            display: flex; justify-content: center; align-items: center;
+            position: relative;
+            cursor: default;
+            transition: all 0.2s;
+        }
+        .sell-slot.drag-over {
+            background-color: rgba(231, 76, 60, 0.4);
+            transform: scale(1.1);
+            box-shadow: 0 0 10px #e74c3c;
+        }
+
+        .unit {
+            width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 32px;
+            cursor: grab;
+            position: absolute; top: 0; left: 0;
+            z-index: 30;
+            transition: transform 0.2s;
+            user-select: none;
+            animation: breathe 3s ease-in-out infinite; 
+        }
+        .bench-slot .unit { position: relative; }
+        .unit:active { cursor: grabbing; animation: none; transform: scale(1.1); }
+        .unit.starving { opacity: 0.5; filter: grayscale(100%); animation: none; }
+        .unit.no-mana { opacity: 0.5; filter: sepia(100%) hue-rotate(180deg); animation: none; }
+        .unit-2x2 { font-size: 64px; }
+
+        @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        @keyframes recoil { 0% { transform: scale(1); } 10% { transform: scale(0.8); } 40% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .anim-attack-ranged { animation: recoil 0.15s ease-out !important; }
+        @keyframes lunge { 0% { transform: translate(0, 0) scale(1); } 20% { transform: translate(5px, 5px) scale(1.2); } 100% { transform: translate(0, 0) scale(1); } }
+        .anim-attack-melee { animation: lunge 0.15s ease-out !important; }
+        @keyframes levelup { 0% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.3); filter: brightness(2); } 100% { transform: scale(1); filter: brightness(1); } }
+        .anim-levelup { animation: levelup 0.4s ease-out !important; }
+        @keyframes shake { 0% { transform: translate(0, 0); } 25% { transform: translate(-2px, 2px); filter: brightness(2) hue-rotate(-20deg); } 50% { transform: translate(2px, -2px); } 75% { transform: translate(-2px, -2px); } 100% { transform: translate(0, 0); } }
+        .anim-damage { animation: shake 0.2s !important; }
+
+        .buff-icon {
+            position: absolute; font-size: 10px; width: 14px; height: 14px;
+            background: rgba(0,0,0,0.7); border-radius: 50%;
+            display: flex; justify-content: center; align-items: center; pointer-events: none;
+            z-index: 35;
+        }
+        /* Top Row Buffs */
+        .buff-fire { top: -6px; left: 2px; color: #ff7675; border: 1px solid #ff7675; }
+        .buff-poison { top: -6px; right: 2px; color: #55efc4; border: 1px solid #55efc4; }
+        /* Bottom Row Buffs */
+        .buff-range { bottom: -6px; left: 2px; color: #74b9ff; border: 1px solid #74b9ff; }
+        .buff-speed { bottom: -6px; right: 2px; color: #fdcb6e; border: 1px solid #fdcb6e; }
+        /* New Special Buffs */
+        .buff-crit { top: -6px; left: 18px; color: #e84393; border: 1px solid #e84393; } /* Pink */
+        .buff-bounce { bottom: -6px; left: 18px; color: #a29bfe; border: 1px solid #a29bfe; } /* Purple */
+        .buff-split { bottom: -6px; right: 18px; color: #00cec9; border: 1px solid #00cec9; } /* Cyan */
+        
+        .trait-container {
+            position: absolute; top: -16px; left: 0; width: 100%;
+            display: flex; justify-content: center; gap: 2px; pointer-events: none; z-index: 40;
+        }
+        .trait-badge {
+            width: 14px; height: 14px; background: linear-gradient(135deg, #f1c40f, #e67e22); color: white;
+            border-radius: 2px; font-size: 8px; font-weight: bold;
+            display: flex; justify-content: center; align-items: center;
+            border: 1px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            transform: rotate(45deg); 
+        }
+        .trait-badge span { transform: rotate(-45deg); font-size: 8px; }
+
+        #tooltip {
+            position: absolute; background: rgba(20, 20, 30, 0.95); border: 1px solid #5d6d7e; border-radius: 8px; padding: 10px;
+            color: #ecf0f1; font-size: 12px; pointer-events: none; z-index: 100; display: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); backdrop-filter: blur(4px); min-width: 180px;
+        }
+        .tooltip-stat { display: flex; justify-content: space-between; margin-bottom: 2px; }
+
+        .ui-panel { background: rgba(22, 22, 30, 0.95); backdrop-filter: blur(4px); border: 1px solid #444; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .shop-card { transition: all 0.2s; position: relative; }
+        .shop-card.locked { border-color: #f39c12; background-color: #2c2518; }
+        .lock-btn { position: absolute; top: 2px; right: 2px; font-size: 12px; padding: 2px 4px; border-radius: 4px; background: rgba(0,0,0,0.5); color: #666; }
+        .shop-card.locked .lock-btn { color: #f39c12; background: rgba(0,0,0,0.8); }
+
+        .timeline-container { display: flex; gap: 4px; justify-content: center; margin-top: 4px; }
+        .timeline-node { width: 24px; height: 24px; border-radius: 4px; background: #2c3e50; display: flex; justify-content: center; align-items: center; font-size: 14px; border: 1px solid #4a4a6a; opacity: 0.6; position: relative; }
+        .timeline-node.active { opacity: 1; border-color: #f1c40f; background: #34495e; box-shadow: 0 0 8px #f1c40f; transform: scale(1.2); z-index: 2; border-width: 2px; }
+        .timeline-node.boss { border-color: #e74c3c; color: #e74c3c; }
+        .timeline-node.event { border-color: #9b59b6; color: #9b59b6; }
+        .timeline-arrow { position: absolute; top: -12px; font-size: 10px; color: #f1c40f; animation: bounce 1s infinite; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+
+        .shop-sell-zone { background-color: rgba(231, 76, 60, 0.2) !important; border-color: #e74c3c !important; }
+        .shop-sell-text { display: none; font-weight: bold; color: #e74c3c; }
+        .shop-sell-zone .shop-sell-text { display: block; }
+        .shop-sell-zone .shop-content-inner { opacity: 0.1; }
+
+        .popup-text { position: absolute; font-weight: bold; pointer-events: none; animation: floatUp 0.8s forwards; text-shadow: 1px 1px 0 #000; z-index: 100; white-space: nowrap; user-select: none; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-40px) scale(1.1); } }
+
+        /* Modified Skill UI */
+        #skill-container {
+            position: absolute; 
+            top: 50%; left: 10px; transform: translateY(-50%);
+            display: flex; flex-direction: column; gap: 8px; 
+            z-index: 50; pointer-events: none;
+        }
+        #skill-bar {
+            display: flex; flex-direction: column; gap: 10px; 
+            pointer-events: auto;
+        }
+
+        .skill-btn { 
+            position: relative; overflow: hidden; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5); 
+            width: 50px; height: 50px;
+            background: #2c3e50;
+            border: 2px solid #5d6d7e;
+            border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 24px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .skill-btn:hover { border-color: #f1c40f; transform: scale(1.1); }
+        .skill-btn:active { transform: scale(0.95); }
+        /* 技能不可用状态 (缺蓝) */
+        .skill-btn.disabled-mana { 
+            filter: grayscale(100%); 
+            border-color: #555;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .skill-cd-overlay { 
+            position: absolute; inset: 0; 
+            background-color: rgba(0,0,0,0.7); 
+            border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            color: #fff; font-weight: bold; font-size: 14px;
+            pointer-events: none;
+        }
+        .skill-cost {
+            position: absolute; bottom: -8px; 
+            background: #3498db; color: white;
+            font-size: 9px; padding: 1px 4px; border-radius: 4px;
+            font-weight: bold; border: 1px solid #2980b9;
+            z-index: 5;
+        }
+
+        /* Warning Icon Animation */
+        .warning-icon {
+            position: absolute;
+            font-size: 24px;
+            animation: flash 0.5s infinite;
+            z-index: 90;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            text-shadow: 0 0 10px red;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            white-space: nowrap;
+        }
+        @keyframes flash { 0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 50% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); } }
+
+        .context-menu { position: absolute; background: #2c3e50; border: 1px solid #95a5a6; border-radius: 4px; padding: 4px; z-index: 100; display: flex; flex-direction: column; gap: 2px; }
+        .context-btn { padding: 4px 8px; font-size: 12px; background: #34495e; color: white; border-radius: 2px; cursor: pointer; }
+        .context-btn:hover { background: #1abc9c; }
+
+        .shop-collapsed .shop-content { display: none; }
+        .shop-collapsed { transform: translateY(calc(100% - 40px)); }
+
+        .bar-container { background: #111; border: 1px solid #444; border-radius: 4px; overflow: hidden; height: 8px; }
+        .bar-fill { height: 100%; transition: width 0.2s; }
+
+        #selection-screen, #event-modal { position: absolute; inset: 0; background: rgba(26, 26, 46, 0.98); z-index: 200; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        #selection-screen.hidden, #event-modal.hidden { display: none !important; }
+
+        .core-card, .event-card { background: #303045; border: 2px solid #4a4a6a; border-radius: 12px; padding: 20px; width: 220px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .core-card:hover, .event-card:hover { transform: translateY(-5px); border-color: #f1c40f; background: #3d3d5c; }
+        .core-icon, .event-icon { font-size: 48px; }
+        .core-title, .event-title { font-weight: bold; font-size: 18px; color: #fff; }
+        .core-desc, .event-desc { font-size: 12px; color: #aaa; text-align: center; line-height: 1.4; }
+        
+        .cursor-pointer-enhance { cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="gold"><path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z"/></svg>') 12 12, auto !important; }
+        .unit-enhance-target:hover { filter: drop-shadow(0 0 5px gold); }
+
+        #damage-stats {
+            position: absolute; bottom: 120px; left: 20px;
+            width: 200px; max-height: 300px;
+            background: rgba(0,0,0,0.7); color: white;
+            border: 1px solid #444; border-radius: 8px;
+            font-size: 10px; pointer-events: auto; z-index: 45;
+            display: flex; flex-direction: column;
+            transition: height 0.3s; overflow: hidden;
+        }
+        .stats-header { padding: 8px; background: rgba(0,0,0,0.5); cursor: pointer; display: flex; justify-content: space-between; font-weight: bold; }
+        .stats-body { flex: 1; overflow-y: auto; padding: 5px; display: flex; flex-direction: column; gap: 4px; }
+        .stat-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 2px; }
+        .stat-unit { display: flex; align-items: center; gap: 5px; }
+        .stat-val { font-family: monospace; color: #f1c40f; }
+        #damage-stats.collapsed .stats-body { display: none; }
+        #damage-stats.collapsed { height: auto; }
+
+        /* Build Panel */
+        #build-panel {
+            margin-top: 10px;
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 4px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+        }
+        .build-btn {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 4px;
+            cursor: pointer;
+            position: relative;
+            font-size: 10px;
+            transition: all 0.2s;
+        }
+        .build-btn:hover { background: #444; border-color: #888; }
+        .build-btn.active { border-color: #f1c40f; background: #4a4a2a; }
+        .build-btn.disabled { opacity: 0.5; filter: grayscale(100%); cursor: not-allowed; }
+        .mat-count { position: absolute; top: 0; right: 2px; font-size: 9px; color: #aaa; }
+        .build-icon { font-size: 16px; margin-bottom: 2px; }
+    </style>
+</head>
+<body class="no-select">
+
+    <div id="game-container">
+        <!-- Start Selection Screen -->
+        <div id="selection-screen">
+            <h1 class="text-4xl font-bold text-white mb-8">选择你的核心流派</h1>
+            <div class="flex gap-4 flex-wrap justify-center" id="selection-cards"></div>
+        </div>
+
+        <!-- Event Modal -->
+        <div id="event-modal" class="hidden">
+            <h1 class="text-3xl font-bold text-purple-400 mb-2">时空裂隙</h1>
+            <p class="text-gray-400 mb-8 text-sm">每三波触发一次的命运抉择...</p>
+            <div class="flex gap-6 flex-wrap justify-center" id="event-cards"></div>
+        </div>
+
+        <canvas id="battle-canvas"></canvas>
+        <div id="grid-layer"></div>
+        <div id="tooltip"></div>
+
+        <!-- Damage Stats -->
+        <div id="damage-stats">
+            <div class="stats-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                <span>📊 伤害统计(本波)</span> <span>▼</span>
+            </div>
+            <div class="stats-body" id="stats-list"></div>
+        </div>
+
+        <!-- Top HUD -->
+        <div id="top-hud" class="absolute top-0 left-0 w-full p-2 flex justify-between items-start pointer-events-none z-50 hidden">
+            <!-- Left -->
+            <div class="ui-panel p-2 pointer-events-auto flex flex-col gap-1 w-48">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold text-red-400">❤️ 基地核心</span>
+                    <span id="hp-text" class="text-xs">100/100</span>
+                </div>
+                <div class="bar-container h-3">
+                    <div id="hp-bar" class="bar-fill bg-red-600" style="width: 100%;"></div>
+                </div>
+                <div class="flex gap-1 mt-1">
+                    <div id="core-type-badge" class="text-[10px] px-2 py-0.5 rounded bg-gray-700 text-gray-300 border border-gray-600 w-full text-center">流派: 未知</div>
+                </div>
+                
+                <!-- Build Panel -->
+                <div id="build-panel">
+                    <!-- Populated by JS -->
+                </div>
+
+                <button id="btn-debug" class="mt-1 bg-purple-900 hover:bg-purple-800 text-[10px] px-2 py-0.5 rounded border border-purple-500 text-purple-200 opacity-50 hover:opacity-100 transition w-full">
+                    🛠️ 作弊模式
+                </button>
+            </div>
+
+            <!-- Center -->
+            <div class="ui-panel p-2 pointer-events-auto flex flex-col items-center w-80">
+                <div class="text-lg font-bold text-white leading-none mb-1">WAVE <span id="wave-num" class="text-blue-400">1</span></div>
+                <div class="w-full">
+                    <div class="flex justify-between text-[10px] text-gray-400 mb-0.5">
+                        <span id="wave-status">准备中</span>
+                        <span id="enemies-left" class="text-red-400"></span>
+                    </div>
+                    <div class="bar-container h-2 bg-gray-800 border-gray-600">
+                        <div id="wave-bar" class="bar-fill bg-blue-500" style="width: 0%;"></div>
+                    </div>
+                </div>
+                <div id="timeline" class="timeline-container"></div>
+            </div>
+
+            <!-- Right -->
+            <div class="ui-panel p-2 pointer-events-auto flex flex-col gap-1 w-48">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold text-yellow-400">⚡ 食物</span>
+                    <span id="food-text" class="text-xs">100/200</span>
+                </div>
+                <div class="bar-container h-3">
+                    <div id="food-bar" class="bar-fill bg-yellow-500" style="width: 50%;"></div>
+                </div>
+                <div class="flex justify-between items-center mt-1">
+                    <span class="text-xs font-bold text-blue-400">💧 法力</span>
+                    <span id="mana-text" class="text-xs">50/100</span>
+                </div>
+                <div class="bar-container h-3">
+                    <div id="mana-bar" class="bar-fill bg-blue-500" style="width: 50%;"></div>
+                </div>
+                <div class="flex justify-between items-center mt-1 text-[10px] text-gray-400">
+                    <span>产出: <span class="text-yellow-200" id="food-rate">10</span>/s <span class="text-blue-200" id="mana-rate">0</span>/s</span>
+                </div>
+                <div class="flex justify-end text-yellow-300 font-bold text-sm">
+                    <span class="mr-1">💰</span><span id="gold-text">50</span>
+                </div>
+                <div id="starvation-warning" class="text-[10px] text-red-500 font-bold text-center hidden">⚠️ 能量枯竭!</div>
+            </div>
+        </div>
+
+        <!-- Skill Container (Moved to Left) -->
+        <div id="skill-container" class="hidden">
+            <div id="skill-bar"></div>
+        </div>
+
+        <!-- Shop & Bench -->
+        <div class="absolute bottom-0 left-0 w-full flex justify-center pointer-events-none z-40 hidden" id="bottom-ui">
+            <div id="shop-panel" class="ui-panel w-full max-w-3xl pointer-events-auto flex flex-col transition-transform duration-300 pb-2 border-t-2 border-gray-600">
+                <div class="flex justify-between items-center px-4 py-2 bg-black/20 cursor-pointer hover:bg-black/30 transition border-b border-gray-700" id="shop-header">
+                    <div class="flex items-center gap-2">
+                        <h3 class="font-bold text-gray-200 text-sm">🛒 补给站</h3>
+                        <div class="text-[10px] text-gray-500">(点击折叠)</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="btn-expand" class="bg-emerald-800 hover:bg-emerald-700 px-2 py-0.5 rounded text-xs text-white border border-emerald-600 transition">🏗️ 扩建(50💰)</button>
+                        <button id="btn-refresh" class="bg-gray-700 hover:bg-gray-600 px-2 py-0.5 rounded text-xs text-white border border-gray-500 transition">🔄 刷新(10💰)</button>
+                    </div>
+                </div>
+                
+                <div id="shop-body" class="shop-content p-2 flex flex-col gap-2 relative transition-colors duration-200">
+                    <div class="flex justify-center gap-2 bg-black/20 p-2 rounded border border-white/5 shop-content-inner">
+                        <div class="text-xs text-gray-500 writing-vertical-lr flex items-center justify-center font-bold tracking-widest opacity-50 select-none">暂存区</div>
+                        <div class="flex gap-2 items-center">
+                            <div id="bench-container" class="flex gap-2">
+                                <div class="bench-slot" data-index="0"></div>
+                                <div class="bench-slot" data-index="1"></div>
+                                <div class="bench-slot" data-index="2"></div>
+                                <div class="bench-slot" data-index="3"></div>
+                                <div class="bench-slot" data-index="4"></div>
+                            </div>
+                            <div class="w-px h-10 bg-gray-600 mx-1"></div>
+                            <div id="sell-slot" class="sell-slot text-2xl" title="拖拽至此出售">💰</div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-2 overflow-x-auto min-h-[90px] justify-center shop-content-inner" id="shop-items"></div>
+                    <div class="flex justify-center mt-1 shop-content-inner">
+                        <button id="btn-start-wave" class="bg-red-700 hover:bg-red-600 text-white font-bold py-1 px-12 rounded shadow-lg transform active:scale-95 transition border-b-4 border-red-900 text-sm">⚔️ 开始战斗</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-over-modal" class="hidden absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+            <div class="bg-gray-800 p-8 rounded-xl border-2 border-red-500 text-center max-w-sm">
+                <h2 class="text-3xl font-bold text-red-500 mb-4">核心损毁</h2>
+                <p class="text-white mb-6">你在第 <span id="final-wave">1</span> 波倒下了。</p>
+                <button onclick="location.reload()" class="bg-blue-600 hover:bg-blue-500 text-white py-2 px-6 rounded font-bold">再试一次</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+// ... (Constants unchanged) ...
+const TILE_SIZE = 60; const BENCH_SIZE = 5;
+const COLORS = { bg: '#1a1a2e', grid: '#303045', enemy: '#e74c3c', projectile: '#f1c40f', enemyProjectile: '#e91e63' };
+
+const CORE_TYPES = {
+    'cornucopia': { name: '丰饶之角', icon: '🌽', desc: '基础食物产出 +100%。\n平稳发育，适合新手。', bonus: { foodRate: 5 } },
+    'thunder':    { name: '雷霆尖塔', icon: '⚡', desc: '核心每秒发射闪电攻击最近敌人。\n伤害: 20 (随波次成长)', ability: 'attack' },
+    'alchemy':    { name: '炼金熔炉', icon: '⚗️', desc: '每秒产出 +2 法力。\n每波结束获得 10% 现有金币利息。', bonus: { manaRate: 2 } },
+    'war':        { name: '战争图腾', icon: '⚔️', desc: '食物产出减半。\n所有友军单位伤害 +50%。', bonus: { foodRate: -2.5, globalDmg: 0.5 } }
+};
+
+const MATERIAL_TYPES = {
+    'mucus': { name: '粘液', icon: '💧', color: '#00cec9', desc: '减速陷阱' },
+    'poison':{ name: '毒药', icon: '🧪', color: '#2ecc71', desc: '毒雾屏障' },
+    'fang':  { name: '尖牙', icon: '🦷', color: '#e74c3c', desc: '尖刺陷阱' },
+    'wood':  { name: '木头', icon: '🪵', color: '#d35400', desc: '木栅栏' },
+    'snow':  { name: '雪团', icon: '❄️', color: '#74b9ff', desc: '冰墙' },
+    'stone': { name: '石头', icon: '🪨', color: '#95a5a6', desc: '石墙' }
+};
+
+const BARRICADE_TYPES = {
+    'mucus': { hp: 50, type: 'slow', strength: 0.3, color: 'rgba(0, 206, 201, 0.5)', width: 8, name: '粘液网' },
+    'poison':{ hp: 1, type: 'poison', strength: 20, color: 'rgba(46, 204, 113, 0.4)', width: 20, name: '毒雾', immune: true }, 
+    'fang':  { hp: 80, type: 'reflect', strength: 10, color: 'rgba(231, 76, 60, 0.8)', width: 6, name: '荆棘' },
+    'wood':  { hp: 200, type: 'block', strength: 0, color: '#d35400', width: 6, name: '木栏' },
+    'snow':  { hp: 150, type: 'freeze', strength: 1.5, color: '#74b9ff', width: 8, name: '冰墙' },
+    'stone': { hp: 600, type: 'block', strength: 0, color: '#7f8c8d', width: 10, name: '石墙' }
+};
+
+const UNIT_TYPES = {
+    'mouse': { name: '加特林鼠', icon: '🐭', cost: 15, size: [1,1], damage: 3, range: 250, atkSpeed: 0.15, foodCost: 1.5, manaCost: 0, attackType: 'ranged', proj: 'dot', desc: '远程:超快攻速' },
+    'turtle': { name: '狙击龟', icon: '🐢', cost: 25, size: [1,1], damage: 45, range: 500, atkSpeed: 1.8, foodCost: 8, manaCost: 0, attackType: 'ranged', proj: 'rocket', desc: '远程:超远单发' },
+    'ranger': { name: '游侠', icon: '🤠', cost: 60, size: [1,1], damage: 12, range: 180, atkSpeed: 1.5, foodCost: 3, manaCost: 0, attackType: 'ranged', proj: 'pellet', projCount: 5, spread: 0.5, desc: '霰弹:扇形5发' },
+    'ninja': { name: '忍者', icon: '🥷', cost: 80, size: [1,1], damage: 25, range: 250, atkSpeed: 0.8, foodCost: 4, manaCost: 0, attackType: 'ranged', proj: 'shuriken', pierce: 3, desc: '直线穿透3敌' },
+    'tesla': { name: '磁暴线圈', icon: '⚡', cost: 70, size: [1,1], damage: 35, range: 200, atkSpeed: 1.2, foodCost: 5, manaCost: 5, attackType: 'ranged', proj: 'lightning', chain: 4, desc: '攻击产生闪电链' },
+    'cannon': { name: '震荡炮', icon: '💣', cost: 90, size: [1,1], damage: 40, range: 200, atkSpeed: 2.0, foodCost: 8, manaCost: 0, attackType: 'ranged', proj: 'swarm_wave', desc: '发射腐臭蜂群' },
+    'void': { name: '奇点', icon: '🌌', cost: 200, size: [1,1], damage: 5, range: 300, atkSpeed: 3.0, foodCost: 15, manaCost: 20, attackType: 'ranged', proj: 'blackhole', desc: '发射黑洞(停留吸引)' },
+    'knight': { name: '狂战士', icon: '🗡️', cost: 30, size: [1,1], damage: 20, range: 100, atkSpeed: 0.8, foodCost: 4, manaCost: 0, attackType: 'melee', splash: 60, skill: 'rage', skillCd: 10, desc: '近战:范围挥砍\n技能:血怒(30💧)' },
+    'bear':   { name: '暴怒熊', icon: '🐻', cost: 65, size: [1,1], damage: 35, range: 80, atkSpeed: 1.2, foodCost: 5, manaCost: 0, attackType: 'melee', skill: 'stun', skillCd: 15, desc: '近战:重击晕眩\n技能:震慑(30💧)' },
+    'treant': { name: '树人守卫', icon: '🌳', cost: 40, size: [1,1], damage: 10, range: 80, atkSpeed: 1.5, foodCost: 2, manaCost: 0, attackType: 'melee', desc: '肉盾:高血量' },
+    'wizard': { name: '大法师', icon: '🧙‍♂️', cost: 50, size: [1,1], damage: 60, range: 350, atkSpeed: 1.2, foodCost: 1, manaCost: 5, attackType: 'ranged', proj: 'orb', splash: 30, skill: 'nova', skillCd: 12, desc: '消耗法力高伤\n技能:新星(30💧)' },
+    'phoenix':{ name: '凤凰', icon: '🦅', cost: 150, size: [1,1], damage: 25, range: 300, atkSpeed: 0.6, foodCost: 10, manaCost: 0, attackType: 'ranged', proj: 'fire', splash: 40, skill: 'firestorm', skillCd: 20, desc: '远程:AOE轰炸\n技能:火雨(30💧)' },
+    'hydra':  { name: '三头犬', icon: '🐕', cost: 120, size: [2,2], damage: 40, range: 120, atkSpeed: 0.8, foodCost: 20, manaCost: 0, attackType: 'melee', skill: 'devour_aura', desc: '2x2巨兽' },
+    'plant':  { name: '向日葵', icon: '🌻', cost: 20, size: [1,1], damage: 0, range: 0, atkSpeed: 1.0, foodCost: -6, manaCost: 0, attackType: 'none', produce: 'food', produceAmt: 6, desc: '产出:食物+6/s' },
+    'crystal':{ name: '法力水晶', icon: '💎', cost: 30, size: [1,1], damage: 0, range: 0, atkSpeed: 1.0, foodCost: 0, manaCost: -3, attackType: 'none', produce: 'mana', produceAmt: 3, desc: '产出:法力+3/s' },
+    'torch':  { name: '红莲火炬', icon: '🔥', cost: 35, size: [1,1], damage: 0, range: 0, atkSpeed: 0, foodCost: 0, manaCost: 0, attackType: 'none', buffProvider: 'fire', desc: '邻接:赋予燃烧' },
+    'cauldron':{ name: '剧毒大锅', icon: '🧪', cost: 35, size: [1,1], damage: 0, range: 0, atkSpeed: 0, foodCost: 0, manaCost: 0, attackType: 'none', buffProvider: 'poison', desc: '邻接:赋予中毒' },
+    'prism':  { name: '光之棱镜', icon: '🧊', cost: 40, size: [1,1], damage: 0, range: 0, atkSpeed: 0, foodCost: 0, manaCost: 0, attackType: 'none', buffProvider: 'range', desc: '邻接:射程+25%' },
+    'drum':   { name: '战鼓', icon: '🥁', cost: 40, size: [1,1], damage: 0, range: 0, atkSpeed: 0, foodCost: 0, manaCost: 0, attackType: 'none', buffProvider: 'speed', desc: '邻接:攻速+20%' },
+    'lens':   { name: '聚光透镜', icon: '🔍', cost: 45, size: [1,1], damage: 0, range: 0, atkSpeed: 0, foodCost: 0, manaCost: 0, attackType: 'none', buffProvider: 'crit', desc: '邻接:暴击率+25%' },
+    'mirror': { name: '反射魔镜', icon: '🪞', cost: 50, size: [1,1], damage: 0, range: 0, atkSpeed: 0, foodCost: 0, manaCost: 0, attackType: 'none', buffProvider: 'bounce', desc: '邻接:子弹弹射+1' },
+    'splitter':{ name: '多重棱镜', icon: '💠', cost: 55, size: [1,1], damage: 0, range: 0, atkSpeed: 0, foodCost: 0, manaCost: 0, attackType: 'none', buffProvider: 'split', desc: '邻接:子弹分裂+1' },
+    'meat':   { name: '五花肉', icon: '🥓', cost: 10, size: [1,1], damage: 0, range: 0, atkSpeed: 0, foodCost: 0, manaCost: 0, isFood: true, xp: 50, attackType: 'none', desc: '喂食获得大量Buff' }
+};
+
+const TRAITS = [
+    { id: 'vamp', name: '吸血', desc: '造成伤害回复生命', icon: '🩸' },
+    { id: 'crit', name: '暴击', desc: '20%几率造成双倍伤害', icon: '💥' },
+    { id: 'exec', name: '处决', desc: '对生命低于30%的敌人伤害翻倍', icon: '💀' },
+    { id: 'giant', name: '巨化', desc: '体型变大，范围增加', icon: '🏔️' },
+    { id: 'swift', name: '神速', desc: '攻速 +30%', icon: '👟' }
+];
+
+const ENEMY_VARIANTS = {
+    'slime': { name: '史莱姆', icon: '💧', color: '#00cec9', radius: 10, hpMod: 0.8, spdMod: 0.7, attackType: 'melee', range: 30, dmg: 5, atkSpeed: 1.0, drop: 'mucus', dropRate: 0.5 },
+    'poison':{ name: '毒怪', icon: '🤢', color: '#2ecc71', radius: 12, hpMod: 1.2, spdMod: 0.8, attackType: 'melee', range: 30, dmg: 8, atkSpeed: 1.0, drop: 'poison', dropRate: 0.4 },
+    'wolf':  { name: '狼群', icon: '🐺', color: '#e74c3c', radius: 14, hpMod: 1.0, spdMod: 1.5, attackType: 'melee', range: 30, dmg: 12, atkSpeed: 0.8, drop: 'fang', dropRate: 0.3 },
+    'treant':{ name: '树人', icon: '🌳', color: '#d35400', radius: 18, hpMod: 2.5, spdMod: 0.5, attackType: 'melee', range: 30, dmg: 20, atkSpeed: 2.0, drop: 'wood', dropRate: 0.6 },
+    'yeti':  { name: '雪怪', icon: '❄️', color: '#74b9ff', radius: 20, hpMod: 3.0, spdMod: 0.6, attackType: 'melee', range: 40, dmg: 25, atkSpeed: 2.0, drop: 'snow', dropRate: 0.5 },
+    'golem': { name: '石头人', icon: '🗿', color: '#95a5a6', radius: 22, hpMod: 4.0, spdMod: 0.4, attackType: 'melee', range: 40, dmg: 30, atkSpeed: 2.5, drop: 'stone', dropRate: 0.5 },
+    'shooter':{ name: '投矛手', icon: '🏹', color: '#16a085', radius: 14, hpMod: 0.8, spdMod: 0.8, attackType: 'ranged', range: 200, dmg: 8, atkSpeed: 2.0, projectileSpeed: 150, drop: 'wood', dropRate: 0.3 },
+    'boss':   { name: '虚空领主', icon: '👹', color: '#2c3e50', radius: 32, hpMod: 15.0, spdMod: 0.4, attackType: 'melee', range: 50, dmg: 50, atkSpeed: 3.0, drop: 'stone', dropRate: 1.0 }
+};
+
+const game = {
+    coreType: 'cornucopia', mode: 'normal',
+    food: 100, maxFood: 200, baseFoodRate: 5,
+    mana: 50, maxMana: 100, baseManaRate: 1,
+    gold: 150, wave: 1, isWaveActive: false, waveTime: 0, waveDuration: 20,
+    tiles: {}, bench: Array(BENCH_SIZE).fill(null),
+    coreHealth: 100, maxCoreHealth: 100,
+    enemies: [], projectiles: [], enemyProjectiles: [], particles: [], barricades: [],
+    lastTime: 0, shopState: [], tileCost: 50, expansionMode: false, skills: [], shopCollapsed: false,
+    coreCooldown: 0, damageStats: {},
+    enemiesToSpawn: 0, totalWaveEnemies: 0,
+    skillCost: 30,
+    materials: { mucus: 0, poison: 0, fang: 0, wood: 0, snow: 0, stone: 0 },
+    drawing: { active: false, start: null, current: null, material: null }
+};
+
+const els = {
+    gridLayer: document.getElementById('grid-layer'), canvas: document.getElementById('battle-canvas'), tooltip: document.getElementById('tooltip'),
+    hpBar: document.getElementById('hp-bar'), hpText: document.getElementById('hp-text'),
+    waveNum: document.getElementById('wave-num'), waveBar: document.getElementById('wave-bar'), waveStatus: document.getElementById('wave-status'), enemiesLeft: document.getElementById('enemies-left'),
+    timeline: document.getElementById('timeline'),
+    foodBar: document.getElementById('food-bar'), foodText: document.getElementById('food-text'), foodRate: document.getElementById('food-rate'),
+    manaBar: document.getElementById('mana-bar'), manaText: document.getElementById('mana-text'), manaRate: document.getElementById('mana-rate'),
+    starving: document.getElementById('starvation-warning'), goldText: document.getElementById('gold-text'), btnDebug: document.getElementById('btn-debug'),
+    shopPanel: document.getElementById('shop-panel'), shopBody: document.getElementById('shop-body'), shopHeader: document.getElementById('shop-header'), shopItems: document.getElementById('shop-items'), 
+    benchContainer: document.getElementById('bench-container'), sellSlot: document.getElementById('sell-slot'),
+    btnStart: document.getElementById('btn-start-wave'), btnExpand: document.getElementById('btn-expand'), btnRefresh: document.getElementById('btn-refresh'), skillBar: document.getElementById('skill-bar'),
+    gameOverModal: document.getElementById('game-over-modal'), finalWave: document.getElementById('final-wave'),
+    selectionScreen: document.getElementById('selection-screen'), selectionCards: document.getElementById('selection-cards'),
+    eventModal: document.getElementById('event-modal'), eventCards: document.getElementById('event-cards'),
+    topHud: document.getElementById('top-hud'), bottomUi: document.getElementById('bottom-ui'), skillContainer: document.getElementById('skill-container'),
+    coreTypeBadge: document.getElementById('core-type-badge'), statsList: document.getElementById('stats-list'),
+    buildPanel: document.getElementById('build-panel')
+};
+const ctx = els.canvas.getContext('2d');
+
+function init() {
+    resizeCanvas(); window.addEventListener('resize', resizeCanvas); 
+    document.addEventListener('mousemove', (e) => { moveTooltip(e); handleDrawMove(e); });
+    els.canvas.addEventListener('mousedown', handleDrawStart);
+    document.addEventListener('mouseup', handleDrawEnd);
+    renderSelectionScreen();
+    initBuildPanel();
+}
+
+function initBuildPanel() {
+    els.buildPanel.innerHTML = '';
+    for(const [key, mat] of Object.entries(MATERIAL_TYPES)) {
+        const btn = document.createElement('div');
+        btn.className = 'build-btn';
+        btn.dataset.mat = key;
+        btn.innerHTML = `<div class="build-icon" style="color:${mat.color}">${mat.icon}</div><div class="text-[9px] text-gray-400">${mat.name}</div><div class="mat-count" id="count-${key}">0</div>`;
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            selectBuildMaterial(key);
+        };
+        els.buildPanel.appendChild(btn);
+    }
+}
+
+function selectBuildMaterial(key) {
+    if (game.drawing.material === key) {
+        game.drawing.material = null; // Toggle off
+        els.canvas.style.pointerEvents = 'none'; // FIX: Reset to none
+    } else {
+        game.drawing.material = key;
+        els.canvas.style.pointerEvents = 'auto'; // FIX: Enable for drawing
+        spawnFloatingText(window.innerWidth/2 - 100, window.innerHeight/2, "按住左键拖拽绘制", "#fff");
+    }
+    updateBuildPanelUI();
+}
+
+function updateBuildPanelUI() {
+    const btns = els.buildPanel.querySelectorAll('.build-btn');
+    btns.forEach(btn => {
+        const key = btn.dataset.mat;
+        document.getElementById(`count-${key}`).innerText = game.materials[key];
+        if (game.drawing.material === key) btn.classList.add('active');
+        else btn.classList.remove('active');
+        
+        if (game.materials[key] <= 0) btn.classList.add('disabled');
+        else btn.classList.remove('disabled');
+    });
+}
+
+function handleDrawStart(e) {
+    if (!game.isWaveActive || !game.drawing.material) return;
+    if (game.materials[game.drawing.material] <= 0) return;
+    
+    const rect = els.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left - els.canvas.width/2;
+    const y = e.clientY - rect.top - els.canvas.height*0.4;
+    
+    game.drawing.active = true;
+    game.drawing.start = { x, y };
+    game.drawing.current = { x, y };
+}
+
+function handleDrawMove(e) {
+    if (!game.drawing.active) return;
+    const rect = els.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left - els.canvas.width/2;
+    const y = e.clientY - rect.top - els.canvas.height*0.4;
+    game.drawing.current = { x, y };
+}
+
+function handleDrawEnd(e) {
+    if (!game.drawing.active) return;
+    game.drawing.active = false;
+    
+    const start = game.drawing.start;
+    const end = game.drawing.current;
+    const dist = Math.hypot(end.x - start.x, end.y - start.y);
+    
+    if (dist < 20) return; // Too short
+    
+    const cost = Math.ceil(dist / 10);
+    const matKey = game.drawing.material;
+    
+    if (game.materials[matKey] >= cost) {
+        game.materials[matKey] -= cost;
+        const type = BARRICADE_TYPES[matKey];
+        game.barricades.push({
+            p1: start,
+            p2: end,
+            type: matKey,
+            hp: type.hp,
+            maxHp: type.hp,
+            props: type,
+            cost: cost,
+            id: Math.random() // Unique ID for tracking bypass
+        });
+        spawnFloatingText(start.x + els.canvas.width/2, start.y + els.canvas.height*0.4, `消耗 ${cost}${MATERIAL_TYPES[matKey].icon}`, "#fff");
+        updateBuildPanelUI();
+    } else {
+        spawnFloatingText(start.x + els.canvas.width/2, start.y + els.canvas.height*0.4, "材料不足!", "red");
+    }
+}
+
+function renderSelectionScreen() {
+    els.selectionCards.innerHTML = '';
+    for(const [key, info] of Object.entries(CORE_TYPES)) {
+        const card = document.createElement('div'); card.className = 'core-card';
+        card.innerHTML = `<div class="core-icon">${info.icon}</div><div class="core-title">${info.name}</div><div class="core-desc">${info.desc.replace(/\n/g, '<br>')}</div>`;
+        card.onclick = () => startGame(key); els.selectionCards.appendChild(card);
+    }
+}
+
+function startGame(coreType) {
+    game.coreType = coreType;
+    if(CORE_TYPES[coreType].bonus) {
+        if(CORE_TYPES[coreType].bonus.foodRate) game.baseFoodRate += CORE_TYPES[coreType].bonus.foodRate;
+        if(CORE_TYPES[coreType].bonus.manaRate) game.baseManaRate += CORE_TYPES[coreType].bonus.manaRate;
+    }
+    els.selectionScreen.classList.add('hidden');
+    els.topHud.classList.remove('hidden'); els.bottomUi.classList.remove('hidden'); els.skillContainer.classList.remove('hidden');
+    els.coreTypeBadge.innerText = `流派: ${CORE_TYPES[coreType].name}`;
+    createTile(0, 0, 'core'); createTile(0, 1, 'normal'); createTile(0, -1, 'normal'); createTile(1, 0, 'normal'); createTile(-1, 0, 'normal');
+    generateShopItems(true); renderShop(); renderBench(); updateTimeline();
+    els.btnStart.onclick = startWave;
+    els.btnRefresh.onclick = (e) => { e.stopPropagation(); if (game.gold >= 10) { game.gold -= 10; updateUI(); generateShopItems(false); renderShop(); } };
+    els.btnExpand.onclick = (e) => { e.stopPropagation(); toggleExpansionMode(); };
+    els.btnDebug.onclick = activateCheat;
+    els.shopHeader.onclick = toggleShopCollapse;
+    els.sellSlot.ondragover = (e) => { e.preventDefault(); els.sellSlot.classList.add('drag-over'); };
+    els.sellSlot.ondragleave = (e) => { els.sellSlot.classList.remove('drag-over'); };
+    els.sellSlot.ondrop = handleSellDrop;
+    // Cheat: give some mats
+    game.materials.wood = 50; game.materials.stone = 20; updateBuildPanelUI();
+    requestAnimationFrame(gameLoop); updateUI();
+}
+
+function getWaveType(n) { 
+    const types = ['slime', 'wolf', 'poison', 'treant', 'yeti', 'golem'];
+    if (n % 10 === 0) return 'boss';
+    if (n % 3 === 0) return 'event';
+    const idx = Math.min(types.length - 1, Math.floor((n-1)/2));
+    return types[idx % types.length];
+}
+
+function updateTimeline() {
+    els.timeline.innerHTML = '';
+    for(let i = 0; i < 10; i++) {
+        const waveIdx = game.wave + i; 
+        const type = getWaveType(waveIdx);
+        const node = document.createElement('div'); 
+        node.className = `timeline-node ${type === 'boss' ? 'boss' : (type === 'event' ? 'event' : '')} ${i === 0 ? 'active' : ''}`;
+        
+        let icon = '❓';
+        if (type === 'boss') icon = '👹';
+        else if (type === 'event') icon = '🎁';
+        else if (ENEMY_VARIANTS[type]) icon = ENEMY_VARIANTS[type].icon;
+        
+        node.innerText = icon; 
+        if(i===0) { const arrow = document.createElement('div'); arrow.className = 'timeline-arrow'; arrow.innerText = '▼'; node.appendChild(arrow); }
+        els.timeline.appendChild(node);
+    }
+}
+// ... (Previous Event/Trait/UI functions unchanged) ...
+function triggerEvent() {
+    els.eventModal.classList.remove('hidden'); els.eventCards.innerHTML = '';
+    const events = [
+        { title: '生命回复', icon: '💖', desc: '核心生命值 +30', action: () => { game.coreHealth = Math.min(game.maxCoreHealth, game.coreHealth + 30); endEvent(); } },
+        { title: '贪婪之壶', icon: '🏺', desc: '获得 50 金币', action: () => { game.gold += 50; endEvent(); } },
+        { title: '虚空注视', icon: '👁️', desc: '选择一个单位，获得随机强力词条', action: () => { els.eventModal.classList.add('hidden'); game.mode = 'enhance_select'; spawnFloatingText(0,0, "请点击单位强化", "#f1c40f"); document.body.classList.add('cursor-pointer-enhance'); }}
+    ];
+    events.forEach(ev => { const card = document.createElement('div'); card.className = 'event-card'; card.innerHTML = `<div class="event-icon">${ev.icon}</div><div class="event-title">${ev.title}</div><div class="event-desc">${ev.desc}</div>`; card.onclick = ev.action; els.eventCards.appendChild(card); });
+}
+function endEvent() { els.eventModal.classList.add('hidden'); updateUI(); }
+function applyRandomTrait(unit) {
+    if (unit.traits.length >= 3) { spawnFloatingText(0,0, "词条已满!", "red"); return; }
+    const trait = TRAITS[Math.floor(Math.random() * TRAITS.length)];
+    if (unit.traits.find(t => t.id === trait.id)) { applyRandomTrait(unit); return; }
+    unit.traits.push(trait); spawnFloatingText(0,0, `获得词条: ${trait.name}`, "#f1c40f");
+    if(trait.id === 'giant') { unit.maxHp *= 1.5; }
+    game.mode = 'normal'; document.body.classList.remove('cursor-pointer-enhance'); recalculateBuffs();
+}
+
+function handleSellDrop(e) {
+    e.preventDefault(); els.sellSlot.classList.remove('drag-over');
+    const sourceType = e.dataTransfer.getData('source-type');
+    if (sourceType === 'bench') {
+        const index = parseInt(e.dataTransfer.getData('bench-index')); const unit = game.bench[index];
+        if (unit) {
+            const sellValue = Math.floor(unit.cost * 0.5); game.gold += sellValue; game.bench[index] = null; renderBench(); updateUI(); spawnFloatingText(0, 0, `出售 +${sellValue}💰`, "#f1c40f");
+        }
+    } else { spawnFloatingText(0, 0, "只能出售暂存区单位", "red"); }
+}
+
+function resizeCanvas() { els.canvas.width = window.innerWidth; els.canvas.height = window.innerHeight; }
+function toggleShopCollapse() { game.shopCollapsed = !game.shopCollapsed; if (game.shopCollapsed) els.shopPanel.classList.add('translate-y-[85%]'); else els.shopPanel.classList.remove('translate-y-[85%]'); }
+
+function activateCheat() { 
+    game.gold += 1000; 
+    game.food = game.maxFood; 
+    game.mana = game.maxMana; 
+    // Cheat: Max out materials
+    for(const key in game.materials) game.materials[key] = 999;
+    
+    updateBuildPanelUI();
+    Object.values(game.tiles).forEach(t => { if(t.unit) t.unit.skillCooldown = 0; }); 
+    spawnFloatingText(0, 0, "CHEAT ENABLED!", "#9b59b6"); updateUI(); 
+}
+
+function recalculateBuffs() {
+    Object.values(game.tiles).forEach(t => { 
+        if (t.unit) { 
+            t.unit.activeBuffs = []; 
+            t.unit.rangeMod = 1.0; 
+            t.unit.atkSpeedMod = 1.0; 
+            t.unit.damageMod = 1.0; 
+            t.unit.critChance = 0.05; // Base Crit
+            t.unit.bounceCount = 0;
+            t.unit.splitCount = 0;
+            
+            t.unit.traits.forEach(tr => { 
+                if(tr.id === 'swift') t.unit.atkSpeedMod *= 0.7; 
+                if(tr.id === 'crit') t.unit.critChance += 0.20;
+            }); 
+        } 
+    });
+    if (game.coreType === 'war') Object.values(game.tiles).forEach(t => { if(t.unit) t.unit.damageMod += CORE_TYPES['war'].bonus.globalDmg; });
+    Object.values(game.tiles).forEach(sourceTile => {
+        if (!sourceTile.unit || !sourceTile.unit.buffProvider) return;
+        const buff = sourceTile.unit.buffProvider;
+        const neighbors = [game.tiles[getTileKey(sourceTile.x+1, sourceTile.y)], game.tiles[getTileKey(sourceTile.x-1, sourceTile.y)], game.tiles[getTileKey(sourceTile.x, sourceTile.y+1)], game.tiles[getTileKey(sourceTile.x, sourceTile.y-1)]];
+        neighbors.forEach(targetTile => { 
+            if (targetTile && targetTile.unit && targetTile.unit !== sourceTile.unit) { 
+                const tUnit = targetTile.unit; 
+                if (!tUnit.activeBuffs.includes(buff)) { 
+                    tUnit.activeBuffs.push(buff); 
+                    if (buff === 'range') tUnit.rangeMod += 0.25; 
+                    if (buff === 'speed') tUnit.atkSpeedMod *= 0.8; 
+                    if (buff === 'crit') tUnit.critChance += 0.25;
+                    if (buff === 'bounce') tUnit.bounceCount += 1;
+                    if (buff === 'split') tUnit.splitCount += 1;
+                } 
+            } 
+        });
+    });
+    Object.values(game.tiles).forEach(t => { if (t.unit) renderUnitVisual(t, t.unit); });
+}
+
+function createUnitInstance(typeKey) {
+    const proto = UNIT_TYPES[typeKey];
+    return { ...proto, id: Math.random().toString(36).substr(2, 9), typeKey: typeKey, cooldown: 0, genCooldown: 1.0, level: 1, statsMultiplier: 1.0, skillCooldown: 0, activeBuffs: [], traits: [], rangeMod: 1.0, atkSpeedMod: 1.0, damageMod: 1.0, critChance: 0.05, bounceCount: 0, splitCount: 0 };
+}
+
+function showTooltip(unit, x, y) {
+    els.tooltip.style.display = 'block'; const base = UNIT_TYPES[unit.typeKey]; const dmgVal = Math.floor(unit.damage * unit.statsMultiplier * (unit.damageMod || 1));
+    let typeText = unit.attackType === 'melee' ? "近战" : (unit.attackType === 'ranged' ? "远程" : "无");
+    let buffsHtml = ''; if (unit.activeBuffs.length > 0) buffsHtml += `<div class="mt-1 pt-1 border-t border-gray-700 text-purple-400 text-xs">Buffs: ${unit.activeBuffs.map(b=>{
+        if(b==='fire') return '🔥点燃';
+        if(b==='poison') return '☠️中毒';
+        if(b==='crit') return '🔍暴击';
+        if(b==='bounce') return '🪞弹射';
+        if(b==='split') return '💠分裂';
+        return b;
+    }).join(', ')}</div>`; if (unit.traits.length > 0) buffsHtml += `<div class="mt-1 text-gold text-xs font-bold text-yellow-400">✦ ${unit.traits.map(t=>t.name).join(', ')}</div>`;
+    
+    // Add Stats Detail
+    let statsDetail = '';
+    if (unit.critChance > 0.05) statsDetail += `<span class="text-pink-400 mr-2">暴击: ${Math.floor(unit.critChance*100)}%</span>`;
+    if (unit.bounceCount > 0) statsDetail += `<span class="text-purple-400 mr-2">弹射: ${unit.bounceCount}</span>`;
+    if (unit.splitCount > 0) statsDetail += `<span class="text-cyan-400 mr-2">分裂: ${unit.splitCount}</span>`;
+    if (statsDetail) statsDetail = `<div class="mt-1 text-[10px] border-t border-gray-700 pt-1">${statsDetail}</div>`;
+
+    let costHtml = `<span class="${unit.foodCost < 0 ? 'text-green-400' : 'text-red-400'}">🍖${Math.abs(unit.foodCost)}</span>`; if (unit.manaCost !== 0) costHtml += ` <span class="${unit.manaCost < 0 ? 'text-green-400' : 'text-blue-400'}">💧${Math.abs(unit.manaCost)}</span>`;
+    els.tooltip.innerHTML = `<div class="font-bold text-yellow-400 mb-1 border-b border-gray-600 pb-1 flex justify-between"><span>${unit.icon} ${unit.name}</span><span class="text-xs bg-gray-700 px-1 rounded text-white">Lv.${unit.level}</span></div><div class="tooltip-stat"><span>类型:</span> <span>${typeText}</span></div><div class="tooltip-stat"><span>伤害:</span> <span>${dmgVal}</span></div><div class="tooltip-stat"><span>消耗:</span> <div>${costHtml}</div></div>${statsDetail}${buffsHtml}<div class="text-gray-400 text-[10px] mt-2 italic">${unit.desc.replace(/\n/g, '<br>')}</div>`;
+}
+function hideTooltip() { els.tooltip.style.display = 'none'; }
+function moveTooltip(e) { if (els.tooltip.style.display === 'block') { let left = e.clientX + 15, top = e.clientY + 15; if (left + 200 > window.innerWidth) left = e.clientX - 210; if (top + 150 > window.innerHeight) top = e.clientY - 160; els.tooltip.style.left = `${left}px`; els.tooltip.style.top = `${top}px`; } }
+
+function renderUnitVisual(tile, unit) {
+    tile.el.innerHTML = ''; const unitEl = document.createElement('div'); 
+    unitEl.className = `unit ${unit.size[0]>1 ? 'unit-2x2' : ''} ${game.mode === 'enhance_select' ? 'unit-enhance-target' : ''}`;
+    unitEl.innerText = unit.icon;
+    if (unit.size) { unitEl.style.width = `${unit.size[0] * TILE_SIZE}px`; unitEl.style.height = `${unit.size[1] * TILE_SIZE}px`; }
+    if (unit.level > 1) { const star = document.createElement('div'); star.className = "absolute bottom-0 right-0 text-[10px] text-yellow-300 font-bold bg-black/50 px-1 rounded"; star.innerText = `⭐${unit.level}`; unitEl.appendChild(star); }
+    
+    // Traits (Diamond shape above unit)
+    const traitContainer = document.createElement('div'); traitContainer.className = 'trait-container';
+    unit.traits.forEach((t) => { const badge = document.createElement('div'); badge.className = 'trait-badge'; const span = document.createElement('span'); span.innerText = t.icon; badge.appendChild(span); traitContainer.appendChild(badge); });
+    unitEl.appendChild(traitContainer);
+
+    // Only show Buff icons if unit can attack
+    if (unit.damage > 0 || unit.buffProvider) {
+        unit.activeBuffs.forEach(buff => { 
+            const icon = document.createElement('div'); icon.className = `buff-icon buff-${buff}`; 
+            if(buff === 'fire') icon.innerText = '🔥'; 
+            if(buff === 'poison') icon.innerText = '☠️'; 
+            if(buff === 'range') icon.innerText = '🏹'; 
+            if(buff === 'speed') icon.innerText = '⚡'; 
+            if(buff === 'crit') icon.innerText = '🔍';
+            if(buff === 'bounce') icon.innerText = '🪞';
+            if(buff === 'split') icon.innerText = '💠';
+            unitEl.appendChild(icon); 
+        });
+    }
+    unitEl.onclick = (e) => { if (game.mode === 'enhance_select') { e.stopPropagation(); applyRandomTrait(unit); } };
+    unitEl.draggable = !game.isWaveActive && game.mode !== 'enhance_select';
+    unitEl.ondragstart = (e) => { e.dataTransfer.setData('source-type', 'grid'); e.dataTransfer.setData('source-coords', `${tile.x},${tile.y}`); unitEl.classList.add('dragging'); hideTooltip(); clearContextMenus(); };
+    unitEl.ondragend = () => { unitEl.classList.remove('dragging'); };
+    unitEl.onmouseenter = (e) => showTooltip(unit, e.clientX, e.clientY); unitEl.onmouseleave = hideTooltip;
+    tile.el.appendChild(unitEl);
+}
+
+function handleTileClick(tile, e) { if (game.mode === 'enhance_select' && tile.unit) { return; } if (game.expansionMode) return; clearContextMenus(); let unit = tile.unit; let originTile = tile; if (!unit && tile.occupiedBy) { originTile = game.tiles[tile.occupiedBy]; unit = originTile.unit; } if (!unit) return; if (unit.skill === 'devour_aura' && !game.isWaveActive) { showContextMenu(originTile, unit); e.stopPropagation(); } }
+function handleDropToGrid(e, targetTile) {
+    e.preventDefault(); targetTile.el.classList.remove('drag-over'); if (game.isWaveActive) return;
+    const sourceType = e.dataTransfer.getData('source-type'); let unit = null; let fromBenchIndex = -1;
+    if (sourceType === 'grid') { const coords = e.dataTransfer.getData('source-coords'); const [sx, sy] = coords.split(',').map(Number); const sourceTile = game.tiles[`${sx},${sy}`]; if (!sourceTile || !sourceTile.unit) return; unit = sourceTile.unit; if (sourceTile === targetTile) return; } else if (sourceType === 'bench') { fromBenchIndex = parseInt(e.dataTransfer.getData('bench-index')); unit = game.bench[fromBenchIndex]; if (!unit) return; }
+    let targetUnit = targetTile.unit; if (!targetUnit && targetTile.occupiedBy) { targetUnit = game.tiles[targetTile.occupiedBy].unit; }
+    if (targetUnit) {
+        if (unit.typeKey === targetUnit.typeKey && unit !== targetUnit && !unit.isFood && !targetUnit.isFood) { performMerge(targetUnit, unit, targetTile); if (sourceType === 'grid') removeUnitFromGrid(unit); else { game.bench[fromBenchIndex] = null; renderBench(); } const hostOrigin = targetTile.occupiedBy ? game.tiles[targetTile.occupiedBy] : targetTile; renderUnitVisual(hostOrigin, targetUnit); }
+        else if (unit.isFood || targetUnit.isFood) { performDevour(targetUnit, unit, targetTile); if (sourceType === 'grid') removeUnitFromGrid(unit); else { game.bench[fromBenchIndex] = null; renderBench(); } const hostOrigin = targetTile.occupiedBy ? game.tiles[targetTile.occupiedBy] : targetTile; renderUnitVisual(hostOrigin, targetUnit); }
+        else { spawnFloatingText(targetTile.x * TILE_SIZE, targetTile.y * TILE_SIZE, "无法融合 (种族不同)", "red"); }
+    } else {
+        if (canPlaceUnit(targetTile.x, targetTile.y, unit.size[0], unit.size[1], sourceType === 'grid' ? unit : null)) { if (sourceType === 'grid') removeUnitFromGrid(unit); else { game.bench[fromBenchIndex] = null; renderBench(); } placeUnitOnGrid(unit, targetTile.x, targetTile.y); } else { spawnFloatingText(targetTile.x * TILE_SIZE, targetTile.y * TILE_SIZE, "位置被阻挡!", "red"); }
+    }
+}
+
+function performMerge(host, guest, tile) { host.level += 1; host.damage *= 1.5; host.statsMultiplier += 0.5; spawnFloatingText(tile.x * TILE_SIZE, tile.y * TILE_SIZE, `⭐ 升星! Lv.${host.level}`, "#f1c40f"); const el = tile.occupiedBy ? game.tiles[tile.occupiedBy].el : tile.el; el.querySelector('.unit')?.classList.add('anim-levelup'); }
+function performDevour(host, food, tile) { if (!food.isFood) return; host.level += 1; host.damage += 5; host.statsMultiplier += 0.2; spawnFloatingText(tile.x * TILE_SIZE, tile.y * TILE_SIZE, `美味! +Buff`, "#2ecc71"); const el = tile.occupiedBy ? game.tiles[tile.occupiedBy].el : tile.el; el.querySelector('.unit')?.classList.add('anim-levelup'); }
+function placeUnitOnGrid(unit, x, y) { const w = unit.size[0]; const h = unit.size[1]; const originKey = getTileKey(x, y); for (let dx = 0; dx < w; dx++) { for (let dy = 0; dy < h; dy++) { const key = getTileKey(x + dx, y + dy); const tile = game.tiles[key]; if (dx === 0 && dy === 0) tile.unit = unit; else tile.occupiedBy = originKey; } } renderUnitVisual(game.tiles[originKey], unit); recalculateBuffs(); }
+function removeUnitFromGrid(unit) { const tiles = Object.values(game.tiles); let originKey = null; for(const t of tiles) { if (t.unit === unit) { originKey = getTileKey(t.x, t.y); t.unit = null; t.el.innerHTML = ''; break; } } if (originKey) { for(const t of tiles) { if (t.occupiedBy === originKey) { t.occupiedBy = null; } } } recalculateBuffs(); }
+function getTileKey(x, y) { return `${x},${y}`; }
+function createTile(x, y, type = 'normal') { const key = getTileKey(x, y); if (game.tiles[key]) return; const tileData = { x, y, type, unit: null, occupiedBy: null, el: null }; game.tiles[key] = tileData; const el = document.createElement('div'); el.className = `tile ${type}`; el.style.left = `${x * TILE_SIZE}px`; el.style.top = `${y * TILE_SIZE}px`; if (type === 'core') el.innerHTML = CORE_TYPES[game.coreType] ? CORE_TYPES[game.coreType].icon : '⚛️'; el.ondragover = (e) => { e.preventDefault(); if(!game.isWaveActive) el.classList.add('drag-over'); }; el.ondragleave = (e) => el.classList.remove('drag-over'); el.ondrop = (e) => handleDropToGrid(e, tileData); el.onclick = (e) => handleTileClick(tileData, e); els.gridLayer.appendChild(el); tileData.el = el; }
+function renderBench() { const slots = els.benchContainer.children; for (let i = 0; i < BENCH_SIZE; i++) { const slot = slots[i]; slot.innerHTML = ''; const unit = game.bench[i]; slot.ondragover = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }; slot.ondrop = (e) => handleDropToBench(e, i); if (unit) { const unitEl = createUnitElement(unit, true); unitEl.ondragstart = (e) => { e.dataTransfer.setData('source-type', 'bench'); e.dataTransfer.setData('bench-index', i); unitEl.classList.add('dragging'); hideTooltip(); clearContextMenus(); }; unitEl.onmouseenter = (e) => showTooltip(unit, e.clientX, e.clientY); unitEl.onmouseleave = hideTooltip; slot.appendChild(unitEl); } } }
+function addToBench(unit) { const emptyIndex = game.bench.findIndex(u => u === null); if (emptyIndex !== -1) { game.bench[emptyIndex] = unit; renderBench(); return true; } return false; }
+function handleDropToBench(e, targetIndex) { e.preventDefault(); if (game.isWaveActive) return; const sourceType = e.dataTransfer.getData('source-type'); if (sourceType === 'grid') { const coords = e.dataTransfer.getData('source-coords'); const [sx, sy] = coords.split(',').map(Number); const tile = game.tiles[`${sx},${sy}`]; if (!tile || !tile.unit) return; const unit = tile.unit; if (game.bench[targetIndex] === null) { removeUnitFromGrid(unit); game.bench[targetIndex] = unit; renderBench(); } else { spawnFloatingText(0, 0, "占用", "red"); } } else if (sourceType === 'bench') { const sourceIndex = parseInt(e.dataTransfer.getData('bench-index')); if (sourceIndex === targetIndex) return; const temp = game.bench[targetIndex]; game.bench[targetIndex] = game.bench[sourceIndex]; game.bench[sourceIndex] = temp; renderBench(); } }
+function createUnitElement(unit, isBench = false) { 
+    const unitEl = document.createElement('div'); unitEl.className = `unit ${(!isBench && unit.size[0]>1) ? 'unit-2x2' : ''}`; 
+    unitEl.draggable = !game.isWaveActive; unitEl.innerText = unit.icon; if (!isBench) { unitEl.style.width = `${unit.size[0] * TILE_SIZE}px`; unitEl.style.height = `${unit.size[1] * TILE_SIZE}px`; } 
+    if (unit.level > 1) { const star = document.createElement('div'); star.className = "absolute bottom-0 right-0 text-[10px] text-yellow-300 font-bold bg-black/50 px-1 rounded"; star.innerText = `⭐${unit.level}`; unitEl.appendChild(star); } 
+    unitEl.ondragend = () => { unitEl.classList.remove('dragging'); }; return unitEl; 
+}
+function canPlaceUnit(x, y, w, h, excludeUnit = null) { for (let dx = 0; dx < w; dx++) { for (let dy = 0; dy < h; dy++) { const key = getTileKey(x + dx, y + dy); const tile = game.tiles[key]; if (!tile || tile.type === 'core') return false; if (tile.unit && tile.unit !== excludeUnit) return false; if (tile.occupiedBy && tile.occupiedBy !== getTileKey(x, y) && (!excludeUnit || getUnitOriginKey(excludeUnit) !== tile.occupiedBy)) return false; } } return true; }
+function getUnitOriginKey(unit) { const tiles = Object.values(game.tiles); const t = tiles.find(t => t.unit === unit); return t ? getTileKey(t.x, t.y) : null; }
+function generateShopItems(forceAll) { const keys = Object.keys(UNIT_TYPES); const newItems = []; for (let i = 0; i < 4; i++) { if (!forceAll && game.shopState[i] && game.shopState[i].locked) { newItems.push(game.shopState[i]); } else { const key = keys[Math.floor(Math.random() * keys.length)]; newItems.push({ key: key, locked: false }); } } game.shopState = newItems; }
+function renderShop() { els.shopItems.innerHTML = ''; game.shopState.forEach((item, index) => { const proto = UNIT_TYPES[item.key]; const card = document.createElement('div'); card.className = `shop-card flex-shrink-0 w-20 bg-gray-800 border border-gray-600 rounded cursor-pointer hover:bg-gray-700 p-1 flex flex-col items-center gap-0.5 transition select-none ${item.locked ? 'locked' : ''}`; const lockBtn = document.createElement('div'); lockBtn.className = 'lock-btn hover:text-white'; lockBtn.innerHTML = item.locked ? '🔒' : '🔓'; lockBtn.onclick = (e) => { e.stopPropagation(); item.locked = !item.locked; renderShop(); }; card.innerHTML = `<div class="text-xl">${proto.icon}</div><div class="text-[10px] font-bold text-center text-gray-300 truncate w-full">${proto.name}</div><div class="text-[10px] text-yellow-400 font-bold">${proto.cost}💰</div>`; card.appendChild(lockBtn); card.onclick = () => buyUnitFromShop(item.key, card); const dummyUnit = createUnitInstance(item.key); card.onmouseenter = (e) => showTooltip(dummyUnit, e.clientX, e.clientY); card.onmouseleave = hideTooltip; els.shopItems.appendChild(card); }); }
+function buyUnitFromShop(key, cardEl) { const proto = UNIT_TYPES[key]; if (game.gold >= proto.cost) { const newUnit = createUnitInstance(key); if (addToBench(newUnit)) { game.gold -= proto.cost; updateUI(); spawnFloatingText(0, 0, "购买至暂存区", "#2ecc71"); } else { spawnFloatingText(0, 0, "暂存区已满!", "red"); cardEl.classList.add('animate-pulse'); } } else { cardEl.classList.add('animate-pulse'); } }
+function toggleExpansionMode() { if (game.isWaveActive) return; game.expansionMode = !game.expansionMode; renderGhostTiles(); if (game.expansionMode) { els.btnExpand.classList.add('ring-2', 'ring-white'); els.btnExpand.innerText = "❌ 退出"; clearContextMenus(); } else { els.btnExpand.classList.remove('ring-2', 'ring-white'); els.btnExpand.innerText = `🏗️ 扩建(${game.tileCost}💰)`; } }
+function renderGhostTiles() { document.querySelectorAll('.ghost').forEach(el => el.remove()); if (!game.expansionMode) return; const validSpots = new Set(); Object.values(game.tiles).forEach(tile => { [[0,1], [0,-1], [1,0], [-1,0]].forEach(([dx, dy]) => { const key = getTileKey(tile.x + dx, tile.y + dy); if (!game.tiles[key]) validSpots.add(key); }); }); validSpots.forEach(key => { const [x, y] = key.split(',').map(Number); const el = document.createElement('div'); el.className = 'tile ghost'; el.style.left = `${x * TILE_SIZE}px`; el.style.top = `${y * TILE_SIZE}px`; el.innerText = "+"; el.onclick = () => { if (game.gold >= game.tileCost) { game.gold -= game.tileCost; game.tileCost += 10; createTile(x, y, 'normal'); renderGhostTiles(); updateUI(); spawnFloatingText(x * TILE_SIZE, y * TILE_SIZE, "扩建成功!", "#2ecc71"); } else { spawnFloatingText(x * TILE_SIZE, y * TILE_SIZE, "金币不足!", "#e74c3c"); } }; els.gridLayer.appendChild(el); }); }
+function showContextMenu(tile, unit) { const menu = document.createElement('div'); menu.className = 'context-menu'; menu.style.left = `${tile.x * TILE_SIZE + unit.size[0]*30}px`; menu.style.top = `${tile.y * TILE_SIZE - 20}px`; const btn = document.createElement('div'); btn.className = 'context-btn'; btn.innerText = "👹 吞噬周围"; btn.onclick = (e) => { e.stopPropagation(); devourNeighbors(tile, unit); menu.remove(); }; menu.appendChild(btn); els.gridLayer.appendChild(menu); }
+function clearContextMenus() { document.querySelectorAll('.context-menu').forEach(e => e.remove()); }
+function devourNeighbors(originTile, hostUnit) { const w = hostUnit.size[0]; const h = hostUnit.size[1]; let count = 0; const neighbors = []; for (let x = originTile.x - 1; x <= originTile.x + w; x++) { neighbors.push(getTileKey(x, originTile.y - 1)); neighbors.push(getTileKey(x, originTile.y + h)); } for (let y = originTile.y; y < originTile.y + h; y++) { neighbors.push(getTileKey(originTile.x - 1, y)); neighbors.push(getTileKey(originTile.x + w, y)); } neighbors.forEach(key => { const t = game.tiles[key]; if (t && (t.unit || t.occupiedBy)) { let targetUnit = t.unit; if (!targetUnit && t.occupiedBy) targetUnit = game.tiles[t.occupiedBy].unit; if (targetUnit && targetUnit !== hostUnit) { performDevour(hostUnit, targetUnit, originTile); removeUnitFromGrid(targetUnit); count++; } } }); if (count > 0) { renderUnitVisual(originTile, hostUnit); spawnFloatingText(originTile.x * TILE_SIZE, originTile.y * TILE_SIZE, `连吃 ${count} 个!`, "#ff0000"); } else { spawnFloatingText(originTile.x * TILE_SIZE, originTile.y * TILE_SIZE, `周围没有食物`, "#aaa"); } }
+
+function startWave() { 
+    if (game.isWaveActive) return; 
+    if (game.expansionMode) toggleExpansionMode(); 
+    clearContextMenus(); hideTooltip(); recalculateBuffs(); 
+    game.isWaveActive = true; 
+    
+    // Wave Logic Update: Kill All Enemies (INCREASED DIFFICULTY)
+    const baseCount = 20 + Math.floor(game.wave * 6);
+    game.enemiesToSpawn = baseCount;
+    game.totalWaveEnemies = baseCount;
+    
+    // Reset Damage Stats
+    game.damageStats = {};
+    
+    updateSkillBarVisuals(); 
+    if (!game.shopCollapsed) toggleShopCollapse(); 
+    els.btnExpand.style.display = 'none'; 
+    
+    // Disable building
+    game.drawing.active = false;
+    game.drawing.material = null;
+    els.canvas.style.pointerEvents = 'none'; // Ensure reset
+    updateBuildPanelUI();
+
+    // Start Batch Spawner
+    spawnEnemyBatchScheduler(); 
+    updateTimeline(); 
+}
+
+function spawnEnemyBatchScheduler() {
+    // Determine how many batches based on wave
+    const batchCount = 3 + Math.floor(game.wave / 2); 
+    const enemiesPerBatch = Math.ceil(game.enemiesToSpawn / batchCount);
+    let batchesLeft = batchCount;
+
+    const processBatch = () => {
+        if (!game.isWaveActive || batchesLeft <= 0) return;
+        
+        // Determine type for this batch
+        const typeKey = getWaveType(game.wave) === 'boss' ? 'boss' : (getWaveType(game.wave) === 'tank' ? 'tank' : (getWaveType(game.wave) === 'fast' ? 'fast' : 'normal'));
+        let actualTypeKey = typeKey;
+        if (typeKey === 'normal') { 
+            const variants = ['slime', 'wolf', 'poison', 'shooter'];
+            actualTypeKey = variants[Math.floor(Math.random() * variants.length)];
+        }
+        
+        const typeInfo = ENEMY_VARIANTS[actualTypeKey];
+
+        // Pick random angle for this batch
+        const angle = Math.random() * Math.PI * 2;
+        
+        // Show Warning with type icon
+        showWarningIndicator(angle, typeInfo.icon);
+        
+        // Wait for warning (1.5s), then spawn
+        setTimeout(() => {
+            if(!game.isWaveActive) return;
+            
+            // Spawn loop for this batch
+            let spawnedInBatch = 0;
+            const batchInterval = setInterval(() => {
+                if (!game.isWaveActive || spawnedInBatch >= enemiesPerBatch || game.enemiesToSpawn <= 0) {
+                    clearInterval(batchInterval);
+                    batchesLeft--;
+                    // Schedule next batch
+                    if (batchesLeft > 0) {
+                        // Wait between batches (2s - 4s depending on wave)
+                        const nextDelay = Math.max(2000, 4000 - (game.wave * 100));
+                        setTimeout(processBatch, nextDelay);
+                    }
+                    return;
+                }
+                
+                // Spawn with slight spread around angle, passing specific type
+                spawnEnemyAtAngle(angle + (Math.random() - 0.5) * 0.8, actualTypeKey);
+                game.enemiesToSpawn--;
+                spawnedInBatch++;
+                updateUI();
+            }, 100); // Fast spawn within batch (10 per sec)
+            
+        }, 1500); 
+    };
+
+    // Start first batch
+    processBatch();
+
+    // Check win condition loop
+    const checker = setInterval(() => {
+        if (!game.isWaveActive) { clearInterval(checker); return; }
+        if (game.enemiesToSpawn <= 0 && game.enemies.length === 0) {
+            clearInterval(checker);
+            endWave();
+        }
+    }, 500);
+}
+
+function showWarningIndicator(angle, typeIcon) {
+    const el = document.createElement('div');
+    el.className = 'warning-icon text-red-500';
+    el.innerHTML = `<span>⚠️</span><span style="font-size: 20px;">${typeIcon}</span>`;
+    
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const cx = w / 2;
+    const cy = h * 0.4; 
+    const r = Math.min(w, h) / 2 - 40; 
+    
+    const x = cx + Math.cos(angle) * r;
+    const y = cy + Math.sin(angle) * r;
+
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1500);
+}
+
+function spawnEnemyAtAngle(angle, forceTypeKey) {
+    const distance = Math.max(els.canvas.width, els.canvas.height) / 2 + 50; 
+    const wx = Math.cos(angle) * distance; 
+    const wy = Math.sin(angle) * distance;
+    
+    let actualTypeKey = forceTypeKey;
+    if (!actualTypeKey) actualTypeKey = 'slime';
+    
+    const type = ENEMY_VARIANTS[actualTypeKey]; 
+    const baseHp = 10 + (game.wave * 8); 
+    const hp = baseHp * type.hpMod;
+    
+    game.enemies.push({ 
+        x: wx, y: wy, 
+        hp: hp, maxHp: hp, 
+        speed: (40 + (game.wave * 2)) * type.spdMod, 
+        radius: type.radius, 
+        color: type.color, 
+        type: type, 
+        cooldown: 0, 
+        effects: {}, 
+        hitTime: 0,
+        id: Math.random(),
+        hitBarriers: new Set(),
+        bypassDest: null
+    }); 
+}
+
+function endWave() {
+    game.isWaveActive = false; game.wave++; game.gold += 20 + (game.wave * 5);
+    
+    // Logic Change: Restore Resources and CD
+    game.food = game.maxFood;
+    game.mana = game.maxMana;
+    Object.values(game.tiles).forEach(t => { if(t.unit) t.unit.skillCooldown = 0; });
+    spawnFloatingText(0, 0, "状态回复!", "#2ecc71");
+
+    // Clear Barricades
+    game.barricades = [];
+
+    if (game.coreType === 'alchemy') { const interest = Math.floor(game.gold * 0.1); if (interest > 0) { game.gold += interest; setTimeout(() => spawnFloatingText(0, -50, `炼金利息: +${interest}💰`, "#f1c40f"), 500); } }
+    game.enemies = []; game.projectiles = []; game.enemyProjectiles = [];
+    if (game.shopCollapsed) toggleShopCollapse(); els.btnExpand.style.display = 'block';
+    if ((game.wave - 1) % 3 === 0) { triggerEvent(); } else { updateUI(); }
+    generateShopItems(false); renderShop(); updateTimeline(); spawnFloatingText(0, 0, "波次完成!", "#3498db");
+}
+// ... (Previous Skill/UI functions) ...
+function updateSkillBarVisuals() { 
+    game.skills = []; els.skillBar.innerHTML = ''; const addedUnits = new Set(); 
+    Object.values(game.tiles).forEach(t => { 
+        if (t.unit && t.unit.skill && !addedUnits.has(t.unit)) { 
+            if (game.skills.length < 5) { 
+                const s = t.unit.skill; 
+                if (s === 'stun' || s === 'firestorm' || s === 'blessing' || s === 'rage' || s === 'nova') { 
+                    game.skills.push(t.unit); addedUnits.add(t.unit); 
+                } 
+            } 
+        } 
+    }); 
+    game.skills.forEach((unit, idx) => { 
+        const btn = document.createElement('div'); 
+        btn.className = "skill-btn"; 
+        btn.innerHTML = `
+            ${unit.icon}
+            <div class="skill-cd-overlay" style="display:none"></div>
+            <div class="skill-cost">${game.skillCost}💧</div>
+        `; 
+        
+        const keys = ['Q','W','E','R']; 
+        if(idx < 4) { 
+            const hint = document.createElement('div'); 
+            hint.className = "absolute top-0 right-3 text-[10px] text-gray-300 font-bold pointer-events-none"; 
+            hint.innerText = keys[idx]; 
+            btn.appendChild(hint); 
+        } 
+        
+        btn.onmouseenter = (e) => showTooltip(unit, e.clientX, e.clientY); 
+        btn.onmouseleave = hideTooltip; 
+        btn.onclick = () => activateSkill(unit, btn); 
+        
+        // Add ref for live updates
+        unit.skillBtnRef = btn;
+        
+        els.skillBar.appendChild(btn); 
+    }); 
+}
+
+function activateSkill(unit, btn) { 
+    if (!game.isWaveActive) return; 
+    const cost = game.skillCost; 
+    if (unit.skillCooldown > 0 || game.mana < cost) { 
+        if(game.mana < cost) spawnFloatingText(0,0, "法力不足!", "blue"); 
+        return; 
+    } 
+    
+    // Consume resource
+    game.mana -= cost; 
+    unit.skillCooldown = unit.skillCd || 10; 
+    
+    // Skill Effects
+    if (unit.skill === 'stun') { 
+        game.enemies.forEach(e => e.stun = 3.0); screenFlash('white'); spawnFloatingText(0, -100, "全屏震慑!", "#f39c12"); 
+    } else if (unit.skill === 'firestorm') { 
+        screenFlash('orange'); let targets = game.enemies.sort(() => 0.5 - Math.random()).slice(0, 8); targets.forEach(e => { e.hp -= 100; spawnDamageNumber(e.x, e.y, 100, true); spawnParticle(e.x, e.y, '🔥', 30); }); spawnFloatingText(0, -100, "烈焰风暴!", "#e74c3c"); 
+    } else if (unit.skill === 'blessing') { 
+        game.coreHealth = Math.min(game.maxCoreHealth, game.coreHealth + 50); game.food = Math.min(game.maxFood, game.food + 50); screenFlash('cyan'); spawnFloatingText(0, -100, "神圣祝福!", "#2ecc71"); 
+    } else if (unit.skill === 'nova') {
+        const uTile = Object.values(game.tiles).find(t => t.unit === unit);
+        if (uTile) {
+            const cx = (uTile.x * TILE_SIZE) + (unit.size[0]*TILE_SIZE/2); const cy = (uTile.y * TILE_SIZE) + (unit.size[1]*TILE_SIZE/2);
+            spawnParticle(cx, cy, '💥', 80, '#8e44ad');
+            game.enemies.forEach(e => {
+                if (Math.hypot(e.x - cx, e.y - cy) < 150) { e.hp -= 60; spawnDamageNumber(e.x, e.y, 60, true); trackDamage(unit, 60); }
+            });
+        }
+    } else if (unit.skill === 'rage') {
+        unit.atkSpeedMod = (unit.atkSpeedMod || 1) * 0.4; // 2.5x speed
+        spawnFloatingText(0, 0, "血怒!", "red");
+        setTimeout(() => { unit.atkSpeedMod /= 0.4; }, 5000);
+    }
+}
+function screenFlash(color) { const flash = document.createElement('div'); flash.style.cssText = `position:absolute; inset:0; background:${color}; opacity:0.3; z-index:40; pointer-events:none; transition:opacity 0.5s;`; document.body.appendChild(flash); requestAnimationFrame(() => flash.style.opacity = '0'); setTimeout(() => flash.remove(), 500); }
+
+// Consolidated Fire Projectile Helper to support Split/Bounce recursion
+function fireProjectile(data) {
+    const angle = data.angle !== undefined ? data.angle : Math.atan2(data.ty - data.y, data.tx - data.x);
+    game.projectiles.push({
+        ...data,
+        angle: angle,
+        maxLife: data.life,
+        hitList: data.hitList || new Set()
+    });
+}
+
+function getLineProjection(px, py, x1, y1, x2, y2) {
+    const A = px - x1;
+    const B = py - y1;
+    const C = x2 - x1;
+    const D = y2 - y1;
+    const len_sq = C * C + D * D;
+    let param = -1;
+    if (len_sq !== 0) param = (A * C + B * D) / len_sq;
+    return param;
+}
+
+function gameLoop(timestamp) {
+    const dt = (timestamp - game.lastTime) / 1000; game.lastTime = timestamp;
+    if(game.isWaveActive) { 
+        game.skills.forEach(u => { 
+            if(u.skillCooldown > 0) u.skillCooldown -= dt; 
+            if (u.skillBtnRef) {
+                const cdOverlay = u.skillBtnRef.querySelector('.skill-cd-overlay');
+                if (u.skillCooldown > 0) {
+                    cdOverlay.style.display = 'flex';
+                    cdOverlay.innerText = Math.ceil(u.skillCooldown);
+                } else {
+                    cdOverlay.style.display = 'none';
+                }
+                if (game.mana < game.skillCost) {
+                    u.skillBtnRef.classList.add('disabled-mana');
+                } else {
+                    u.skillBtnRef.classList.remove('disabled-mana');
+                }
+            }
+        }); 
+    }
+    if (game.coreHealth <= 0) return;
+    
+    if (game.food < game.maxFood || game.mana < game.maxMana) { 
+        let fRate = game.baseFoodRate; let mRate = game.baseManaRate;
+        if (game.food < game.maxFood) game.food = Math.min(game.maxFood, game.food + fRate * dt); 
+        if (game.mana < game.maxMana) game.mana = Math.min(game.maxMana, game.mana + mRate * dt); 
+        els.foodRate.innerText = Math.round(fRate); els.manaRate.innerText = Math.round(mRate); 
+    }
+    
+    if (game.isWaveActive && game.coreType === 'thunder') { if (game.coreCooldown > 0) game.coreCooldown -= dt; if (game.coreCooldown <= 0) { let target = null; let minDist = 200; for(const e of game.enemies) { const dist = Math.hypot(e.x, e.y); if(dist < minDist) { minDist = dist; target = e; } } if (target) { game.coreCooldown = 1.0; let dmg = 20 + (game.wave * 2); game.projectiles.push({ x: 0, y: 0, tx: target.x, ty: target.y, speed: 800, damage: dmg, splash: 0, life: 0.3, color: '#f1c40f', isLightning: true, hitList: new Set() }); } } }
+    
+    if (game.isWaveActive) { 
+        const actingUnits = new Set(); 
+        Object.values(game.tiles).forEach(tile => { 
+            if (!tile.unit || tile.type === 'core') return; 
+            const u = tile.unit; if (actingUnits.has(u)) return; actingUnits.add(u); 
+            if (u.cooldown > 0) u.cooldown -= dt; 
+            
+            if (u.produce) {
+                if (u.genCooldown > 0) u.genCooldown -= dt;
+                else {
+                    u.genCooldown = 1.0; 
+                    if (u.produce === 'food') { game.food = Math.min(game.maxFood, game.food + u.produceAmt); spawnFloatingText(tile.x * TILE_SIZE, tile.y * TILE_SIZE, `+${u.produceAmt}🌽`, '#f1c40f', '10px'); }
+                    if (u.produce === 'mana') { game.mana = Math.min(game.maxMana, game.mana + u.produceAmt); spawnFloatingText(tile.x * TILE_SIZE, tile.y * TILE_SIZE, `+${u.produceAmt}💧`, '#3498db', '10px'); }
+                }
+            }
+
+            if (u.cooldown <= 0 && u.damage > 0) { 
+                const fCost = u.foodCost > 0 ? u.foodCost : 0; const mCost = u.manaCost > 0 ? u.manaCost : 0; 
+                if (game.food < fCost) { tile.el.querySelector('.unit')?.classList.add('starving'); return; } else tile.el.querySelector('.unit')?.classList.remove('starving'); 
+                if (game.mana < mCost) { tile.el.querySelector('.unit')?.classList.add('no-mana'); return; } else tile.el.querySelector('.unit')?.classList.remove('no-mana'); 
+                
+                const uWx = (tile.x * TILE_SIZE) + (u.size[0] * TILE_SIZE / 2);
+                const uWy = (tile.y * TILE_SIZE) + (u.size[1] * TILE_SIZE / 2);
+                
+                const effectiveRange = u.range * (u.rangeMod || 1); 
+                let target = null; let minDist = Infinity; 
+                for (const e of game.enemies) { const dist = Math.hypot(e.x - uWx, e.y - uWy); if (dist < effectiveRange && dist < minDist) { minDist = dist; target = e; } } 
+                if (target) { 
+                    if (fCost > 0) game.food -= fCost; if (mCost > 0) game.mana -= mCost; u.cooldown = u.atkSpeed * (u.atkSpeedMod || 1); 
+                    let effects = {}; if(u.effect) effects[u.effect] = 1; if(u.activeBuffs.includes('fire')) effects['burn'] = 1; if(u.activeBuffs.includes('poison')) effects['poison'] = 1; const dmg = u.damage * u.statsMultiplier * (u.damageMod || 1); 
+                    
+                    const unitEl = tile.el.querySelector('.unit');
+                    if (unitEl) {
+                        const animClass = u.attackType === 'melee' ? 'anim-attack-melee' : 'anim-attack-ranged';
+                        unitEl.classList.remove(animClass);
+                        void unitEl.offsetWidth; 
+                        unitEl.classList.add(animClass);
+                    }
+
+                    let finalDmg = dmg;
+                    let isCrit = false;
+                    if (Math.random() < u.critChance) {
+                        finalDmg *= 2.0;
+                        isCrit = true;
+                    }
+
+                    if (u.attackType === 'melee') { 
+                        const splashRadius = u.splash || 60;
+                        let hitCount = 0;
+                        
+                        game.enemies.forEach(e => { 
+                            if (Math.hypot(e.x - target.x, e.y - target.y) < splashRadius) { 
+                                e.hp -= finalDmg; e.hitTime = 0.1; 
+                                applyEffects(e, effects); 
+                                spawnDamageNumber(e.x, e.y, finalDmg, isCrit); 
+                                trackDamage(u, finalDmg); 
+                                hitCount++;
+                            } 
+                        }); 
+                        spawnSlashEffect(target.x, target.y, splashRadius); 
+                    } else { 
+                        const distToTarget = Math.hypot(target.x - uWx, target.y - uWy);
+                        const lifeTime = (distToTarget / (u.proj === 'rocket' ? 300 : 400)) + 0.8; 
+
+                        const projData = { 
+                            x: uWx, y: uWy, tx: target.x, ty: target.y, 
+                            speed: u.proj === 'rocket' ? 300 : 400, damage: finalDmg, 
+                            splash: u.splash || 0, life: lifeTime, 
+                            effects: effects, source: u,
+                            projType: u.proj || 'dot',
+                            isCrit: isCrit,
+                            bounce: (u.chain || 0) + (u.bounceCount || 0),
+                            split: u.splitCount,
+                            pierce: u.pierce || 0,
+                            hitList: new Set()
+                        };
+
+                        if (u.proj === 'swarm_wave') {
+                            fireProjectile({...projData, speed: 200, life: 1.2, pierce: 999, color: 'rgba(46, 204, 113, 0.5)', projType: 'swarm_wave' });
+                        }
+                        else if (u.proj === 'blackhole') {
+                            fireProjectile({...projData, speed: 300, life: 5.0, projType: 'blackhole', damage: u.damage, color: '#8e44ad', activeTime: 3.0 });
+                        }
+                        else if (u.projCount && u.projCount > 1) {
+                            const baseAngle = Math.atan2(target.y - uWy, target.x - uWx);
+                            const totalSpread = u.spread || 0.5;
+                            const startAngle = baseAngle - totalSpread / 2;
+                            const step = totalSpread / (u.projCount - 1);
+                            
+                            for (let i = 0; i < u.projCount; i++) {
+                                fireProjectile({...projData, angle: startAngle + (i * step), life: 0.6 });
+                            }
+                        }
+                        else if (u.chain && u.chain > 1) { 
+                             fireProjectile({...projData, speed: 800, color: '#00ccff', isLightning: true});
+                        } 
+                        else { 
+                             fireProjectile(projData);
+                        } 
+                    } 
+                } 
+            } 
+        }); 
+    } 
+
+    for (let i = game.enemies.length - 1; i >= 0; i--) { 
+        const e = game.enemies[i]; 
+        
+        if (e.hitTime > 0) e.hitTime -= dt;
+        if (e.stun && e.stun > 0) { e.stun -= dt; } 
+        if (e.effects.burn > 0) { e.hp -= 2 * dt; e.effects.burn -= dt; spawnParticle(e.x, e.y, '.', 2, 'orange'); } 
+        if (e.effects.poison > 0) { e.hp -= (e.maxHp * 0.05) * dt; e.effects.poison -= dt; spawnParticle(e.x, e.y, '.', 2, 'green'); } 
+        if(e.stun > 0) continue; 
+        
+        let spd = e.speed; 
+        if (e.slow > 0) { spd *= 0.5; e.slow -= dt; } 
+        
+        const distToCore = Math.hypot(e.x, e.y); 
+        const angle = Math.atan2(-e.y, -e.x); 
+        
+        // --- IMPROVED NAVIGATION LOGIC ---
+        
+        // 0. Check Bypass State
+        if (e.bypassDest) {
+            const dx = e.bypassDest.x - e.x;
+            const dy = e.bypassDest.y - e.y;
+            const distToDest = Math.hypot(dx, dy);
+            
+            // Check if we arrived or passed it
+            if (distToDest < 15) { // Arrival
+                e.bypassDest = null;
+            } else {
+                // Move explicitly towards destination, ignoring walls temporarily to get around corner
+                const nx = dx / distToDest;
+                const ny = dy / distToDest;
+                
+                // Repulsion field from wall to prevent clipping while bypassing
+                // Find all walls near us
+                let pushX = 0, pushY = 0;
+                for(let b of game.barricades) {
+                     if (!b.props.immune) {
+                         const t = getLineProjection(e.x, e.y, b.p1.x, b.p1.y, b.p2.x, b.p2.y);
+                         const tC = Math.max(0, Math.min(1, t));
+                         const cX = b.p1.x + tC * (b.p2.x - b.p1.x);
+                         const cY = b.p1.y + tC * (b.p2.y - b.p1.y);
+                         const d = Math.hypot(e.x - cX, e.y - cY);
+                         const safe = e.radius + b.props.width + 2;
+                         if (d < safe) {
+                             const force = (safe - d) * 10; // Repel
+                             if (d > 0) {
+                                 pushX += ((e.x - cX) / d) * force;
+                                 pushY += ((e.y - cY) / d) * force;
+                             }
+                         }
+                     }
+                }
+                
+                e.x += (nx * spd + pushX) * dt;
+                e.y += (ny * spd + pushY) * dt;
+                
+                // Attack while moving if ranged
+                if (e.type.attackType === 'ranged' && distToCore <= e.type.range) {
+                     if (e.cooldown <= 0) { 
+                        e.cooldown = e.type.atkSpeed; 
+                        game.enemyProjectiles.push({ x: e.x, y: e.y, tx: 0, ty: 0, speed: e.type.projectileSpeed, damage: e.type.dmg, life: 2.0 }); 
+                    }
+                }
+                
+                continue; // Skip normal logic
+            }
+        }
+        
+        // 1. Detection Phase for Blocking
+        let attackTarget = null;
+        let minDist = Infinity;
+
+        for (let bIdx = 0; bIdx < game.barricades.length; bIdx++) {
+            const b = game.barricades[bIdx];
+            if (b.props.immune) { // Zone Logic
+                const distToLine = pointToLineDistance(e.x, e.y, b.p1.x, b.p1.y, b.p2.x, b.p2.y);
+                if (distToLine < e.radius + b.props.width) {
+                    if (b.type === 'mucus') spd *= (1 - b.props.strength);
+                    if (b.type === 'poison') { if (!e.effects.poison) e.effects.poison = 1.0; }
+                }
+                continue;
+            }
+
+            // Physical Barrier Logic
+            const distToLine = pointToLineDistance(e.x, e.y, b.p1.x, b.p1.y, b.p2.x, b.p2.y);
+            
+            // Check collision - Simplified
+            if (distToLine < e.radius + b.props.width + 5) {
+                // Determine if we are "hitting" the wall
+                // We do NOT use strict projection check here because we want to catch corner hits too
+                const alreadyHit = e.hitBarriers && e.hitBarriers.has(b.id);
+                if (!alreadyHit) {
+                    if (distToLine < minDist) {
+                        minDist = distToLine;
+                        attackTarget = { bar: b, idx: bIdx };
+                    }
+                }
+                // If already hit, we are in bypass mode (or should be)
+            }
+        }
+
+        if (attackTarget) {
+             // 2. Attack Phase
+             if (e.cooldown <= 0) {
+                e.cooldown = e.type.atkSpeed;
+                const b = attackTarget.bar;
+                b.hp -= e.type.dmg;
+                spawnParticle((b.p1.x+b.p2.x)/2, (b.p1.y+b.p2.y)/2, `-${e.type.dmg}`, 10, '#fff');
+                
+                if (b.hp <= 0) {
+                    game.barricades.splice(attackTarget.idx, 1);
+                } else {
+                    if (!e.hitBarriers) e.hitBarriers = new Set();
+                    e.hitBarriers.add(b.id);
+                    
+                    // 3. SET BYPASS DESTINATION
+                    const d1 = Math.hypot(e.x - b.p1.x, e.y - b.p1.y) + Math.hypot(b.p1.x, b.p1.y); // Path via P1
+                    const d2 = Math.hypot(e.x - b.p2.x, e.y - b.p2.y) + Math.hypot(b.p2.x, b.p2.y); // Path via P2
+                    
+                    let targetX, targetY;
+                    const extension = 50; // Push out past end significantly to ensure clearance
+                    
+                    if (d1 < d2) {
+                        // Go P1
+                        const dx = b.p1.x - b.p2.x; const dy = b.p1.y - b.p2.y;
+                        const len = Math.hypot(dx, dy);
+                        targetX = b.p1.x + (dx/len) * extension;
+                        targetY = b.p1.y + (dy/len) * extension;
+                    } else {
+                        // Go P2
+                        const dx = b.p2.x - b.p1.x; const dy = b.p2.y - b.p1.y;
+                        const len = Math.hypot(dx, dy);
+                        targetX = b.p2.x + (dx/len) * extension;
+                        targetY = b.p2.y + (dy/len) * extension;
+                    }
+                    e.bypassDest = { x: targetX, y: targetY };
+                }
+                
+                if (b.type === 'fang') {
+                     e.hp -= b.props.strength;
+                     spawnDamageNumber(e.x, e.y, b.props.strength, false);
+                }
+             }
+        } else {
+            // 4. Normal Movement Phase
+            if (e.cooldown > 0) e.cooldown -= dt;
+            
+            if (e.type.attackType === 'ranged' && distToCore <= e.type.range) { 
+                 if (e.cooldown <= 0) { 
+                    e.cooldown = e.type.atkSpeed; 
+                    game.enemyProjectiles.push({ x: e.x, y: e.y, tx: 0, ty: 0, speed: e.type.projectileSpeed, damage: e.type.dmg, life: 2.0 }); 
+                } 
+            } else {
+                e.x += Math.cos(angle) * spd * dt; 
+                e.y += Math.sin(angle) * spd * dt; 
+                
+                if (distToCore < 30) { 
+                     if (e.cooldown <= 0) { 
+                        e.cooldown = e.type.atkSpeed; 
+                        game.coreHealth -= e.type.dmg; 
+                        const coreTile = game.tiles["0,0"]; 
+                        if (coreTile) { coreTile.el.classList.add('anim-damage'); setTimeout(() => coreTile.el.classList.remove('anim-damage'), 200); } 
+                        if (game.coreHealth <= 0) { game.isWaveActive = false; els.gameOverModal.classList.remove('hidden'); els.finalWave.innerText = game.wave; } 
+                    } 
+                    e.x -= Math.cos(angle) * 5; 
+                    e.y -= Math.sin(angle) * 5; 
+                }
+            }
+        }
+    }
+    
+    // Projectile Loop (Standard + Special)
+    for (let i = game.projectiles.length - 1; i >= 0; i--) { 
+        const p = game.projectiles[i]; 
+        
+        // ... (Projectile movement logic same as before) ...
+        if (p.projType === 'blackhole') {
+            if (!p.active) {
+                const dist = Math.hypot(p.tx - p.x, p.ty - p.y);
+                const step = p.speed * dt;
+                if (dist <= step) { p.x = p.tx; p.y = p.ty; p.active = true; p.life = p.activeTime; } 
+                else { const angle = Math.atan2(p.ty - p.y, p.tx - p.x); p.x += Math.cos(angle) * step; p.y += Math.sin(angle) * step; }
+            } else {
+                p.life -= dt;
+                if (Math.random() < 0.2) { 
+                     game.enemies.forEach(e => {
+                        const d = Math.hypot(e.x - p.x, e.y - p.y);
+                        if (d < 150) {
+                            const pullAngle = Math.atan2(p.y - e.y, p.x - e.x);
+                            e.x += Math.cos(pullAngle) * 3; e.y += Math.sin(pullAngle) * 3;
+                            if (d < 50) { e.hp -= p.damage * 0.2; spawnDamageNumber(e.x, e.y, p.damage*0.2, false); trackDamage(p.source, p.damage * 0.2); }
+                        }
+                     });
+                }
+            }
+        }
+        else {
+            const vx = Math.cos(p.angle) * p.speed;
+            const vy = Math.sin(p.angle) * p.speed;
+            p.x += vx * dt; p.y += vy * dt; p.life -= dt;
+        }
+        
+        // Collision
+        if (p.active && p.projType === 'blackhole') {} else {
+            for (let j = game.enemies.length - 1; j >= 0; j--) { 
+                const e = game.enemies[j]; 
+                if (p.hitList && p.hitList.has(e.id)) continue;
+                let hitRadius = e.radius + 10;
+                if (p.projType === 'swarm_wave') hitRadius = e.radius + 40; 
+
+                if (Math.hypot(p.x - e.x, p.y - e.y) < hitRadius) { 
+                    applyEffects(e, p.effects); e.hitTime = 0.1; 
+                    if (p.splash > 0) { 
+                        game.enemies.forEach(subE => { if (Math.hypot(subE.x - e.x, subE.y - e.y) < p.splash) { subE.hp -= p.damage; subE.hitTime = 0.1; spawnDamageNumber(subE.x, subE.y, p.damage, p.isCrit); applyEffects(subE, p.effects); trackDamage(p.source, p.damage); } }); 
+                        spawnParticle(e.x, e.y, '💥', 20); 
+                    } else { 
+                        e.hp -= p.damage; spawnDamageNumber(e.x, e.y, p.damage, p.isCrit); trackDamage(p.source, p.damage); 
+                    }
+                    if (p.hitList) p.hitList.add(e.id);
+
+                    if (p.split > 0) {
+                        const splitCount = 2;
+                        for(let s=0; s<splitCount; s++) {
+                            const splitAngle = p.angle + (s===0 ? 0.5 : -0.5); 
+                            game.projectiles.push({ ...p, damage: p.damage * 0.5, split: 0, bounce: 0, pierce: 0, life: 0.5, angle: splitAngle, x: e.x, y: e.y, isCrit: false, projType: 'dot', color: '#00cec9', hitList: new Set() });
+                        }
+                    }
+                    let bounced = false;
+                    if (p.bounce > 0 && game.enemies.length > 1) {
+                        let nextTarget = null; let minD = Infinity;
+                        game.enemies.forEach(ne => { if (ne !== e && !p.hitList.has(ne.id)) { const d = Math.hypot(ne.x - e.x, ne.y - e.y); if (d < 300 && d < minD) { minD = d; nextTarget = ne; } } });
+                        if (nextTarget) {
+                            const newAngle = Math.atan2(nextTarget.y - e.y, nextTarget.x - e.x);
+                            game.projectiles.push({ ...p, damage: p.damage * 0.8, bounce: p.bounce - 1, life: 0.5, angle: newAngle, x: e.x, y: e.y, isCrit: p.isCrit, color: p.isLightning ? '#00ccff' : '#a29bfe', hitList: new Set([...p.hitList]) });
+                            bounced = true;
+                        }
+                    }
+                    if (p.pierce > 0 && !bounced) { p.pierce--; } else if (!bounced) { p.life = 0; } else { p.life = 0; }
+                    if (p.projType !== 'swarm_wave') break; 
+                } 
+            }
+        }
+        if (p.life <= 0) game.projectiles.splice(i, 1); 
+    }
+
+    for (let i = game.enemyProjectiles.length - 1; i >= 0; i--) { const p = game.enemyProjectiles[i]; const angle = Math.atan2(p.ty - p.y, p.tx - p.x); p.x += Math.cos(angle) * p.speed * dt; p.y += Math.sin(angle) * p.speed * dt; p.life -= dt; if (Math.hypot(p.x, p.y) < 30) { game.coreHealth -= p.damage; const coreTile = game.tiles["0,0"]; if (coreTile) { coreTile.el.classList.add('anim-damage'); setTimeout(() => coreTile.el.classList.remove('anim-damage'), 200); } if (game.coreHealth <= 0) { game.isWaveActive = false; els.gameOverModal.classList.remove('hidden'); els.finalWave.innerText = game.wave; } game.enemyProjectiles.splice(i, 1); continue; } if (p.life <= 0) game.enemyProjectiles.splice(i, 1); }
+    
+    for (let i = game.enemies.length - 1; i >= 0; i--) { 
+        if(!game.enemies[i].id) game.enemies[i].id = Math.random(); 
+        if (game.enemies[i].hp <= 0) { 
+            // Drop Material
+            const eType = game.enemies[i].type;
+            if (eType.drop && Math.random() < (eType.dropRate || 0.3)) {
+                const mat = eType.drop;
+                game.materials[mat] = (game.materials[mat] || 0) + 1;
+                spawnFloatingText(game.enemies[i].x, game.enemies[i].y, `+1${MATERIAL_TYPES[mat].icon}`, MATERIAL_TYPES[mat].color, '12px');
+                updateBuildPanelUI();
+            }
+            
+            spawnParticle(game.enemies[i].x, game.enemies[i].y, '🍖', 14); 
+            game.enemies.splice(i, 1); game.food = Math.min(game.maxFood, game.food + 2); game.gold += 1; 
+        } 
+    }
+    
+    // Render
+    const centerX = els.canvas.width / 2;
+    const centerY = els.canvas.height * 0.4; 
+
+    ctx.clearRect(0, 0, els.canvas.width, els.canvas.height); ctx.save(); 
+    ctx.translate(centerX, centerY);
+    
+    // Draw Barricades
+    game.barricades.forEach(b => {
+        ctx.beginPath();
+        ctx.moveTo(b.p1.x, b.p1.y);
+        ctx.lineTo(b.p2.x, b.p2.y);
+        ctx.lineWidth = b.props.width;
+        ctx.strokeStyle = b.props.color;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        
+        // Draw HP for physical blocks
+        if (b.maxHp > 10 && b.hp < b.maxHp) {
+            const mx = (b.p1.x + b.p2.x)/2;
+            const my = (b.p1.y + b.p2.y)/2;
+            ctx.fillStyle = 'red'; ctx.fillRect(mx - 10, my - 10, 20, 4);
+            ctx.fillStyle = '#2ecc71'; ctx.fillRect(mx - 10, my - 10, 20 * (b.hp/b.maxHp), 4);
+        }
+    });
+
+    // Draw Drawing Preview
+    if (game.drawing.active && game.drawing.start && game.drawing.current) {
+        ctx.beginPath();
+        ctx.moveTo(game.drawing.start.x, game.drawing.start.y);
+        ctx.lineTo(game.drawing.current.x, game.drawing.current.y);
+        const mat = BARRICADE_TYPES[game.drawing.material];
+        ctx.lineWidth = mat ? mat.width : 2;
+        ctx.strokeStyle = mat ? mat.color : 'white';
+        ctx.setLineDash([5, 5]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Draw Cost
+        const dist = Math.hypot(game.drawing.current.x - game.drawing.start.x, game.drawing.current.y - game.drawing.start.y);
+        const cost = Math.ceil(dist / 10);
+        ctx.fillStyle = 'white';
+        ctx.font = '12px sans-serif';
+        ctx.fillText(`${cost}`, game.drawing.current.x + 10, game.drawing.current.y);
+    }
+
+    game.projectiles.forEach(p => { 
+        ctx.beginPath(); 
+        
+        if (p.isLightning) { 
+            ctx.moveTo(p.x, p.y); 
+            ctx.lineTo(p.x - Math.cos(p.angle)*30, p.y - Math.sin(p.angle)*30); 
+            ctx.strokeStyle = p.color || '#00ccff'; ctx.lineWidth = 2; ctx.stroke(); 
+        } else if (p.projType === 'swarm_wave') {
+            const progress = 1 - (p.life / p.maxLife); // 0 to 1
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.angle);
+            ctx.globalAlpha = 1 - progress; // Fade out
+            const size = 20 + (progress * 100); // Widen
+            ctx.strokeStyle = '#2ecc71'; ctx.lineWidth = 3 + (progress * 5);
+            ctx.beginPath(); ctx.arc(0, 0, size, -Math.PI/3, Math.PI/3); ctx.stroke();
+            ctx.restore();
+        } else if (p.projType === 'blackhole') {
+            ctx.fillStyle = 'black'; ctx.arc(p.x, p.y, p.active ? 15 : 8, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = '#8e44ad'; ctx.lineWidth = 2; ctx.stroke();
+            if (p.active) {
+                ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(Date.now()/200);
+                ctx.strokeStyle = 'rgba(142, 68, 173, 0.5)';
+                ctx.beginPath(); ctx.arc(0, 0, 150, 0, Math.PI*2); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(150,0); ctx.stroke();
+                ctx.restore();
+            }
+        } else { 
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.angle);
+            
+            if (p.projType === 'arrow') {
+                ctx.font = '16px sans-serif'; ctx.fillText('🏹', 0, 0); 
+            } else if (p.projType === 'shuriken') {
+                ctx.rotate(Date.now() / 100); ctx.font = '16px sans-serif'; ctx.fillText('⭐', 0, 0);
+            } else if (p.projType === 'pellet') {
+                ctx.fillStyle = 'yellow'; ctx.fillRect(-2, -2, 4, 4);
+            } else if (p.projType === 'fire') {
+                ctx.font = '14px sans-serif'; ctx.fillText('🔥', 0, 0);
+            } else if (p.projType === 'orb') {
+                ctx.fillStyle = '#3498db'; ctx.shadowBlur = 5; ctx.shadowColor = '#3498db'; ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+            } else if (p.projType === 'rocket') {
+                ctx.fillStyle = '#e74c3c'; ctx.fillRect(-6, -2, 12, 4);
+            } else {
+                ctx.arc(0, 0, p.splash>0?6:3, 0, Math.PI * 2); 
+                ctx.fillStyle = p.color ? p.color : (p.effects && p.effects.poison ? '#00b894' : (p.splash>0?'#e67e22':COLORS.projectile)); 
+                ctx.fill(); 
+            }
+            ctx.restore();
+            
+            if (p.bounce > 0 || p.split > 0 || p.isCrit) {
+                spawnParticle(p.x, p.y, '.', 2, p.color || 'white');
+            }
+        } 
+    });
+    
+    game.enemyProjectiles.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fillStyle = COLORS.enemyProjectile; ctx.fill(); });
+    
+    const wobble = Math.sin(timestamp / 100) * 2;
+    game.enemies.forEach(e => {
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.scale(1 + wobble * 0.05, 1 - wobble * 0.05); // Wobble
+        // Draw Emoji Icon
+        ctx.font = `${e.radius * 2}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Flash if hit
+        if (e.hitTime > 0) {
+            ctx.globalCompositeOperation = 'source-atop';
+            ctx.fillStyle = 'white';
+        }
+        
+        ctx.fillText(e.type.icon, 0, 0);
+        
+        // Reset composite for health bar
+        ctx.globalCompositeOperation = 'source-over';
+        if(e.effects.burn > 0) { ctx.strokeStyle = '#e17055'; ctx.lineWidth = 2; ctx.strokeRect(-e.radius, -e.radius, e.radius*2, e.radius*2); }
+        
+        // HP Bar (Relative to Enemy)
+        const hpPct = Math.max(0, e.hp / e.maxHp);
+        ctx.fillStyle = 'red'; ctx.fillRect(-10, -e.radius - 8, 20, 4); 
+        ctx.fillStyle = '#2ecc71'; ctx.fillRect(-10, -e.radius - 8, 20 * hpPct, 4);
+        
+        ctx.restore();
+    });
+
+    game.particles = game.particles.filter(p => p.life > 0); game.particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= 0.05; p.alpha -= 0.05; ctx.globalAlpha = Math.max(0, p.alpha); ctx.font = `bold ${p.size}px sans-serif`; ctx.fillStyle = p.color || '#fff'; ctx.fillText(p.text, p.x, p.y); ctx.globalAlpha = 1.0; });
+    ctx.restore(); updateUI(); updateDamageStats(); requestAnimationFrame(gameLoop);
+}
+
+function pointToLineDistance(px, py, x1, y1, x2, y2) {
+    const A = px - x1;
+    const B = py - y1;
+    const C = x2 - x1;
+    const D = y2 - y1;
+
+    const dot = A * C + B * D;
+    const len_sq = C * C + D * D;
+    let param = -1;
+    if (len_sq !== 0) param = dot / len_sq;
+
+    let xx, yy;
+
+    if (param < 0) {
+        xx = x1;
+        yy = y1;
+    } else if (param > 1) {
+        xx = x2;
+        yy = y2;
+    } else {
+        xx = x1 + param * C;
+        yy = y1 + param * D;
+    }
+
+    const dx = px - xx;
+    const dy = py - yy;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+function applyEffects(enemy, effects) { if(!effects) return; if(effects.slow) enemy.slow = 2.0; if(effects.burn) enemy.effects.burn = 3.0; if(effects.poison) enemy.effects.poison = 5.0; }
+function trackDamage(unit, dmg) {
+    if (!unit) return;
+    const id = unit.id;
+    if (!game.damageStats[id]) game.damageStats[id] = { name: unit.name, icon: unit.icon, dmg: 0 };
+    game.damageStats[id].dmg += dmg;
+}
+function updateDamageStats() {
+    const list = els.statsList;
+    if (!list.parentElement.classList.contains('collapsed')) {
+        // Sort by damage desc
+        const sorted = Object.values(game.damageStats).sort((a,b) => b.dmg - a.dmg);
+        list.innerHTML = sorted.map(s => `
+            <div class="stat-row">
+                <div class="stat-unit"><span>${s.icon}</span> <span>${s.name}</span></div>
+                <div class="stat-val">${Math.floor(s.dmg)}</div>
+            </div>
+        `).join('');
+    }
+}
+
+function updateUI() {
+    const foodPct = Math.max(0, (game.food / game.maxFood) * 100); els.foodBar.style.width = `${foodPct}%`; els.foodText.innerText = `${Math.floor(game.food)}/${game.maxFood}`;
+    const manaPct = Math.max(0, (game.mana / game.maxMana) * 100); els.manaBar.style.width = `${manaPct}%`; els.manaText.innerText = `${Math.floor(game.mana)}/${game.maxMana}`;
+    els.starving.style.display = game.food <= 0 ? 'block' : 'none';
+    const hpPct = Math.max(0, (game.coreHealth / game.maxCoreHealth) * 100); els.hpBar.style.width = `${hpPct}%`; els.hpText.innerText = `${Math.ceil(game.coreHealth)}/${game.maxCoreHealth}`;
+    if (game.isWaveActive) { 
+        // Show remaining enemies instead of time
+        els.waveStatus.innerText = "进攻中!";
+        els.enemiesLeft.innerText = `剩余敌军: ${game.enemiesToSpawn + game.enemies.length}`;
+        const progress = 1 - ((game.enemiesToSpawn + game.enemies.length) / game.totalWaveEnemies);
+        els.waveBar.style.width = `${progress * 100}%`; 
+    }
+    else { 
+        els.waveBar.style.width = `0%`; els.waveStatus.innerText = "准备中"; els.enemiesLeft.innerText = "";
+    }
+    els.goldText.innerText = Math.floor(game.gold); els.waveNum.innerText = game.wave;
+    if (game.isWaveActive) { els.btnStart.disabled = true; els.btnStart.innerText = "战斗中..."; els.btnStart.classList.add('opacity-50', 'cursor-not-allowed'); }
+    else { els.btnStart.disabled = false; els.btnStart.innerText = "⚔️ 开始战斗"; els.btnStart.classList.remove('opacity-50', 'cursor-not-allowed'); }
+}
+function spawnParticle(x, y, text, size, color) { game.particles.push({ x, y, text, size, color, vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2 - 2, life: 1.0, alpha: 1.0 }); }
+function spawnSlashEffect(x, y, size) { game.particles.push({ x, y, text: '⚔️', size: size, color: '#fff', vx:0, vy:0, life: 0.3, alpha: 0.8 }); }
+function spawnDamageNumber(x, y, dmg, isCrit) { const size = isCrit ? 28 : 16; const color = isCrit ? '#e84393' : '#ffffff'; spawnParticle(x, y, Math.floor(dmg) + (isCrit?"!":""), size, color); }
+function spawnFloatingText(x, y, text, color, fontSize = '14px') { 
+    const el = document.createElement('div'); 
+    el.className = 'popup-text'; 
+    el.style.left = `${x + TILE_SIZE/2}px`; 
+    el.style.top = `${y}px`; 
+    el.style.color = color; 
+    el.style.fontSize = fontSize; // Added explicit font size support
+    el.innerText = text; 
+    els.gridLayer.appendChild(el); 
+    setTimeout(() => el.remove(), 800); 
+}
+
+init();
+</script>
+</body>
+</html>
