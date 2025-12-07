@@ -11,6 +11,7 @@ extends Control
 @onready var stats_header = $DamageStats/Header
 
 const FLOATING_TEXT_SCENE = preload("res://src/Scenes/UI/FloatingText.tscn")
+const BUILD_PANEL_SCENE = preload("res://src/Scenes/UI/BuildPanel.tscn")
 
 var damage_stats = {} # unit_id -> {name, icon, amount, node}
 var last_sort_time: float = 0.0
@@ -30,6 +31,15 @@ func _ready():
 
 	update_ui()
 	update_timeline()
+	_setup_build_panel()
+
+func _setup_build_panel():
+	var build_panel = BUILD_PANEL_SCENE.instantiate()
+	add_child(build_panel)
+	# Position on the left side
+	build_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	build_panel.position = Vector2(20, 100) # Offset from top
+	# Ensure it stays on screen? Anchors should handle if set correctly, but manual pos for now.
 
 func _process(delta):
 	if last_sort_time > 0:
