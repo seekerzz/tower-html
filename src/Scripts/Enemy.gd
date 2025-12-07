@@ -16,6 +16,7 @@ var temp_speed_mod: float = 1.0
 
 var bypass_dest = null
 var bypass_wall = null
+var wobble_scale = Vector2.ONE
 
 func _ready():
 	raycast = RayCast2D.new()
@@ -37,11 +38,22 @@ func setup(key: String, wave: int):
 
 func update_visuals():
 	$Label.text = enemy_data.icon
-	# Draw background circle via script or node? Node is easier.
-	# We can use a custom draw in a Node2D child or just a Sprite.
+	# Ensure label is centered and pivot is set for correct scaling
+	$Label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	$Label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	# Label size is not explicitly set here, relying on default or scene.
+	# Assuming Label is centered on (0,0) via position or anchors.
+	# If Label is centered:
+	if $Label.size.x == 0:
+		$Label.size = Vector2(40, 40) # Estimate
+		$Label.position = -$Label.size / 2
+	$Label.pivot_offset = $Label.size / 2
+
 	queue_redraw()
 
 func _draw():
+	draw_set_transform(Vector2.ZERO, 0.0, wobble_scale)
+
 	# Draw Enemy Circle
 	var color = enemy_data.color
 	if hit_flash_timer > 0:
@@ -58,6 +70,17 @@ func _draw():
 
 func _process(delta):
 	if !GameManager.is_wave_active: return
+
+	# Wobble Effect
+	var time = Time.get_ticks_msec() * 0.005
+	var scale_x = 1.0 + sin(time) * 0.1
+	var scale_y = 1.0 + cos(time) * 0.1
+	wobble_scale = Vector2(scale_x, scale_y)
+
+	if has_node("Label"):
+		$Label.scale = wobble_scale
+
+	queue_redraw()
 
 	if hit_flash_timer > 0:
 		hit_flash_timer -= delta
