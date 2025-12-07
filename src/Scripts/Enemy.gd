@@ -17,6 +17,10 @@ var temp_speed_mod: float = 1.0
 var bypass_dest = null
 var bypass_wall = null
 
+# Visual animation variables
+var draw_offset: Vector2 = Vector2.ZERO
+var wobble_factor: float = 0.0
+
 func _ready():
 	raycast = RayCast2D.new()
 	raycast.enabled = true
@@ -37,31 +41,41 @@ func setup(key: String, wave: int):
 
 func update_visuals():
 	$Label.text = enemy_data.icon
-	# Draw background circle via script or node? Node is easier.
-	# We can use a custom draw in a Node2D child or just a Sprite.
 	queue_redraw()
 
 func _draw():
-	# Draw Enemy Circle
+	# Wobble effect
+	wobble_factor = sin(Time.get_ticks_msec() * 0.01) * 2.0
+	var radius = enemy_data.get("radius", 15.0) + wobble_factor
+
+	# Draw Enemy Circle with offset (for lunge) and wobble
 	var color = enemy_data.color
 	if hit_flash_timer > 0:
 		color = Color.WHITE
-	draw_circle(Vector2.ZERO, enemy_data.radius, color)
 
-	# Draw HP Bar
+	draw_circle(draw_offset, radius, color)
+
+	# Draw HP Bar (also follows offset)
 	var hp_pct = hp / max_hp
 	var bar_w = 20
 	var bar_h = 4
-	var bar_pos = Vector2(-bar_w/2, -enemy_data.radius - 8)
+	var base_radius = enemy_data.get("radius", 15.0)
+	var bar_pos = draw_offset + Vector2(-bar_w/2, -base_radius - 8)
 	draw_rect(Rect2(bar_pos, Vector2(bar_w, bar_h)), Color.RED)
 	draw_rect(Rect2(bar_pos, Vector2(bar_w * hp_pct, bar_h)), Color.GREEN)
+
+	# Update label position to match draw_offset
+	if has_node("Label"):
+		$Label.position = Vector2(-20, -11.5) + draw_offset
 
 func _process(delta):
 	if !GameManager.is_wave_active: return
 
+	# Constant redraw for wobble
+	queue_redraw()
+
 	if hit_flash_timer > 0:
 		hit_flash_timer -= delta
-		if hit_flash_timer <= 0: queue_redraw()
 
 	if slow_timer > 0:
 		slow_timer -= delta
@@ -88,8 +102,22 @@ func check_traps(delta):
 func attack_wall_logic(delta):
 	attack_timer -= delta
 	if attack_timer <= 0:
+		# Trigger attack damage
 		attacking_wall.take_damage(enemy_data.dmg)
 		attack_timer = 1.0
+
+		# Lunge Animation
+		play_lunge_anim(attacking_wall.global_position)
+
+func play_lunge_anim(target_pos: Vector2):
+	var dir = (target_pos - global_position).normalized()
+	var lunge_dist = 15.0
+
+	var tween = create_tween()
+	# Move draw_offset towards target
+	tween.tween_property(self, "draw_offset", dir * lunge_dist, 0.1).set_trans(Tween.TRANS_CUBIC)
+	# Return to zero
+	tween.tween_property(self, "draw_offset", Vector2.ZERO, 0.2).set_trans(Tween.TRANS_CUBIC)
 
 func move_towards_core(delta):
 	if !GameManager.grid_manager: return
@@ -109,7 +137,8 @@ func move_towards_core(delta):
 	var direction = (target - global_position).normalized()
 
 	# Raycast Check
-	raycast.target_position = Vector2(enemy_data.radius + 15, 0)
+	var base_radius = enemy_data.get("radius", 15.0)
+	raycast.target_position = Vector2(base_radius + 15, 0)
 	# Adjust for local rotation if any
 	raycast.global_rotation = direction.angle()
 	raycast.force_raycast_update()

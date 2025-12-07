@@ -18,7 +18,7 @@ var attack_cost_mana: float = 0.0
 var skill_mana_cost: float = 30.0
 
 var production_timer: float = 0.0
-var visual_node: CanvasItem = null
+var visual_node: Node2D = null
 
 var is_starving: bool = false
 var is_no_mana: bool = false
@@ -107,52 +107,61 @@ func activate_skill():
 		GameManager.spawn_floating_text(global_position, skill_name.capitalize() + "!", Color.CYAN)
 
 		var tween = create_tween()
-		tween.tween_property($ColorRect, "scale", Vector2(1.2, 1.2), 0.1)
-		tween.tween_property($ColorRect, "scale", Vector2(1.0, 1.0), 0.1)
+		if has_node("Visuals"):
+			var v = $Visuals
+			tween.tween_property(v, "scale", Vector2(1.2, 1.2), 0.1)
+			tween.tween_property(v, "scale", Vector2(1.0, 1.0), 0.1)
 
 	else:
 		is_no_mana = true
 		GameManager.spawn_floating_text(global_position, "No Mana!", Color.BLUE)
 
 func update_visuals():
-	# Kept HEAD version: Safer because it checks for node existence
-	if has_node("Label"):
-		$Label.text = unit_data.icon
+	if !has_node("Visuals"): return
+
+	if has_node("Visuals/Label"):
+		$Visuals/Label.text = unit_data.icon
 	
 	# Size update
-	if has_node("ColorRect"):
+	if has_node("Visuals/ColorRect"):
 		var size = unit_data.size
-		$ColorRect.size = Vector2(size.x * 60 - 4, size.y * 60 - 4)
-		$ColorRect.position = -($ColorRect.size / 2)
-		if has_node("Label"):
-			$Label.position = $ColorRect.position
-			$Label.size = $ColorRect.size
+		var rect = $Visuals/ColorRect
+		rect.size = Vector2(size.x * 60 - 4, size.y * 60 - 4)
+		rect.position = -(rect.size / 2)
+		if has_node("Visuals/Label"):
+			var lbl = $Visuals/Label
+			lbl.position = rect.position
+			lbl.size = rect.size
 
 	if level > 1:
-		if has_node("StarLabel"):
-			$StarLabel.text = "⭐%d" % level
-			$StarLabel.show()
+		if has_node("Visuals/StarLabel"):
+			$Visuals/StarLabel.text = "⭐%d" % level
+			$Visuals/StarLabel.show()
 	else:
-		if has_node("StarLabel"):
-			$StarLabel.hide()
+		if has_node("Visuals/StarLabel"):
+			$Visuals/StarLabel.hide()
 
 	_update_buff_icons()
 
 func _update_buff_icons():
-	var buff_container = get_node_or_null("BuffContainer")
+	# BuffContainer is attached to Visuals so it scales/moves with it
+	if !has_node("Visuals"): return
+
+	var buff_container = $Visuals.get_node_or_null("BuffContainer")
 	if !buff_container:
 		buff_container = HBoxContainer.new()
 		buff_container.name = "BuffContainer"
 		buff_container.alignment = BoxContainer.ALIGNMENT_CENTER
 		# Check if ColorRect exists to base position
-		if has_node("ColorRect"):
-			buff_container.position = Vector2(-$ColorRect.size.x/2, $ColorRect.size.y/2 - 15)
-			buff_container.size = Vector2($ColorRect.size.x, 15)
+		if has_node("Visuals/ColorRect"):
+			var rect = $Visuals/ColorRect
+			buff_container.position = Vector2(-rect.size.x/2, rect.size.y/2 - 15)
+			buff_container.size = Vector2(rect.size.x, 15)
 		else:
 			buff_container.position = Vector2(0, 20)
 
 		buff_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(buff_container)
+		$Visuals.add_child(buff_container)
 
 	for child in buff_container.get_children():
 		child.queue_free()
@@ -213,7 +222,7 @@ func _process(delta):
 var breathe_tween: Tween = null
 
 func start_breathe_anim():
-	visual_node = get_node_or_null("ColorRect")
+	visual_node = get_node_or_null("Visuals")
 	if !visual_node: return
 
 	if breathe_tween: breathe_tween.kill()
@@ -223,7 +232,7 @@ func start_breathe_anim():
 	breathe_tween.tween_property(visual_node, "scale", Vector2(1.0, 1.0), 1.0).set_trans(Tween.TRANS_SINE)
 
 func play_attack_anim(attack_type: String, target_pos: Vector2):
-	if !visual_node: visual_node = get_node_or_null("ColorRect")
+	if !visual_node: visual_node = get_node_or_null("Visuals")
 	if !visual_node: return
 
 	if breathe_tween: breathe_tween.kill()
@@ -233,9 +242,7 @@ func play_attack_anim(attack_type: String, target_pos: Vector2):
 	if attack_type == "melee":
 		# Lunge
 		var dir = (target_pos - global_position).normalized()
-		var original_pos = -(visual_node.size / 2) # ColorRect is centered by position offset in update_visuals
-		# Wait, update_visuals sets $ColorRect.position = -($ColorRect.size / 2)
-		# So original_pos should be that.
+		var original_pos = Vector2.ZERO # Visuals is at 0,0 locally
 
 		var lunge_pos = original_pos + dir * 15.0
 
@@ -331,15 +338,12 @@ func end_drag():
 func create_ghost():
 	if ghost_node: return
 	ghost_node = Node2D.new()
-	if has_node("ColorRect"):
-		var rect = $ColorRect.duplicate()
-		ghost_node.add_child(rect)
-	if has_node("Label"):
-		var lbl = $Label.duplicate()
-		ghost_node.add_child(lbl)
-	# Visual copies need to be reset in position because they were children of unit centered at 0,0
-	# Wait, rect position is -size/2.
-	# If I add them to ghost_node, and set ghost_node position to start_position, it should match.
+
+	if has_node("Visuals"):
+		# Duplicate everything in Visuals
+		for child in $Visuals.get_children():
+			var dup = child.duplicate()
+			ghost_node.add_child(dup)
 
 	get_parent().add_child(ghost_node)
 	ghost_node.position = start_position
