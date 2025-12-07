@@ -9,6 +9,17 @@ var slow_timer: float = 0.0
 
 var hit_flash_timer: float = 0.0
 
+var raycast: RayCast2D
+var attack_timer: float = 0.0
+var attacking_wall: Node = null
+var temp_speed_mod: float = 1.0
+
+func _ready():
+	raycast = RayCast2D.new()
+	raycast.enabled = true
+	raycast.collision_mask = 1 # StaticBody default layer
+	add_child(raycast)
+
 func setup(key: String, wave: int):
 	type_key = key
 	enemy_data = Constants.ENEMY_VARIANTS[key]
@@ -51,33 +62,68 @@ func _process(delta):
 
 	if slow_timer > 0:
 		slow_timer -= delta
-		# Speed is handled in movement logic
 
-	move_towards_core(delta)
+	temp_speed_mod = 1.0
+	check_traps(delta)
+
+	if attacking_wall and is_instance_valid(attacking_wall):
+		attack_wall_logic(delta)
+	else:
+		attacking_wall = null # Reset if invalid
+		move_towards_core(delta)
+
+func check_traps(delta):
+	var bodies = get_overlapping_bodies()
+	for b in bodies:
+		if b.get("type") and Constants.BARRICADE_TYPES.has(b.type):
+			var b_type = Constants.BARRICADE_TYPES[b.type].type
+			if b_type == "slow":
+				temp_speed_mod = 0.5
+			elif b_type == "poison":
+				take_damage(max_hp * 0.05 * delta)
+
+func attack_wall_logic(delta):
+	attack_timer -= delta
+	if attack_timer <= 0:
+		attacking_wall.take_damage(enemy_data.dmg)
+		attack_timer = 1.0
 
 func move_towards_core(delta):
-	var target_pos = GameManager.grid_manager.position # Core is at GridManager (0,0) usually?
-	# Wait, GridManager stores tiles. Core is at tile 0,0.
-	# We need the world position of tile 0,0.
-	# Assuming GridManager is at world origin or we get its global position.
+	if !GameManager.grid_manager: return
 
-	# Actually, the grid is centered at GridManager.position + Tile(0,0).position
-	# Tile(0,0) is at (0,0) local to GridManager.
-	# So we move towards GridManager.global_position.
+	var target = GameManager.grid_manager.global_position
+	var direction = (target - global_position).normalized()
 
-	if GameManager.grid_manager:
-		var target = GameManager.grid_manager.global_position
-		var direction = (target - global_position).normalized()
+	# Raycast Check
+	raycast.target_position = Vector2(enemy_data.radius + 15, 0)
+	raycast.rotation = direction.angle() - rotation # Adjust for local rotation if any
+	# Note: Enemy scene root usually doesn't rotate, but if it did, we'd need to account for it.
+	# Assuming Enemy rotation is 0.
+	raycast.global_rotation = direction.angle()
+	raycast.force_raycast_update()
 
-		var current_speed = speed
-		if slow_timer > 0: current_speed *= 0.5
+	if raycast.is_colliding():
+		var collider = raycast.get_collider()
+		if is_blocking_wall(collider):
+			attacking_wall = collider
+			attack_timer = 0.5 # First hit delay
+			return
 
-		position += direction * current_speed * delta
+	var current_speed = speed * temp_speed_mod
+	if slow_timer > 0: current_speed *= 0.5
 
-		var dist = global_position.distance_to(target)
-		if dist < 30: # Reached core
-			GameManager.damage_core(enemy_data.dmg)
-			queue_free()
+	position += direction * current_speed * delta
+
+	var dist = global_position.distance_to(target)
+	if dist < 30: # Reached core
+		GameManager.damage_core(enemy_data.dmg)
+		queue_free()
+
+func is_blocking_wall(node):
+	if node.get("type") and Constants.BARRICADE_TYPES.has(node.type):
+		var b_type = Constants.BARRICADE_TYPES[node.type].type
+		return b_type == "block" or b_type == "freeze"
+	return false
 
 func take_damage(amount: float):
 	hp -= amount
