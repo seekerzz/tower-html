@@ -49,6 +49,7 @@ func update_ui():
 
 func update_bench_ui(bench_data: Array):
 	for child in bench_container.get_children():
+		bench_container.remove_child(child)
 		child.queue_free()
 
 	for i in range(bench_data.size()):
@@ -61,10 +62,19 @@ func update_bench_ui(bench_data: Array):
 		else:
 			var placeholder = Control.new()
 			placeholder.custom_minimum_size = Vector2(60, 60)
-			var rect = ColorRect.new()
-			rect.color = Color(0, 0, 0, 0.3)
-			rect.anchors_preset = 15
-			placeholder.add_child(rect)
+
+			var panel = Panel.new()
+			panel.anchors_preset = 15
+			var style = StyleBoxFlat.new()
+			style.bg_color = Color(0, 0, 0, 0.3)
+			style.border_width_left = 2
+			style.border_width_top = 2
+			style.border_width_right = 2
+			style.border_width_bottom = 2
+			style.border_color = Color(1, 1, 1, 0.2)
+			panel.add_theme_stylebox_override("panel", style)
+
+			placeholder.add_child(panel)
 			bench_container.add_child(placeholder)
 
 func refresh_shop(force: bool = false):
@@ -84,6 +94,7 @@ func refresh_shop(force: bool = false):
 	shop_items = new_items
 
 	for child in shop_container.get_children():
+		shop_container.remove_child(child)
 		child.queue_free()
 
 	for i in range(SHOP_SIZE):

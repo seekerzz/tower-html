@@ -307,7 +307,7 @@ func spawn_expansion_ghosts():
 		ghost.set_script(GHOST_TILE_SCRIPT)
 		ghost.setup(pos.x, pos.y)
 
-		ghost.position = Vector2(pos.x * TILE_SIZE, pos.y * TILE_SIZE)
+		ghost.position = Vector2(pos.x * TILE_SIZE, pos.y * TILE_SIZE) - Vector2(30, 30)
 		# GhostTile.gd handles size/text
 
 		# Add a tooltip or text for cost
