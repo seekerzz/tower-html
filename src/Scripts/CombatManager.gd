@@ -303,10 +303,10 @@ func perform_lightning_attack(source_unit, start_pos, target, chain_left, hit_li
 	if chain_left > 0:
 		var next_target = find_nearest_enemy_excluding(target.global_position, 300.0, hit_list)
 		if next_target:
-			# Delay slightly for visual effect? Or instant recursive. Instant is fine for "chain lightning"
-			# But recursion in one frame might be too instant.
-			# Let's use a tiny delay or just recurse. Recursion is fine.
-			perform_lightning_attack(source_unit, target.global_position, next_target, chain_left - 1, hit_list)
+			var next_start_pos = target.global_position
+			await get_tree().create_timer(0.15).timeout
+			if is_instance_valid(source_unit):
+				perform_lightning_attack(source_unit, next_start_pos, next_target, chain_left - 1, hit_list)
 
 func find_nearest_enemy_excluding(pos: Vector2, range_val: float, exclude_list: Array):
 	var nearest = null
