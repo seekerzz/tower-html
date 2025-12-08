@@ -19,6 +19,9 @@ func update_visuals():
 	if type == "core":
 		$ColorRect.color = Color("#4a3045")
 		$Label.text = "Core"
+	elif type == "ghost":
+		$ColorRect.color = Constants.COLORS.grid.lightened(0.5)
+		$Label.text = "+"
 	else:
 		$Label.text = ""
 

@@ -13,6 +13,9 @@ var unit_data: Dictionary
 var damage: float
 var range_val: float
 var atk_speed: float
+var crit_chance: float = 0.0
+var bounce_bonus: int = 0
+var split_bonus: int = 0
 
 # Grid / Drag logic
 var grid_pos: Vector2i = Vector2i.ZERO
@@ -26,11 +29,38 @@ signal unit_clicked(unit)
 func setup(key: String):
 	type_key = key
 	unit_data = Constants.UNIT_TYPES[key].duplicate()
-	damage = unit_data.damage
-	range_val = unit_data.range
-	atk_speed = unit_data.atk_speed if "atk_speed" in unit_data else unit_data.atkSpeed
-
+	recalculate_stats()
 	update_visuals()
+
+func recalculate_stats():
+	# Reset to base and apply level scaling
+	damage = unit_data.damage * pow(1.5, level - 1)
+	range_val = unit_data.range
+	var base_atk_interval = unit_data.atk_speed if "atk_speed" in unit_data else unit_data.atkSpeed
+	atk_speed = base_atk_interval
+
+	if level > 1:
+		stats_multiplier = 1.0 + (level - 1) * 0.5
+	else:
+		stats_multiplier = 1.0
+
+	crit_chance = 0.0
+	bounce_bonus = 0
+	split_bonus = 0
+
+	# Apply Buffs
+	var speed_mult = 1.0
+
+	for buff in active_buffs:
+		match buff:
+			"speed": speed_mult += 0.20
+			"range": range_val *= 1.25
+			"crit": crit_chance += 0.25
+			"bounce": bounce_bonus += 1
+			"split": split_bonus += 1
+
+	if speed_mult > 1.0:
+		atk_speed = base_atk_interval / speed_mult
 
 func update_visuals():
 	$Label.text = unit_data.icon

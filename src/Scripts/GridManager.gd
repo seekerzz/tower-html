@@ -5,6 +5,8 @@ const UNIT_SCENE = preload("res://src/Scenes/Game/Unit.tscn")
 const TILE_SIZE = 60
 
 var tiles: Dictionary = {} # Key: "x,y", Value: Tile Instance
+var ghost_tiles: Dictionary = {} # Key: "x,y", Value: Tile Instance
+var is_expansion_mode: bool = false
 var selected_unit = null
 
 func _ready():
@@ -59,6 +61,7 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 	# Mark tiles as occupied
 	_set_tiles_occupied(x, y, w, h, unit)
 
+	recalculate_buffs()
 	return true
 
 func _set_tiles_occupied(x: int, y: int, w: int, h: int, unit):
@@ -102,6 +105,27 @@ func can_place_unit(x: int, y: int, w: int, h: int, exclude_unit = null) -> bool
 	return true
 
 func _on_tile_clicked(tile):
+	if is_expansion_mode:
+		if tile.type == "ghost":
+			if GameManager.spend_gold(GameManager.tile_cost):
+				# Convert ghost to real
+				var x = tile.x
+				var y = tile.y
+
+				# Remove ghost
+				var key = get_tile_key(x, y)
+				if ghost_tiles.has(key):
+					ghost_tiles.erase(key)
+				tile.queue_free()
+
+				# Create real
+				create_tile(x, y, "normal")
+
+				# Refresh ghosts
+				clear_ghost_tiles()
+				show_ghost_tiles()
+		return
+
 	if GameManager.is_wave_active: return
 	# Handling selection/movement logic would go here
 	print("Clicked tile: ", tile.x, ",", tile.y)
@@ -132,8 +156,7 @@ func handle_unit_drop(unit):
 	var from_tile = tiles[from_tile_key] # Should exist
 
 	if try_move_unit(unit, from_tile, target_tile):
-		# Success
-		pass
+		recalculate_buffs()
 	else:
 		unit.return_to_start()
 
@@ -151,6 +174,7 @@ func try_move_unit(unit, from_tile, to_tile) -> bool:
 	# Check if we can place unit there (ignoring itself)
 	if can_place_unit(x, y, w, h, unit):
 		_move_unit_internal(unit, x, y)
+		recalculate_buffs()
 		return true
 
 	# Case 2: Target Occupied
@@ -175,6 +199,7 @@ func try_move_unit(unit, from_tile, to_tile) -> bool:
 		# Remove source unit
 		_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
 		unit.queue_free()
+		recalculate_buffs()
 		return true
 
 	# Devour
@@ -183,12 +208,14 @@ func try_move_unit(unit, from_tile, to_tile) -> bool:
 		target_unit.devour(unit)
 		_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
 		unit.queue_free()
+		recalculate_buffs()
 		return true
 
 	# Swap
 	# Only if both are movable and fit
 	if can_swap(unit, target_unit):
 		_perform_swap(unit, target_unit)
+		recalculate_buffs()
 		return true
 
 	return false
@@ -294,3 +321,116 @@ func _perform_swap(unit_a, unit_b):
 	var tile_for_b = tiles[get_tile_key(pos_a.x, pos_a.y)]
 	unit_b.position = tile_for_b.position + Vector2((size_b.x-1) * TILE_SIZE * 0.5, (size_b.y-1) * TILE_SIZE * 0.5)
 	unit_b.start_position = unit_b.position
+
+func recalculate_buffs():
+	# 1. Clear all buffs
+	var all_units = []
+	for key in tiles:
+		var tile = tiles[key]
+		if tile.unit and not (tile.unit in all_units):
+			all_units.append(tile.unit)
+			tile.unit.active_buffs = []
+
+	# 2. Find providers and apply buffs
+	for unit in all_units:
+		if unit.unit_data.has("buffProvider"):
+			var buff_type = unit.unit_data.buffProvider
+			var neighbors = get_neighboring_units(unit)
+			for neighbor in neighbors:
+				neighbor.active_buffs.append(buff_type)
+
+	# 3. Recalculate stats
+	for unit in all_units:
+		unit.recalculate_stats()
+
+func get_neighboring_units(unit):
+	var neighbors = []
+	var x = unit.grid_pos.x
+	var y = unit.grid_pos.y
+	var w = unit.unit_data.size.x
+	var h = unit.unit_data.size.y
+
+	# Up: (x to x+w-1, y-1)
+	for dx in range(w):
+		var n_key = get_tile_key(x + dx, y - 1)
+		add_unit_from_tile_key(n_key, neighbors)
+
+	# Down: (x to x+w-1, y+h)
+	for dx in range(w):
+		var n_key = get_tile_key(x + dx, y + h)
+		add_unit_from_tile_key(n_key, neighbors)
+
+	# Left: (x-1, y to y+h-1)
+	for dy in range(h):
+		var n_key = get_tile_key(x - 1, y + dy)
+		add_unit_from_tile_key(n_key, neighbors)
+
+	# Right: (x+w, y to y+h-1)
+	for dy in range(h):
+		var n_key = get_tile_key(x + w, y + dy)
+		add_unit_from_tile_key(n_key, neighbors)
+
+	return neighbors
+
+func add_unit_from_tile_key(key, list):
+	if tiles.has(key):
+		var tile = tiles[key]
+		var u = tile.unit
+		# if tile has no unit directly, check if it is occupied by one
+		if u == null and tile.occupied_by != Vector2i.ZERO:
+			var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
+			if tiles.has(origin_key):
+				u = tiles[origin_key].unit
+
+		if u and not (u in list):
+			list.append(u)
+
+func toggle_expansion_mode():
+	is_expansion_mode = !is_expansion_mode
+	if is_expansion_mode:
+		show_ghost_tiles()
+	else:
+		clear_ghost_tiles()
+
+func show_ghost_tiles():
+	# Find all empty spots adjacent to current grid
+	var candidates = {} # "x,y" : true
+
+	for key in tiles:
+		var tile = tiles[key]
+		var tx = tile.x
+		var ty = tile.y
+
+		var neighbors = [
+			Vector2i(tx, ty-1),
+			Vector2i(tx, ty+1),
+			Vector2i(tx-1, ty),
+			Vector2i(tx+1, ty)
+		]
+
+		for n in neighbors:
+			var n_key = get_tile_key(n.x, n.y)
+			if !tiles.has(n_key):
+				candidates[n_key] = n
+
+	for key in candidates:
+		var pos = candidates[key]
+		create_ghost_tile(pos.x, pos.y)
+
+func create_ghost_tile(x, y):
+	var key = get_tile_key(x, y)
+	if ghost_tiles.has(key): return
+
+	var tile = TILE_SCENE.instantiate()
+	tile.setup(x, y, "ghost") # We need to handle this type in Tile.gd or here
+	tile.position = Vector2(x * TILE_SIZE, y * TILE_SIZE)
+	tile.modulate = Color(1, 1, 1, 0.5) # Semi-transparent
+	add_child(tile)
+	ghost_tiles[key] = tile
+
+	tile.tile_clicked.connect(_on_tile_clicked)
+
+func clear_ghost_tiles():
+	for key in ghost_tiles:
+		ghost_tiles[key].queue_free()
+	ghost_tiles.clear()
