@@ -127,7 +127,7 @@ func update_visuals():
 		if has_node("Label"):
 			$Label.position = $ColorRect.position
 			$Label.size = $ColorRect.size
-			$Label.pivot_offset = $Label.size / 2
+			$Label.pivot_offset = $Label.size / 2 # Fix breathing jitter
 
 	if level > 1:
 		if has_node("StarLabel"):

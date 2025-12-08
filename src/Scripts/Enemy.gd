@@ -60,6 +60,8 @@ func _draw():
 		color = Color.WHITE
 	draw_circle(Vector2.ZERO, enemy_data.radius, color)
 
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 	# Draw HP Bar
 	var hp_pct = hp / max_hp
 	var bar_w = 20

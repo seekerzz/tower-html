@@ -182,6 +182,7 @@ func show_warning_indicator(angle: float, type_key: String):
 		icon_label.text = Constants.ENEMY_VARIANTS[type_key].icon
 		icon_label.add_theme_font_size_override("font_size", 24)
 		icon_label.position = Vector2(-12, 10) # Below the warning
+		icon_label.rotation = -container.rotation
 		container.add_child(icon_label)
 
 	container.add_child(label)
