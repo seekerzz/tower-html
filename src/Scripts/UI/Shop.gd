@@ -10,13 +10,10 @@ const SHOP_SIZE = 4
 @onready var refresh_btn = $Panel/RefreshButton
 @onready var expand_btn = $Panel/ExpandButton
 @onready var start_wave_btn = $Panel/StartWaveButton
-@onready var bench_container = $Panel/BenchContainer
 
 var sell_zone = null
 
 signal unit_bought(unit_key)
-
-const BENCH_UNIT_SCRIPT = preload("res://src/Scripts/UI/BenchUnit.gd")
 
 func _ready():
 	GameManager.resource_changed.connect(update_ui)
@@ -46,37 +43,6 @@ func _create_sell_zone():
 
 func update_ui():
 	gold_label.text = "💰 %d" % GameManager.gold
-
-func update_bench_ui(bench_data: Array):
-	for child in bench_container.get_children():
-		child.queue_free()
-
-	for i in range(bench_data.size()):
-		var data = bench_data[i]
-		if data != null:
-			var item = Control.new()
-			item.set_script(BENCH_UNIT_SCRIPT)
-			item.setup(data.key, i)
-			bench_container.add_child(item)
-		else:
-			var placeholder = Control.new()
-			placeholder.custom_minimum_size = Vector2(60, 60)
-
-			var rect = Panel.new()
-			var style = StyleBoxFlat.new()
-			style.bg_color = Color(0, 0, 0, 0.3)
-			style.border_width_left = 2
-			style.border_width_top = 2
-			style.border_width_right = 2
-			style.border_width_bottom = 2
-			style.border_color = Color(1, 1, 1, 0.3)
-			style.set_corner_radius_all(4)
-
-			rect.add_theme_stylebox_override("panel", style)
-			rect.anchors_preset = 15
-
-			placeholder.add_child(rect)
-			bench_container.add_child(placeholder)
 
 func refresh_shop(force: bool = false):
 	if !force and GameManager.gold < 10: return
@@ -157,28 +123,30 @@ func _on_expand_button_pressed():
 	if GameManager.grid_manager:
 		GameManager.grid_manager.toggle_expansion_mode()
 
-# Drag and Drop for Shop (Grid -> Bench / Sell)
+# Drag and Drop for Shop (Sell)
 func _can_drop_data(at_position, data):
 	if !data or !data.has("source"): return false
-	if data.source == "grid": return true
+	if data.source == "grid" or data.source == "bench": return true
 	return false
 
 func _drop_data(at_position, data):
-	if data.source == "grid":
-		# Check if over Sell Zone
-		var global_mouse = get_global_mouse_position()
-		if sell_zone.get_global_rect().has_point(global_mouse):
-			_handle_sell(data.unit)
-		else:
-			# Default: Try to add to bench
-			if GameManager.main_game:
-				GameManager.main_game.try_add_to_bench_from_grid(data.unit)
+	var global_mouse = get_global_mouse_position()
+	# Check if over Sell Zone
+	if sell_zone.get_global_rect().has_point(global_mouse):
+		if data.source == "grid":
+			_handle_sell_grid(data.unit)
+		elif data.source == "bench":
+			_handle_sell_bench(data)
+	else:
+		# If NOT over sell zone, and it came from grid, we do NOT handle it here.
+		# It should be handled by Bench or Grid. Shop only handles Selling or nothing (from grid).
+		# Original code had fallback to bench, but now Bench is separate.
+		pass
 
-func _handle_sell(unit):
+func _handle_sell_grid(unit):
 	var cost = unit.unit_data.cost
-	var refund = floor(cost * 0.5) # 50% refund?
-	GameManager.gain_gold(refund)
-	GameManager.spawn_floating_text(unit.global_position, "+%d G" % refund, Color.GOLD)
+	var refund = floor(cost * 0.5)
+	_complete_sell(refund, unit.global_position)
 
 	# Clear from grid
 	var w = unit.unit_data.size.x
@@ -186,3 +154,19 @@ func _handle_sell(unit):
 	GameManager.grid_manager._clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
 	unit.queue_free()
 	GameManager.grid_manager.recalculate_buffs()
+
+func _handle_sell_bench(data):
+	var key = data.key
+	var proto = Constants.UNIT_TYPES[key]
+	var cost = proto.cost
+	var refund = floor(cost * 0.5)
+
+	# Position for floating text? Use mouse position
+	_complete_sell(refund, get_global_mouse_position())
+
+	if GameManager.main_game:
+		GameManager.main_game.remove_from_bench(data.index)
+
+func _complete_sell(amount, pos):
+	GameManager.gain_gold(amount)
+	GameManager.spawn_floating_text(pos, "+%d G" % amount, Color.GOLD)

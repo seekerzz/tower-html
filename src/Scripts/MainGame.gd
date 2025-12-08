@@ -3,6 +3,7 @@ extends Node2D
 @onready var grid_manager = $GridManager
 @onready var combat_manager = $CombatManager
 @onready var shop = $CanvasLayer/Shop
+@onready var bench_ui = $CanvasLayer/Bench
 @onready var main_gui = $CanvasLayer/MainGUI
 
 # Bench
@@ -53,4 +54,5 @@ func try_add_to_bench_from_grid(unit) -> bool:
 	return false
 
 func update_bench_ui():
-	shop.update_bench_ui(bench)
+	if bench_ui:
+		bench_ui.update_bench_ui(bench)
