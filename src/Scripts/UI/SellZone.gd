@@ -13,7 +13,7 @@ func _drop_data(_at_position, data):
 	var cost = proto.cost
 	var refund = floor(cost * 0.5)
 
-	GameManager.gain_gold(refund)
+	GameManager.add_gold(refund)
 
 	if GameManager.main_game:
 		GameManager.main_game.remove_from_bench(data.index)
