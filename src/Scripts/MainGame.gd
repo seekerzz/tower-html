@@ -33,22 +33,31 @@ func remove_from_bench(index: int):
 		bench[index] = null
 		update_bench_ui()
 
+func move_unit_from_grid_to_bench(unit_node, target_index: int):
+	if target_index < 0 or target_index >= bench.size():
+		return
+
+	if bench[target_index] != null:
+		# If target is occupied, we might want to swap or just fail.
+		# For now, simplistic approach: fail if occupied.
+		print("Bench slot occupied")
+		return
+
+	# Logic to move
+	bench[target_index] = {
+		"key": unit_node.type_key,
+		"level": unit_node.level
+	}
+
+	# Remove from grid
+	grid_manager.remove_unit_from_grid(unit_node)
+
+	update_bench_ui()
+
 func try_add_to_bench_from_grid(unit) -> bool:
 	for i in range(bench.size()):
 		if bench[i] == null:
-			bench[i] = {
-				"key": unit.type_key,
-				"level": unit.level,
-				# Add other persistent data here if needed
-			}
-			update_bench_ui()
-
-			# Remove from grid!
-			var w = unit.unit_data.size.x
-			var h = unit.unit_data.size.y
-			grid_manager._clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
-
-			unit.queue_free()
+			move_unit_from_grid_to_bench(unit, i)
 			return true
 	print("Bench Full")
 	return false
