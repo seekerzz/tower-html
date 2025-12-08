@@ -18,6 +18,10 @@ var attack_cost_mana: float = 0.0
 var skill_mana_cost: float = 30.0
 
 var production_timer: float = 0.0
+
+# Visual Holder for animations and structure
+var visual_holder: Node2D = null
+# Keeping this for compatibility if other scripts access it, though it was local-ish before
 var visual_node: CanvasItem = null
 
 var is_starving: bool = false
@@ -31,7 +35,6 @@ var grid_pos: Vector2i = Vector2i.ZERO
 var start_position: Vector2 = Vector2.ZERO
 
 # Missing variables required for the old drag logic at the bottom to compile
-# (建议后续删除底部的旧拖拽逻辑，改用 UnitDragHandler)
 var is_dragging: bool = false
 var drag_offset: Vector2 = Vector2.ZERO
 var ghost_node: Node2D = null
@@ -40,20 +43,43 @@ const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 
 signal unit_clicked(unit)
 
+func _ready():
+	_ensure_visual_hierarchy()
+	# If unit_data is already populated (e.g. from scene or prior setup), update visuals
+	if !unit_data.is_empty():
+		update_visuals()
+
+func _ensure_visual_hierarchy():
+	if visual_holder and is_instance_valid(visual_holder):
+		return
+
+	visual_holder = get_node_or_null("VisualHolder")
+	if !visual_holder:
+		visual_holder = Node2D.new()
+		visual_holder.name = "VisualHolder"
+		add_child(visual_holder)
+
+		# Move existing visual elements into holder
+		var visual_elements = ["ColorRect", "Label", "StarLabel"]
+		for child_name in visual_elements:
+			var child = get_node_or_null(child_name)
+			if child:
+				remove_child(child)
+				visual_holder.add_child(child)
+
 func setup(key: String):
+	_ensure_visual_hierarchy()
 	type_key = key
 	unit_data = Constants.UNIT_TYPES[key].duplicate()
 	reset_stats()
 	update_visuals()
 
 	# --- Merged Logic Start ---
-	# 1. Production & Animation Logic (from HEAD)
 	if unit_data.has("produce"):
-		production_timer = 1.0 # Initial delay
+		production_timer = 1.0
 
 	start_breathe_anim()
 
-	# 2. Drag Handler Component Logic (from refactor branch)
 	var drag_handler = Control.new()
 	drag_handler.set_script(DRAG_HANDLER_SCRIPT)
 	add_child(drag_handler)
@@ -106,36 +132,43 @@ func activate_skill():
 		var skill_name = unit_data.skill
 		GameManager.spawn_floating_text(global_position, skill_name.capitalize() + "!", Color.CYAN)
 
-		var tween = create_tween()
-		tween.tween_property($ColorRect, "scale", Vector2(1.2, 1.2), 0.1)
-		tween.tween_property($ColorRect, "scale", Vector2(1.0, 1.0), 0.1)
+		var color_rect = visual_holder.get_node_or_null("ColorRect")
+		if color_rect:
+			var tween = create_tween()
+			tween.tween_property(color_rect, "scale", Vector2(1.2, 1.2), 0.1)
+			tween.tween_property(color_rect, "scale", Vector2(1.0, 1.0), 0.1)
 
 	else:
 		is_no_mana = true
 		GameManager.spawn_floating_text(global_position, "No Mana!", Color.BLUE)
 
 func update_visuals():
-	# Kept HEAD version: Safer because it checks for node existence
-	if has_node("Label"):
-		$Label.text = unit_data.icon
+	_ensure_visual_hierarchy()
+	var label = visual_holder.get_node_or_null("Label")
+	var color_rect = visual_holder.get_node_or_null("ColorRect")
+	var star_label = visual_holder.get_node_or_null("StarLabel")
+
+	if label:
+		label.text = unit_data.icon
 	
 	# Size update
-	if has_node("ColorRect"):
+	if color_rect:
 		var size = unit_data.size
-		$ColorRect.size = Vector2(size.x * 60 - 4, size.y * 60 - 4)
-		$ColorRect.position = -($ColorRect.size / 2)
-		if has_node("Label"):
-			$Label.position = $ColorRect.position
-			$Label.size = $ColorRect.size
-			$Label.pivot_offset = $Label.size / 2
+		color_rect.size = Vector2(size.x * 60 - 4, size.y * 60 - 4)
+		color_rect.position = -(color_rect.size / 2) # Center inside visual_holder
+
+		if label:
+			label.position = color_rect.position
+			label.size = color_rect.size
+			label.pivot_offset = label.size / 2
 
 	if level > 1:
-		if has_node("StarLabel"):
-			$StarLabel.text = "⭐%d" % level
-			$StarLabel.show()
+		if star_label:
+			star_label.text = "⭐%d" % level
+			star_label.show()
 	else:
-		if has_node("StarLabel"):
-			$StarLabel.hide()
+		if star_label:
+			star_label.hide()
 
 	_update_buff_icons()
 
@@ -145,10 +178,11 @@ func _update_buff_icons():
 		buff_container = HBoxContainer.new()
 		buff_container.name = "BuffContainer"
 		buff_container.alignment = BoxContainer.ALIGNMENT_CENTER
-		# Check if ColorRect exists to base position
-		if has_node("ColorRect"):
-			buff_container.position = Vector2(-$ColorRect.size.x/2, $ColorRect.size.y/2 - 15)
-			buff_container.size = Vector2($ColorRect.size.x, 15)
+
+		var color_rect = visual_holder.get_node_or_null("ColorRect") if visual_holder else null
+		if color_rect:
+			buff_container.position = Vector2(-color_rect.size.x/2, color_rect.size.y/2 - 15)
+			buff_container.size = Vector2(color_rect.size.x, 15)
 		else:
 			buff_container.position = Vector2(0, 20)
 
@@ -193,7 +227,7 @@ func _process(delta):
 			var color = Color.YELLOW if p_type == "food" else Color.CYAN
 			GameManager.spawn_floating_text(global_position, "+%d%s" % [p_amt, icon], color)
 
-			production_timer = 1.0 # Fixed 1s interval as per reference logic often implies per second
+			production_timer = 1.0
 
 	if cooldown > 0:
 		cooldown -= delta
@@ -208,47 +242,44 @@ func _process(delta):
 	else:
 		modulate = Color.WHITE
 
-	# Attack Logic (simplified for now, needs Enemy reference)
-	# This will be handled by CombatManager or Unit itself if it has access to enemies
-
 var breathe_tween: Tween = null
 
 func start_breathe_anim():
-	visual_node = get_node_or_null("Label")
-	if !visual_node: return
+	if !visual_holder: return
 
 	if breathe_tween: breathe_tween.kill()
 
+	# Start loop
 	breathe_tween = create_tween().set_loops()
-	breathe_tween.tween_property(visual_node, "scale", Vector2(1.05, 1.05), 1.0).set_trans(Tween.TRANS_SINE)
-	breathe_tween.tween_property(visual_node, "scale", Vector2(1.0, 1.0), 1.0).set_trans(Tween.TRANS_SINE)
+	breathe_tween.tween_property(visual_holder, "scale", Vector2(1.05, 1.05), 1.0).set_trans(Tween.TRANS_SINE)
+	breathe_tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 1.0).set_trans(Tween.TRANS_SINE)
 
 func play_attack_anim(attack_type: String, target_pos: Vector2):
-	if !visual_node: visual_node = get_node_or_null("Label")
-	if !visual_node: return
+	if !visual_holder: return
 
 	if breathe_tween: breathe_tween.kill()
 
 	var tween = create_tween()
-	tween.finished.connect(func(): start_breathe_anim()) # Resume breathe after attack
+
 	if attack_type == "melee":
 		# Lunge
 		var dir = (target_pos - global_position).normalized()
-		var original_pos = -(visual_node.size / 2)
-
-		# Ensure original position is correct
-		if has_node("ColorRect"):
-			original_pos = $ColorRect.position
-
+		var original_pos = Vector2.ZERO # visual_holder is centered at 0,0 locally
 		var lunge_pos = original_pos + dir * 15.0
 
-		tween.tween_property(visual_node, "position", lunge_pos, 0.1).set_trans(Tween.TRANS_CUBIC)
-		tween.tween_property(visual_node, "position", original_pos, 0.2).set_trans(Tween.TRANS_CUBIC)
+		tween.tween_property(visual_holder, "position", lunge_pos, 0.1).set_trans(Tween.TRANS_CUBIC)
+		tween.tween_property(visual_holder, "position", original_pos, 0.2).set_trans(Tween.TRANS_CUBIC)
+		# Smoothly reset scale in parallel if needed, though usually pos only
+		tween.parallel().tween_property(visual_holder, "scale", Vector2.ONE, 0.3)
 
 	elif attack_type == "ranged" or attack_type == "lightning":
 		# Recoil
-		tween.tween_property(visual_node, "scale", Vector2(0.8, 0.8), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tween.tween_property(visual_node, "scale", Vector2(1.0, 1.0), 0.2)
+		tween.tween_property(visual_holder, "scale", Vector2(0.8, 0.8), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.2)
+		# Reset position in parallel just in case
+		tween.parallel().tween_property(visual_holder, "position", Vector2.ZERO, 0.3)
+
+	tween.finished.connect(func(): start_breathe_anim())
 
 func merge_with(other_unit):
 	level += 1
@@ -277,14 +308,6 @@ func _on_area_2d_mouse_entered():
 func _on_area_2d_mouse_exited():
 	GameManager.hide_tooltip.emit()
 
-# -------------------------------------------------------------------------
-# CAUTION: Old Drag Logic Logic Below
-# -------------------------------------------------------------------------
-# Since you added "UnitDragHandler" in setup(), the logic below might be redundant.
-# I added the missing variables at the top to prevent errors, but you should
-# likely delete the functions below if the DragHandler is working.
-# -------------------------------------------------------------------------
-
 func _input(event):
 	if is_dragging:
 		if event is InputEventMouseButton and !event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
@@ -303,30 +326,14 @@ func end_drag():
 	remove_ghost()
 
 	if GameManager.grid_manager:
-		# Try to drop on Grid
 		if GameManager.grid_manager.handle_unit_drop(self):
-			return # Moved on grid successfully
+			return
 
-		# Try to drop on Bench
-		# Check main_game reference
 		if GameManager.main_game:
-			# Check if over shop/bench area?
-			# Actually we can just try to add to bench if it's not a valid grid drop
-			# But we only want to do this if the mouse is actually over the bench.
-
-			# HACK: check if mouse Y is in the bottom area?
-			# Shop is at bottom.
-			# Or check rect of shop.
 			var viewport_rect = get_viewport_rect()
 			var mouse_pos = get_global_mouse_position()
-			# Shop height is 150 from bottom?
-			# Need to be precise or use UI collision.
-
-			# Since Unit is Node2D and Shop is Control, we don't have built-in overlap.
-			# Assuming Shop is at bottom.
-			if mouse_pos.y > (viewport_rect.size.y - 200): # Approximate
+			if mouse_pos.y > (viewport_rect.size.y - 200):
 				if GameManager.main_game.try_add_to_bench_from_grid(self):
-					# Success, self is queue_free'd inside try_add...
 					return
 
 	return_to_start()
@@ -334,15 +341,16 @@ func end_drag():
 func create_ghost():
 	if ghost_node: return
 	ghost_node = Node2D.new()
-	if has_node("ColorRect"):
-		var rect = $ColorRect.duplicate()
+
+	var color_rect = visual_holder.get_node_or_null("ColorRect") if visual_holder else get_node_or_null("ColorRect")
+	if color_rect:
+		var rect = color_rect.duplicate()
 		ghost_node.add_child(rect)
-	if has_node("Label"):
-		var lbl = $Label.duplicate()
+
+	var label = visual_holder.get_node_or_null("Label") if visual_holder else get_node_or_null("Label")
+	if label:
+		var lbl = label.duplicate()
 		ghost_node.add_child(lbl)
-	# Visual copies need to be reset in position because they were children of unit centered at 0,0
-	# Wait, rect position is -size/2.
-	# If I add them to ghost_node, and set ghost_node position to start_position, it should match.
 
 	get_parent().add_child(ghost_node)
 	ghost_node.position = start_position
