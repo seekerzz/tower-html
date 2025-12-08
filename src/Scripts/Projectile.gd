@@ -16,6 +16,7 @@ var chain: int = 0
 
 # Visuals
 var visual_node: Node2D = null
+var is_fading: bool = false
 
 # Blackhole State
 enum State { MOVING, HOVERING }
@@ -57,7 +58,24 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 	elif type == "black_hole":
 		_setup_black_hole()
 
+func fade_out():
+	if is_fading: return
+	is_fading = true
+
+	# Disable collision to stop interacting
+	set_deferred("monitoring", false)
+	set_deferred("monitorable", false)
+
+	var tween = create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(self, "modulate:a", 0.0, 0.2)
+	# Slight expansion for explosion effect
+	tween.tween_property(self, "scale", scale * 1.5, 0.2)
+	tween.chain().tween_callback(queue_free)
+
 func _process(delta):
+	if is_fading: return
+
 	# Blackhole Logic
 	if type == "blackhole" or type == "black_hole":
 		_process_blackhole(delta)
@@ -65,7 +83,7 @@ func _process(delta):
 
 	life -= delta
 	if life <= 0:
-		queue_free()
+		fade_out()
 		return
 
 	# Swarm Logic
@@ -92,7 +110,9 @@ func _process(delta):
 func _process_blackhole(delta):
 	if state == State.MOVING:
 		life -= delta # Safety
-		if life <= 0: queue_free(); return
+		if life <= 0:
+			fade_out()
+			return
 
 		if is_instance_valid(target):
 			var dist = global_position.distance_to(target.global_position)
@@ -110,7 +130,7 @@ func _process_blackhole(delta):
 	elif state == State.HOVERING:
 		blackhole_timer -= delta
 		if blackhole_timer <= 0:
-			queue_free()
+			fade_out()
 			return
 
 		# Pull enemies
@@ -124,6 +144,7 @@ func _process_blackhole(delta):
 				enemy.take_damage(damage * delta, source_unit) # DoT
 
 func _on_area_2d_area_entered(area):
+	if is_fading: return
 	if type == "blackhole" or type == "black_hole": return # Blackhole damages in _process
 
 	if area.is_in_group("enemies"):
@@ -155,7 +176,7 @@ func _on_area_2d_area_entered(area):
 				# Destroying - check for split
 				if split > 0:
 					perform_split()
-				queue_free()
+				fade_out()
 
 func _setup_swarm_wave():
 	# Hide default visuals if any
@@ -257,8 +278,8 @@ func _setup_black_hole():
 	var material = ParticleProcessMaterial.new()
 
 	material.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
-	material.emission_ring_inner_radius = 30.0
-	material.emission_ring_radius = 40.0
+	material.emission_ring_inner_radius = 100.0
+	material.emission_ring_radius = 120.0
 	material.gravity = Vector3.ZERO
 	material.radial_accel_min = -150.0
 	material.radial_accel_max = -100.0
