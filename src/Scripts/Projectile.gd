@@ -155,6 +155,8 @@ func _on_area_2d_area_entered(area):
 func _setup_swarm_wave():
 	# Hide default visuals if any
 	if visual_node: visual_node.hide()
+	if has_node("ColorRect"):
+		get_node("ColorRect").hide()
 
 	var line = Line2D.new()
 	line.name = "WaveLine"
