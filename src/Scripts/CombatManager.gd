@@ -3,6 +3,7 @@ extends Node
 const ENEMY_SCENE = preload("res://src/Scenes/Game/Enemy.tscn")
 const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
 const LIGHTNING_SCENE = preload("res://src/Scenes/Game/LightningArc.tscn")
+const SLASH_EFFECT_SCRIPT = preload("res://src/Scripts/Effects/SlashEffect.gd")
 
 var enemies_to_spawn: int = 0
 var total_enemies_for_wave: int = 0
@@ -254,6 +255,13 @@ func process_unit_combat(unit, tile, delta):
 
 		if unit.unit_data.attackType == "melee":
 			target.take_damage(unit.damage, unit)
+
+			var slash = SLASH_EFFECT_SCRIPT.new()
+			add_child(slash)
+			slash.global_position = target.global_position
+			slash.rotation = (target.global_position - unit.global_position).angle()
+			slash.play()
+
 		elif unit.unit_data.attackType == "ranged" and unit.unit_data.get("proj") == "lightning":
 			# Lightning handling
 			# "tesla": "attackType": "ranged", "proj": "lightning", "chain": 4
