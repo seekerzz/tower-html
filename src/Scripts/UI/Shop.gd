@@ -29,6 +29,7 @@ func _ready():
 func _create_sell_zone():
 	# Create a visual area for selling
 	sell_zone = PanelContainer.new()
+	sell_zone.set_script(load("res://src/Scripts/UI/SellZone.gd"))
 	var lbl = Label.new()
 	lbl.text = "SELL\nZONE"
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -40,6 +41,7 @@ func _create_sell_zone():
 	sell_zone.position = Vector2($Panel.size.x - 100, 20)
 	sell_zone.custom_minimum_size = Vector2(80, 80)
 	sell_zone.modulate = Color(1, 0.5, 0.5)
+	sell_zone.mouse_filter = MOUSE_FILTER_STOP
 
 func update_ui():
 	gold_label.text = "💰 %d" % GameManager.gold
@@ -124,50 +126,4 @@ func _on_expand_button_pressed():
 		GameManager.grid_manager.toggle_expansion_mode()
 
 # Drag and Drop for Shop (Sell)
-func _can_drop_data(at_position, data):
-	if !data or !data.has("source"): return false
-	# Explicitly return true for bench source as requested
-	if data.source == "grid" or data.source == "bench": return true
-	return false
-
-func _drop_data(at_position, data):
-	var global_mouse = get_global_mouse_position()
-
-	# Check if over Sell Zone
-	# Restoring the sell_zone check as removing it might cause UX issues (accidental sells).
-	# If the user drags to the shop area but not the sell zone, it shouldn't sell unless specified.
-	if sell_zone and sell_zone.get_global_rect().has_point(global_mouse):
-		# Handle Grid source
-		if data.source == "grid":
-			_handle_sell_grid(data.unit)
-
-		# Handle Bench source
-		elif data.source == "bench":
-			var key = data.key
-			var proto = Constants.UNIT_TYPES[key]
-			var cost = proto.cost
-			var refund = floor(cost * 0.5)
-
-			GameManager.gain_gold(refund)
-
-			# Key call to remove from bench
-			if GameManager.main_game:
-				GameManager.main_game.remove_from_bench(data.index)
-
-			GameManager.spawn_floating_text(get_global_mouse_position(), "+%d G" % refund, Color.GOLD)
-
-func _handle_sell_grid(unit):
-	var cost = unit.unit_data.cost
-	var refund = floor(cost * 0.5)
-	_complete_sell(refund, unit.global_position)
-
-	# Clear from grid
-	var w = unit.unit_data.size.x
-	var h = unit.unit_data.size.y
-	GameManager.grid_manager._clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
-	unit.queue_free()
-	GameManager.grid_manager.recalculate_buffs()
-
-func _complete_sell(amount, pos):
-	GameManager.gain_gold(amount)
-	GameManager.spawn_floating_text(pos, "+%d G" % amount, Color.GOLD)
+# Delegated to SellZone.gd
