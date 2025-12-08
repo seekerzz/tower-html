@@ -146,7 +146,10 @@ func _on_area_2d_area_entered(area):
 		# so we don't pierce on the original line. The projectile effectively moved.
 		# If we didn't bounce, we check pierce.
 		if not bounced:
-			if pierce > 0:
+			if type == "swarm_wave":
+				# Swarm wave has infinite pierce by default
+				pass
+			elif pierce > 0:
 				pierce -= 1
 			else:
 				# Destroying - check for split
@@ -157,6 +160,8 @@ func _on_area_2d_area_entered(area):
 func _setup_swarm_wave():
 	# Hide default visuals if any
 	if visual_node: visual_node.hide()
+	if has_node("ColorRect"):
+		get_node("ColorRect").hide()
 
 	var line = Line2D.new()
 	line.name = "WaveLine"
