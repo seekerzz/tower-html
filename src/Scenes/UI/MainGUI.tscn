@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://gui123"]
 
-[ext_resource type="Script" path="res://src/Scripts/UI/MainGUI.gd" id="1_gui"]
-[ext_resource type="PackedScene" uid="uid://skillbarscene" path="res://src/Scenes/UI/SkillBar.tscn" id="2_skillbar"]
+[ext_resource type="Script" uid="uid://l0y7jifgu4bm" path="res://src/Scripts/UI/MainGUI.gd" id="1_gui"]
+[ext_resource type="PackedScene" uid="uid://c3u372lrjivmc" path="res://src/Scenes/UI/SkillBar.tscn" id="2_skillbar"]
 
 [node name="MainGUI" type="Control"]
 layout_mode = 3
@@ -15,8 +15,10 @@ script = ExtResource("1_gui")
 
 [node name="Panel" type="Panel" parent="."]
 layout_mode = 0
-offset_right = 200.0
-offset_bottom = 145.0
+offset_left = 1066.0
+offset_top = 10.0
+offset_right = 1266.0
+offset_bottom = 155.0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Panel"]
 layout_mode = 1
@@ -100,10 +102,10 @@ vertical_alignment = 1
 
 [node name="WaveLabel" type="Label" parent="Panel"]
 layout_mode = 0
-offset_left = 210.0
-offset_top = 10.0
-offset_right = 300.0
-offset_bottom = 33.0
+offset_left = 104.0
+offset_top = 156.0
+offset_right = 194.0
+offset_bottom = 179.0
 text = "Wave 1"
 
 [node name="DebugButton" type="Button" parent="Panel"]
@@ -167,3 +169,8 @@ text = "Damage Stats"
 horizontal_alignment = 1
 
 [node name="SkillBar" parent="." instance=ExtResource("2_skillbar")]
+layout_mode = 1
+offset_left = -482.0
+offset_top = -274.0
+offset_right = -482.0
+offset_bottom = -194.0

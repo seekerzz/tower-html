@@ -1,12 +1,12 @@
-[gd_scene load_steps=6 format=3 uid="uid://maingame123"]
+[gd_scene load_steps=8 format=3 uid="uid://maingame123"]
 
-[ext_resource type="Script" path="res://src/Scripts/MainGame.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://yevi5jhibo13" path="res://src/Scripts/MainGame.gd" id="1_main"]
 [ext_resource type="PackedScene" uid="uid://grid123456" path="res://src/Scenes/Game/GridManager.tscn" id="2_grid"]
 [ext_resource type="PackedScene" uid="uid://combat123" path="res://src/Scenes/Game/CombatManager.tscn" id="3_combat"]
-[ext_resource type="PackedScene" uid="uid://drawmanager_v1" path="res://src/Scenes/Game/DrawManager.tscn" id="6_draw"]
 [ext_resource type="PackedScene" uid="uid://shop123" path="res://src/Scenes/UI/Shop.tscn" id="4_shop"]
 [ext_resource type="PackedScene" uid="uid://benchui00001" path="res://src/Scenes/UI/Bench.tscn" id="5_bench"]
 [ext_resource type="PackedScene" uid="uid://gui123" path="res://src/Scenes/UI/MainGUI.tscn" id="5_gui"]
+[ext_resource type="PackedScene" path="res://src/Scenes/Game/DrawManager.tscn" id="6_draw"]
 
 [node name="MainGame" type="Node2D"]
 script = ExtResource("1_main")
@@ -26,5 +26,7 @@ position = Vector2(640, 300)
 [node name="Shop" parent="CanvasLayer" instance=ExtResource("4_shop")]
 
 [node name="Bench" parent="CanvasLayer" instance=ExtResource("5_bench")]
+offset_top = -200.0
+offset_bottom = -140.0
 
 [node name="MainGUI" parent="CanvasLayer" instance=ExtResource("5_gui")]
