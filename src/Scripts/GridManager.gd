@@ -102,6 +102,14 @@ func _on_tile_clicked(tile):
 	if GameManager.is_wave_active: return
 	# print("Clicked tile: ", tile.x, ",", tile.y)
 
+func remove_unit_from_grid(unit):
+	if unit == null: return
+	var w = unit.unit_data.size.x
+	var h = unit.unit_data.size.y
+	_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
+	unit.queue_free()
+	recalculate_buffs()
+
 # Drag and Drop Implementation
 func handle_bench_drop_at(target_tile, data):
 	var unit_key = data.key
@@ -112,6 +120,8 @@ func handle_bench_drop_at(target_tile, data):
 		# Success, remove from bench
 		if GameManager.main_game:
 			GameManager.main_game.remove_from_bench(bench_index)
+		else:
+			print("GridManager: GameManager.main_game is null during bench drop!")
 
 func handle_grid_move_at(target_tile, data):
 	var unit = data.unit
