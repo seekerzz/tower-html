@@ -18,6 +18,7 @@ func _ready():
 
 	# Initial Setup
 	grid_manager.place_unit("mouse", 0, 1) # Starting unit
+	update_bench_ui() # Ensure UI is initialized
 
 # Bench Logic
 func add_to_bench(unit_key: String) -> bool:
@@ -61,6 +62,27 @@ func try_add_to_bench_from_grid(unit) -> bool:
 			return true
 	print("Bench Full")
 	return false
+
+func move_unit_from_grid_to_bench(unit, target_index: int):
+	if target_index < 0 or target_index >= bench.size():
+		return
+
+	if bench[target_index] != null:
+		print("Bench slot occupied")
+		return
+
+	bench[target_index] = {
+		"key": unit.type_key,
+		"level": unit.level
+	}
+	update_bench_ui()
+
+	# Remove from grid!
+	var w = unit.unit_data.size.x
+	var h = unit.unit_data.size.y
+	grid_manager._clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
+
+	unit.queue_free()
 
 func update_bench_ui():
 	if bench_ui:

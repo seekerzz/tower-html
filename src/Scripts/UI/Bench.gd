@@ -1,48 +1,58 @@
 extends Control
 
-@onready var container = $Container
+const SLOT_COUNT = 5
+var bench_data = []
+
+@onready var slots_container = $PanelContainer/SlotsContainer
+
 const BENCH_UNIT_SCRIPT = preload("res://src/Scripts/UI/BenchUnit.gd")
+const BENCH_SLOT_SCRIPT = preload("res://src/Scripts/UI/BenchSlot.gd")
 
-func update_bench_ui(bench_data: Array):
-	if !container: return
+func update_bench_ui(data):
+	if !slots_container: return
 
-	for child in container.get_children():
+	bench_data = data
+
+	# Clear existing slots
+	for child in slots_container.get_children():
+		slots_container.remove_child(child)
 		child.queue_free()
 
-	for i in range(bench_data.size()):
-		var data = bench_data[i]
-		if data != null:
-			var item = Control.new()
-			item.set_script(BENCH_UNIT_SCRIPT)
-			item.setup(data.key, i)
-			container.add_child(item)
-		else:
-			var placeholder = Control.new()
-			placeholder.custom_minimum_size = Vector2(60, 60)
+	# Create 5 slots
+	for i in range(SLOT_COUNT):
+		var slot = Control.new()
+		slot.custom_minimum_size = Vector2(60, 60)
+		slot.set_script(BENCH_SLOT_SCRIPT)
+		slot.slot_index = i
 
-			var rect = Panel.new()
-			var style = StyleBoxFlat.new()
-			style.bg_color = Color(0, 0, 0, 0.3)
-			style.border_width_left = 2
-			style.border_width_top = 2
-			style.border_width_right = 2
-			style.border_width_bottom = 2
-			style.border_color = Color(1, 1, 1, 0.3)
-			style.set_corner_radius_all(4)
+		# Visual style: Panel child
+		var panel = Panel.new()
+		panel.anchors_preset = 15 # Full rect
+		panel.mouse_filter = MOUSE_FILTER_IGNORE # Let the slot handle events
 
-			rect.add_theme_stylebox_override("panel", style)
-			rect.anchors_preset = 15
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color(0, 0, 0, 0.3)
+		style.border_width_left = 2
+		style.border_width_top = 2
+		style.border_width_right = 2
+		style.border_width_bottom = 2
+		style.border_color = Color(1, 1, 1, 0.3) # Dashed not natively supported easily in StyleBoxFlat without shader or texture, sticking to solid or basic style for now as requested "dashed OR dark background"
+		style.set_corner_radius_all(4)
 
-			placeholder.add_child(rect)
-			container.add_child(placeholder)
+		panel.add_theme_stylebox_override("panel", style)
+		slot.add_child(panel)
 
-func _can_drop_data(at_position, data):
-	if !data or !data.has("source"): return false
-	# Can accept from Grid
-	if data.source == "grid": return true
-	return false
+		# Add Unit if data exists
+		if i < bench_data.size() and bench_data[i] != null:
+			var unit_data = bench_data[i]
+			var unit_display = Control.new()
+			unit_display.set_script(BENCH_UNIT_SCRIPT)
+			unit_display.setup(unit_data.key, i)
 
-func _drop_data(at_position, data):
-	if data.source == "grid":
-		if GameManager.main_game:
-			GameManager.main_game.try_add_to_bench_from_grid(data.unit)
+			# Ensure unit display fills slot but respects logic
+			unit_display.layout_mode = 1
+			unit_display.anchors_preset = 15
+
+			slot.add_child(unit_display)
+
+		slots_container.add_child(slot)
