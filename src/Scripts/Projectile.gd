@@ -54,10 +54,12 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 	# Swarm Wave Visuals
 	if type == "swarm_wave":
 		_setup_swarm_wave()
+	elif type == "black_hole":
+		_setup_black_hole()
 
 func _process(delta):
 	# Blackhole Logic
-	if type == "blackhole":
+	if type == "blackhole" or type == "black_hole":
 		_process_blackhole(delta)
 		return # Blackhole handles its own life/movement
 
@@ -122,7 +124,7 @@ func _process_blackhole(delta):
 				enemy.take_damage(damage * delta, source_unit) # DoT
 
 func _on_area_2d_area_entered(area):
-	if type == "blackhole": return # Blackhole damages in _process
+	if type == "blackhole" or type == "black_hole": return # Blackhole damages in _process
 
 	if area.is_in_group("enemies"):
 		if area in hit_list: return
@@ -225,3 +227,57 @@ func perform_bounce(current_hit_enemy):
 		return true # Bounced successfully
 
 	return false # No target to bounce to
+
+func _setup_black_hole():
+	# Step A: Hide default appearance
+	if has_node("ColorRect"):
+		get_node("ColorRect").hide()
+	if visual_node:
+		visual_node.hide()
+
+	# Step B: Event Horizon (Black solid circle)
+	var poly = Polygon2D.new()
+	var points = PackedVector2Array()
+	var radius = 12.0
+	var segments = 32
+	for i in range(segments):
+		var angle = (i * TAU) / segments
+		points.append(Vector2(cos(angle), sin(angle)) * radius)
+	poly.polygon = points
+	poly.color = Color.BLACK
+	add_child(poly)
+
+	# Step C: Accretion Disk (Particle System)
+	var particles = GPUParticles2D.new()
+	var material = ParticleProcessMaterial.new()
+
+	material.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
+	material.emission_ring_inner_radius = 30.0
+	material.emission_ring_radius = 40.0
+	material.gravity = Vector3.ZERO
+	material.radial_accel_min = -150.0
+	material.radial_accel_max = -100.0
+	material.tangential_accel_min = 60.0
+	material.tangential_accel_max = 100.0
+
+	# Gradient: Outer (Purple) to Inner (Black)
+	var gradient = Gradient.new()
+	# We want 0 (start) to be purple, 1 (end) to be black.
+	gradient.set_color(0, Color(0.5, 0.0, 1.0)) # Purple
+	gradient.set_color(1, Color.BLACK)
+
+	var grad_tex = GradientTexture1D.new()
+	grad_tex.gradient = gradient
+	material.color_ramp = grad_tex
+
+	particles.process_material = material
+	particles.lifetime = 0.8
+	particles.amount = 60
+
+	# Create a 4x4 white placeholder texture
+	var img = Image.create(4, 4, false, Image.FORMAT_RGBA8)
+	img.fill(Color.WHITE)
+	var tex = ImageTexture.create_from_image(img)
+	particles.texture = tex
+
+	add_child(particles)
