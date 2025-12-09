@@ -1,5 +1,8 @@
 extends Node
 
+const MAP_WIDTH = 19
+const MAP_HEIGHT = 11
+const CORE_ZONE_RADIUS = 2 # Center 5x5 implies radius 2 ( -2 to 2 is 5 tiles)
 const TILE_SIZE = 60
 const BENCH_SIZE = 5
 

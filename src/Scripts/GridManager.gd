@@ -2,47 +2,129 @@ extends Node2D
 
 const TILE_SCENE = preload("res://src/Scenes/Game/Tile.tscn")
 const UNIT_SCENE = preload("res://src/Scenes/Game/Unit.tscn")
-const GHOST_TILE_SCRIPT = preload("res://src/Scripts/UI/GhostTile.gd")
-const TILE_SIZE = 60
+const TILE_SIZE = Constants.TILE_SIZE
 
 var tiles: Dictionary = {} # Key: "x,y", Value: Tile Instance
-var ghost_tiles: Array = []
-var expansion_mode: bool = false
-var expansion_cost: int = 50 # Base cost
+var astar: AStarGrid2D
+var obstacles: Dictionary = {} # Key: "x,y", Value: Node (Obstacle)
 
 signal grid_updated
 
 func _ready():
 	GameManager.grid_manager = self
-	create_initial_grid()
+	_init_astar()
+	generate_grid()
 
-func create_initial_grid():
-	create_tile(0, 0, "core")
-	create_tile(0, 1)
-	create_tile(0, -1)
-	create_tile(1, 0)
-	create_tile(-1, 0)
+func _init_astar():
+	astar = AStarGrid2D.new()
+	# Region covering from (-9, -5) to (9, 5). Size is 19x11.
+	astar.region = Rect2i(-9, -5, 19, 11)
+	astar.cell_size = Vector2(TILE_SIZE, TILE_SIZE)
+	astar.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER
+	astar.default_compute_heuristic = AStarGrid2D.HEURISTIC_MANHATTAN
+	astar.default_estimate_heuristic = AStarGrid2D.HEURISTIC_MANHATTAN
+	astar.update()
 
-func create_tile(x: int, y: int, type: String = "normal"):
-	var key = get_tile_key(x, y)
-	if tiles.has(key): return
+func generate_grid():
+	for x in range(-9, 10):
+		for y in range(-5, 6):
+			_create_tile_at(x, y)
 
+	grid_updated.emit()
+
+func _create_tile_at(x: int, y: int):
 	var tile = TILE_SCENE.instantiate()
-	tile.setup(x, y, type)
+	var zone = _get_zone(x, y)
+
+	tile.setup(x, y, "normal")
+	tile.zone = zone
 	tile.position = Vector2(x * TILE_SIZE, y * TILE_SIZE)
 	add_child(tile)
+
+	var key = get_tile_key(x, y)
 	tiles[key] = tile
 
+	if zone == "wilderness":
+		if randf() < 0.125: # 10%-15%
+			_spawn_obstacle(x, y)
+
 	tile.tile_clicked.connect(_on_tile_clicked)
+	_update_tile_visuals(tile)
+
+func _get_zone(x: int, y: int) -> String:
+	if abs(x) <= Constants.CORE_ZONE_RADIUS and abs(y) <= Constants.CORE_ZONE_RADIUS:
+		return "core"
+	return "wilderness"
+
+func _spawn_obstacle(x: int, y: int):
+	var types = ["stone", "wood"]
+	var type = types.pick_random()
+
+	var key = get_tile_key(x, y)
+	if tiles.has(key):
+		var tile = tiles[key]
+		tile.obstacle_type = type
+		update_tile_weight(Vector2i(x, y), true)
+
+func update_tile_weight(grid_pos: Vector2i, is_obstacle: bool):
+	if !astar.region.has_point(grid_pos): return
+	var weight = 50.0 if is_obstacle else 1.0
+	astar.set_point_weight_scale(grid_pos, weight)
+
+func get_nav_path(start_world_pos: Vector2, end_world_pos: Vector2) -> PackedVector2Array:
+	var start_grid = world_to_grid(start_world_pos)
+	var end_grid = world_to_grid(end_world_pos)
+
+	if !astar.region.has_point(start_grid) or !astar.region.has_point(end_grid):
+		return PackedVector2Array()
+
+	var path_points = astar.get_point_path(start_grid, end_grid)
+	var world_path = PackedVector2Array()
+
+	for point in path_points:
+		world_path.append(grid_to_world(point))
+
+	return world_path
+
+func get_spawn_points() -> Array[Vector2]:
+	var points: Array[Vector2] = []
+	for x in range(-9, 10):
+		points.append(grid_to_world(Vector2i(x, -5)))
+		points.append(grid_to_world(Vector2i(x, 5)))
+
+	for y in range(-4, 5):
+		points.append(grid_to_world(Vector2i(-9, y)))
+		points.append(grid_to_world(Vector2i(9, y)))
+
+	return points
+
+func world_to_grid(pos: Vector2) -> Vector2i:
+	return Vector2i(round(pos.x / TILE_SIZE), round(pos.y / TILE_SIZE))
+
+func grid_to_world(grid_pos: Vector2i) -> Vector2:
+	return Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE)
 
 func get_tile_key(x: int, y: int) -> String:
 	return "%d,%d" % [x, y]
 
+func _on_tile_clicked(tile):
+	if GameManager.is_wave_active: return
+
+func _update_tile_visuals(tile):
+	tile.update_visuals()
+
+# Unit Placement
 func place_unit(unit_key: String, x: int, y: int) -> bool:
 	var key = get_tile_key(x, y)
 	if !tiles.has(key): return false
 
 	var tile = tiles[key]
+
+	# Strict zone check for UNITS
+	if tile.zone != "core":
+		GameManager.spawn_floating_text(tile.position, "Can only place units in Core Zone!", Color.RED)
+		return false
+
 	if tile.unit != null or tile.occupied_by != Vector2i.ZERO: return false
 
 	var unit = UNIT_SCENE.instantiate()
@@ -62,6 +144,23 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 
 	_set_tiles_occupied(x, y, w, h, unit)
 	recalculate_buffs()
+	return true
+
+func can_place_unit(x: int, y: int, w: int, h: int, exclude_unit = null) -> bool:
+	for dx in range(w):
+		for dy in range(h):
+			var key = get_tile_key(x + dx, y + dy)
+			if !tiles.has(key): return false
+			var tile = tiles[key]
+
+			if tile.zone != "core": return false
+
+			if tile.unit and tile.unit != exclude_unit: return false
+			if tile.occupied_by != Vector2i.ZERO:
+				if exclude_unit and tile.occupied_by == exclude_unit.grid_pos:
+					continue
+				return false
+			if tile.obstacle_type != "": return false
 	return true
 
 func _set_tiles_occupied(x: int, y: int, w: int, h: int, unit):
@@ -84,50 +183,16 @@ func _clear_tiles_occupied(x: int, y: int, w: int, h: int):
 				t.unit = null
 				t.occupied_by = Vector2i.ZERO
 
-func can_place_unit(x: int, y: int, w: int, h: int, exclude_unit = null) -> bool:
-	for dx in range(w):
-		for dy in range(h):
-			var key = get_tile_key(x + dx, y + dy)
-			if !tiles.has(key): return false
-			var tile = tiles[key]
-			if tile.type == "core": return false
-			if tile.unit and tile.unit != exclude_unit: return false
-			if tile.occupied_by != Vector2i.ZERO:
-				if exclude_unit and tile.occupied_by == exclude_unit.grid_pos:
-					continue
-				return false
-	return true
+func handle_unit_drop(unit):
+	var m_pos = get_global_mouse_position()
+	var grid_pos = world_to_grid(m_pos)
 
-func _on_tile_clicked(tile):
-	if GameManager.is_wave_active: return
-	# print("Clicked tile: ", tile.x, ",", tile.y)
+	var key = get_tile_key(grid_pos.x, grid_pos.y)
+	if tiles.has(key):
+		var target_tile = tiles[key]
+		return try_move_unit(unit, tiles[get_tile_key(unit.grid_pos.x, unit.grid_pos.y)], target_tile)
 
-func remove_unit_from_grid(unit):
-	if unit == null: return
-	var w = unit.unit_data.size.x
-	var h = unit.unit_data.size.y
-	_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
-	unit.queue_free()
-	recalculate_buffs()
-
-# Drag and Drop Implementation
-func handle_bench_drop_at(target_tile, data):
-	var unit_key = data.key
-	var bench_index = data.index
-
-	# Try to place
-	if place_unit(unit_key, target_tile.x, target_tile.y):
-		# Success, remove from bench
-		if GameManager.main_game:
-			GameManager.main_game.remove_from_bench(bench_index)
-		else:
-			print("GridManager: GameManager.main_game is null during bench drop!")
-
-func handle_grid_move_at(target_tile, data):
-	var unit = data.unit
-	if !unit: return
-
-	try_move_unit(unit, tiles[get_tile_key(unit.grid_pos.x, unit.grid_pos.y)], target_tile)
+	return false
 
 func try_move_unit(unit, from_tile, to_tile) -> bool:
 	if unit == null or from_tile == null or to_tile == null: return false
@@ -138,12 +203,14 @@ func try_move_unit(unit, from_tile, to_tile) -> bool:
 	var w = unit.unit_data.size.x
 	var h = unit.unit_data.size.y
 
-	# Case 1: Empty Target
+	if to_tile.zone != "core":
+		GameManager.spawn_floating_text(to_tile.position, "Only in Core!", Color.RED)
+		return false
+
 	if can_place_unit(x, y, w, h, unit):
 		_move_unit_internal(unit, x, y)
 		return true
 
-	# Case 2: Interaction (Merge, Devour, Swap)
 	var target_unit = to_tile.unit
 	if target_unit == null and to_tile.occupied_by != Vector2i.ZERO:
 		var origin_key = get_tile_key(to_tile.occupied_by.x, to_tile.occupied_by.y)
@@ -197,25 +264,8 @@ func can_swap(unit_a, unit_b) -> bool:
 	var size_b = unit_b.unit_data.size
 
 	if size_a == size_b: return true
-	if !can_place_unit_custom(pos_b.x, pos_b.y, size_a.x, size_a.y, [unit_a, unit_b]): return false
-	if !can_place_unit_custom(pos_a.x, pos_a.y, size_b.x, size_b.y, [unit_a, unit_b]): return false
-	return true
-
-func can_place_unit_custom(x: int, y: int, w: int, h: int, ignore_units: Array) -> bool:
-	for dx in range(w):
-		for dy in range(h):
-			var key = get_tile_key(x + dx, y + dy)
-			if !tiles.has(key): return false
-			var tile = tiles[key]
-			if tile.type == "core": return false
-			if tile.unit and not (tile.unit in ignore_units): return false
-			if tile.occupied_by != Vector2i.ZERO:
-				var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
-				if tiles.has(origin_key):
-					var occupant = tiles[origin_key].unit
-					if occupant and not (occupant in ignore_units):
-						return false
-	return true
+	# If sizes differ, checking swap is harder, so return false for now to avoid bugs
+	return false
 
 func _perform_swap(unit_a, unit_b):
 	var pos_a = unit_a.grid_pos
@@ -287,59 +337,9 @@ func _apply_buff_to_neighbors(provider_unit, buff_type):
 			if target_unit and target_unit != provider_unit:
 				target_unit.apply_buff(buff_type)
 
-# Expansion Logic
-func toggle_expansion_mode():
-	expansion_mode = !expansion_mode
-	if expansion_mode:
-		spawn_expansion_ghosts()
-	else:
-		clear_ghosts()
-
-func spawn_expansion_ghosts():
-	clear_ghosts()
-
-	# Find all empty spots adjacent to existing tiles
-	var candidates = []
-	var visited = {}
-
-	for key in tiles:
-		var tile = tiles[key]
-		var neighbors = [
-			Vector2i(tile.x+1, tile.y), Vector2i(tile.x-1, tile.y),
-			Vector2i(tile.x, tile.y+1), Vector2i(tile.x, tile.y-1)
-		]
-
-		for n in neighbors:
-			var n_key = get_tile_key(n.x, n.y)
-			if !tiles.has(n_key) and !visited.has(n_key):
-				candidates.append(n)
-				visited[n_key] = true
-
-	for pos in candidates:
-		var ghost = Button.new() # Using Button as base for GhostTile logic, but better use our script
-		# Actually, we created GhostTile.gd which extends Button.
-		ghost.set_script(GHOST_TILE_SCRIPT)
-		ghost.setup(pos.x, pos.y)
-
-		ghost.position = Vector2(pos.x * TILE_SIZE, pos.y * TILE_SIZE) + Vector2(-30, -30)
-		# GhostTile.gd handles size/text
-
-		# Add a tooltip or text for cost
-		ghost.tooltip_text = "Expand Cost: %d" % expansion_cost
-
-		add_child(ghost)
-		ghost_tiles.append(ghost)
-
-func clear_ghosts():
-	for g in ghost_tiles:
-		g.queue_free()
-	ghost_tiles.clear()
-
-func on_ghost_clicked(x, y):
-	if GameManager.gold >= expansion_cost:
-		GameManager.spend_gold(expansion_cost)
-		create_tile(x, y)
-		expansion_cost += 10 # Increase cost
-		spawn_expansion_ghosts() # Refresh
-	else:
-		GameManager.spawn_floating_text(Vector2(x*TILE_SIZE, y*TILE_SIZE), "Need %d Gold" % expansion_cost, Color.RED)
+func handle_bench_drop_at(target_tile, data):
+	var unit_key = data.key
+	var bench_index = data.index
+	if place_unit(unit_key, target_tile.x, target_tile.y):
+		if GameManager.main_game:
+			GameManager.main_game.remove_from_bench(bench_index)

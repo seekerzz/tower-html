@@ -123,7 +123,8 @@ func _on_refresh_button_pressed():
 
 func _on_expand_button_pressed():
 	if GameManager.grid_manager:
-		GameManager.grid_manager.toggle_expansion_mode()
+		# GameManager.grid_manager.toggle_expansion_mode()
+		pass
 
 # Drag and Drop for Shop (Sell)
 # Delegated to SellZone.gd
