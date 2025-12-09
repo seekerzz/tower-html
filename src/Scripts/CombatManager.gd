@@ -162,12 +162,8 @@ func show_warning_indicator(angle: float, type_key: String):
 	var container = Node2D.new()
 	container.global_position = pos
 
-	# Rotate to point to center.
-	# Direction to center is angle + PI.
-	# Assuming the icon '⚠️' points "Up" (which is -PI/2 in Godot rotation relative to Right=0).
-	# We want the "Up" of the icon to align with (angle + PI).
-	# rotation - PI/2 = angle + PI  =>  rotation = angle + 3PI/2 = angle - PI/2
-	container.rotation = angle - PI/2
+	# Rotation removed to keep icons upright.
+	# container.rotation = angle - PI/2
 
 	var label = Label.new()
 	label.text = "⚠️"
