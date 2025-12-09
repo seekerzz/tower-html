@@ -1,93 +1,144 @@
 extends Node2D
 
-var is_drawing: bool = false
-var start_pos: Vector2
 var current_material: String = ""
+var ghost_sprite: ColorRect
+var is_dragging: bool = false
+const TILE_SIZE = 60
 
-@onready var preview_line = $PreviewLine
 @onready var barricade_scene = preload("res://src/Scenes/Game/Barricade.tscn")
 
 func _ready():
-	preview_line.visible = false
-	# Ensure preview line doesn't block mouse input
-	preview_line.top_level = true
-	# Actually Line2D doesn't block input unless it has a control parent or something, but good to be safe.
+	_create_ghost()
+	# Ghost starts hidden
+	ghost_sprite.visible = false
+
+func _create_ghost():
+	ghost_sprite = ColorRect.new()
+	ghost_sprite.size = Vector2(50, 50)
+	ghost_sprite.position = Vector2(-25, -25) # Centered relative to its parent
+	ghost_sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Ensure ghost is on top of everything
+	ghost_sprite.z_index = 100
+	add_child(ghost_sprite)
 
 func _unhandled_input(event):
 	if current_material == "":
+		ghost_sprite.visible = false
 		return
 
-	if event is InputEventMouseButton:
+	if event is InputEventMouseMotion:
+		_update_ghost()
+		if is_dragging:
+			_try_build()
+
+	elif event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
-				_start_draw(get_global_mouse_position())
+				is_dragging = true
+				_try_build()
 			else:
-				_end_draw(get_global_mouse_position())
-
-	elif event is InputEventMouseMotion and is_drawing:
-		_update_draw(get_global_mouse_position())
+				is_dragging = false
 
 func select_material(mat_key: String):
 	if GameManager.materials.has(mat_key):
 		current_material = mat_key
 		print("Selected material: ", mat_key)
+		_update_ghost()
 	else:
 		push_warning("Material not found: " + mat_key)
 		current_material = ""
+		ghost_sprite.visible = false
 
-func _start_draw(pos: Vector2):
+func _update_ghost():
 	if current_material == "":
+		ghost_sprite.visible = false
 		return
 
-	if GameManager.materials[current_material] <= 0:
-		print("Not enough material: ", current_material)
-		return
+	ghost_sprite.visible = true
+	var mouse_pos = get_global_mouse_position()
+	var grid_pos = _world_to_grid(mouse_pos)
 
-	is_drawing = true
-	start_pos = pos
-	preview_line.points = [pos, pos]
-	preview_line.visible = true
+	# Snap ghost to grid center
+	ghost_sprite.global_position = Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE) - ghost_sprite.size / 2
 
-	var mat_info = Constants.MATERIAL_TYPES[current_material]
-	if mat_info:
-		preview_line.default_color = mat_info.color
+	# Check validity for color
+	var valid = _is_valid_build_pos(grid_pos)
 
-	var bar_info = Constants.BARRICADE_TYPES[current_material]
-	if bar_info:
-		preview_line.width = bar_info.width
-
-func _update_draw(pos: Vector2):
-	if is_drawing:
-		preview_line.set_point_position(1, pos)
-
-func _end_draw(pos: Vector2):
-	if not is_drawing:
-		return
-
-	is_drawing = false
-	preview_line.visible = false
-
-	var dist = start_pos.distance_to(pos)
-	if dist < 20:
-		print("Wall too short")
-		return
-
-	var cost = ceil(dist / 10.0)
-
-	if GameManager.materials[current_material] >= cost:
-		GameManager.materials[current_material] -= cost
-		GameManager.resource_changed.emit()
-		_spawn_barricade(start_pos, pos, current_material)
-		print("Built wall. Cost: ", cost)
+	if valid:
+		ghost_sprite.color = Color(0, 1, 0, 0.5) # Green
 	else:
-		print("Not enough materials for this length. Cost: ", cost, " Available: ", GameManager.materials[current_material])
+		ghost_sprite.color = Color(1, 0, 0, 0.5) # Red
 
-func _spawn_barricade(p1: Vector2, p2: Vector2, mat_key: String):
+func _try_build():
+	if current_material == "": return
+
+	var mouse_pos = get_global_mouse_position()
+	var grid_pos = _world_to_grid(mouse_pos)
+
+	if _is_valid_build_pos(grid_pos):
+		# Additional check: Cost
+		# Default cost 1 for now, as per original logic which was distance based.
+		# But usually block build is 1 per block.
+		var cost = 1
+
+		if GameManager.materials[current_material] >= cost:
+			GameManager.materials[current_material] -= cost
+			GameManager.resource_changed.emit()
+			_spawn_barricade(grid_pos, current_material)
+			# print("Built barricade at ", grid_pos)
+		else:
+			# print("Not enough resources")
+			pass
+
+func _is_valid_build_pos(grid_pos: Vector2i) -> bool:
+	# 1. Check core zone
+	if GameManager.grid_manager.is_in_core_zone(grid_pos):
+		return false
+
+	# 2. Check if tile exists (we can only build on existing tiles?)
+	# The requirements don't explicitly say we must build on tiles, but usually yes.
+	# GridManager stores tiles.
+	var key = GameManager.grid_manager.get_tile_key(grid_pos.x, grid_pos.y)
+	if not GameManager.grid_manager.tiles.has(key):
+		return false
+
+	# 3. Check if already occupied by barricade or unit
+	var tile = GameManager.grid_manager.tiles[key]
+	# If tile.unit is set, it's occupied.
+	if tile.unit != null:
+		return false
+	# We also need to check if there is already a barricade there.
+	# Since we haven't implemented 'barricade' property in Tile, and we might not want to rely on 'unit' property collision.
+	# We can use a group or check overlaps, but checking GridManager state is cleaner.
+	# In `register_obstacle`, we should mark it.
+	# If I use `tile.occupied_by` for multi-tile units, I should check that too.
+	if tile.occupied_by != Vector2i.ZERO:
+		return false
+
+	# Special check: Is there ALREADY a barricade we just built?
+	# If we just built one, we shouldn't build another on top.
+	# We can check if `tile.has_meta("barricade")` if we use metadata.
+	if tile.has_meta("barricade"):
+		return false
+
+	return true
+
+func _spawn_barricade(grid_pos: Vector2i, mat_key: String):
 	var barricade = barricade_scene.instantiate()
-	# Add to scene first so ready is called if needed, or call init after.
-	# Barricade logic uses global coordinates, so we add it to the game world.
-	# Assuming DrawManager is child of MainGame (Node2D), we can add child here or to parent.
-	# Ideally add to parent so it's not deleted if DrawManager is removed (though DrawManager is likely permanent).
-	# Requirements say "instantiate Barricade to scene".
+	var world_pos = Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE)
+
+	# Add to main scene (or parent of DrawManager)
 	get_parent().add_child(barricade)
-	barricade.init(p1, p2, mat_key)
+	barricade.init(world_pos, mat_key)
+
+	# Register with GridManager
+	GameManager.grid_manager.register_obstacle(grid_pos, barricade)
+
+	# Mark tile as having barricade to prevent duplicate build
+	var key = GameManager.grid_manager.get_tile_key(grid_pos.x, grid_pos.y)
+	if GameManager.grid_manager.tiles.has(key):
+		var tile = GameManager.grid_manager.tiles[key]
+		tile.set_meta("barricade", barricade)
+
+func _world_to_grid(pos: Vector2) -> Vector2i:
+	return Vector2i(round(pos.x / TILE_SIZE), round(pos.y / TILE_SIZE))

@@ -6,28 +6,33 @@ var type: String
 var props: Dictionary
 
 @onready var collision_shape = $CollisionShape2D
-@onready var line_2d = $Line2D
 
-func init(p1: Vector2, p2: Vector2, type_key: String):
+# Changed init to accept grid position or world position instead of line points
+func init(pos: Vector2, type_key: String):
 	type = type_key
+	position = pos
+
 	if Constants.BARRICADE_TYPES.has(type_key):
 		props = Constants.BARRICADE_TYPES[type_key]
 		max_hp = props.get("hp", 100)
 		hp = max_hp
 
-		# Setup Visuals
-		line_2d.points = [p1, p2]
-		line_2d.width = props.get("width", 5)
-		line_2d.default_color = props.get("color", Color.WHITE)
+		# Setup Visuals - Block style
+		var color = props.get("color", Color.WHITE)
+		var size = Vector2(50, 50) # Slightly smaller than 60x60 tile
 
-		# Setup Physics
-		var segment = SegmentShape2D.new()
-		segment.a = p1
-		segment.b = p2
-		collision_shape.shape = segment
+		# Create a visual representation (ColorRect)
+		var vis = ColorRect.new()
+		vis.size = size
+		vis.position = -size / 2 # Center it
+		vis.color = color
+		add_child(vis)
 
-		# Set collision layer/mask if needed (default is 1)
-		# Usually walls are on a specific layer, but for now default is fine.
+		# Setup Physics - Block style
+		var rect_shape = RectangleShape2D.new()
+		rect_shape.size = size
+		collision_shape.shape = rect_shape
+
 	else:
 		push_error("Invalid barricade type: " + type_key)
 

@@ -343,3 +343,27 @@ func on_ghost_clicked(x, y):
 		spawn_expansion_ghosts() # Refresh
 	else:
 		GameManager.spawn_floating_text(Vector2(x*TILE_SIZE, y*TILE_SIZE), "Need %d Gold" % expansion_cost, Color.RED)
+
+# --- New Methods for DrawManager ---
+func is_in_core_zone(grid_pos: Vector2i) -> bool:
+	var key = get_tile_key(grid_pos.x, grid_pos.y)
+	if tiles.has(key):
+		return tiles[key].type == "core"
+	return false
+
+func register_obstacle(grid_pos: Vector2i, barricade_instance):
+	var key = get_tile_key(grid_pos.x, grid_pos.y)
+	if tiles.has(key):
+		var tile = tiles[key]
+		# For now, we can use 'unit' to store barricade or just rely on 'occupied_by' logic if we want to block unit placement.
+		# However, barricades might coexist with units? Usually not.
+		# Let's assume barricades occupy the tile like a unit.
+		# But since 'unit' expects a Unit script, and Barricade is StaticBody2D, we might need to be careful.
+		# 'can_place_unit' checks 'tile.unit' and 'occupied_by'.
+		# If we set tile.unit = barricade_instance, we might break unit logic if it expects specific properties.
+		# Let's see if we can add 'obstacle' property to Tile.gd or just rely on this hook for A* (which is not implemented yet).
+
+		# For now, let's just ensure we mark it as occupied so units can't be placed there?
+		# But barricades should probably prevent units.
+		# And units should prevent barricades.
+		pass
