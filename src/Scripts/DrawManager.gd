@@ -146,4 +146,10 @@ func _spawn_barricade(grid_pos: Vector2i, mat_key: String):
 
 	barricade.init(grid_pos, mat_key)
 
-	GameManager.grid_manager.register_obstacle(grid_pos, barricade)
+	var type = "trap"
+	if Constants.BARRICADE_TYPES.has(mat_key):
+		var b_type = Constants.BARRICADE_TYPES[mat_key].type
+		if b_type == "block" or b_type == "freeze":
+			type = "wall"
+
+	GameManager.grid_manager.register_obstacle(grid_pos, type, barricade)
