@@ -7,6 +7,7 @@ var life: float = 2.0
 var type: String = "dot"
 var hit_list = []
 var source_unit = null
+var effects: Dictionary = {}
 
 # Advanced Stats
 var pierce: int = 0
@@ -34,6 +35,9 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 
 	if stats.has("source"):
 		source_unit = stats.source
+
+	if stats.has("effects"):
+		effects = stats.effects.duplicate()
 
 	pierce = stats.get("pierce", 0)
 	bounce = stats.get("bounce", 0)
@@ -155,6 +159,13 @@ func _on_area_2d_area_entered(area):
 
 		# Apply Damage
 		area.take_damage(damage, source_unit)
+
+		# Apply Status Effects
+		if effects.get("burn", 0.0) > 0.0:
+			area.effects["burn"] = max(area.effects["burn"], effects["burn"])
+		if effects.get("poison", 0.0) > 0.0:
+			area.effects["poison"] = max(area.effects["poison"], effects["poison"])
+
 		hit_list.append(area)
 
 		# 1. Bounce/Chain Logic
