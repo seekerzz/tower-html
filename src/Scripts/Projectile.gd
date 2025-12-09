@@ -69,8 +69,11 @@ func fade_out():
 	var tween = create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(self, "modulate:a", 0.0, 0.2)
-	# Slight expansion for explosion effect
-	tween.tween_property(self, "scale", scale * 1.5, 0.2)
+
+	if type != "swarm_wave":
+		# Slight expansion for explosion effect
+		tween.tween_property(self, "scale", scale * 1.5, 0.2)
+
 	tween.chain().tween_callback(queue_free)
 
 func _process(delta):
@@ -174,7 +177,7 @@ func _on_area_2d_area_entered(area):
 				pierce -= 1
 			else:
 				# Destroying - check for split
-				if split > 0:
+				if split > 0 and type != "swarm_wave":
 					perform_split()
 				fade_out()
 
