@@ -22,9 +22,23 @@ func setup(grid_x: int, grid_y: int, tile_type: String = "normal"):
 	add_child(drop_target)
 	drop_target.setup(self)
 
+func set_type(new_type: String):
+	type = new_type
+	update_visuals()
+
 func update_visuals():
 	$ColorRect.color = Constants.COLORS.grid
-	if type == "core":
+
+	if type == "core_unlocked":
+		$ColorRect.color = Color("#4a3045") # Unlocked color
+		$Label.text = ""
+	elif type == "core_locked":
+		$ColorRect.color = Color("#2a2025") # Locked color
+		$Label.text = "🔒"
+	elif type == "wilderness":
+		$ColorRect.color = Color("#1a1a2e") # Wilderness color
+		$Label.text = ""
+	elif type == "core":
 		$ColorRect.color = Color("#4a3045")
 		$Label.text = "Core"
 	else:

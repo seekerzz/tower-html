@@ -17,7 +17,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 Constants="*res://src/Scripts/Constants.gd"
-GameManager="*res://src/Autoload/GameManager.gd"
+GameManager="*res://src/Scripts/Autoload/GameManager.gd"
 
 [display]
 

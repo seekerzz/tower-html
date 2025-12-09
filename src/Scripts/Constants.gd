@@ -7,6 +7,15 @@ const MAP_WIDTH = 19
 const MAP_HEIGHT = 11
 const CORE_ZONE_RADIUS = 2
 
+const BARRICADE_CATEGORY = {
+	"wood": "wall",
+	"stone": "wall",
+	"snow": "wall",
+	"mucus": "trap",
+	"poison": "trap",
+	"fang": "trap"
+}
+
 const COLORS = {
 	"bg": Color("#1a1a2e"),
 	"grid": Color("#303045"),

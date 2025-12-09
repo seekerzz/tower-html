@@ -9,6 +9,7 @@ const TILE_SIZE = 60
 var tiles: Dictionary = {} # Key: "x,y", Value: Tile Instance
 var obstacles: Dictionary = {} # Key: Vector2i, Value: Obstacle
 var obstacle_map: Dictionary = {} # Key: Node, Value: Vector2i (Grid Pos)
+var unlocked_core_tiles: Dictionary = {} # Key: "x,y", Value: bool
 var ghost_tiles: Array = []
 var expansion_mode: bool = false
 var expansion_cost: int = 50 # Base cost
@@ -49,16 +50,47 @@ func create_initial_grid():
 	var half_w = Constants.MAP_WIDTH / 2
 	var half_h = Constants.MAP_HEIGHT / 2
 
+	# Initial cross shape
+	var initial_unlocked = [
+		Vector2i(0, 0), Vector2i(0, 1), Vector2i(0, -1),
+		Vector2i(1, 0), Vector2i(-1, 0)
+	]
+
+	for pos in initial_unlocked:
+		unlocked_core_tiles[get_tile_key(pos.x, pos.y)] = true
+
 	for x in range(-half_w, half_w + 1):
 		for y in range(-half_h, half_h + 1):
 			var type = "wilderness"
-			# Check if in core zone
+
 			if abs(x) <= Constants.CORE_ZONE_RADIUS and abs(y) <= Constants.CORE_ZONE_RADIUS:
-				type = "core_zone"
-				if x == 0 and y == 0:
-					type = "core" # The absolute center
+				var key = get_tile_key(x, y)
+				if unlocked_core_tiles.has(key):
+					type = "core_unlocked"
+				else:
+					type = "core_locked"
 
 			create_tile(x, y, type)
+
+func unlock_core_tile(x: int, y: int):
+	var key = get_tile_key(x, y)
+	if unlocked_core_tiles.has(key): return # Already unlocked
+
+	# Logic to deduct cost should be here or handled by caller?
+	# The task says "deduct cost and update state".
+	# Assuming GameManager handles the economy, I might need to access it.
+	# For now, I'll just focus on state update as per strict instruction "interface".
+	# If cost is needed, I'll check if GameManager has money.
+
+	if GameManager.gold >= expansion_cost:
+		GameManager.gold -= expansion_cost
+		unlocked_core_tiles[key] = true
+		if tiles.has(key):
+			tiles[key].set_type("core_unlocked")
+
+		# Increase cost for next expansion?
+		expansion_cost += 10
+		grid_updated.emit()
 
 func create_tile(x: int, y: int, type: String = "normal"):
 	var key = get_tile_key(x, y)
