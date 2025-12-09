@@ -15,9 +15,15 @@ var attack_timer: float = 0.0
 var attacking_wall: Node = null
 var temp_speed_mod: float = 1.0
 
+# Stiffness timer for attack pause
+var stiffness_timer: float = 0.0
+
 var bypass_dest = null
 var bypass_wall = null
 var wobble_scale = Vector2.ONE
+
+# New variable to track attacked barriers
+var hit_barriers: Array = []
 
 func _ready():
 	raycast = RayCast2D.new()
@@ -113,6 +119,12 @@ func _process(delta):
 	if slow_timer > 0:
 		slow_timer -= delta
 
+	# Handle stiffness timer (pause after attack)
+	if stiffness_timer > 0:
+		stiffness_timer -= delta
+		if stiffness_timer > 0:
+			return # Skip movement while stiff
+
 	temp_speed_mod = 1.0
 	check_traps(delta)
 
@@ -170,6 +182,15 @@ func move_towards_core(delta):
 				var tangent = get_slide_tangent(collider, direction)
 				direction = tangent
 			elif !is_bypassing:
+				# ATTACK FIRST LOGIC
+				var wall_id = collider.get_instance_id()
+				if not wall_id in hit_barriers:
+					# Attack once, record it, and set stiffness timer
+					collider.take_damage(enemy_data.dmg)
+					hit_barriers.append(wall_id)
+					stiffness_timer = 0.5 # Pause for 0.5 seconds
+					return
+
 				# Check if we should bypass
 				var bypass_point = get_bypass_point(collider)
 				if bypass_point != null:
@@ -208,11 +229,11 @@ func get_bypass_point(wall):
 
 	var core_pos = GameManager.grid_manager.global_position
 
-	# Choose closer endpoint to Core
-	var d1 = p1.distance_squared_to(core_pos)
-	var d2 = p2.distance_squared_to(core_pos)
+	# Calculate path costs: dist(enemy, end) + dist(end, core)
+	var cost1 = global_position.distance_to(p1) + p1.distance_to(core_pos)
+	var cost2 = global_position.distance_to(p2) + p2.distance_to(core_pos)
 
-	var target = p1 if d1 < d2 else p2
+	var target = p1 if cost1 < cost2 else p2
 
 	# Extend target slightly
 	var center = (p1 + p2) / 2
