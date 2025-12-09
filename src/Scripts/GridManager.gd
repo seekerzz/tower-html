@@ -73,25 +73,6 @@ func create_initial_grid():
 
 			create_tile(x, y, type)
 
-func unlock_core_tile(x: int, y: int):
-	var key = get_tile_key(x, y)
-	if unlocked_core_tiles.has(key): return # Already unlocked
-
-	# Logic to deduct cost should be here or handled by caller?
-	# The task says "deduct cost and update state".
-	# Assuming GameManager handles the economy, I might need to access it.
-	# For now, I'll just focus on state update as per strict instruction "interface".
-	# If cost is needed, I'll check if GameManager has money.
-
-	if GameManager.gold >= expansion_cost:
-		GameManager.gold -= expansion_cost
-		unlocked_core_tiles[key] = true
-		if tiles.has(key):
-			tiles[key].set_type("core_unlocked")
-
-		# Increase cost for next expansion?
-		expansion_cost += 10
-		grid_updated.emit()
 
 func create_tile(x: int, y: int, type: String = "normal"):
 	var key = get_tile_key(x, y)
@@ -250,7 +231,7 @@ func _clear_tiles_occupied(x: int, y: int, w: int, h: int):
 func is_in_core_zone(pos: Vector2i) -> bool:
 	var key = get_tile_key(pos.x, pos.y)
 	if tiles.has(key):
-		return tiles[key].type == "core" or tiles[key].type == "core_zone"
+		return tiles[key].type == "core" or tiles[key].type == "core_zone" or tiles[key].type == "core_unlocked"
 	return false
 
 func is_core_locked(pos: Vector2i) -> bool:
@@ -258,6 +239,7 @@ func is_core_locked(pos: Vector2i) -> bool:
 	if not tiles.has(key): return false
 
 	var tile = tiles[key]
+	if tile.type == "core_locked": return true
 	if tile.type != "wilderness": return false
 
 	# Check adjacency to core/core_zone
@@ -272,7 +254,7 @@ func is_core_locked(pos: Vector2i) -> bool:
 		var n_key = get_tile_key(n_pos.x, n_pos.y)
 		if tiles.has(n_key):
 			var n_tile = tiles[n_key]
-			if n_tile.type == "core" or n_tile.type == "core_zone":
+			if n_tile.type == "core" or n_tile.type == "core_zone" or n_tile.type == "core_unlocked":
 				return true
 
 	return false
@@ -285,9 +267,13 @@ func unlock_core_tile(pos: Vector2i):
 		return
 
 	var key = get_tile_key(pos.x, pos.y)
-	var tile = tiles[key]
-	tile.type = "core_zone"
-	tile.update_visuals()
+	unlocked_core_tiles[key] = true
+
+	if tiles.has(key):
+		tiles[key].set_type("core_unlocked")
+
+	expansion_cost += 10
+	grid_updated.emit()
 	print("Unlocked tile at ", pos)
 
 func can_place_unit(x: int, y: int, w: int, h: int, exclude_unit = null) -> bool:
