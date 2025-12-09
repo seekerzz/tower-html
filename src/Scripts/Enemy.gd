@@ -9,6 +9,7 @@ var slow_timer: float = 0.0
 var effects = { "burn": 0.0, "poison": 0.0 }
 
 var hit_flash_timer: float = 0.0
+var burn_tick_timer: float = 0.0
 
 var raycast: RayCast2D
 var attack_timer: float = 0.0
@@ -20,6 +21,7 @@ var bypass_wall = null
 var wobble_scale = Vector2.ONE
 
 func _ready():
+	add_to_group("enemies")
 	raycast = RayCast2D.new()
 	raycast.enabled = true
 	raycast.collision_mask = 1 # StaticBody default layer
@@ -86,6 +88,13 @@ func _process(delta):
 	if effects.burn > 0:
 		hp -= 2.0 * delta
 		effects.burn -= delta
+
+		# Burn Contagion
+		burn_tick_timer -= delta
+		if burn_tick_timer <= 0:
+			burn_tick_timer = 0.5
+			spread_burn()
+
 		if effects.burn <= 0: effects.burn = 0
 		if hp <= 0: die()
 
@@ -119,19 +128,33 @@ func _process(delta):
 	if attacking_wall and is_instance_valid(attacking_wall):
 		attack_wall_logic(delta)
 	else:
-		attacking_wall = null # Reset if invalid
+		if attacking_wall != null:
+			attacking_wall = null # Reset if invalid or destroyed
+			_play_state_particles(false)
 		move_towards_core(delta)
+
+func spread_burn():
+	var areas = get_overlapping_areas()
+	for area in areas:
+		if area != self and area.is_in_group("enemies"):
+			# Apply burn to other enemy
+			if "effects" in area:
+				area.effects.burn = 5.0 # Reset/Set burn duration
 
 func check_traps(delta):
 	var bodies = get_overlapping_bodies()
 	for b in bodies:
 		if b.get("type") and Constants.BARRICADE_TYPES.has(b.type):
-			var b_type = Constants.BARRICADE_TYPES[b.type].type
+			var props = Constants.BARRICADE_TYPES[b.type]
+			var b_type = props.type
+
 			if b_type == "slow":
 				temp_speed_mod = 0.5
 			elif b_type == "poison":
 				effects.poison = 1.0
-				# take_damage(max_hp * 0.05 * delta) # Now handled in _process
+			elif b_type == "reflect":
+				# Fang trap reflects damage or deals damage
+				take_damage(props.strength * delta)
 
 func attack_wall_logic(delta):
 	attack_timer -= delta
@@ -162,8 +185,16 @@ func move_towards_core(delta):
 	raycast.global_rotation = direction.angle()
 	raycast.force_raycast_update()
 
+	# Trap Ignore Logic
 	if raycast.is_colliding():
 		var collider = raycast.get_collider()
+		if is_trap(collider):
+			raycast.add_exception(collider)
+			raycast.force_raycast_update()
+
+	if raycast.is_colliding():
+		var collider = raycast.get_collider()
+		# Only block if it is a blocking wall (not trap)
 		if is_blocking_wall(collider):
 			if is_bypassing and collider == bypass_wall:
 				# Sliding logic
@@ -178,14 +209,15 @@ func move_towards_core(delta):
 					# Don't move this frame, wait for next frame to adjust direction
 					return
 				else:
-					attacking_wall = collider
-					attack_timer = 0.5
+					start_attacking(collider)
 					return
 			else:
 				# Hit another wall
-				attacking_wall = collider
-				attack_timer = 0.5
+				start_attacking(collider)
 				return
+
+	# Clear exceptions for next frame
+	raycast.clear_exceptions()
 
 	var current_speed = speed * temp_speed_mod
 	if slow_timer > 0: current_speed *= 0.5
@@ -230,10 +262,45 @@ func get_slide_tangent(wall, desired_dir):
 		wall_dir = -wall_dir
 	return wall_dir
 
+func start_attacking(wall):
+	if attacking_wall != wall:
+		attacking_wall = wall
+		attack_timer = 0.5
+		_play_state_particles(true)
+
+func _play_state_particles(is_attacking: bool):
+	var particle = CPUParticles2D.new()
+	add_child(particle)
+	particle.emitting = true
+	particle.one_shot = true
+	particle.explosiveness = 1.0
+	particle.lifetime = 0.5
+	particle.spread = 180
+	particle.gravity = Vector2(0, 0)
+	particle.initial_velocity_min = 20
+	particle.initial_velocity_max = 50
+	particle.scale_amount_min = 2
+	particle.scale_amount_max = 4
+
+	if is_attacking:
+		particle.color = Color.RED
+	else:
+		particle.color = Color.WHITE
+
+	particle.finished.connect(particle.queue_free)
+
 func is_blocking_wall(node):
 	if node.get("type") and Constants.BARRICADE_TYPES.has(node.type):
 		var b_type = Constants.BARRICADE_TYPES[node.type].type
+		# Explicitly check for wall types that block
 		return b_type == "block" or b_type == "freeze"
+	return false
+
+func is_trap(node):
+	if node.get("type") and Constants.BARRICADE_TYPES.has(node.type):
+		var b_type = Constants.BARRICADE_TYPES[node.type].type
+		# Traps: slow (mucus), poison, reflect (fang)
+		return b_type == "slow" or b_type == "poison" or b_type == "reflect"
 	return false
 
 func take_damage(amount: float, source_unit = null):
