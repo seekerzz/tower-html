@@ -34,6 +34,7 @@ func _init_astar():
 		Constants.MAP_HEIGHT
 	)
 	astar_grid.cell_size = Vector2(TILE_SIZE, TILE_SIZE)
+	astar_grid.offset = Vector2(TILE_SIZE, TILE_SIZE) / 2.0
 	astar_grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER # Usually tower defense is Manhattan distance
 	astar_grid.default_compute_heuristic = AStarGrid2D.HEURISTIC_MANHATTAN
 	astar_grid.default_estimate_heuristic = AStarGrid2D.HEURISTIC_MANHATTAN
@@ -108,16 +109,20 @@ func _place_static_obstacle(tile):
 	# Position at the center of the tile
 	obstacle.position = tile.position
 
-	register_obstacle(Vector2i(tile.x, tile.y), obstacle)
+	register_obstacle(Vector2i(tile.x, tile.y), "wall", obstacle)
 
-func register_obstacle(grid_pos: Vector2i, node: Node):
+func register_obstacle(grid_pos: Vector2i, type_key: String, node: Node = null):
 	if astar_grid.is_in_boundsv(grid_pos):
-		astar_grid.set_point_weight_scale(grid_pos, 50.0)
+		if type_key == "wall":
+			astar_grid.set_point_weight_scale(grid_pos, 50.0)
+		elif type_key == "trap":
+			astar_grid.set_point_weight_scale(grid_pos, 1.0)
 
-	# Map the node to the grid position for later removal
-	obstacle_map[node] = grid_pos
-	# Add to fast lookup for placement checks
-	obstacles[grid_pos] = node
+	if node:
+		# Map the node to the grid position for later removal
+		obstacle_map[node] = grid_pos
+		# Add to fast lookup for placement checks
+		obstacles[grid_pos] = node
 
 func remove_obstacle(node: Node):
 	if not obstacle_map.has(node):
@@ -125,18 +130,21 @@ func remove_obstacle(node: Node):
 
 	var grid_pos = obstacle_map[node]
 	if astar_grid.is_in_boundsv(grid_pos):
+		# Restore default weight
 		astar_grid.set_point_weight_scale(grid_pos, 1.0)
 
 	obstacles.erase(grid_pos)
 	obstacle_map.erase(node)
 
 func get_nav_path(start_pos: Vector2, end_pos: Vector2) -> PackedVector2Array:
+	# Convert world coords to grid coords
 	var start_grid = Vector2i(round(start_pos.x / TILE_SIZE), round(start_pos.y / TILE_SIZE))
 	var end_grid = Vector2i(round(end_pos.x / TILE_SIZE), round(end_pos.y / TILE_SIZE))
 
 	if not astar_grid.is_in_boundsv(start_grid) or not astar_grid.is_in_boundsv(end_grid):
 		return PackedVector2Array()
 
+	# Returns world coordinates thanks to cell_size in AStarGrid2D
 	return astar_grid.get_point_path(start_grid, end_grid)
 
 func get_spawn_points() -> Array[Vector2]:
