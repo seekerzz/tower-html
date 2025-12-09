@@ -73,25 +73,6 @@ func create_initial_grid():
 
 			create_tile(x, y, type)
 
-func unlock_core_tile(x: int, y: int):
-	var key = get_tile_key(x, y)
-	if unlocked_core_tiles.has(key): return # Already unlocked
-
-	# Logic to deduct cost should be here or handled by caller?
-	# The task says "deduct cost and update state".
-	# Assuming GameManager handles the economy, I might need to access it.
-	# For now, I'll just focus on state update as per strict instruction "interface".
-	# If cost is needed, I'll check if GameManager has money.
-
-	if GameManager.gold >= expansion_cost:
-		GameManager.gold -= expansion_cost
-		unlocked_core_tiles[key] = true
-		if tiles.has(key):
-			tiles[key].set_type("core_unlocked")
-
-		# Increase cost for next expansion?
-		expansion_cost += 10
-		grid_updated.emit()
 
 func create_tile(x: int, y: int, type: String = "normal"):
 	var key = get_tile_key(x, y)
@@ -285,9 +266,14 @@ func unlock_core_tile(pos: Vector2i):
 		return
 
 	var key = get_tile_key(pos.x, pos.y)
+	unlocked_core_tiles[key] = true
+
 	var tile = tiles[key]
 	tile.type = "core_zone"
 	tile.update_visuals()
+
+	expansion_cost += 10
+	grid_updated.emit()
 	print("Unlocked tile at ", pos)
 
 func can_place_unit(x: int, y: int, w: int, h: int, exclude_unit = null) -> bool:
