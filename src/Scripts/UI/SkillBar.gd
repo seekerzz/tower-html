@@ -5,6 +5,13 @@ extends Control
 var skill_units = []
 
 func _ready():
+	if container:
+		container.add_theme_constant_override("separation", 10)
+		var parent = container.get_parent()
+		if parent is PanelContainer:
+			var style = StyleBoxEmpty.new()
+			parent.add_theme_stylebox_override("panel", style)
+
 	# Wait for grid to be ready
 	await get_tree().create_timer(0.1).timeout
 
