@@ -6,6 +6,7 @@ const GHOST_TILE_SCRIPT = preload("res://src/Scripts/UI/GhostTile.gd")
 const TILE_SIZE = 60
 
 var tiles: Dictionary = {} # Key: "x,y", Value: Tile Instance
+var obstacles: Dictionary = {} # Key: Vector2i, Value: Obstacle
 var ghost_tiles: Array = []
 var expansion_mode: bool = false
 var expansion_cost: int = 50 # Base cost
@@ -90,14 +91,27 @@ func _clear_tiles_occupied(x: int, y: int, w: int, h: int):
 				t.unit = null
 				t.occupied_by = Vector2i.ZERO
 
+func is_in_core_zone(pos: Vector2i) -> bool:
+	var key = get_tile_key(pos.x, pos.y)
+	if tiles.has(key):
+		return tiles[key].type == "core"
+	return false
+
+func register_obstacle(pos: Vector2i, obj):
+	obstacles[pos] = obj
+	# Here we would update AStar if implemented
+	pass
+
 func can_place_unit(x: int, y: int, w: int, h: int, exclude_unit = null) -> bool:
 	for dx in range(w):
 		for dy in range(h):
+			var pos = Vector2i(x + dx, y + dy)
 			var key = get_tile_key(x + dx, y + dy)
 			if !tiles.has(key): return false
 			var tile = tiles[key]
 			if tile.type == "core": return false
 			if tile.unit and tile.unit != exclude_unit: return false
+			if obstacles.has(pos): return false
 			if tile.occupied_by != Vector2i.ZERO:
 				if exclude_unit and tile.occupied_by == exclude_unit.grid_pos:
 					continue
