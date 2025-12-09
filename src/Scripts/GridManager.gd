@@ -77,14 +77,7 @@ func unlock_core_tile(x: int, y: int):
 	var key = get_tile_key(x, y)
 	if unlocked_core_tiles.has(key): return # Already unlocked
 
-	# Logic to deduct cost should be here or handled by caller?
-	# The task says "deduct cost and update state".
-	# Assuming GameManager handles the economy, I might need to access it.
-	# For now, I'll just focus on state update as per strict instruction "interface".
-	# If cost is needed, I'll check if GameManager has money.
-
-	if GameManager.gold >= expansion_cost:
-		GameManager.gold -= expansion_cost
+	if GameManager.spend_gold(expansion_cost):
 		unlocked_core_tiles[key] = true
 		if tiles.has(key):
 			tiles[key].set_type("core_unlocked")
@@ -277,7 +270,7 @@ func is_core_locked(pos: Vector2i) -> bool:
 
 	return false
 
-func unlock_core_tile(pos: Vector2i):
+func unlock_core_tile_v2(pos: Vector2i):
 	if not is_core_locked(pos): return
 
 	if not GameManager.spend_gold(expansion_cost):

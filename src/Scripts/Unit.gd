@@ -64,6 +64,7 @@ func _ensure_visual_hierarchy():
 		for child_name in visual_elements:
 			var child = get_node_or_null(child_name)
 			if child:
+				child.owner = null
 				remove_child(child)
 				visual_holder.add_child(child)
 
