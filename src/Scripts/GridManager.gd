@@ -2,20 +2,42 @@ extends Node2D
 
 const TILE_SCENE = preload("res://src/Scenes/Game/Tile.tscn")
 const UNIT_SCENE = preload("res://src/Scenes/Game/Unit.tscn")
+var BARRICADE_SCENE = null
 const GHOST_TILE_SCRIPT = preload("res://src/Scripts/UI/GhostTile.gd")
 const TILE_SIZE = 60
 
 var tiles: Dictionary = {} # Key: "x,y", Value: Tile Instance
 var obstacles: Dictionary = {} # Key: Vector2i, Value: Obstacle
+var obstacle_map: Dictionary = {} # Key: Node, Value: Vector2i (Grid Pos)
 var ghost_tiles: Array = []
 var expansion_mode: bool = false
 var expansion_cost: int = 50 # Base cost
+
+var astar_grid: AStarGrid2D
 
 signal grid_updated
 
 func _ready():
 	GameManager.grid_manager = self
+	if ResourceLoader.exists("res://src/Scenes/Game/Barricade.tscn"):
+		BARRICADE_SCENE = load("res://src/Scenes/Game/Barricade.tscn")
+	_init_astar()
 	create_initial_grid()
+	_generate_wild_obstacles()
+
+func _init_astar():
+	astar_grid = AStarGrid2D.new()
+	astar_grid.region = Rect2i(
+		-Constants.MAP_WIDTH / 2,
+		-Constants.MAP_HEIGHT / 2,
+		Constants.MAP_WIDTH,
+		Constants.MAP_HEIGHT
+	)
+	astar_grid.cell_size = Vector2(TILE_SIZE, TILE_SIZE)
+	astar_grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER # Usually tower defense is Manhattan distance
+	astar_grid.default_compute_heuristic = AStarGrid2D.HEURISTIC_MANHATTAN
+	astar_grid.default_estimate_heuristic = AStarGrid2D.HEURISTIC_MANHATTAN
+	astar_grid.update()
 
 	if GameManager.has_signal("wave_started"):
 		GameManager.wave_started.connect(func():
@@ -24,11 +46,19 @@ func _ready():
 		)
 
 func create_initial_grid():
-	create_tile(0, 0, "core")
-	create_tile(0, 1)
-	create_tile(0, -1)
-	create_tile(1, 0)
-	create_tile(-1, 0)
+	var half_w = Constants.MAP_WIDTH / 2
+	var half_h = Constants.MAP_HEIGHT / 2
+
+	for x in range(-half_w, half_w + 1):
+		for y in range(-half_h, half_h + 1):
+			var type = "wilderness"
+			# Check if in core zone
+			if abs(x) <= Constants.CORE_ZONE_RADIUS and abs(y) <= Constants.CORE_ZONE_RADIUS:
+				type = "core_zone"
+				if x == 0 and y == 0:
+					type = "core" # The absolute center
+
+			create_tile(x, y, type)
 
 func create_tile(x: int, y: int, type: String = "normal"):
 	var key = get_tile_key(x, y)
@@ -42,8 +72,94 @@ func create_tile(x: int, y: int, type: String = "normal"):
 
 	tile.tile_clicked.connect(_on_tile_clicked)
 
+	# Initial weight setup for AStar
+	var grid_pos = Vector2i(x, y)
+	if astar_grid.is_in_boundsv(grid_pos):
+		astar_grid.set_point_weight_scale(grid_pos, 1.0)
+
+func _generate_wild_obstacles():
+	var wilderness_tiles = []
+	for key in tiles:
+		var tile = tiles[key]
+		if tile.type == "wilderness":
+			wilderness_tiles.append(tile)
+
+	var obstacle_count = int(wilderness_tiles.size() * randf_range(0.10, 0.15))
+	wilderness_tiles.shuffle()
+
+	for i in range(obstacle_count):
+		var tile = wilderness_tiles[i]
+		_place_static_obstacle(tile)
+
+func _place_static_obstacle(tile):
+	var obstacle
+	if BARRICADE_SCENE:
+		obstacle = BARRICADE_SCENE.instantiate()
+	else:
+		obstacle = Node2D.new()
+		obstacle.name = "StaticObstacle"
+		var visual = ColorRect.new()
+		visual.size = Vector2(40, 40)
+		visual.position = Vector2(-20, -20)
+		visual.color = Color.DARK_SLATE_GRAY
+		obstacle.add_child(visual)
+
+	add_child(obstacle)
+	# Position at the center of the tile
+	obstacle.position = tile.position
+
+	register_obstacle(Vector2i(tile.x, tile.y), obstacle)
+
+func register_obstacle(grid_pos: Vector2i, node: Node):
+	if astar_grid.is_in_boundsv(grid_pos):
+		astar_grid.set_point_weight_scale(grid_pos, 50.0)
+
+	# Map the node to the grid position for later removal
+	obstacle_map[node] = grid_pos
+	# Add to fast lookup for placement checks
+	obstacles[grid_pos] = node
+
+func remove_obstacle(node: Node):
+	if not obstacle_map.has(node):
+		return
+
+	var grid_pos = obstacle_map[node]
+	if astar_grid.is_in_boundsv(grid_pos):
+		astar_grid.set_point_weight_scale(grid_pos, 1.0)
+
+	obstacles.erase(grid_pos)
+	obstacle_map.erase(node)
+
+func get_nav_path(start_pos: Vector2, end_pos: Vector2) -> PackedVector2Array:
+	var start_grid = Vector2i(round(start_pos.x / TILE_SIZE), round(start_pos.y / TILE_SIZE))
+	var end_grid = Vector2i(round(end_pos.x / TILE_SIZE), round(end_pos.y / TILE_SIZE))
+
+	if not astar_grid.is_in_boundsv(start_grid) or not astar_grid.is_in_boundsv(end_grid):
+		return PackedVector2Array()
+
+	return astar_grid.get_point_path(start_grid, end_grid)
+
+func get_spawn_points() -> Array[Vector2]:
+	var points: Array[Vector2] = []
+	var half_w = Constants.MAP_WIDTH / 2
+	var half_h = Constants.MAP_HEIGHT / 2
+
+	# Top and Bottom rows
+	for x in range(-half_w, half_w + 1):
+		points.append(Vector2(x * TILE_SIZE, -half_h * TILE_SIZE))
+		points.append(Vector2(x * TILE_SIZE, half_h * TILE_SIZE))
+
+	# Left and Right columns (excluding corners already added)
+	for y in range(-half_h + 1, half_h):
+		points.append(Vector2(-half_w * TILE_SIZE, y * TILE_SIZE))
+		points.append(Vector2(half_w * TILE_SIZE, y * TILE_SIZE))
+
+	return points
+
 func get_tile_key(x: int, y: int) -> String:
 	return "%d,%d" % [x, y]
+
+# --- Unit Logic ---
 
 func place_unit(unit_key: String, x: int, y: int) -> bool:
 	var key = get_tile_key(x, y)
@@ -94,13 +210,8 @@ func _clear_tiles_occupied(x: int, y: int, w: int, h: int):
 func is_in_core_zone(pos: Vector2i) -> bool:
 	var key = get_tile_key(pos.x, pos.y)
 	if tiles.has(key):
-		return tiles[key].type == "core"
+		return tiles[key].type == "core" or tiles[key].type == "core_zone"
 	return false
-
-func register_obstacle(pos: Vector2i, obj):
-	obstacles[pos] = obj
-	# Here we would update AStar if implemented
-	pass
 
 func can_place_unit(x: int, y: int, w: int, h: int, exclude_unit = null) -> bool:
 	for dx in range(w):
@@ -340,59 +451,14 @@ func _apply_buff_to_neighbors(provider_unit, buff_type):
 			if target_unit and target_unit != provider_unit:
 				target_unit.apply_buff(buff_type)
 
-# Expansion Logic
 func toggle_expansion_mode():
-	expansion_mode = !expansion_mode
-	if expansion_mode:
-		spawn_expansion_ghosts()
-	else:
-		clear_ghosts()
+	pass
 
 func spawn_expansion_ghosts():
-	clear_ghosts()
-
-	# Find all empty spots adjacent to existing tiles
-	var candidates = []
-	var visited = {}
-
-	for key in tiles:
-		var tile = tiles[key]
-		var neighbors = [
-			Vector2i(tile.x+1, tile.y), Vector2i(tile.x-1, tile.y),
-			Vector2i(tile.x, tile.y+1), Vector2i(tile.x, tile.y-1)
-		]
-
-		for n in neighbors:
-			var n_key = get_tile_key(n.x, n.y)
-			if !tiles.has(n_key) and !visited.has(n_key):
-				candidates.append(n)
-				visited[n_key] = true
-
-	for pos in candidates:
-		var ghost = Button.new() # Using Button as base for GhostTile logic, but better use our script
-		# Actually, we created GhostTile.gd which extends Button.
-		ghost.set_script(GHOST_TILE_SCRIPT)
-		ghost.setup(pos.x, pos.y)
-
-		ghost.position = Vector2(pos.x * TILE_SIZE, pos.y * TILE_SIZE) + Vector2(-30, -30)
-		# GhostTile.gd handles size/text
-
-		# Add a tooltip or text for cost
-		ghost.tooltip_text = "Expand Cost: %d" % expansion_cost
-
-		add_child(ghost)
-		ghost_tiles.append(ghost)
+	pass
 
 func clear_ghosts():
-	for g in ghost_tiles:
-		g.queue_free()
-	ghost_tiles.clear()
+	pass
 
-func on_ghost_clicked(x, y):
-	if GameManager.gold >= expansion_cost:
-		GameManager.spend_gold(expansion_cost)
-		create_tile(x, y)
-		expansion_cost += 10 # Increase cost
-		spawn_expansion_ghosts() # Refresh
-	else:
-		GameManager.spawn_floating_text(Vector2(x*TILE_SIZE, y*TILE_SIZE), "Need %d Gold" % expansion_cost, Color.RED)
+func on_ghost_clicked(_x, _y):
+	pass
