@@ -24,10 +24,19 @@ func setup(grid_x: int, grid_y: int, tile_type: String = "normal"):
 
 func update_visuals():
 	$ColorRect.color = Constants.COLORS.grid
+	$Label.text = ""
+
 	if type == "core":
 		$ColorRect.color = Color("#4a3045")
 		$Label.text = "Core"
-	else:
+	elif type == "core_unlocked":
+		$ColorRect.color = Color("#5a4055") # Brighter
+		$Label.text = ""
+	elif type == "core_locked":
+		$ColorRect.color = Color("#2a1015") # Darker
+		$Label.text = "🔒"
+	elif type == "wilderness":
+		$ColorRect.color = Color("#101015") # Very Dark
 		$Label.text = ""
 
 func set_highlight(active: bool):

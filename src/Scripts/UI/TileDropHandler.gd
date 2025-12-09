@@ -14,7 +14,12 @@ func _can_drop_data(at_position, data):
 	if GameManager.is_wave_active: return false
 
 	if data.source == "grid" or data.source == "bench":
-		return true
+		# Logic Fix: Allow drop if tile is empty, OR if data contains is_food
+		if tile_ref.unit == null:
+			return true
+		elif data.get("is_food", false):
+			return true
+
 	return false
 
 func _drop_data(at_position, data):
