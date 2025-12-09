@@ -6,28 +6,38 @@ var type: String
 var props: Dictionary
 
 @onready var collision_shape = $CollisionShape2D
-@onready var line_2d = $Line2D
+# @onready var line_2d = $Line2D # Deprecated
+var visual_rect: ColorRect = null
 
-func init(p1: Vector2, p2: Vector2, type_key: String):
+func init(grid_pos: Vector2i, type_key: String):
 	type = type_key
 	if Constants.BARRICADE_TYPES.has(type_key):
 		props = Constants.BARRICADE_TYPES[type_key]
 		max_hp = props.get("hp", 100)
 		hp = max_hp
 
-		# Setup Visuals
-		line_2d.points = [p1, p2]
-		line_2d.width = props.get("width", 5)
-		line_2d.default_color = props.get("color", Color.WHITE)
+		var tile_size = Constants.TILE_SIZE
+		var offset = Vector2(-tile_size/2.0, -tile_size/2.0)
+
+		# Setup Visuals (Create ColorRect if not present, or use existing logic if I could change Scene)
+		# Since we are code-modifying an existing node structure which expects Line2D,
+		# we should probably add a ColorRect programmatically or repurpose.
+		# I will add a ColorRect programmatically.
+
+		visual_rect = ColorRect.new()
+		visual_rect.size = Vector2(tile_size, tile_size)
+		visual_rect.position = offset
+		visual_rect.color = props.get("color", Color.WHITE)
+		add_child(visual_rect)
+
+		# Hide Line2D if it exists
+		if has_node("Line2D"):
+			$Line2D.visible = false
 
 		# Setup Physics
-		var segment = SegmentShape2D.new()
-		segment.a = p1
-		segment.b = p2
-		collision_shape.shape = segment
-
-		# Set collision layer/mask if needed (default is 1)
-		# Usually walls are on a specific layer, but for now default is fine.
+		var rect = RectangleShape2D.new()
+		rect.size = Vector2(tile_size, tile_size)
+		collision_shape.shape = rect
 	else:
 		push_error("Invalid barricade type: " + type_key)
 
