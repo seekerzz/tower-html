@@ -213,6 +213,43 @@ func is_in_core_zone(pos: Vector2i) -> bool:
 		return tiles[key].type == "core" or tiles[key].type == "core_zone"
 	return false
 
+func is_core_locked(pos: Vector2i) -> bool:
+	var key = get_tile_key(pos.x, pos.y)
+	if not tiles.has(key): return false
+
+	var tile = tiles[key]
+	if tile.type != "wilderness": return false
+
+	# Check adjacency to core/core_zone
+	var neighbors = [
+		Vector2i(pos.x + 1, pos.y),
+		Vector2i(pos.x - 1, pos.y),
+		Vector2i(pos.x, pos.y + 1),
+		Vector2i(pos.x, pos.y - 1)
+	]
+
+	for n_pos in neighbors:
+		var n_key = get_tile_key(n_pos.x, n_pos.y)
+		if tiles.has(n_key):
+			var n_tile = tiles[n_key]
+			if n_tile.type == "core" or n_tile.type == "core_zone":
+				return true
+
+	return false
+
+func unlock_core_tile(pos: Vector2i):
+	if not is_core_locked(pos): return
+
+	if not GameManager.spend_gold(expansion_cost):
+		print("Not enough gold to unlock tile")
+		return
+
+	var key = get_tile_key(pos.x, pos.y)
+	var tile = tiles[key]
+	tile.type = "core_zone"
+	tile.update_visuals()
+	print("Unlocked tile at ", pos)
+
 func can_place_unit(x: int, y: int, w: int, h: int, exclude_unit = null) -> bool:
 	for dx in range(w):
 		for dy in range(h):

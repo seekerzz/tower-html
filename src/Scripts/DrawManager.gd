@@ -19,16 +19,14 @@ func _create_ghost_tile():
 	add_child(ghost_tile)
 
 func _unhandled_input(event):
-	if current_material == "":
-		ghost_tile.visible = false
-		return
+	var global_pos = event.global_position if "global_position" in event else get_global_mouse_position()
 
 	if event is InputEventMouseMotion:
-		_update_ghost(event.global_position if "global_position" in event else get_global_mouse_position())
+		_update_ghost(global_pos)
 
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-			_try_build(event.global_position if "global_position" in event else get_global_mouse_position())
+			_handle_click(global_pos)
 
 func select_material(mat_key: String):
 	if GameManager.materials.has(mat_key):
@@ -38,41 +36,96 @@ func select_material(mat_key: String):
 	else:
 		push_warning("Material not found: " + mat_key)
 		current_material = ""
+		_update_ghost(get_global_mouse_position())
+
+func _get_grid_pos(global_mouse_pos: Vector2) -> Vector2i:
+	var local_pos = GameManager.grid_manager.to_local(global_mouse_pos)
+	return Vector2i(round(local_pos.x / TILE_SIZE), round(local_pos.y / TILE_SIZE))
+
+func _update_ghost(global_mouse_pos: Vector2):
+	var grid_pos = _get_grid_pos(global_mouse_pos)
+
+	# Determine state to set color/visibility
+	# If no material selected, maybe still show ghost for unlock?
+	# Task says "Ghost Tile: Let semi-transparent square align perfectly..."
+	# I will show ghost if we can interact.
+
+	var is_locked = GameManager.grid_manager.is_core_locked(grid_pos)
+	var is_in_core = GameManager.grid_manager.is_in_core_zone(grid_pos)
+	var can_build = current_material != "" and not is_in_core and not is_locked
+
+	if can_build:
+		ghost_tile.visible = true
+		if _check_build_validity(grid_pos):
+			ghost_tile.color = Color(0, 1, 0, 0.5) # Green
+		else:
+			ghost_tile.color = Color(1, 0, 0, 0.5) # Red
+	elif is_locked:
+		ghost_tile.visible = true
+		# Check gold for unlock
+		if GameManager.gold >= GameManager.grid_manager.expansion_cost:
+			ghost_tile.color = Color(1, 1, 0, 0.5) # Yellow for unlock
+		else:
+			ghost_tile.color = Color(1, 0, 0, 0.5) # Red
+	elif is_in_core:
+		ghost_tile.visible = true
+		ghost_tile.color = Color(1, 0, 0, 0.5) # Red (Forbidden)
+	else:
+		# Unknown state or wilderness with no material
 		ghost_tile.visible = false
 
-func _update_ghost(mouse_pos: Vector2):
-	var grid_pos = _world_to_grid(mouse_pos)
-	ghost_tile.position = Vector2(grid_pos.x * TILE_SIZE - TILE_SIZE/2.0, grid_pos.y * TILE_SIZE - TILE_SIZE/2.0)
-	ghost_tile.visible = true
+	# Align ghost tile
+	# Calculate center of grid in GridManager local space
+	var center_local = Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE)
+	# Convert to global
+	var center_global = GameManager.grid_manager.to_global(center_local)
+	# Set ghost position (top-left)
+	ghost_tile.global_position = center_global - ghost_tile.size / 2.0
 
-	if _check_validity(grid_pos):
-		ghost_tile.color = Color(0, 1, 0, 0.5)
-	else:
-		ghost_tile.color = Color(1, 0, 0, 0.5)
+func _check_build_validity(grid_pos: Vector2i) -> bool:
+	if current_material == "": return false
 
-func _world_to_grid(pos: Vector2) -> Vector2i:
-	return Vector2i(round(pos.x / TILE_SIZE), round(pos.y / TILE_SIZE))
-
-func _check_validity(grid_pos: Vector2i) -> bool:
-	# 1. Check Core Zone
-	if GameManager.grid_manager.is_in_core_zone(grid_pos):
-		return false
+	# 1. Check Core Zone or Locked
+	if GameManager.grid_manager.is_in_core_zone(grid_pos): return false
+	if GameManager.grid_manager.is_core_locked(grid_pos): return false
 
 	# 2. Check Resources
 	if GameManager.materials[current_material] < BUILD_COST:
 		return false
 
 	# 3. Check Obstacles
-	# GridManager.register_obstacle stores in 'obstacles'
 	if GameManager.grid_manager.obstacles.has(grid_pos):
 		return false
 
 	return true
 
-func _try_build(mouse_pos: Vector2):
-	var grid_pos = _world_to_grid(mouse_pos)
+func _handle_click(global_pos: Vector2):
+	var grid_pos = _get_grid_pos(global_pos)
 
-	if not _check_validity(grid_pos):
+	if GameManager.grid_manager.is_in_core_zone(grid_pos):
+		# Core unlocked: Forbid building
+		print("Cannot build in core zone")
+		return
+
+	if GameManager.grid_manager.is_core_locked(grid_pos):
+		# Core locked: Unlock
+		GameManager.grid_manager.unlock_core_tile(grid_pos)
+		_update_ghost(global_pos) # Update visual state
+		return
+
+	# Wilderness: Build
+	_try_build(grid_pos)
+
+func _try_build(grid_pos_or_global):
+	# Support both for compatibility if needed, but I should switch to grid_pos mostly.
+	# But existing code might call _try_build with global (like my test script).
+	var grid_pos
+	if grid_pos_or_global is Vector2:
+		grid_pos = _get_grid_pos(grid_pos_or_global)
+	else:
+		grid_pos = grid_pos_or_global
+
+	if not _check_build_validity(grid_pos):
 		print("Invalid build location or insufficient resources")
 		return
 
@@ -85,15 +138,10 @@ func _try_build(mouse_pos: Vector2):
 func _spawn_barricade(grid_pos: Vector2i, mat_key: String):
 	var barricade = barricade_scene.instantiate()
 
-	# Placement logic
-	# GridManager uses x*TILE_SIZE, y*TILE_SIZE as center usually if we use round()
-	# Barricade is a StaticBody2D.
-	# Barricade.init expects grid_pos.
+	# Instantiate Barricade (as a child of GridManager)
+	GameManager.grid_manager.add_child(barricade)
 
-	# Add to parent
-	get_parent().add_child(barricade)
-
-	# Set position
+	# Set position (GridManager local)
 	barricade.position = Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE)
 
 	barricade.init(grid_pos, mat_key)
