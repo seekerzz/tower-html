@@ -16,6 +16,12 @@ func _ready():
 	GameManager.grid_manager = self
 	create_initial_grid()
 
+	if GameManager.has_signal("wave_started"):
+		GameManager.wave_started.connect(func():
+			expansion_mode = false
+			clear_ghosts()
+		)
+
 func create_initial_grid():
 	create_tile(0, 0, "core")
 	create_tile(0, 1)
@@ -122,6 +128,39 @@ func handle_bench_drop_at(target_tile, data):
 			GameManager.main_game.remove_from_bench(bench_index)
 		else:
 			print("GridManager: GameManager.main_game is null during bench drop!")
+		return
+
+	# If place_unit failed, check for interactions (Devour/Merge)
+	var target_unit = target_tile.unit
+	if target_unit == null and target_tile.occupied_by != Vector2i.ZERO:
+		var origin_key = get_tile_key(target_tile.occupied_by.x, target_tile.occupied_by.y)
+		if tiles.has(origin_key):
+			target_unit = tiles[origin_key].unit
+
+	if target_unit:
+		# Create a temporary unit to pass to interactions
+		var temp_unit = UNIT_SCENE.instantiate()
+		temp_unit.setup(unit_key)
+
+		# Check Merge
+		if target_unit.type_key == unit_key:
+			target_unit.merge_with(temp_unit)
+			if GameManager.main_game:
+				GameManager.main_game.remove_from_bench(bench_index)
+			recalculate_buffs()
+			temp_unit.queue_free()
+			return
+
+		# Check Devour
+		if can_devour(target_unit, temp_unit):
+			target_unit.devour(temp_unit)
+			if GameManager.main_game:
+				GameManager.main_game.remove_from_bench(bench_index)
+			recalculate_buffs()
+			temp_unit.queue_free()
+			return
+
+		temp_unit.queue_free()
 
 func handle_grid_move_at(target_tile, data):
 	var unit = data.unit
