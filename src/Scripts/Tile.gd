@@ -28,21 +28,22 @@ func set_type(new_type: String):
 
 func update_visuals():
 	$ColorRect.color = Constants.COLORS.grid
+	$Label.text = ""
 
-	if type == "core_unlocked":
-		$ColorRect.color = Color("#4a3045") # Unlocked color
-		$Label.text = ""
-	elif type == "core_locked":
-		$ColorRect.color = Color("#2a2025") # Locked color
-		$Label.text = "🔒"
-	elif type == "wilderness":
-		$ColorRect.color = Color("#1a1a2e") # Wilderness color
-		$Label.text = ""
-	elif type == "core":
-		$ColorRect.color = Color("#4a3045")
-		$Label.text = "Core"
-	else:
-		$Label.text = ""
+	match type:
+		"core":
+			$ColorRect.color = Color("#4a3045")
+			$Label.text = "Core"
+		"core_unlocked":
+			$ColorRect.color = Constants.COLORS.grid.lightened(0.3)
+		"core_locked":
+			$ColorRect.color = Color(0.2, 0.0, 0.0, 0.6)
+			$Label.text = "🔒"
+		"wilderness":
+			$ColorRect.color = Color("#1a1a2e") # Dark background
+		_:
+			# Default normal
+			pass
 
 func set_highlight(active: bool):
 	if active:
