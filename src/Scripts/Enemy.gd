@@ -52,6 +52,11 @@ func update_visuals():
 
 	queue_redraw()
 
+func apply_effect(effect_name: String, duration: float):
+	if effects.has(effect_name):
+		effects[effect_name] = max(effects[effect_name], duration)
+		queue_redraw()
+
 func _draw():
 	draw_set_transform(Vector2.ZERO, 0.0, wobble_scale)
 
@@ -63,9 +68,23 @@ func _draw():
 
 	# Draw Status Effects
 	if effects.burn > 0:
-		draw_circle(Vector2.ZERO, enemy_data.radius, Color(1, 0.5, 0, 0.5))
+		# Burn Effect: Red/Orange flash
+		var time = Time.get_ticks_msec() * 0.01
+		var flash = (sin(time) + 1.0) * 0.5
+		var burn_color = Color(1, 0.2 + 0.3 * flash, 0, 0.4 + 0.2 * flash)
+		draw_circle(Vector2.ZERO, enemy_data.radius + 2, burn_color)
+
 	if effects.poison > 0:
-		draw_circle(Vector2.ZERO, enemy_data.radius, Color(0, 1, 0, 0.5))
+		# Poison Effect: Green pulsing overlay + bubbles
+		var time = Time.get_ticks_msec() * 0.005
+		var pulse = (sin(time) + 1.0) * 0.5
+		draw_circle(Vector2.ZERO, enemy_data.radius + 2, Color(0.2, 0.8, 0.2, 0.3 + 0.2 * pulse))
+
+		# Simple bubbles
+		for i in range(3):
+			var angle = (Time.get_ticks_msec() * 0.002 + i * 2.0)
+			var offset = Vector2(cos(angle), sin(angle)) * (enemy_data.radius * 0.8)
+			draw_circle(offset, 3, Color(0.5, 1.0, 0.5, 0.8))
 
 	# Reset Transform for HP Bar
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
