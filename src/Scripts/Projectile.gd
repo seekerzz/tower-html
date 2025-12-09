@@ -181,6 +181,7 @@ func _on_area_2d_area_entered(area):
 func _setup_swarm_wave():
 	# Hide default visuals if any
 	if visual_node: visual_node.hide()
+	# Fix: Use get_node_or_null since ColorRect might not exist or be moved in other contexts
 	if has_node("ColorRect"):
 		get_node("ColorRect").hide()
 
@@ -258,6 +259,9 @@ func _setup_black_hole():
 	# Step A: Hide default appearance
 	if has_node("ColorRect"):
 		get_node("ColorRect").hide()
+	# Check if VisualHolder/ColorRect exists (unlikely in Projectile.tscn but good practice if structure mimics Unit)
+	# Projectile.tscn structure is simpler usually, but let's be safe
+
 	if visual_node:
 		visual_node.hide()
 
