@@ -8,6 +8,14 @@ var bench_data = []
 const BENCH_UNIT_SCRIPT = preload("res://src/Scripts/UI/BenchUnit.gd")
 const BENCH_SLOT_SCRIPT = preload("res://src/Scripts/UI/BenchSlot.gd")
 
+func _ready():
+	if slots_container:
+		slots_container.add_theme_constant_override("separation", 10)
+		var parent = slots_container.get_parent()
+		if parent is PanelContainer:
+			var style = StyleBoxEmpty.new()
+			parent.add_theme_stylebox_override("panel", style)
+
 func update_bench_ui(data):
 	if !slots_container: return
 
