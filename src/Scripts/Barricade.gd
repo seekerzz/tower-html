@@ -31,8 +31,36 @@ func init(p1: Vector2, p2: Vector2, type_key: String):
 	else:
 		push_error("Invalid barricade type: " + type_key)
 
+func _draw():
+	if hp < max_hp and line_2d.points.size() >= 2:
+		var p1 = line_2d.points[0]
+		var p2 = line_2d.points[1]
+		var center = (p1 + p2) / 2
+		var bar_width = 40.0
+		var bar_height = 5.0
+		var offset = Vector2(0, -10)
+
+		# Background (Red)
+		var bg_rect = Rect2(center.x - bar_width / 2, center.y + offset.y - bar_height / 2, bar_width, bar_height)
+		draw_rect(bg_rect, Color.RED)
+
+		# Foreground (Green)
+		var health_pct = clamp(hp / max_hp, 0.0, 1.0)
+		var fg_width = bar_width * health_pct
+		var fg_rect = Rect2(center.x - bar_width / 2, center.y + offset.y - bar_height / 2, fg_width, bar_height)
+		draw_rect(fg_rect, Color.GREEN)
+
 func take_damage(amount: float):
 	hp -= amount
-	GameManager.spawn_floating_text(global_position, str(int(amount)), Color.RED)
+	queue_redraw()
+
+	var text_pos = global_position
+	if line_2d.points.size() >= 2:
+		var p1 = line_2d.points[0]
+		var p2 = line_2d.points[1]
+		# Use to_global to ensure correct world position regardless of node hierarchy
+		text_pos = to_global((p1 + p2) / 2)
+
+	GameManager.spawn_floating_text(text_pos, str(int(amount)), Color.RED)
 	if hp <= 0:
 		queue_free()
