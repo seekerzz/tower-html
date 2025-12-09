@@ -6,6 +6,7 @@ var max_hp: float
 var speed: float
 var enemy_data: Dictionary
 var slow_timer: float = 0.0
+var effects = { "burn": 0.0, "poison": 0.0 }
 
 var hit_flash_timer: float = 0.0
 
@@ -60,16 +61,39 @@ func _draw():
 		color = Color.WHITE
 	draw_circle(Vector2.ZERO, enemy_data.radius, color)
 
+	# Draw Status Effects
+	if effects.burn > 0:
+		draw_circle(Vector2.ZERO, enemy_data.radius, Color(1, 0.5, 0, 0.5))
+	if effects.poison > 0:
+		draw_circle(Vector2.ZERO, enemy_data.radius, Color(0, 1, 0, 0.5))
+
+	# Reset Transform for HP Bar
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 	# Draw HP Bar
-	var hp_pct = hp / max_hp
-	var bar_w = 20
-	var bar_h = 4
-	var bar_pos = Vector2(-bar_w/2, -enemy_data.radius - 8)
-	draw_rect(Rect2(bar_pos, Vector2(bar_w, bar_h)), Color.RED)
-	draw_rect(Rect2(bar_pos, Vector2(bar_w * hp_pct, bar_h)), Color.GREEN)
+	if hp < max_hp and hp > 0:
+		var hp_pct = hp / max_hp
+		var bar_w = 20
+		var bar_h = 4
+		var bar_pos = Vector2(-bar_w/2, -enemy_data.radius - 8)
+		draw_rect(Rect2(bar_pos, Vector2(bar_w, bar_h)), Color.RED)
+		draw_rect(Rect2(bar_pos, Vector2(bar_w * hp_pct, bar_h)), Color.GREEN)
 
 func _process(delta):
 	if !GameManager.is_wave_active: return
+
+	# Handle Effects
+	if effects.burn > 0:
+		hp -= 2.0 * delta
+		effects.burn -= delta
+		if effects.burn <= 0: effects.burn = 0
+		if hp <= 0: die()
+
+	if effects.poison > 0:
+		hp -= (max_hp * 0.05) * delta
+		effects.poison -= delta
+		if effects.poison <= 0: effects.poison = 0
+		if hp <= 0: die()
 
 	# Wobble Effect
 	var time = Time.get_ticks_msec() * 0.005
@@ -106,7 +130,8 @@ func check_traps(delta):
 			if b_type == "slow":
 				temp_speed_mod = 0.5
 			elif b_type == "poison":
-				take_damage(max_hp * 0.05 * delta)
+				effects.poison = 1.0
+				# take_damage(max_hp * 0.05 * delta) # Now handled in _process
 
 func attack_wall_logic(delta):
 	attack_timer -= delta
