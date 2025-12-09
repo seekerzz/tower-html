@@ -10,11 +10,26 @@ var ghost_tiles: Array = []
 var expansion_mode: bool = false
 var expansion_cost: int = 50 # Base cost
 
+# A* Pathfinding
+var astar: AStarGrid2D
+var nav_refresh_timer: float = 0.0
+
 signal grid_updated
 
 func _ready():
 	GameManager.grid_manager = self
+
+	astar = AStarGrid2D.new()
+	astar.cell_size = Vector2(TILE_SIZE, TILE_SIZE)
+	# Default estimate is Manhattan, which is fine for grid
+	astar.default_compute_heuristic = AStarGrid2D.HEURISTIC_MANHATTAN
+	astar.default_estimate_heuristic = AStarGrid2D.HEURISTIC_MANHATTAN
+	astar.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER # Assuming 4-way movement, change if diagonal allowed
+
 	create_initial_grid()
+
+	GameManager.obstacles_changed.connect(update_nav_grid)
+	update_nav_grid()
 
 func create_initial_grid():
 	create_tile(0, 0, "core")
@@ -34,9 +49,133 @@ func create_tile(x: int, y: int, type: String = "normal"):
 	tiles[key] = tile
 
 	tile.tile_clicked.connect(_on_tile_clicked)
+	update_nav_grid()
 
 func get_tile_key(x: int, y: int) -> String:
 	return "%d,%d" % [x, y]
+
+# --- Pathfinding Interface ---
+
+func update_nav_grid():
+	if tiles.is_empty(): return
+
+	# Determine bounds
+	var min_x = 0
+	var min_y = 0
+	var max_x = 0
+	var max_y = 0
+	var first = true
+
+	for key in tiles:
+		var t = tiles[key]
+		if first:
+			min_x = t.x
+			max_x = t.x
+			min_y = t.y
+			max_y = t.y
+			first = false
+		else:
+			if t.x < min_x: min_x = t.x
+			if t.x > max_x: max_x = t.x
+			if t.y < min_y: min_y = t.y
+			if t.y > max_y: max_y = t.y
+
+	# Add padding to region to allow movement outside strictly placed tiles if needed,
+	# but usually enemies move on tiles. Let's stick to tile bounds.
+	var region = Rect2i(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1)
+	astar.region = region
+	astar.update()
+
+	# Set weights
+	# 1. Base weights from tiles
+	for key in tiles:
+		var t = tiles[key]
+		var point = Vector2i(t.x, t.y)
+
+		# If tile has unit, high weight
+		if t.unit != null or t.occupied_by != Vector2i.ZERO:
+			astar.set_point_weight_scale(point, 50.0)
+		else:
+			astar.set_point_weight_scale(point, 1.0)
+
+	# 2. Rasterize Barricades
+	# Barricades are line segments. We need to find which cells they cross.
+	var barricades = get_tree().get_nodes_in_group("barricades")
+	for b in barricades:
+		if b.is_queued_for_deletion(): continue
+		if !b.has_node("CollisionShape2D"): continue
+		var cs = b.get_node("CollisionShape2D")
+		if !cs.shape is SegmentShape2D: continue
+
+		var p1 = cs.to_global(cs.shape.a)
+		var p2 = cs.to_global(cs.shape.b)
+
+		_rasterize_line_to_astar(p1, p2)
+
+func _rasterize_line_to_astar(start: Vector2, end: Vector2):
+	# Convert world pos to grid coords
+	var start_grid = local_to_map(start)
+	var end_grid = local_to_map(end)
+
+	# Simple line drawing on grid (Bresenham or just iterating points)
+	# Since AStarGrid2D uses integer coordinates, we can iterate along the line.
+
+	var points = _get_grid_line(start_grid, end_grid)
+	for p in points:
+		if astar.region.has_point(p):
+			astar.set_point_weight_scale(p, 50.0)
+
+func local_to_map(pos: Vector2) -> Vector2i:
+	return Vector2i(round(pos.x / TILE_SIZE), round(pos.y / TILE_SIZE))
+
+func map_to_local(grid_pos: Vector2i) -> Vector2:
+	return Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE)
+
+func _get_grid_line(p0: Vector2i, p1: Vector2i) -> Array[Vector2i]:
+	var points: Array[Vector2i] = []
+	var x0 = p0.x
+	var y0 = p0.y
+	var x1 = p1.x
+	var y1 = p1.y
+
+	var dx = abs(x1 - x0)
+	var dy = -abs(y1 - y0)
+	var sx = 1 if x0 < x1 else -1
+	var sy = 1 if y0 < y1 else -1
+	var err = dx + dy
+
+	while true:
+		points.append(Vector2i(x0, y0))
+		if x0 == x1 and y0 == y1: break
+		var e2 = 2 * err
+		if e2 >= dy:
+			err += dy
+			x0 += sx
+		if e2 <= dx:
+			err += dx
+			y0 += sy
+	return points
+
+func get_nav_path(from_pos: Vector2, to_pos: Vector2) -> PackedVector2Array:
+	var from_grid = local_to_map(from_pos)
+	var to_grid = local_to_map(to_pos)
+
+	# Clamp to region? Or check if in region
+	if !astar.region.has_point(from_grid) or !astar.region.has_point(to_grid):
+		# If outside, maybe just return direct line or empty?
+		# For now return empty, or try to clamp.
+		# If enemy spawns outside, it might get stuck.
+		pass
+
+	var path_points = astar.get_point_path(from_grid, to_grid)
+	# Convert back to world coordinates
+	# Ideally, we want the center of the tile, which map_to_local should give (if using round/offset correctly)
+	# Our map_to_local uses round(pos/size)*size. Wait.
+	# 0,0 tile is at 0,0 world.
+	# map_to_local(0,0) -> 0,0. Correct.
+	return path_points
+
+# --- Existing Logic ---
 
 func place_unit(unit_key: String, x: int, y: int) -> bool:
 	var key = get_tile_key(x, y)
@@ -62,6 +201,7 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 
 	_set_tiles_occupied(x, y, w, h, unit)
 	recalculate_buffs()
+	update_nav_grid() # Update pathfinding
 	return true
 
 func _set_tiles_occupied(x: int, y: int, w: int, h: int, unit):
@@ -109,6 +249,7 @@ func remove_unit_from_grid(unit):
 	_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
 	unit.queue_free()
 	recalculate_buffs()
+	update_nav_grid() # Update pathfinding
 
 # Drag and Drop Implementation
 func handle_bench_drop_at(target_tile, data):
@@ -141,6 +282,7 @@ func try_move_unit(unit, from_tile, to_tile) -> bool:
 	# Case 1: Empty Target
 	if can_place_unit(x, y, w, h, unit):
 		_move_unit_internal(unit, x, y)
+		update_nav_grid()
 		return true
 
 	# Case 2: Interaction (Merge, Devour, Swap)
@@ -158,6 +300,7 @@ func try_move_unit(unit, from_tile, to_tile) -> bool:
 		_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
 		unit.queue_free()
 		recalculate_buffs()
+		update_nav_grid()
 		return true
 
 	if can_devour(target_unit, unit):
@@ -165,10 +308,12 @@ func try_move_unit(unit, from_tile, to_tile) -> bool:
 		_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
 		unit.queue_free()
 		recalculate_buffs()
+		update_nav_grid()
 		return true
 
 	if can_swap(unit, target_unit):
 		_perform_swap(unit, target_unit)
+		update_nav_grid()
 		return true
 
 	return false

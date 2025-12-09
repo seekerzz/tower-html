@@ -10,20 +10,33 @@ var effects = { "burn": 0.0, "poison": 0.0 }
 
 var hit_flash_timer: float = 0.0
 
-var raycast: RayCast2D
 var attack_timer: float = 0.0
 var attacking_wall: Node = null
 var temp_speed_mod: float = 1.0
 
-var bypass_dest = null
-var bypass_wall = null
 var wobble_scale = Vector2.ONE
 
+# Pathfinding
+var current_path: PackedVector2Array
+var repath_timer: float = 0.0
+var repath_interval: float = 0.5
+var current_path_index: int = 0
+var wall_check_ray: RayCast2D
+
+enum State { MOVING, ATTACKING }
+var current_state: State = State.MOVING
+
 func _ready():
-	raycast = RayCast2D.new()
-	raycast.enabled = true
-	raycast.collision_mask = 1 # StaticBody default layer
-	add_child(raycast)
+	add_to_group("enemies")
+	wall_check_ray = RayCast2D.new()
+	wall_check_ray.enabled = true
+	wall_check_ray.collision_mask = 1 # StaticBody default layer
+	add_child(wall_check_ray)
+
+	if GameManager.grid_manager:
+		# Snap to grid center
+		var grid_pos = GameManager.grid_manager.local_to_map(global_position)
+		global_position = GameManager.grid_manager.map_to_local(grid_pos)
 
 func setup(key: String, wave: int):
 	type_key = key
@@ -66,6 +79,12 @@ func _draw():
 		draw_circle(Vector2.ZERO, enemy_data.radius, Color(1, 0.5, 0, 0.5))
 	if effects.poison > 0:
 		draw_circle(Vector2.ZERO, enemy_data.radius, Color(0, 1, 0, 0.5))
+
+	# Draw Path (Debug)
+	#if !current_path.is_empty():
+	#	for i in range(current_path_index, current_path.size()):
+	#		var p = to_local(current_path[i])
+	#		draw_circle(p, 2, Color.BLUE)
 
 	# Reset Transform for HP Bar
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
@@ -116,11 +135,16 @@ func _process(delta):
 	temp_speed_mod = 1.0
 	check_traps(delta)
 
-	if attacking_wall and is_instance_valid(attacking_wall):
-		attack_wall_logic(delta)
-	else:
-		attacking_wall = null # Reset if invalid
-		move_towards_core(delta)
+	if current_state == State.ATTACKING:
+		if attacking_wall and is_instance_valid(attacking_wall):
+			attack_wall_logic(delta)
+		else:
+			attacking_wall = null
+			current_state = State.MOVING
+			repath_timer = 0 # Force repath immediately
+
+	if current_state == State.MOVING:
+		move_logic(delta)
 
 func check_traps(delta):
 	var bodies = get_overlapping_bodies()
@@ -139,96 +163,63 @@ func attack_wall_logic(delta):
 		attacking_wall.take_damage(enemy_data.dmg)
 		attack_timer = 1.0
 
-func move_towards_core(delta):
-	if !GameManager.grid_manager: return
+func move_logic(delta):
+	repath_timer -= delta
+	if repath_timer <= 0 or current_path.is_empty():
+		refresh_path()
+		repath_timer = repath_interval
 
-	var target = GameManager.grid_manager.global_position
-	var is_bypassing = false
+	if current_path.is_empty():
+		# If path is still empty after refresh, try direct movement fallback
+		# move_towards_point(GameManager.grid_manager.global_position, delta)
+		return
 
-	if bypass_dest != null:
-		target = bypass_dest
-		is_bypassing = true
-		if global_position.distance_to(target) < 10:
-			bypass_dest = null
-			bypass_wall = null
-			is_bypassing = false
-			target = GameManager.grid_manager.global_position
+	if current_path_index >= current_path.size():
+		return # End of path
+
+	var target = current_path[current_path_index]
+	var dist = global_position.distance_to(target)
+
+	if dist < 5.0:
+		current_path_index += 1
+		if current_path_index >= current_path.size():
+			return
+		target = current_path[current_path_index]
 
 	var direction = (target - global_position).normalized()
 
-	# Raycast Check
-	raycast.target_position = Vector2(enemy_data.radius + 15, 0)
-	# Adjust for local rotation if any
-	raycast.global_rotation = direction.angle()
-	raycast.force_raycast_update()
+	# Wall collision check
+	wall_check_ray.target_position = Vector2(enemy_data.radius + 10, 0)
+	wall_check_ray.global_rotation = direction.angle()
+	wall_check_ray.force_raycast_update()
 
-	if raycast.is_colliding():
-		var collider = raycast.get_collider()
+	if wall_check_ray.is_colliding():
+		var collider = wall_check_ray.get_collider()
 		if is_blocking_wall(collider):
-			if is_bypassing and collider == bypass_wall:
-				# Sliding logic
-				var tangent = get_slide_tangent(collider, direction)
-				direction = tangent
-			elif !is_bypassing:
-				# Check if we should bypass
-				var bypass_point = get_bypass_point(collider)
-				if bypass_point != null:
-					bypass_dest = bypass_point
-					bypass_wall = collider
-					# Don't move this frame, wait for next frame to adjust direction
-					return
-				else:
-					attacking_wall = collider
-					attack_timer = 0.5
-					return
-			else:
-				# Hit another wall
-				attacking_wall = collider
-				attack_timer = 0.5
-				return
+			attacking_wall = collider
+			current_state = State.ATTACKING
+			attack_timer = 0.5
+			return
 
 	var current_speed = speed * temp_speed_mod
 	if slow_timer > 0: current_speed *= 0.5
 
 	position += direction * current_speed * delta
 
-	if !is_bypassing:
-		var dist = global_position.distance_to(target)
-		if dist < 30: # Reached core
-			GameManager.damage_core(enemy_data.dmg)
-			queue_free()
+	var dist_to_core = global_position.distance_to(Vector2(0,0))
+	if dist_to_core < 30: # Reached core (approx)
+		GameManager.damage_core(enemy_data.dmg)
+		queue_free()
 
-func get_bypass_point(wall):
-	if !wall.has_node("CollisionShape2D"): return null
-	var cs = wall.get_node("CollisionShape2D")
-	if !cs.shape is SegmentShape2D: return null
-
-	var p1 = cs.to_global(cs.shape.a)
-	var p2 = cs.to_global(cs.shape.b)
-
-	var core_pos = GameManager.grid_manager.global_position
-
-	# Choose closer endpoint to Core
-	var d1 = p1.distance_squared_to(core_pos)
-	var d2 = p2.distance_squared_to(core_pos)
-
-	var target = p1 if d1 < d2 else p2
-
-	# Extend target slightly
-	var center = (p1 + p2) / 2
-	var ext_dir = (target - center).normalized()
-	return target + ext_dir * 25.0
-
-func get_slide_tangent(wall, desired_dir):
-	if !wall.has_node("CollisionShape2D"): return desired_dir
-	var cs = wall.get_node("CollisionShape2D")
-	var p1 = cs.to_global(cs.shape.a)
-	var p2 = cs.to_global(cs.shape.b)
-
-	var wall_dir = (p2 - p1).normalized()
-	if wall_dir.dot(desired_dir) < 0:
-		wall_dir = -wall_dir
-	return wall_dir
+func refresh_path():
+	if !GameManager.grid_manager: return
+	current_path = GameManager.grid_manager.get_nav_path(global_position, Vector2(0,0))
+	current_path_index = 0
+	# Remove first point if it's the start node (current pos) to avoid jitter?
+	# get_nav_path usually returns center of start tile.
+	if !current_path.is_empty():
+		if global_position.distance_to(current_path[0]) < 10:
+			current_path_index = 1
 
 func is_blocking_wall(node):
 	if node.get("type") and Constants.BARRICADE_TYPES.has(node.type):

@@ -10,6 +10,7 @@ signal damage_dealt(unit, amount)
 signal ftext_spawn_requested(pos, value, color)
 signal show_tooltip(data, stats, buffs, pos)
 signal hide_tooltip()
+signal obstacles_changed
 
 var core_type: String = "cornucopia"
 var food: float = 100.0

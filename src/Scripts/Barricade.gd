@@ -9,6 +9,7 @@ var props: Dictionary
 @onready var line_2d = $Line2D
 
 func init(p1: Vector2, p2: Vector2, type_key: String):
+	add_to_group("barricades")
 	type = type_key
 	if Constants.BARRICADE_TYPES.has(type_key):
 		props = Constants.BARRICADE_TYPES[type_key]
@@ -26,6 +27,9 @@ func init(p1: Vector2, p2: Vector2, type_key: String):
 		segment.b = p2
 		collision_shape.shape = segment
 
+		# Notify changes
+		GameManager.obstacles_changed.emit()
+
 		# Set collision layer/mask if needed (default is 1)
 		# Usually walls are on a specific layer, but for now default is fine.
 	else:
@@ -36,3 +40,4 @@ func take_damage(amount: float):
 	GameManager.spawn_floating_text(global_position, str(int(amount)), Color.RED)
 	if hp <= 0:
 		queue_free()
+		GameManager.obstacles_changed.emit()
