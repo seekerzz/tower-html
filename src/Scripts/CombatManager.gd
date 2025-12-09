@@ -346,10 +346,22 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	}
 
 	# Merge buffs from Unit.gd (if present)
+	var effects = {}
 	if "active_buffs" in source_unit:
 		for buff in source_unit.active_buffs:
-			if buff == "bounce": stats.bounce += 1
-			if buff == "split": stats.split += 1
+			if buff == "bounce": stats["bounce"] += 1
+			if buff == "split": stats["split"] += 1
+			if buff == "fire": effects["burn"] = 3.0
+			if buff == "poison": effects["poison"] = 5.0
+
+	# Check native unit traits/attributes if they have intrinsic effects (Optional, based on task)
+	# But Task says "fire" buff or attribute.
+	if source_unit.unit_data.get("buffProvider") == "fire": # Although Torch doesn't shoot usually
+		effects["burn"] = 3.0
+	if source_unit.unit_data.get("buffProvider") == "poison":
+		effects["poison"] = 5.0
+
+	stats["effects"] = effects
 
 	# Merge extra stats
 	stats.merge(extra_stats, true)
