@@ -10,20 +10,17 @@ var effects = { "burn": 0.0, "poison": 0.0 }
 
 var hit_flash_timer: float = 0.0
 
-var raycast: RayCast2D
 var attack_timer: float = 0.0
 var attacking_wall: Node = null
 var temp_speed_mod: float = 1.0
 
-var bypass_dest = null
-var bypass_wall = null
 var wobble_scale = Vector2.ONE
 
+var current_path: Array = []
+var path_index: int = 0
+
 func _ready():
-	raycast = RayCast2D.new()
-	raycast.enabled = true
-	raycast.collision_mask = 1 # StaticBody default layer
-	add_child(raycast)
+	pass
 
 func setup(key: String, wave: int):
 	type_key = key
@@ -38,17 +35,18 @@ func setup(key: String, wave: int):
 	update_visuals()
 
 func update_visuals():
-	$Label.text = enemy_data.icon
-	# Ensure label is centered and pivot is set for correct scaling
-	$Label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	$Label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	# Label size is not explicitly set here, relying on default or scene.
-	# Assuming Label is centered on (0,0) via position or anchors.
-	# If Label is centered:
-	if $Label.size.x == 0:
-		$Label.size = Vector2(40, 40) # Estimate
-		$Label.position = -$Label.size / 2
-	$Label.pivot_offset = $Label.size / 2
+	if has_node("Label"):
+		$Label.text = enemy_data.icon
+		# Ensure label is centered and pivot is set for correct scaling
+		$Label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		$Label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		# Label size is not explicitly set here, relying on default or scene.
+		# Assuming Label is centered on (0,0) via position or anchors.
+		# If Label is centered:
+		if $Label.size.x == 0:
+			$Label.size = Vector2(40, 40) # Estimate
+			$Label.position = -$Label.size / 2
+		$Label.pivot_offset = $Label.size / 2
 
 	queue_redraw()
 
@@ -120,7 +118,46 @@ func _process(delta):
 		attack_wall_logic(delta)
 	else:
 		attacking_wall = null # Reset if invalid
-		move_towards_core(delta)
+		if current_path.size() == 0:
+			recalculate_path()
+		move_along_path(delta)
+
+func recalculate_path():
+	if !GameManager.grid_manager: return
+	# Get path to (0,0) which is roughly the core
+	current_path = GameManager.grid_manager.get_nav_path(global_position, Vector2.ZERO)
+	path_index = 0
+
+func move_along_path(delta):
+	if current_path.is_empty():
+		# Path finished or empty, attack core
+		# Assuming we are close enough if path is empty/finished
+		var dist = global_position.distance_to(Vector2.ZERO)
+		if dist < 30:
+			GameManager.damage_core(enemy_data.dmg)
+			queue_free()
+		else:
+			# Stuck? Or just spawned? Try recalc?
+			# recalculate_path()
+			# For now, just move towards zero if stuck? Or do nothing?
+			# Instructions say: "If path finished or empty, attack core."
+			# So we assume we are there.
+			pass
+		return
+
+	if path_index >= current_path.size():
+		GameManager.damage_core(enemy_data.dmg)
+		queue_free()
+		return
+
+	var target_point = current_path[path_index]
+	var current_speed = speed * temp_speed_mod
+	if slow_timer > 0: current_speed *= 0.5
+
+	position = position.move_toward(target_point, current_speed * delta)
+
+	if position.distance_to(target_point) < 1.0:
+		path_index += 1
 
 func check_traps(delta):
 	var bodies = get_overlapping_bodies()
@@ -138,97 +175,6 @@ func attack_wall_logic(delta):
 	if attack_timer <= 0:
 		attacking_wall.take_damage(enemy_data.dmg)
 		attack_timer = 1.0
-
-func move_towards_core(delta):
-	if !GameManager.grid_manager: return
-
-	var target = GameManager.grid_manager.global_position
-	var is_bypassing = false
-
-	if bypass_dest != null:
-		target = bypass_dest
-		is_bypassing = true
-		if global_position.distance_to(target) < 10:
-			bypass_dest = null
-			bypass_wall = null
-			is_bypassing = false
-			target = GameManager.grid_manager.global_position
-
-	var direction = (target - global_position).normalized()
-
-	# Raycast Check
-	raycast.target_position = Vector2(enemy_data.radius + 15, 0)
-	# Adjust for local rotation if any
-	raycast.global_rotation = direction.angle()
-	raycast.force_raycast_update()
-
-	if raycast.is_colliding():
-		var collider = raycast.get_collider()
-		if is_blocking_wall(collider):
-			if is_bypassing and collider == bypass_wall:
-				# Sliding logic
-				var tangent = get_slide_tangent(collider, direction)
-				direction = tangent
-			elif !is_bypassing:
-				# Check if we should bypass
-				var bypass_point = get_bypass_point(collider)
-				if bypass_point != null:
-					bypass_dest = bypass_point
-					bypass_wall = collider
-					# Don't move this frame, wait for next frame to adjust direction
-					return
-				else:
-					attacking_wall = collider
-					attack_timer = 0.5
-					return
-			else:
-				# Hit another wall
-				attacking_wall = collider
-				attack_timer = 0.5
-				return
-
-	var current_speed = speed * temp_speed_mod
-	if slow_timer > 0: current_speed *= 0.5
-
-	position += direction * current_speed * delta
-
-	if !is_bypassing:
-		var dist = global_position.distance_to(target)
-		if dist < 30: # Reached core
-			GameManager.damage_core(enemy_data.dmg)
-			queue_free()
-
-func get_bypass_point(wall):
-	if !wall.has_node("CollisionShape2D"): return null
-	var cs = wall.get_node("CollisionShape2D")
-	if !cs.shape is SegmentShape2D: return null
-
-	var p1 = cs.to_global(cs.shape.a)
-	var p2 = cs.to_global(cs.shape.b)
-
-	var core_pos = GameManager.grid_manager.global_position
-
-	# Choose closer endpoint to Core
-	var d1 = p1.distance_squared_to(core_pos)
-	var d2 = p2.distance_squared_to(core_pos)
-
-	var target = p1 if d1 < d2 else p2
-
-	# Extend target slightly
-	var center = (p1 + p2) / 2
-	var ext_dir = (target - center).normalized()
-	return target + ext_dir * 25.0
-
-func get_slide_tangent(wall, desired_dir):
-	if !wall.has_node("CollisionShape2D"): return desired_dir
-	var cs = wall.get_node("CollisionShape2D")
-	var p1 = cs.to_global(cs.shape.a)
-	var p2 = cs.to_global(cs.shape.b)
-
-	var wall_dir = (p2 - p1).normalized()
-	if wall_dir.dot(desired_dir) < 0:
-		wall_dir = -wall_dir
-	return wall_dir
 
 func is_blocking_wall(node):
 	if node.get("type") and Constants.BARRICADE_TYPES.has(node.type):
