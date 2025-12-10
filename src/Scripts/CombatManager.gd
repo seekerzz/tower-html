@@ -76,8 +76,31 @@ func _run_batch_sequence(batches_left: int, enemies_per_batch: int):
 		# For now, strict adherence to the returned type.
 		pass
 
-	# Pick random angle for this batch
+	# Pick random angle for this batch (Used for warning indicator mainly)
 	var angle = randf() * TAU # TAU is 2*PI
+
+	# Show Warning (Still show directional warning, or maybe just generic?)
+	# Since spawn points are scattered, maybe show multiple warnings or just a general one?
+	# Requirement says: "刷怪逻辑改为从 `GridManager.get_spawn_points()` 随机取点"
+	# We can pick a random spawn point first, then show warning there.
+
+	# But batch logic implies they come together?
+	# If we want them to come from random spawn points, do we pick ONE spawn point for the whole batch,
+	# or random spawn point for EACH enemy?
+	# Usually batches come from one direction.
+	# Let's pick ONE spawn point for this batch to keep the "Wave" feel.
+
+	var spawn_pos = Vector2.ZERO
+	if GameManager.grid_manager:
+		var points = GameManager.grid_manager.get_spawn_points()
+		if points.size() > 0:
+			spawn_pos = points.pick_random()
+			# Calculate angle from center to spawn_pos for warning
+			var center = GameManager.grid_manager.global_position
+			angle = (spawn_pos - center).angle()
+		else:
+			# Fallback
+			spawn_pos = Vector2(cos(angle), sin(angle)) * 600
 
 	# Show Warning
 	show_warning_indicator(angle, type_key)
@@ -88,7 +111,7 @@ func _run_batch_sequence(batches_left: int, enemies_per_batch: int):
 	if !GameManager.is_wave_active: return
 
 	# Spawn Batch
-	await _spawn_batch(angle, type_key, enemies_per_batch)
+	await _spawn_batch(spawn_pos, type_key, enemies_per_batch)
 
 	# Schedule next batch
 	if batches_left > 1:
@@ -117,34 +140,24 @@ func start_win_check_loop():
 			break
 		await get_tree().create_timer(0.5).timeout
 
-func _spawn_batch(base_angle: float, type_key: String, count: int):
+func _spawn_batch(spawn_origin: Vector2, type_key: String, count: int):
 	for i in range(count):
 		if !GameManager.is_wave_active: break
 		if enemies_to_spawn <= 0: break
 
-		# Spawn with slight spread
-		# angle + (Math.random() - 0.5) * 0.8
-		var angle = base_angle + randf_range(-0.4, 0.4)
-		_spawn_enemy_at_angle(angle, type_key)
+		# Spawn with slight spread around the chosen spawn point
+		var pos = spawn_origin + Vector2(randf_range(-20, 20), randf_range(-20, 20))
+		_spawn_enemy_at_pos(pos, type_key)
 
 		enemies_to_spawn -= 1
 
 		# Fast spawn (0.1s)
 		await get_tree().create_timer(0.1).timeout
 
-func _spawn_enemy_at_angle(angle: float, type_key: String):
-	var distance = 600 # Offscreen radius, assuming center 0,0 or adjust relative to camera
-	# If GridManager is at center (0,0 implied by setup usually), fine.
-	# If not, we should add GridManager.global_position.
-	var center = Vector2.ZERO
-	if GameManager.grid_manager:
-		center = GameManager.grid_manager.global_position
-
-	var spawn_pos = center + Vector2(cos(angle), sin(angle)) * distance
-
+func _spawn_enemy_at_pos(pos: Vector2, type_key: String):
 	var enemy = ENEMY_SCENE.instantiate()
 	enemy.setup(type_key, GameManager.wave)
-	enemy.global_position = spawn_pos
+	enemy.global_position = pos
 	add_child(enemy)
 
 func show_warning_indicator(angle: float, type_key: String):
