@@ -7,6 +7,7 @@ const GHOST_TILE_SCRIPT = preload("res://src/Scripts/UI/GhostTile.gd")
 const TILE_SIZE = 60
 
 var tiles: Dictionary = {} # Key: "x,y", Value: Tile Instance
+var unlocked_zones: Dictionary = {} # Key: Vector2i, Value: bool (true)
 var obstacles: Dictionary = {} # Key: Vector2i, Value: Obstacle
 var obstacle_map: Dictionary = {} # Key: Node, Value: Vector2i (Grid Pos)
 var ghost_tiles: Array = []
@@ -49,6 +50,11 @@ func create_initial_grid():
 	var half_w = Constants.MAP_WIDTH / 2
 	var half_h = Constants.MAP_HEIGHT / 2
 
+	# Initialize unlocked zones (Center 5x5)
+	for x in range(-Constants.CORE_ZONE_RADIUS, Constants.CORE_ZONE_RADIUS + 1):
+		for y in range(-Constants.CORE_ZONE_RADIUS, Constants.CORE_ZONE_RADIUS + 1):
+			unlocked_zones[Vector2i(x, y)] = true
+
 	for x in range(-half_w, half_w + 1):
 		for y in range(-half_h, half_h + 1):
 			var type = "wilderness"
@@ -69,6 +75,10 @@ func create_tile(x: int, y: int, type: String = "normal"):
 	tile.position = Vector2(x * TILE_SIZE, y * TILE_SIZE)
 	add_child(tile)
 	tiles[key] = tile
+
+	# Set locked state
+	if not unlocked_zones.has(Vector2i(x, y)):
+		tile.set_locked(true)
 
 	tile.tile_clicked.connect(_on_tile_clicked)
 
@@ -452,13 +462,72 @@ func _apply_buff_to_neighbors(provider_unit, buff_type):
 				target_unit.apply_buff(buff_type)
 
 func toggle_expansion_mode():
-	pass
+	if expansion_mode:
+		expansion_mode = false
+		clear_ghosts()
+	else:
+		expansion_mode = true
+		spawn_expansion_ghosts()
 
 func spawn_expansion_ghosts():
-	pass
+	clear_ghosts()
+	var candidates = {} # Use dictionary for set behavior
+
+	for pos in unlocked_zones:
+		var neighbors = [
+			pos + Vector2i.UP,
+			pos + Vector2i.DOWN,
+			pos + Vector2i.LEFT,
+			pos + Vector2i.RIGHT
+		]
+		for n_pos in neighbors:
+			if unlocked_zones.has(n_pos): continue
+
+			# Check if valid tile exists there
+			var key = get_tile_key(n_pos.x, n_pos.y)
+			if tiles.has(key):
+				candidates[n_pos] = true
+
+	for pos in candidates:
+		var ghost = GHOST_TILE_SCRIPT.new() # It's a Button script but not a scene, wait.
+		# Actually GHOST_TILE_SCRIPT is just a script. We need to instantiate a Button and attach script?
+		# Or if it's `extends Button`, .new() creates a Button with that script attached.
+		# However, Button is a Control. GridManager is Node2D.
+		# A Control in a Node2D is fine, position is relative.
+
+		add_child(ghost)
+		ghost.setup(pos.x, pos.y)
+		# Ghost is a Button (Control).
+		# We need to center it on the tile.
+		# Tile position is center? Tile.gd sets pos to x*SIZE, y*SIZE.
+		# Tile scene has centered visuals (ColorRect offset -29,-29).
+		# So tile.position is the center of the grid cell.
+
+		# Button default anchor is TopLeft.
+		# GhostTile sets custom_minimum_size to 60,60.
+		# So we need to offset position by -30,-30.
+
+		ghost.position = Vector2(pos.x * TILE_SIZE - 30, pos.y * TILE_SIZE - 30)
+		ghost_tiles.append(ghost)
 
 func clear_ghosts():
-	pass
+	for ghost in ghost_tiles:
+		ghost.queue_free()
+	ghost_tiles.clear()
 
-func on_ghost_clicked(_x, _y):
-	pass
+func on_ghost_clicked(x, y):
+	if GameManager.gold >= expansion_cost:
+		GameManager.spend_gold(expansion_cost)
+
+		var pos = Vector2i(x, y)
+		unlocked_zones[pos] = true
+
+		var key = get_tile_key(x, y)
+		if tiles.has(key):
+			tiles[key].set_locked(false)
+
+		# Refresh ghosts
+		spawn_expansion_ghosts()
+	else:
+		if GameManager.ui_manager:
+			GameManager.ui_manager.show_floating_text("Not enough gold!", Vector2(x * TILE_SIZE, y * TILE_SIZE), Color.RED)

@@ -5,6 +5,7 @@ var y: int
 var type: String = "normal"
 var unit = null
 var occupied_by: Vector2i
+var is_locked: bool = false
 
 signal tile_clicked(tile)
 
@@ -23,20 +24,33 @@ func setup(grid_x: int, grid_y: int, tile_type: String = "normal"):
 	drop_target.setup(self)
 
 func update_visuals():
-	$ColorRect.color = Constants.COLORS.grid
-	if type == "core":
-		$ColorRect.color = Color("#4a3045")
-		$Label.text = "Core"
-	else:
+	if is_locked:
+		$ColorRect.color = Color.DARK_GRAY
 		$Label.text = ""
+		# Disable interaction
+		$Area2D.input_pickable = false
+	else:
+		$ColorRect.color = Constants.COLORS.grid
+		$Area2D.input_pickable = true
+		if type == "core":
+			$ColorRect.color = Color("#4a3045")
+			$Label.text = "Core"
+		else:
+			$Label.text = ""
+
+func set_locked(locked: bool):
+	is_locked = locked
+	update_visuals()
 
 func set_highlight(active: bool):
+	if is_locked: return
 	if active:
 		$ColorRect.color = Constants.COLORS.grid.lightened(0.2)
 	else:
 		update_visuals()
 
 func _on_area_2d_input_event(viewport, event, shape_idx):
+	if is_locked: return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		tile_clicked.emit(self)
 
