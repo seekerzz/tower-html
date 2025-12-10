@@ -3,6 +3,7 @@ extends Node2D
 var x: int
 var y: int
 var type: String = "normal"
+var state: String = "locked_inner" # unlocked, locked_inner, locked_outer, spawn
 var unit = null
 var occupied_by: Vector2i
 
@@ -23,16 +24,29 @@ func setup(grid_x: int, grid_y: int, tile_type: String = "normal"):
 	drop_target.setup(self)
 
 func update_visuals():
-	$ColorRect.color = Constants.COLORS.grid
+	# Default base color based on state
+	var base_color = Constants.COLORS.grid
+
+	if state == "unlocked":
+		base_color = Constants.COLORS.unlocked
+	elif state == "locked_inner":
+		base_color = Constants.COLORS.locked_inner
+	elif state == "locked_outer":
+		base_color = Constants.COLORS.locked_outer
+	elif state == "spawn":
+		base_color = Constants.COLORS.spawn_point
+
 	if type == "core":
-		$ColorRect.color = Color("#4a3045")
+		base_color = Constants.COLORS.core
 		$Label.text = "Core"
 	else:
 		$Label.text = ""
 
+	$ColorRect.color = base_color
+
 func set_highlight(active: bool):
 	if active:
-		$ColorRect.color = Constants.COLORS.grid.lightened(0.2)
+		$ColorRect.color = $ColorRect.color.lightened(0.2)
 	else:
 		update_visuals()
 

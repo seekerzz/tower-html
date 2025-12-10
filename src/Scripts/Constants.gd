@@ -12,7 +12,12 @@ const COLORS = {
 	"grid": Color("#303045"),
 	"enemy": Color("#e74c3c"),
 	"projectile": Color("#f1c40f"),
-	"enemyProjectile": Color("#e91e63")
+	"enemyProjectile": Color("#e91e63"),
+	"unlocked": Color("#303045"),
+	"locked_inner": Color("#252535"),
+	"locked_outer": Color("#151520"),
+	"spawn_point": Color("#451515"),
+	"core": Color("#4a3045")
 }
 
 const CORE_TYPES = {
