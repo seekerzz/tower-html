@@ -42,7 +42,10 @@ func select_material(mat_key: String):
 
 func _update_ghost(mouse_pos: Vector2):
 	var grid_pos = _world_to_grid(mouse_pos)
-	ghost_tile.position = Vector2(grid_pos.x * TILE_SIZE - TILE_SIZE/2.0, grid_pos.y * TILE_SIZE - TILE_SIZE/2.0)
+	var local_pos = Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE)
+	var global_center = GameManager.grid_manager.to_global(local_pos)
+
+	ghost_tile.position = global_center - Vector2(TILE_SIZE/2.0, TILE_SIZE/2.0)
 	ghost_tile.visible = true
 
 	if _check_validity(grid_pos):
@@ -51,7 +54,8 @@ func _update_ghost(mouse_pos: Vector2):
 		ghost_tile.color = Color(1, 0, 0, 0.5)
 
 func _world_to_grid(pos: Vector2) -> Vector2i:
-	return Vector2i(round(pos.x / TILE_SIZE), round(pos.y / TILE_SIZE))
+	var local_pos = GameManager.grid_manager.to_local(pos)
+	return Vector2i(round(local_pos.x / TILE_SIZE), round(local_pos.y / TILE_SIZE))
 
 func _check_validity(grid_pos: Vector2i) -> bool:
 	# 1. Check Core Zone
@@ -91,7 +95,7 @@ func _spawn_barricade(grid_pos: Vector2i, mat_key: String):
 	# Barricade.init expects grid_pos.
 
 	# Add to parent
-	get_parent().add_child(barricade)
+	GameManager.grid_manager.add_child(barricade)
 
 	# Set position
 	barricade.position = Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE)
