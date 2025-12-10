@@ -34,7 +34,32 @@ func show_tooltip(unit_data: Dictionary, current_stats: Dictionary, active_buffs
 
 	# Positioning
 	# Move to mouse position but keep within screen
-	position = global_pos + Vector2(20, 20)
+
+	# Force update layout to get accurate size
+	# reset_size() alone might set it to min_size which could be (0,0) or (1, huge) if constraints are odd.
+	# We rely on existing min width or set one.
+	if custom_minimum_size == Vector2.ZERO:
+		custom_minimum_size = Vector2(200, 0) # Enforce a minimum width so text doesn't wrap to infinity
+
+	reset_size()
+
+	var vp_size = get_viewport_rect().size
+	var size = get_size()
+	# print("Debug Tooltip: vp_size=", vp_size, " size=", size, " global_pos=", global_pos)
+	var target_pos = global_pos + Vector2(20, 20)
+
+	# Boundary checks
+	if target_pos.x + size.x > vp_size.x:
+		target_pos.x = global_pos.x - size.x - 20
+
+	if target_pos.y + size.y > vp_size.y:
+		target_pos.y = global_pos.y - size.y - 20
+
+	# Clamp to ensure it doesn't go off-screen top/left
+	target_pos.x = max(0, target_pos.x)
+	target_pos.y = max(0, target_pos.y)
+
+	position = target_pos
 
 	show()
 	z_index = 4096 # On top
