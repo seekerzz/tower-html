@@ -12,6 +12,7 @@ var obstacle_map: Dictionary = {} # Key: Node, Value: Vector2i (Grid Pos)
 var ghost_tiles: Array = []
 var expansion_mode: bool = false
 var expansion_cost: int = 50 # Base cost
+var spawn_tiles: Array = [] # List of tiles (Vector2i) used as spawn points
 
 var astar_grid: AStarGrid2D
 
@@ -23,7 +24,7 @@ func _ready():
 		BARRICADE_SCENE = load("res://src/Scenes/Game/Barricade.tscn")
 	_init_astar()
 	create_initial_grid()
-	_generate_wild_obstacles()
+	_generate_random_obstacles()
 
 func _init_astar():
 	astar_grid = AStarGrid2D.new()
@@ -49,23 +50,57 @@ func create_initial_grid():
 	var half_w = Constants.MAP_WIDTH / 2
 	var half_h = Constants.MAP_HEIGHT / 2
 
+	spawn_tiles.clear()
+
+	# Determine spawn candidates (outermost ring)
+	var spawn_candidates = []
+	for x in range(-half_w, half_w + 1):
+		for y in range(-half_h, half_h + 1):
+			if abs(x) == half_w or abs(y) == half_h:
+				spawn_candidates.append(Vector2i(x,y))
+
+	# Select 4-6 random spawn points
+	var num_spawns = randi_range(4, 6)
+	spawn_candidates.shuffle()
+	var chosen_spawns = spawn_candidates.slice(0, num_spawns)
+
 	for x in range(-half_w, half_w + 1):
 		for y in range(-half_h, half_h + 1):
 			var type = "wilderness"
-			# Check if in core zone
+			var state = "locked_inner"
+
+			# Check Core Zone
 			if abs(x) <= Constants.CORE_ZONE_RADIUS and abs(y) <= Constants.CORE_ZONE_RADIUS:
 				type = "core_zone"
+				state = "locked_inner"
 				if x == 0 and y == 0:
 					type = "core" # The absolute center
+			else:
+				state = "locked_outer"
 
-			create_tile(x, y, type)
+			# Check Unlocked (Cross Shape)
+			# (0,0) is core, unlocked. Neighbors (0,1), (0,-1), (1,0), (-1,0) are unlocked.
+			if (x == 0 and y == 0) or \
+			   (x == 0 and abs(y) == 1) or \
+			   (y == 0 and abs(x) == 1):
+				state = "unlocked"
 
-func create_tile(x: int, y: int, type: String = "normal"):
+			# Check Spawn Points
+			if Vector2i(x,y) in chosen_spawns:
+				state = "spawn"
+				spawn_tiles.append(Vector2i(x,y))
+
+			create_tile(x, y, type, state)
+
+func create_tile(x: int, y: int, type: String = "normal", state: String = "locked_inner"):
 	var key = get_tile_key(x, y)
 	if tiles.has(key): return
 
 	var tile = TILE_SCENE.instantiate()
 	tile.setup(x, y, type)
+	tile.state = state
+	tile.update_visuals()
+
 	tile.position = Vector2(x * TILE_SIZE, y * TILE_SIZE)
 	add_child(tile)
 	tiles[key] = tile
@@ -75,40 +110,72 @@ func create_tile(x: int, y: int, type: String = "normal"):
 	# Initial weight setup for AStar
 	var grid_pos = Vector2i(x, y)
 	if astar_grid.is_in_boundsv(grid_pos):
+		# Assuming obstacles and locked tiles affect navigation?
+		# For now standard weight, obstacles will increase it.
 		astar_grid.set_point_weight_scale(grid_pos, 1.0)
 
-func _generate_wild_obstacles():
-	var wilderness_tiles = []
+func _generate_random_obstacles():
+	var candidate_tiles = []
 	for key in tiles:
 		var tile = tiles[key]
-		if tile.type == "wilderness":
-			wilderness_tiles.append(tile)
+		# Candidates: locked_outer, not spawn, not core_zone (implied by locked_outer check in create_initial_grid logic, but let's be safe)
+		if tile.state == "locked_outer":
+			candidate_tiles.append(tile)
 
-	var obstacle_count = int(wilderness_tiles.size() * randf_range(0.10, 0.15))
-	wilderness_tiles.shuffle()
+	# Generate 10-15 obstacles
+	var obstacle_count = randi_range(10, 15)
+	obstacle_count = min(obstacle_count, candidate_tiles.size())
+	candidate_tiles.shuffle()
 
-	for i in range(obstacle_count):
-		var tile = wilderness_tiles[i]
-		_place_static_obstacle(tile)
+	var placed_count = 0
+	for i in range(candidate_tiles.size()):
+		if placed_count >= obstacle_count: break
 
-func _place_static_obstacle(tile):
+		var tile = candidate_tiles[i]
+		# Ensure we don't block all paths (simplification: random placement usually leaves paths,
+		# strict path checking is complex, but we can rely on low density)
+		# Density is low enough (10-15 out of outer ring ~100+ tiles)
+
+		# Pick random type
+		var type_keys = Constants.BARRICADE_TYPES.keys()
+		var type_key = type_keys.pick_random()
+
+		_spawn_barricade(tile, type_key)
+		placed_count += 1
+
+func _spawn_barricade(tile, type_key):
+	var data = Constants.BARRICADE_TYPES[type_key]
 	var obstacle
+
 	if BARRICADE_SCENE:
 		obstacle = BARRICADE_SCENE.instantiate()
+		# Assuming Barricade.gd has a setup or similar.
+		# If not, we might need to set properties manually or call a method if it exists.
+		# Let's check Barricade.gd later if needed, but for now assuming it might handle it or we set visual.
+		# Ideally we use DrawManager or similar logic, but DrawManager is not a singleton helper here.
+		# Let's try to set properties if possible.
+		if obstacle.has_method("setup"):
+			obstacle.setup(type_key)
+		else:
+			# Fallback if no setup, try to configure
+			pass
 	else:
 		obstacle = Node2D.new()
-		obstacle.name = "StaticObstacle"
+		obstacle.name = "Obstacle_" + type_key
 		var visual = ColorRect.new()
 		visual.size = Vector2(40, 40)
 		visual.position = Vector2(-20, -20)
-		visual.color = Color.DARK_SLATE_GRAY
+		if "color" in data:
+			visual.color = data["color"]
+		else:
+			visual.color = Color.DARK_SLATE_GRAY
 		obstacle.add_child(visual)
 
 	add_child(obstacle)
-	# Position at the center of the tile
 	obstacle.position = tile.position
 
 	register_obstacle(Vector2i(tile.x, tile.y), obstacle)
+
 
 func register_obstacle(grid_pos: Vector2i, node: Node):
 	if astar_grid.is_in_boundsv(grid_pos):
@@ -151,19 +218,8 @@ func get_nav_path(start_pos: Vector2, end_pos: Vector2) -> PackedVector2Array:
 
 func get_spawn_points() -> Array[Vector2]:
 	var points: Array[Vector2] = []
-	var half_w = Constants.MAP_WIDTH / 2
-	var half_h = Constants.MAP_HEIGHT / 2
-
-	# Top and Bottom rows
-	for x in range(-half_w, half_w + 1):
-		points.append(Vector2(x * TILE_SIZE, -half_h * TILE_SIZE))
-		points.append(Vector2(x * TILE_SIZE, half_h * TILE_SIZE))
-
-	# Left and Right columns (excluding corners already added)
-	for y in range(-half_h + 1, half_h):
-		points.append(Vector2(-half_w * TILE_SIZE, y * TILE_SIZE))
-		points.append(Vector2(half_w * TILE_SIZE, y * TILE_SIZE))
-
+	for tile_pos in spawn_tiles:
+		points.append(Vector2(tile_pos.x * TILE_SIZE, tile_pos.y * TILE_SIZE))
 	return points
 
 func get_tile_key(x: int, y: int) -> String:
