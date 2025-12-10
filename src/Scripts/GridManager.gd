@@ -112,7 +112,16 @@ func _place_static_obstacle(tile):
 
 func register_obstacle(grid_pos: Vector2i, node: Node):
 	if astar_grid.is_in_boundsv(grid_pos):
-		astar_grid.set_point_weight_scale(grid_pos, 50.0)
+		var is_solid = true
+		if node.get("type") and Constants.BARRICADE_TYPES.has(node.type):
+			is_solid = Constants.BARRICADE_TYPES[node.type].get("is_solid", true)
+
+		if is_solid:
+			astar_grid.set_point_solid(grid_pos, true)
+		else:
+			# Non-solid obstacles (traps) - ensure it's passable
+			astar_grid.set_point_solid(grid_pos, false)
+			astar_grid.set_point_weight_scale(grid_pos, 1.0)
 
 	# Map the node to the grid position for later removal
 	obstacle_map[node] = grid_pos
@@ -125,6 +134,7 @@ func remove_obstacle(node: Node):
 
 	var grid_pos = obstacle_map[node]
 	if astar_grid.is_in_boundsv(grid_pos):
+		astar_grid.set_point_solid(grid_pos, false)
 		astar_grid.set_point_weight_scale(grid_pos, 1.0)
 
 	obstacles.erase(grid_pos)

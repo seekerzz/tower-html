@@ -12,21 +12,20 @@ var heat_accumulation: float = 0.0
 var hit_flash_timer: float = 0.0
 var burn_tick_timer: float = 0.0
 
-var raycast: RayCast2D
 var attack_timer: float = 0.0
 var attacking_wall: Node = null
 var temp_speed_mod: float = 1.0
 
-var bypass_dest = null
-var bypass_wall = null
 var wobble_scale = Vector2.ONE
+
+var path: PackedVector2Array = []
+var nav_timer: float = 0.0
+var path_index: int = 0
 
 func _ready():
 	add_to_group("enemies")
-	raycast = RayCast2D.new()
-	raycast.enabled = true
-	raycast.collision_mask = 1 # StaticBody default layer
-	add_child(raycast)
+	# We also need to monitor layer 2 (traps) for overlaps
+	collision_mask = 3 # Layer 1 (Walls) + Layer 2 (Traps)
 
 func setup(key: String, wave: int):
 	type_key = key
@@ -148,7 +147,14 @@ func _process(delta):
 		if attacking_wall != null:
 			attacking_wall = null # Reset if invalid or destroyed
 			_play_state_particles(false)
-		move_towards_core(delta)
+
+		# Update Navigation Path
+		nav_timer -= delta
+		if nav_timer <= 0:
+			update_path()
+			nav_timer = 0.5
+
+		move_along_path(delta)
 
 func check_traps(delta):
 	var bodies = get_overlapping_bodies()
@@ -157,6 +163,8 @@ func check_traps(delta):
 			var props = Constants.BARRICADE_TYPES[b.type]
 			var b_type = props.type
 
+			# Only interact with non-solid traps here, or any?
+			# The logic is fine for both, but usually we move through traps.
 			if b_type == "slow":
 				temp_speed_mod = 0.5
 			elif b_type == "poison":
@@ -171,107 +179,84 @@ func attack_wall_logic(delta):
 		attacking_wall.take_damage(enemy_data.dmg)
 		attack_timer = 1.0
 
-func move_towards_core(delta):
+func update_path():
 	if !GameManager.grid_manager: return
+	var core_pos = GameManager.grid_manager.global_position
+	path = GameManager.grid_manager.get_nav_path(global_position, core_pos)
 
-	var target = GameManager.grid_manager.global_position
-	var is_bypassing = false
+	# If path is empty, it means no path found (blocked)
+	# But AStarGrid2D returns empty if no path.
+	# If no path, we might need to attack the nearest wall blocking us?
+	# Or just move towards core directly and hit the wall.
+	if path.size() == 0:
+		# Fallback: simple direction
+		path = []
+	else:
+		path_index = 0
+		# The first point is usually the current cell or close to it, so start index 0
+		# But if we are already there, skip
+		if path.size() > 0 and global_position.distance_to(path[0]) < 10:
+			path_index = 1
 
-	if bypass_dest != null:
-		target = bypass_dest
-		is_bypassing = true
-		if global_position.distance_to(target) < 10:
-			bypass_dest = null
-			bypass_wall = null
-			is_bypassing = false
-			target = GameManager.grid_manager.global_position
+func move_along_path(delta):
+	if !GameManager.grid_manager: return
+	var target_pos = GameManager.grid_manager.global_position # Default core
 
-	var direction = (target - global_position).normalized()
+	if path.size() > path_index:
+		target_pos = path[path_index]
 
-	# Raycast Check
-	raycast.target_position = Vector2(enemy_data.radius + 15, 0)
-	# Adjust for local rotation if any
-	raycast.global_rotation = direction.angle()
-	raycast.force_raycast_update()
-
-	# Trap Ignore Logic
-	if raycast.is_colliding():
-		var collider = raycast.get_collider()
-		if is_trap(collider):
-			raycast.add_exception(collider)
-			raycast.force_raycast_update()
-
-	if raycast.is_colliding():
-		var collider = raycast.get_collider()
-		# Only block if it is a blocking wall (not trap)
-		if is_blocking_wall(collider):
-			if is_bypassing and collider == bypass_wall:
-				# Sliding logic
-				var tangent = get_slide_tangent(collider, direction)
-				direction = tangent
-			elif !is_bypassing:
-				# Check if we should bypass
-				var bypass_point = get_bypass_point(collider)
-				if bypass_point != null:
-					bypass_dest = bypass_point
-					bypass_wall = collider
-					# Don't move this frame, wait for next frame to adjust direction
-					return
-				else:
-					start_attacking(collider)
-					return
+	var dist = global_position.distance_to(target_pos)
+	if dist < 10:
+		if path.size() > path_index:
+			path_index += 1
+			if path_index < path.size():
+				target_pos = path[path_index]
 			else:
-				# Hit another wall
+				# Reached end of path (Core)
+				target_pos = GameManager.grid_manager.global_position
+
+	var direction = (target_pos - global_position).normalized()
+
+	# Simple wall detection for attacking (if we are stuck or path leads to a wall we must break)
+	# Wait, if AStar gives a path, it avoids walls.
+	# If AStar returns NO path, we need to break walls.
+
+	if path.size() == 0:
+		# No path found -> Blocked completely. Move towards core and attack what's in front.
+		direction = (GameManager.grid_manager.global_position - global_position).normalized()
+
+		# We need to detect what's blocking us
+		# Use a small raycast or just check for collision?
+		# Since we removed the raycast member, let's just use overlapping bodies if we are very close,
+		# OR re-add a small raycast for attack logic.
+		# Let's create a temporary RayCast logic or just check distance to walls.
+
+		# For simplicity, if no path, we are likely near a wall.
+		var space_state = get_world_2d().direct_space_state
+		var query = PhysicsRayQueryParameters2D.create(global_position, global_position + direction * 40)
+		query.collision_mask = 1 # Walls
+		var result = space_state.intersect_ray(query)
+
+		if result:
+			var collider = result.collider
+			if is_blocking_wall(collider):
 				start_attacking(collider)
 				return
-
-	# Clear exceptions for next frame
-	raycast.clear_exceptions()
 
 	var current_speed = speed * temp_speed_mod
 	if slow_timer > 0: current_speed *= 0.5
 
 	position += direction * current_speed * delta
 
-	if !is_bypassing:
-		var dist = global_position.distance_to(target)
-		if dist < 30: # Reached core
-			GameManager.damage_core(enemy_data.dmg)
-			queue_free()
-
-func get_bypass_point(wall):
-	if !wall.has_node("CollisionShape2D"): return null
-	var cs = wall.get_node("CollisionShape2D")
-	if !cs.shape is SegmentShape2D: return null
-
-	var p1 = cs.to_global(cs.shape.a)
-	var p2 = cs.to_global(cs.shape.b)
-
-	var core_pos = GameManager.grid_manager.global_position
-
-	# Choose closer endpoint to Core
-	var d1 = p1.distance_squared_to(core_pos)
-	var d2 = p2.distance_squared_to(core_pos)
-
-	var target = p1 if d1 < d2 else p2
-
-	# Extend target slightly
-	var center = (p1 + p2) / 2
-	var ext_dir = (target - center).normalized()
-	return target + ext_dir * 25.0
-
-func get_slide_tangent(wall, desired_dir):
-	if !wall.has_node("CollisionShape2D"): return desired_dir
-	var cs = wall.get_node("CollisionShape2D")
-	var p1 = cs.to_global(cs.shape.a)
-	var p2 = cs.to_global(cs.shape.b)
-
-	var wall_dir = (p2 - p1).normalized()
-	if wall_dir.dot(desired_dir) < 0:
-		wall_dir = -wall_dir
-	return wall_dir
+	# Check if reached core
+	if global_position.distance_to(GameManager.grid_manager.global_position) < 30:
+		GameManager.damage_core(enemy_data.dmg)
+		queue_free()
 
 func start_attacking(wall):
+	if wall.get("props") and wall.props.get("immune"):
+		return # Do not attack immune walls (like Ice)
+
 	if attacking_wall != wall:
 		attacking_wall = wall
 		attack_timer = 0.5
