@@ -65,3 +65,23 @@ func _get_drag_data(at_position):
 			"grid_pos": unit_ref.grid_pos
 		}
 	return null
+
+func _can_drop_data(_at_position, data):
+	if data is Dictionary and data.has("source"):
+		return data.source == "bench" or data.source == "grid"
+	return false
+
+func _drop_data(_at_position, data):
+	if !unit_ref: return
+	if !GameManager.grid_manager: return
+
+	var grid_pos = unit_ref.grid_pos
+	var target_tile_key = GameManager.grid_manager.get_tile_key(grid_pos.x, grid_pos.y)
+
+	if GameManager.grid_manager.tiles.has(target_tile_key):
+		var target_tile = GameManager.grid_manager.tiles[target_tile_key]
+
+		if data.source == "bench":
+			GameManager.grid_manager.handle_bench_drop_at(target_tile, data)
+		elif data.source == "grid":
+			GameManager.grid_manager.handle_grid_move_at(target_tile, data)
