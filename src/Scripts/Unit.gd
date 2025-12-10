@@ -60,12 +60,22 @@ func _ensure_visual_hierarchy():
 		add_child(visual_holder)
 
 		# Move existing visual elements into holder
-		var visual_elements = ["ColorRect", "Label", "StarLabel"]
+		# NOTE: Exclude "ColorRect" from moving to visual_holder to keep it static (not affected by breathe/attack anims)
+		var visual_elements = ["Label", "StarLabel"]
 		for child_name in visual_elements:
 			var child = get_node_or_null(child_name)
 			if child:
 				remove_child(child)
 				visual_holder.add_child(child)
+
+		# Ensure visual_holder is rendered *after* ColorRect (so icons are on top)
+		# Since ColorRect stays in root, and visual_holder is added via add_child (which appends to end),
+		# check if ColorRect exists and make sure visual_holder is above it.
+		var color_rect = get_node_or_null("ColorRect")
+		if color_rect:
+			# If color_rect index is greater than visual_holder, swap or move visual_holder
+			if color_rect.get_index() > visual_holder.get_index():
+				move_child(visual_holder, color_rect.get_index() + 1)
 
 func setup(key: String):
 	_ensure_visual_hierarchy()
@@ -132,7 +142,11 @@ func activate_skill():
 		var skill_name = unit_data.skill
 		GameManager.spawn_floating_text(global_position, skill_name.capitalize() + "!", Color.CYAN)
 
-		var color_rect = visual_holder.get_node_or_null("ColorRect")
+		# Find ColorRect in self, or fallback
+		var color_rect = get_node_or_null("ColorRect")
+		if !color_rect and visual_holder:
+			color_rect = visual_holder.get_node_or_null("ColorRect")
+
 		if color_rect:
 			var tween = create_tween()
 			tween.tween_property(color_rect, "scale", Vector2(1.2, 1.2), 0.1)
@@ -145,7 +159,12 @@ func activate_skill():
 func update_visuals():
 	_ensure_visual_hierarchy()
 	var label = visual_holder.get_node_or_null("Label")
-	var color_rect = visual_holder.get_node_or_null("ColorRect")
+
+	# ColorRect should now be in self, but check logic to be safe
+	var color_rect = get_node_or_null("ColorRect")
+	if !color_rect and visual_holder:
+		color_rect = visual_holder.get_node_or_null("ColorRect")
+
 	var star_label = visual_holder.get_node_or_null("StarLabel")
 
 	if label:
@@ -155,7 +174,7 @@ func update_visuals():
 	if color_rect:
 		var size = unit_data.size
 		color_rect.size = Vector2(size.x * 60 - 4, size.y * 60 - 4)
-		color_rect.position = -(color_rect.size / 2) # Center inside visual_holder
+		color_rect.position = -(color_rect.size / 2) # Center inside parent (Unit node)
 
 		if label:
 			label.position = color_rect.position
@@ -179,7 +198,11 @@ func _update_buff_icons():
 		buff_container.name = "BuffContainer"
 		buff_container.alignment = BoxContainer.ALIGNMENT_CENTER
 
-		var color_rect = visual_holder.get_node_or_null("ColorRect") if visual_holder else null
+		# Find ColorRect in self first, then fallback
+		var color_rect = get_node_or_null("ColorRect")
+		if !color_rect and visual_holder:
+			color_rect = visual_holder.get_node_or_null("ColorRect")
+
 		if color_rect:
 			buff_container.position = Vector2(-color_rect.size.x/2, color_rect.size.y/2 - 15)
 			buff_container.size = Vector2(color_rect.size.x, 15)
@@ -342,7 +365,10 @@ func create_ghost():
 	if ghost_node: return
 	ghost_node = Node2D.new()
 
-	var color_rect = visual_holder.get_node_or_null("ColorRect") if visual_holder else get_node_or_null("ColorRect")
+	var color_rect = get_node_or_null("ColorRect")
+	if !color_rect and visual_holder:
+		color_rect = visual_holder.get_node_or_null("ColorRect")
+
 	if color_rect:
 		var rect = color_rect.duplicate()
 		ghost_node.add_child(rect)
