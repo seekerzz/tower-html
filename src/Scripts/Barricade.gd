@@ -17,7 +17,6 @@ func init(grid_pos: Vector2i, type_key: String):
 		hp = max_hp
 
 		var tile_size = Constants.TILE_SIZE
-		var offset = Vector2(-tile_size/2.0, -tile_size/2.0)
 
 		# Setup Visuals (Create ColorRect if not present, or use existing logic if I could change Scene)
 		# Since we are code-modifying an existing node structure which expects Line2D,
@@ -26,7 +25,10 @@ func init(grid_pos: Vector2i, type_key: String):
 
 		visual_rect = ColorRect.new()
 		visual_rect.size = Vector2(tile_size, tile_size)
-		visual_rect.position = offset
+		# Ensure visual rect starts at (0,0) so it matches ghost_tile which is at (grid_pos * TILE_SIZE)
+		# If ghost_tile position is (x, y), it draws from (x, y) to (x+w, y+h).
+		# Barricade position is (x, y). Visual rect at (0, 0) means it draws from (x, y) to (x+w, y+h).
+		visual_rect.position = Vector2.ZERO
 		visual_rect.color = props.get("color", Color.WHITE)
 		add_child(visual_rect)
 

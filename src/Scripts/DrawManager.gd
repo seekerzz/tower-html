@@ -42,7 +42,7 @@ func select_material(mat_key: String):
 
 func _update_ghost(mouse_pos: Vector2):
 	var grid_pos = _world_to_grid(mouse_pos)
-	ghost_tile.position = Vector2(grid_pos.x * TILE_SIZE - TILE_SIZE/2.0, grid_pos.y * TILE_SIZE - TILE_SIZE/2.0)
+	ghost_tile.position = Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE)
 	ghost_tile.visible = true
 
 	if _check_validity(grid_pos):
