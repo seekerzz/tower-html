@@ -71,6 +71,31 @@ func _check_validity(grid_pos: Vector2i) -> bool:
 	if GameManager.grid_manager.obstacles.has(grid_pos):
 		return false
 
+	# 4. Check Path Blocking (Anti-Block)
+	var mat_data = Constants.BARRICADE_TYPES.get(current_material, {})
+	if mat_data.get("is_solid", false):
+		# Temporarily block
+		var was_solid = GameManager.grid_manager.astar_grid.is_point_solid(grid_pos)
+		GameManager.grid_manager.astar_grid.set_point_solid(grid_pos, true)
+
+		var blocked = false
+		var spawn_points = GameManager.grid_manager.get_spawn_points()
+		var core_pos = Vector2i(0, 0) # Core is always at 0,0
+
+		for spawn in spawn_points:
+			var spawn_grid = GameManager.grid_manager._world_to_grid_pos(spawn)
+			var path = GameManager.grid_manager.astar_grid.get_id_path(spawn_grid, core_pos)
+			if path.is_empty():
+				blocked = true
+				break
+
+		# Restore
+		GameManager.grid_manager.astar_grid.set_point_solid(grid_pos, was_solid)
+
+		if blocked:
+			# print("Cannot block path!")
+			return false
+
 	return true
 
 func _try_build(mouse_pos: Vector2):

@@ -156,6 +156,10 @@ func get_spawn_points() -> Array[Vector2]:
 
 	return points
 
+func _world_to_grid_pos(pos: Vector2) -> Vector2i:
+	var local_pos = to_local(pos)
+	return Vector2i(round(local_pos.x / TILE_SIZE), round(local_pos.y / TILE_SIZE))
+
 func get_tile_key(x: int, y: int) -> String:
 	return "%d,%d" % [x, y]
 

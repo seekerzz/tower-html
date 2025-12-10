@@ -32,12 +32,12 @@ const MATERIAL_TYPES = {
 }
 
 const BARRICADE_TYPES = {
-	"mucus": { "hp": 500, "type": "slow", "strength": 0.3, "color": Color("00cec9"), "width": 8, "name": "粘液网" },
-	"poison":{ "hp": 10, "type": "poison", "strength": 200, "color": Color("2ecc71"), "width": 20, "name": "毒雾", "immune": true },
-	"fang":  { "hp": 800, "type": "reflect", "strength": 100, "color": Color("e74c3c"), "width": 6, "name": "荆棘" },
-	"wood":  { "hp": 2000, "type": "block", "strength": 0, "color": Color("d35400"), "width": 6, "name": "木栏" },
-	"snow":  { "hp": 1500, "type": "freeze", "strength": 1.5, "color": Color("74b9ff"), "width": 8, "name": "冰墙" },
-	"stone": { "hp": 6000, "type": "block", "strength": 0, "color": Color("7f8c8d"), "width": 10, "name": "石墙" }
+	"mucus": { "hp": 500, "type": "slow", "strength": 0.3, "color": Color("00cec9"), "width": 8, "name": "粘液网", "is_solid": false },
+	"poison":{ "hp": 10, "type": "poison", "strength": 200, "color": Color("2ecc71"), "width": 20, "name": "毒雾", "immune": true, "is_solid": false },
+	"fang":  { "hp": 800, "type": "reflect", "strength": 100, "color": Color("e74c3c"), "width": 6, "name": "荆棘", "is_solid": false },
+	"wood":  { "hp": 2000, "type": "block", "strength": 0, "color": Color("d35400"), "width": 6, "name": "木栏", "is_solid": true },
+	"snow":  { "hp": 1500, "type": "freeze", "strength": 1.5, "color": Color("74b9ff"), "width": 8, "name": "冰墙", "is_solid": true },
+	"stone": { "hp": 6000, "type": "block", "strength": 0, "color": Color("7f8c8d"), "width": 10, "name": "石墙", "is_solid": true }
 }
 
 const UNIT_TYPES = {
