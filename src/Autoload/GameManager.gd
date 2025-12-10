@@ -12,18 +12,18 @@ signal show_tooltip(data, stats, buffs, pos)
 signal hide_tooltip()
 
 var core_type: String = "cornucopia"
-var food: float = 100.0
-var max_food: float = 200.0
-var mana: float = 50.0
-var max_mana: float = 100.0
+var food: float = 1000.0
+var max_food: float = 2000.0
+var mana: float = 500.0
+var max_mana: float = 1000.0
 var gold: int = 150
 var wave: int = 1
 var is_wave_active: bool = false
-var core_health: float = 100.0
-var max_core_health: float = 100.0
+var core_health: float = 1000.0
+var max_core_health: float = 1000.0
 
-var base_food_rate: float = 5.0
-var base_mana_rate: float = 1.0
+var base_food_rate: float = 50.0
+var base_mana_rate: float = 10.0
 
 var materials: Dictionary = {
 	"mucus": 0, "poison": 0, "fang": 0,
@@ -129,5 +129,18 @@ func add_resource(type: String, amount: float):
 
 	resource_changed.emit()
 
-func spawn_floating_text(pos: Vector2, value: String, color: Color):
+func spawn_floating_text(pos: Vector2, value: String, type_or_color: Variant):
+	var color = Color.WHITE
+
+	if typeof(type_or_color) == TYPE_COLOR:
+		color = type_or_color
+	elif typeof(type_or_color) == TYPE_STRING:
+		match type_or_color:
+			"physical": color = Color.WHITE
+			"fire": color = Color.ORANGE
+			"poison": color = Color.GREEN
+			"lightning": color = Color.PURPLE
+			"magic": color = Color.BLUE
+			_: color = Color.WHITE
+
 	ftext_spawn_requested.emit(pos, value, color)

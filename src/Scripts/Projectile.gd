@@ -14,6 +14,7 @@ var pierce: int = 0
 var bounce: int = 0
 var split: int = 0
 var chain: int = 0
+var damage_type: String = "physical"
 
 # Visuals
 var visual_node: Node2D = null
@@ -43,6 +44,7 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 	bounce = stats.get("bounce", 0)
 	split = stats.get("split", 0)
 	chain = stats.get("chain", 0)
+	damage_type = stats.get("damageType", "physical")
 
 	# Initial rotation
 	if target and is_instance_valid(target):
@@ -148,7 +150,7 @@ func _process_blackhole(delta):
 			if dist < pull_radius:
 				var pull_dir = (global_position - enemy.global_position).normalized()
 				enemy.global_position += pull_dir * 100.0 * delta # Pull speed
-				enemy.take_damage(damage * delta, source_unit) # DoT
+				enemy.take_damage(damage * delta, source_unit, damage_type) # DoT
 
 func _on_area_2d_area_entered(area):
 	if is_fading: return
@@ -158,7 +160,7 @@ func _on_area_2d_area_entered(area):
 		if area in hit_list: return
 
 		# Apply Damage
-		area.take_damage(damage, source_unit)
+		area.take_damage(damage, source_unit, damage_type)
 
 		# Apply Status Effects
 		if effects.get("burn", 0.0) > 0.0:
@@ -231,7 +233,8 @@ func perform_split():
 			"split": 0,
 			"chain": 0,
 			"angle": angle,
-			"source": source_unit
+			"source": source_unit,
+			"damageType": damage_type
 		}
 		# Split projectiles usually don't have a specific target unless we find one,
 		# but for now let's just make them fly in the direction.

@@ -250,7 +250,7 @@ func process_unit_combat(unit, tile, delta):
 		unit.play_attack_anim(unit.unit_data.attackType, target.global_position)
 
 		if unit.unit_data.attackType == "melee":
-			target.take_damage(unit.damage, unit)
+			target.take_damage(unit.damage, unit, unit.unit_data.get("damageType", "physical"))
 
 			var slash = SLASH_EFFECT_SCRIPT.new()
 			add_child(slash)
@@ -287,7 +287,7 @@ func perform_lightning_attack(source_unit, start_pos, target, chain_left, hit_li
 	if !is_instance_valid(target): return
 
 	# Apply damage
-	target.take_damage(source_unit.damage, source_unit)
+	target.take_damage(source_unit.damage, source_unit, "lightning")
 	hit_list.append(target)
 
 	# Visual
@@ -342,7 +342,8 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 		"pierce": source_unit.unit_data.get("pierce", 0),
 		"bounce": source_unit.unit_data.get("bounce", 0),
 		"split": source_unit.unit_data.get("split", 0),
-		"chain": source_unit.unit_data.get("chain", 0)
+		"chain": source_unit.unit_data.get("chain", 0),
+		"damageType": source_unit.unit_data.get("damageType", "physical")
 	}
 
 	# Merge buffs from Unit.gd (if present)

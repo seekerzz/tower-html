@@ -31,7 +31,7 @@ func setup(key: String, wave: int):
 	type_key = key
 	enemy_data = Constants.ENEMY_VARIANTS[key]
 
-	var base_hp = 10 + (wave * 8)
+	var base_hp = 100 + (wave * 80)
 	hp = base_hp * enemy_data.hpMod
 	max_hp = hp
 
@@ -303,12 +303,13 @@ func is_trap(node):
 		return b_type == "slow" or b_type == "poison" or b_type == "reflect"
 	return false
 
-func take_damage(amount: float, source_unit = null):
+func take_damage(amount: float, source_unit = null, damage_type: String = "physical"):
 	hp -= amount
 	hit_flash_timer = 0.1
 	queue_redraw()
 
-	GameManager.spawn_floating_text(global_position, str(int(amount)), Color.WHITE)
+	var display_val = max(1, int(amount))
+	GameManager.spawn_floating_text(global_position, str(display_val), damage_type)
 	if source_unit:
 		GameManager.damage_dealt.emit(source_unit, amount)
 
