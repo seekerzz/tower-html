@@ -42,7 +42,7 @@ const BARRICADE_TYPES = {
 	"fang":  { "hp": 800, "type": "reflect", "strength": 100, "color": Color("e74c3c"), "width": 6, "name": "荆棘", "is_solid": false },
 	"wood":  { "hp": 2000, "type": "block", "strength": 0, "color": Color("d35400"), "width": 6, "name": "木栏", "is_solid": true },
 	"snow":  { "hp": 2000, "type": "freeze", "strength": 1.5, "color": Color("74b9ff"), "width": 8, "name": "冰墙", "is_solid": true, "duration": 20.0, "immune": true },
-	"stone": { "hp": 10000, "type": "block", "strength": 0, "color": Color("7f8c8d"), "width": 10, "name": "石墙", "is_solid": true }
+	"stone": { "hp": 10000, "type": "block", "strength": 0, "color": Color("7f8c8d"), "width": 10, "name": "石墙", "is_solid": true, "immune": true }
 }
 
 const UNIT_TYPES = {
