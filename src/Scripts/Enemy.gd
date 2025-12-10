@@ -7,6 +7,7 @@ var speed: float
 var enemy_data: Dictionary
 var slow_timer: float = 0.0
 var effects = { "burn": 0.0, "poison": 0.0 }
+var heat_accumulation: float = 0.0
 
 var hit_flash_timer: float = 0.0
 var burn_tick_timer: float = 0.0
@@ -63,12 +64,6 @@ func _draw():
 		color = Color.WHITE
 	draw_circle(Vector2.ZERO, enemy_data.radius, color)
 
-	# Draw Status Effects
-	if effects.burn > 0:
-		draw_circle(Vector2.ZERO, enemy_data.radius, Color(1, 0.5, 0, 0.5))
-	if effects.poison > 0:
-		draw_circle(Vector2.ZERO, enemy_data.radius, Color(0, 1, 0, 0.5))
-
 	# Reset Transform for HP Bar
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
@@ -84,16 +79,38 @@ func _draw():
 func _process(delta):
 	if !GameManager.is_wave_active: return
 
+	# Update Particle Effects
+	if has_node("BurnParticles"):
+		$BurnParticles.emitting = (effects.burn > 0)
+	if has_node("PoisonParticles"):
+		$PoisonParticles.emitting = (effects.poison > 0)
+
+	# Handle Heat Accumulation
+	if effects.burn <= 0:
+		var nearby_burn = false
+		var enemies = get_tree().get_nodes_in_group("enemies")
+		for enemy in enemies:
+			if enemy != self and enemy.get("effects") and enemy.effects.burn > 0:
+				var dist = global_position.distance_to(enemy.global_position)
+				if dist < 60.0:
+					nearby_burn = true
+					heat_accumulation += delta
+					break # Found one source, enough to accumulate
+
+		if nearby_burn:
+			if heat_accumulation > 1.0:
+				effects.burn = 5.0 # Ignite!
+				heat_accumulation = 0.0
+		else:
+			heat_accumulation -= delta * 0.5 # Decay
+			if heat_accumulation < 0: heat_accumulation = 0
+	else:
+		heat_accumulation = 0.0
+
 	# Handle Effects
 	if effects.burn > 0:
 		hp -= 2.0 * delta
 		effects.burn -= delta
-
-		# Burn Contagion
-		burn_tick_timer -= delta
-		if burn_tick_timer <= 0:
-			burn_tick_timer = 0.5
-			spread_burn()
 
 		if effects.burn <= 0: effects.burn = 0
 		if hp <= 0: die()
@@ -132,14 +149,6 @@ func _process(delta):
 			attacking_wall = null # Reset if invalid or destroyed
 			_play_state_particles(false)
 		move_towards_core(delta)
-
-func spread_burn():
-	var areas = get_overlapping_areas()
-	for area in areas:
-		if area != self and area.is_in_group("enemies"):
-			# Apply burn to other enemy
-			if "effects" in area:
-				area.effects.burn = 5.0 # Reset/Set burn duration
 
 func check_traps(delta):
 	var bodies = get_overlapping_bodies()
