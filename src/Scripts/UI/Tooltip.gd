@@ -32,20 +32,40 @@ func show_tooltip(unit_data: Dictionary, current_stats: Dictionary, active_buffs
 	buff_label.text = buff_text
 	buff_label.visible = active_buffs.size() > 0
 
-	# Positioning
-	# Move to mouse position but keep within screen
-
-	# Force update layout to get accurate size
-	# reset_size() alone might set it to min_size which could be (0,0) or (1, huge) if constraints are odd.
-	# We rely on existing min width or set one.
+	# Ensure minimum width to prevent text wrapping issues
 	if custom_minimum_size == Vector2.ZERO:
-		custom_minimum_size = Vector2(200, 0) # Enforce a minimum width so text doesn't wrap to infinity
+		custom_minimum_size = Vector2(200, 0)
+
+	self.size.x = custom_minimum_size.x
+
+	var width = custom_minimum_size.x
+
+	# Explicitly set width constraints on children to fix huge height bug.
+	# Sometimes RichTextLabel with fit_content calculates height based on 0/tiny width if not forced.
+	$VBoxContainer.custom_minimum_size.x = width
+	$VBoxContainer.size.x = width
+
+	title_label.custom_minimum_size.x = width
+	stats_label.custom_minimum_size.x = width
+	buff_label.custom_minimum_size.x = width
+
+	# Toggling fit_content forces recalculation of height based on the new width
+	title_label.fit_content = false
+	stats_label.fit_content = false
+	buff_label.fit_content = false
+
+	title_label.size = Vector2(width, 0)
+	stats_label.size = Vector2(width, 0)
+	buff_label.size = Vector2(width, 0)
+
+	title_label.fit_content = true
+	stats_label.fit_content = true
+	buff_label.fit_content = true
 
 	reset_size()
 
 	var vp_size = get_viewport_rect().size
 	var size = get_size()
-	# print("Debug Tooltip: vp_size=", vp_size, " size=", size, " global_pos=", global_pos)
 	var target_pos = global_pos + Vector2(20, 20)
 
 	# Boundary checks
