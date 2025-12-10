@@ -73,25 +73,11 @@ func create_initial_grid():
 
 			create_tile(x, y, type)
 
-func unlock_core_tile(x: int, y: int):
-	var key = get_tile_key(x, y)
-	if unlocked_core_tiles.has(key): return # Already unlocked
-
-	# Logic to deduct cost should be here or handled by caller?
-	# The task says "deduct cost and update state".
-	# Assuming GameManager handles the economy, I might need to access it.
-	# For now, I'll just focus on state update as per strict instruction "interface".
-	# If cost is needed, I'll check if GameManager has money.
-
-	if GameManager.gold >= expansion_cost:
-		GameManager.gold -= expansion_cost
-		unlocked_core_tiles[key] = true
-		if tiles.has(key):
-			tiles[key].set_type("core_unlocked")
-
-		# Increase cost for next expansion?
-		expansion_cost += 10
-		grid_updated.emit()
+# Deprecated or older version? The one below takes Vector2i and is used by DrawManager.
+# This one is likely unused or legacy. Since they do the same thing, I will remove it.
+# Or better, redirect to the one below.
+# But wait, GDScript does not support overloading. I must remove this one to fix the conflict.
+# The usage in DrawManager uses Vector2i.
 
 func create_tile(x: int, y: int, type: String = "normal"):
 	var key = get_tile_key(x, y)
@@ -276,6 +262,20 @@ func is_core_locked(pos: Vector2i) -> bool:
 				return true
 
 	return false
+
+func unlock_core_tile_xy(x: int, y: int):
+	var key = get_tile_key(x, y)
+	if unlocked_core_tiles.has(key): return # Already unlocked
+
+	if GameManager.gold >= expansion_cost:
+		GameManager.gold -= expansion_cost
+		unlocked_core_tiles[key] = true
+		if tiles.has(key):
+			tiles[key].set_type("core_unlocked")
+
+		# Increase cost for next expansion?
+		expansion_cost += 10
+		grid_updated.emit()
 
 func unlock_core_tile(pos: Vector2i):
 	if not is_core_locked(pos): return

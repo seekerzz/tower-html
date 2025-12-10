@@ -39,6 +39,29 @@ func setup(unit):
 
 	mouse_filter = MOUSE_FILTER_PASS
 
+func _can_drop_data(at_position, data):
+	if !data or !data.has("source"): return false
+	if GameManager.is_wave_active: return false
+
+	if data.source == "grid" or data.source == "bench":
+		return true
+	return false
+
+func _drop_data(at_position, data):
+	if !unit_ref: return
+
+	# Find the tile this unit is on
+	var grid_pos = unit_ref.grid_pos
+	var tile_key = "%d,%d" % [grid_pos.x, grid_pos.y]
+
+	if GameManager.grid_manager.tiles.has(tile_key):
+		var tile = GameManager.grid_manager.tiles[tile_key]
+
+		if data.source == "bench":
+			GameManager.grid_manager.handle_bench_drop_at(tile, data)
+		elif data.source == "grid":
+			GameManager.grid_manager.handle_grid_move_at(tile, data)
+
 func _get_drag_data(at_position):
 	if !unit_ref: return null
 	if !GameManager.is_wave_active and unit_ref.grid_pos != null:
