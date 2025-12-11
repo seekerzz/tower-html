@@ -24,7 +24,8 @@ var damage_stats = {} # unit_id -> {name, icon, amount, node}
 var last_sort_time: float = 0.0
 var tooltip_instance = null
 var sort_interval: float = 1.0
-var is_stats_collapsed: bool = false
+var is_stats_collapsed: bool = true
+var stats_tween: Tween
 
 func _ready():
 	GameManager.resource_changed.connect(update_ui)
@@ -37,6 +38,8 @@ func _ready():
 
 	stats_header.gui_input.connect(_on_stats_header_input)
 
+	_setup_ui_styles()
+
 	if debug_button:
 		debug_button.pressed.connect(_on_debug_button_pressed)
 	_setup_tooltip()
@@ -44,6 +47,53 @@ func _ready():
 	update_ui()
 	update_timeline()
 	_setup_build_panel()
+	_setup_stats_panel()
+
+func _setup_ui_styles():
+	var bg_style = StyleBoxFlat.new()
+	bg_style.bg_color = Color("00000080")
+	bg_style.set_corner_radius_all(8)
+
+	var bars = [hp_bar, food_bar, mana_bar, enemy_bar]
+	for bar in bars:
+		if bar:
+			bar.add_theme_stylebox_override("background", bg_style)
+			# Do not override "fill" to keep original colors or default theme
+
+func _setup_stats_panel():
+	# Anchor to Center Right
+	damage_stats_panel.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	# Initial state: Collapsed
+	is_stats_collapsed = true
+	# We need to defer position update because layout happens after ready
+	call_deferred("_update_stats_panel_position")
+
+func _update_stats_panel_position():
+	_animate_stats_panel()
+
+func _animate_stats_panel():
+	if stats_tween and stats_tween.is_valid():
+		stats_tween.kill()
+	stats_tween = create_tween()
+
+	var viewport_width = get_viewport_rect().size.x
+	var panel_width = damage_stats_panel.size.x
+
+	var target_pos_x
+	if is_stats_collapsed:
+		stats_header.text = "📊"
+		stats_scroll.visible = false
+		damage_stats_panel.custom_minimum_size.y = 30 # Small height
+		# Move mostly off-screen, leave 40px visible
+		target_pos_x = viewport_width - 40
+	else:
+		stats_header.text = "Damage Stats"
+		stats_scroll.visible = true
+		damage_stats_panel.custom_minimum_size.y = 300
+		# Fully visible. Ensure panel width is at least something reasonable if dynamic
+		target_pos_x = viewport_width - max(panel_width, 200)
+
+	stats_tween.tween_property(damage_stats_panel, "position:x", target_pos_x, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func _setup_build_panel():
 	var build_panel = BUILD_PANEL_SCENE.instantiate()
@@ -102,7 +152,9 @@ func _input(event):
 		GameManager.activate_cheat()
 
 func update_ui():
-	hp_bar.value = (GameManager.core_health / GameManager.max_core_health) * 100
+	var target_hp = (GameManager.core_health / GameManager.max_core_health) * 100
+	create_tween().tween_property(hp_bar, "value", target_hp, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
 	food_bar.value = (GameManager.food / GameManager.max_food) * 100
 	mana_bar.value = (GameManager.mana / GameManager.max_mana) * 100
 
@@ -231,16 +283,7 @@ func _on_ftext_spawn_requested(pos, value, color):
 func _on_stats_header_input(event):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		is_stats_collapsed = !is_stats_collapsed
-		stats_scroll.visible = !is_stats_collapsed
-		stats_header.text = "Damage Stats " + ("(v)" if is_stats_collapsed else "(^)")
-
-		# Adjust panel height
-		if is_stats_collapsed:
-			damage_stats_panel.custom_minimum_size.y = 30
-			damage_stats_panel.size.y = 30
-		else:
-			damage_stats_panel.custom_minimum_size.y = 300 # Or restore original
-			damage_stats_panel.size.y = 300
+		_animate_stats_panel()
 
 func _on_wave_ended_stats():
 	# Reset stats on wave end? The ref implementation seems to reset on startWave.

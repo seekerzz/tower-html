@@ -5,13 +5,22 @@ extends Node2D
 @onready var shop = $CanvasLayer/Shop
 @onready var bench_ui = $CanvasLayer/Bench
 @onready var main_gui = $CanvasLayer/MainGUI
+@onready var camera = $Camera2D
 
 # Bench
 var bench: Array = [null, null, null, null, null] # Array of Dictionary (Unit Data) or null
 
+# Camera Control
+var zoom_target: Vector2 = Vector2(0.8, 0.8)
+var zoom_tween: Tween
+
 func _ready():
 	GameManager.ui_manager = main_gui
 	GameManager.main_game = self
+
+	# Camera Setup
+	camera.zoom = Vector2(0.8, 0.8)
+	camera.position = Vector2(640, 400)
 
 	# Connect Shop signals
 	# shop.unit_bought.connect(_on_unit_bought) # Now handled via add_to_bench in Shop
@@ -19,6 +28,28 @@ func _ready():
 	# Initial Setup
 	grid_manager.place_unit("mouse", 0, 1) # Starting unit
 	update_bench_ui() # Ensure UI is initialized
+
+func _unhandled_input(event):
+	if event is InputEventMouseMotion:
+		if event.button_mask == MOUSE_BUTTON_MASK_RIGHT:
+			camera.position -= event.relative / camera.zoom
+
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
+			_adjust_zoom(0.1)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
+			_adjust_zoom(-0.1)
+
+func _adjust_zoom(amount: float):
+	zoom_target += Vector2(amount, amount)
+	zoom_target.x = clamp(zoom_target.x, 0.5, 1.2)
+	zoom_target.y = clamp(zoom_target.y, 0.5, 1.2)
+
+	if zoom_tween and zoom_tween.is_valid():
+		zoom_tween.kill()
+
+	zoom_tween = create_tween()
+	zoom_tween.tween_property(camera, "zoom", zoom_target, 0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 # Bench Logic
 func add_to_bench(unit_key: String) -> bool:
