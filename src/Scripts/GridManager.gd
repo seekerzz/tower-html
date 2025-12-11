@@ -220,7 +220,8 @@ func get_nav_path(start_pos: Vector2, end_pos: Vector2) -> PackedVector2Array:
 func get_spawn_points() -> Array[Vector2]:
 	var points: Array[Vector2] = []
 	for tile_pos in spawn_tiles:
-		points.append(Vector2(tile_pos.x * TILE_SIZE, tile_pos.y * TILE_SIZE))
+		var local_pos = Vector2(tile_pos.x * TILE_SIZE, tile_pos.y * TILE_SIZE)
+		points.append(to_global(local_pos))
 	return points
 
 func get_tile_key(x: int, y: int) -> String:
