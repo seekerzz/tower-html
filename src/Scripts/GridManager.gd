@@ -150,7 +150,29 @@ func _generate_random_obstacles():
 		var type_key = type_keys.pick_random()
 
 		_spawn_barricade(tile, type_key)
-		placed_count += 1
+
+		# Check connectivity
+		if not is_path_clear_from_spawns_to_core():
+			# Undo
+			var grid_pos = Vector2i(tile.x, tile.y)
+			var obstacle = obstacles[grid_pos]
+			remove_obstacle(obstacle)
+			obstacle.queue_free()
+		else:
+			placed_count += 1
+
+func is_path_clear_from_spawns_to_core() -> bool:
+	var core_pos = Vector2i(0, 0) # Assumes core is at 0,0
+
+	# If core itself is blocked (shouldn't happen logic wise but safe to check)
+	if obstacles.has(core_pos): return false
+
+	for spawn_pos in spawn_tiles:
+		# astar_grid.get_id_path returns Array[Vector2i]
+		var path = astar_grid.get_id_path(spawn_pos, core_pos)
+		if path.size() == 0:
+			return false
+	return true
 
 func _spawn_barricade(tile, type_key):
 	var data = Constants.BARRICADE_TYPES[type_key]
@@ -287,6 +309,7 @@ func can_place_unit(x: int, y: int, w: int, h: int, exclude_unit = null) -> bool
 			var key = get_tile_key(x + dx, y + dy)
 			if !tiles.has(key): return false
 			var tile = tiles[key]
+			if tile.state != "unlocked": return false
 			if tile.type == "core": return false
 			if tile.unit and tile.unit != exclude_unit: return false
 			if obstacles.has(pos): return false
@@ -553,8 +576,8 @@ func spawn_expansion_ghosts():
 			if can_expand:
 				var ghost = GHOST_TILE_SCRIPT.new()
 				add_child(ghost)
-				ghost.position = tile.position
 				ghost.setup(tile.x, tile.y)
+				ghost.position = tile.position - (ghost.custom_minimum_size / 2)
 				# ghost.clicked.connect(on_ghost_clicked) # GhostTile calls grid_manager.on_ghost_clicked directly
 				ghost_tiles.append(ghost)
 
