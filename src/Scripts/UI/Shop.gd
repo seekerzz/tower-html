@@ -69,34 +69,42 @@ func refresh_shop(force: bool = false):
 		create_shop_card(i, shop_items[i])
 
 func create_shop_card(index, unit_key):
-	var proto = Constants.UNIT_TYPES[unit_key]
-	var btn = Button.new()
-	btn.text = "%s\n%s\n%d💰" % [proto.icon, proto.name, proto.cost]
-	btn.custom_minimum_size = Vector2(80, 100)
-	btn.pressed.connect(func(): buy_unit(index, unit_key, btn))
+	var card = ShopCard.new()
+	card.setup(unit_key)
+	card.custom_minimum_size = Vector2(100, 120)
 
-	# Connect Tooltip signals
-	btn.mouse_entered.connect(func():
+	card.card_clicked.connect(func(key): buy_unit(index, key, card))
+
+	# Connect Tooltip signals (ShopCard handles its own mouse_entered/exited for visuals,
+	# but we can also connect for tooltip here or let ShopCard handle it?
+	# ShopCard sets tooltip_text, which is standard Godot tooltip.
+	# But existing code uses GameManager.show_tooltip custom signal.
+	# I should preserve that behavior.)
+
+	card.mouse_entered.connect(func():
+		var proto = Constants.UNIT_TYPES[unit_key]
 		var stats = {
 			"damage": proto.damage,
 			"range": proto.range,
 			"atk_speed": proto.get("atkSpeed", proto.get("atk_speed", 1.0))
 		}
-		GameManager.show_tooltip.emit(proto, stats, [], btn.get_global_mouse_position())
+		# Need global position. ShopCard is a Control.
+		GameManager.show_tooltip.emit(proto, stats, [], card.get_global_mouse_position())
 	)
-	btn.mouse_exited.connect(func(): GameManager.hide_tooltip.emit())
+	card.mouse_exited.connect(func(): GameManager.hide_tooltip.emit())
 
-	shop_container.add_child(btn)
+	shop_container.add_child(card)
 
-func buy_unit(index, unit_key, button_ref):
+func buy_unit(index, unit_key, card_ref):
 	if GameManager.is_wave_active: return
 	var proto = Constants.UNIT_TYPES[unit_key]
 	if GameManager.gold >= proto.cost:
 		if GameManager.main_game and GameManager.main_game.add_to_bench(unit_key):
 			GameManager.spend_gold(proto.cost)
 			unit_bought.emit(unit_key)
-			# Disable button
-			button_ref.disabled = true
+			# Disable card (visual indication?)
+			card_ref.modulate = Color(0.5, 0.5, 0.5) # Dim it
+			card_ref.mouse_filter = MOUSE_FILTER_IGNORE # Disable clicks
 		else:
 			print("Bench Full")
 	else:
