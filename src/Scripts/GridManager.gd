@@ -180,8 +180,6 @@ func _spawn_barricade(tile, type_key):
 
 	if BARRICADE_SCENE:
 		obstacle = BARRICADE_SCENE.instantiate()
-		if obstacle.has_method("init"):
-			obstacle.init(Vector2i(tile.x, tile.y), type_key)
 	else:
 		obstacle = Node2D.new()
 		obstacle.name = "Obstacle_" + type_key
@@ -196,6 +194,9 @@ func _spawn_barricade(tile, type_key):
 
 	add_child(obstacle)
 	obstacle.position = tile.position
+
+	if obstacle.has_method("init"):
+		obstacle.init(Vector2i(tile.x, tile.y), type_key)
 
 	register_obstacle(Vector2i(tile.x, tile.y), obstacle)
 
