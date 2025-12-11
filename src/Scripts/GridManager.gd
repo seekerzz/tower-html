@@ -47,10 +47,14 @@ func _init_astar():
 		)
 
 func create_initial_grid():
+	# Clear existing
+	for key in tiles:
+		tiles[key].queue_free()
+	tiles.clear()
+	spawn_tiles.clear()
+
 	var half_w = Constants.MAP_WIDTH / 2
 	var half_h = Constants.MAP_HEIGHT / 2
-
-	spawn_tiles.clear()
 
 	# Determine spawn candidates (outermost ring)
 	var spawn_candidates = []
@@ -75,7 +79,9 @@ func create_initial_grid():
 				state = "locked_inner"
 				if x == 0 and y == 0:
 					type = "core" # The absolute center
+					state = "unlocked"
 			else:
+				type = "wilderness"
 				state = "locked_outer"
 
 			# Check Unlocked (Cross Shape)
@@ -84,6 +90,12 @@ func create_initial_grid():
 			   (x == 0 and abs(y) == 1) or \
 			   (y == 0 and abs(x) == 1):
 				state = "unlocked"
+				if type == "wilderness":
+					type = "normal"
+				elif type == "core_zone":
+					type = "normal"
+				if x == 0 and y == 0:
+					type = "core"
 
 			# Check Spawn Points
 			if Vector2i(x,y) in chosen_spawns:
@@ -98,8 +110,8 @@ func create_tile(x: int, y: int, type: String = "normal", state: String = "locke
 
 	var tile = TILE_SCENE.instantiate()
 	tile.setup(x, y, type)
-	tile.state = state
-	tile.update_visuals()
+	# Explicitly call set_state to ensure visuals are updated
+	tile.set_state(state)
 
 	tile.position = Vector2(x * TILE_SIZE, y * TILE_SIZE)
 	add_child(tile)
@@ -132,9 +144,6 @@ func _generate_random_obstacles():
 		if placed_count >= obstacle_count: break
 
 		var tile = candidate_tiles[i]
-		# Ensure we don't block all paths (simplification: random placement usually leaves paths,
-		# strict path checking is complex, but we can rely on low density)
-		# Density is low enough (10-15 out of outer ring ~100+ tiles)
 
 		# Pick random type
 		var type_keys = Constants.BARRICADE_TYPES.keys()
@@ -149,16 +158,8 @@ func _spawn_barricade(tile, type_key):
 
 	if BARRICADE_SCENE:
 		obstacle = BARRICADE_SCENE.instantiate()
-		# Assuming Barricade.gd has a setup or similar.
-		# If not, we might need to set properties manually or call a method if it exists.
-		# Let's check Barricade.gd later if needed, but for now assuming it might handle it or we set visual.
-		# Ideally we use DrawManager or similar logic, but DrawManager is not a singleton helper here.
-		# Let's try to set properties if possible.
 		if obstacle.has_method("setup"):
 			obstacle.setup(type_key)
-		else:
-			# Fallback if no setup, try to configure
-			pass
 	else:
 		obstacle = Node2D.new()
 		obstacle.name = "Obstacle_" + type_key
@@ -518,13 +519,65 @@ func _apply_buff_to_neighbors(provider_unit, buff_type):
 				target_unit.apply_buff(buff_type)
 
 func toggle_expansion_mode():
-	pass
+	expansion_mode = !expansion_mode
+	if expansion_mode:
+		spawn_expansion_ghosts()
+	else:
+		clear_ghosts()
 
 func spawn_expansion_ghosts():
-	pass
+	clear_ghosts()
+
+	for key in tiles:
+		var tile = tiles[key]
+		# Find locked tiles that can be unlocked
+		if tile.state == "locked_inner" or tile.state == "locked_outer":
+			# Check neighbors
+			var x = tile.x
+			var y = tile.y
+			var neighbors = [
+				Vector2i(x+1, y), Vector2i(x-1, y),
+				Vector2i(x, y+1), Vector2i(x, y-1)
+			]
+
+			var can_expand = false
+			for n_pos in neighbors:
+				var n_key = get_tile_key(n_pos.x, n_pos.y)
+				if tiles.has(n_key):
+					var n_tile = tiles[n_key]
+					# If neighbor is unlocked or core (which is unlocked), we can expand
+					if n_tile.state == "unlocked":
+						can_expand = true
+						break
+
+			if can_expand:
+				var ghost = GHOST_TILE_SCRIPT.new()
+				add_child(ghost)
+				ghost.position = tile.position
+				ghost.setup(tile.x, tile.y)
+				# ghost.clicked.connect(on_ghost_clicked) # GhostTile calls grid_manager.on_ghost_clicked directly
+				ghost_tiles.append(ghost)
 
 func clear_ghosts():
-	pass
+	for ghost in ghost_tiles:
+		ghost.queue_free()
+	ghost_tiles.clear()
 
-func on_ghost_clicked(_x, _y):
-	pass
+func on_ghost_clicked(x, y):
+	if GameManager.gold >= expansion_cost:
+		if GameManager.spend_gold(expansion_cost):
+			expansion_cost += 10
+			var key = get_tile_key(x, y)
+			if tiles.has(key):
+				var tile = tiles[key]
+				tile.set_state("unlocked")
+				# tile.update_visuals() # set_state calls update_visuals
+
+			# Refresh ghosts to show new expansion options
+			# Must use call_deferred or just call it?
+			# The prompt says: "call clear_ghosts() then immediately re-spawn_expansion_ghosts()"
+			clear_ghosts()
+			spawn_expansion_ghosts()
+	else:
+		# Feedback for not enough gold?
+		GameManager.spawn_floating_text(Vector2(x*TILE_SIZE, y*TILE_SIZE), "Need Gold!", Color.RED)
