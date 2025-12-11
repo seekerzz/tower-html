@@ -240,6 +240,10 @@ func move_along_path(delta):
 		if result:
 			var collider = result.collider
 			if is_blocking_wall(collider):
+				if collider.get("props") and collider.props.get("immune"):
+					# Do not attack immune walls. Jitter to avoid logic lock.
+					position += Vector2(randf(), randf()) * 0.1
+					return
 				start_attacking(collider)
 				return
 
