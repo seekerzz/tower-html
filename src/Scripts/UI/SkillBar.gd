@@ -38,54 +38,152 @@ func refresh_skills():
 		if tile.unit and tile.unit.unit_data.has("skill"):
 			units_with_skills.append(tile.unit)
 
-	# Create buttons
+	# Create Cards
 	var hotkeys = ["Q", "W", "E", "R"]
 	for i in range(min(units_with_skills.size(), 4)):
 		var unit = units_with_skills[i]
 		skill_units.append(unit)
 
-		var btn = Button.new()
-		btn.custom_minimum_size = Vector2(60, 60)
-		btn.text = "%s\n%s" % [unit.unit_data.skill.capitalize(), hotkeys[i]]
-		btn.pressed.connect(func(): _on_skill_btn_pressed(unit))
+		# Base Card (PanelContainer)
+		var card = PanelContainer.new()
+		card.custom_minimum_size = Vector2(80, 100)
+		card.name = "SkillCard_%d" % i
 
-		# Cooldown overlay (using ProgressBar)
+		# Style
+		var bg_color = Color("#2c3e50") # Dark background
+		var style = StyleMaker.get_flat_style(bg_color, 8, 2, Color("#3498db")) # Blue border default
+		card.add_theme_stylebox_override("panel", style)
+
+		# Layout Container
+		var layout = Control.new()
+		layout.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		layout.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(layout)
+
+		# Icon (Center)
+		var icon_lbl = Label.new()
+		icon_lbl.text = unit.unit_data.get("icon", "❓")
+		icon_lbl.add_theme_font_size_override("font_size", 40)
+		icon_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		icon_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		icon_lbl.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+		icon_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layout.add_child(icon_lbl)
+
+		# Hotkey (Top Right)
+		var hotkey_lbl = Label.new()
+		hotkey_lbl.text = hotkeys[i]
+		hotkey_lbl.add_theme_font_size_override("font_size", 14)
+		hotkey_lbl.add_theme_color_override("font_color", Color.WHITE)
+		hotkey_lbl.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		# Add margins manually via offsets since it's a Control child
+		hotkey_lbl.offset_left = -25
+		hotkey_lbl.offset_top = 5
+		hotkey_lbl.offset_right = -5
+		hotkey_lbl.offset_bottom = 25
+		hotkey_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		hotkey_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layout.add_child(hotkey_lbl)
+
+		# Cost (Bottom Center)
+		var cost_lbl = Label.new()
+		cost_lbl.name = "CostLabel"
+		cost_lbl.text = "💧%d" % unit.skill_mana_cost
+		cost_lbl.add_theme_font_size_override("font_size", 16)
+		cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cost_lbl.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+		# Adjust bottom offset to not touch the edge
+		cost_lbl.offset_bottom = -5
+		cost_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layout.add_child(cost_lbl)
+
+		# Cooldown Overlay
 		var cd_bar = TextureProgressBar.new()
-		cd_bar.name = "CD"
+		cd_bar.name = "CD_Overlay"
+		cd_bar.nine_patch_stretch = true
 		cd_bar.fill_mode = TextureProgressBar.FILL_CLOCKWISE
 		cd_bar.value = 0
 		cd_bar.max_value = 100
-		cd_bar.step = 0.1
-		cd_bar.modulate = Color(0, 0, 0, 0.5)
+		cd_bar.tint_progress = Color(0, 0, 0, 0.7) # Semi-transparent black
 		cd_bar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		# We need a texture for the progress bar to show up
-		var placeholder = PlaceholderTexture2D.new()
-		placeholder.size = Vector2(1,1)
+		cd_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+		# Create a white 1x1 texture for the progress
+		var placeholder = GradientTexture2D.new()
+		placeholder.width = 1
+		placeholder.height = 1
+		placeholder.fill = GradientTexture2D.FILL_SOLID
+		placeholder.gradient = Gradient.new()
+		placeholder.gradient.set_color(0, Color.WHITE)
 		cd_bar.texture_progress = placeholder
 
-		btn.add_child(cd_bar)
-		container.add_child(btn)
+		layout.add_child(cd_bar)
+
+		# Countdown Label (Center of Overlay)
+		var cd_count_lbl = Label.new()
+		cd_count_lbl.name = "CD_Count"
+		cd_count_lbl.text = ""
+		cd_count_lbl.add_theme_font_size_override("font_size", 24)
+		cd_count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cd_count_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		cd_count_lbl.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+		cd_count_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cd_bar.add_child(cd_count_lbl)
+
+		# Interaction
+		card.gui_input.connect(func(ev): _on_card_gui_input(ev, unit))
+
+		container.add_child(card)
+
+func _on_card_gui_input(event, unit):
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_on_skill_btn_pressed(unit)
 
 func _process(_delta):
 	for i in range(skill_units.size()):
 		var unit = skill_units[i]
-		var btn = container.get_child(i)
-		var cd_bar = btn.get_node("CD")
+		# Ensure we have the child
+		if i >= container.get_child_count(): break
 
-		# Update CD visual
+		var card = container.get_child(i)
+		# layout is the first child
+		if card.get_child_count() == 0: continue
+		var layout = card.get_child(0)
+		var cd_bar = layout.get_node("CD_Overlay")
+		var cd_count_lbl = cd_bar.get_node("CD_Count")
+		var cost_lbl = layout.get_node("CostLabel")
+
+		# Cooldown Logic
 		if unit.skill_cooldown > 0:
 			var max_cd = unit.unit_data.get("skillCd", 10.0)
-			cd_bar.value = (unit.skill_cooldown / max_cd) * 100
-			btn.disabled = true
+			cd_bar.visible = true
+			cd_bar.max_value = max_cd
+			cd_bar.value = unit.skill_cooldown # Remaining time
+			cd_count_lbl.text = str(ceil(unit.skill_cooldown))
 		else:
-			cd_bar.value = 0
-			btn.disabled = false
+			cd_bar.visible = false
+			cd_count_lbl.text = ""
 
-		# Update Mana visual (disable if no mana)
-		if GameManager.mana < unit.skill_mana_cost:
-			btn.modulate = Color(0.5, 0.5, 0.5)
-		else:
-			btn.modulate = Color.WHITE
+		# Mana Logic & Styling
+		var style = card.get_theme_stylebox("panel")
+		if style is StyleBoxFlat:
+			# Check Mana
+			if GameManager.mana < unit.skill_mana_cost:
+				if unit.skill_cooldown <= 0:
+					# No mana but ready -> Grey out / Red Border
+					card.modulate = Color(0.6, 0.6, 0.6)
+					style.border_color = Color("#e74c3c") # Red
+					cost_lbl.add_theme_color_override("font_color", Color("#e74c3c"))
+				else:
+					# Cooldown and no mana -> Just keep normal grey (handled by overlay mostly, but set border to grey)
+					card.modulate = Color.WHITE
+					style.border_color = Color("#95a5a6") # Grey border
+					cost_lbl.add_theme_color_override("font_color", Color("#e74c3c"))
+			else:
+				# Enough mana
+				card.modulate = Color.WHITE
+				style.border_color = Color("#3498db") # Blue
+				cost_lbl.remove_theme_color_override("font_color") # Default
 
 func _unhandled_input(event):
 	if event is InputEventKey and event.pressed and !event.echo:
