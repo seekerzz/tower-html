@@ -23,6 +23,10 @@ func setup(grid_x: int, grid_y: int, tile_type: String = "normal"):
 	add_child(drop_target)
 	drop_target.setup(self)
 
+func set_state(new_state: String):
+	state = new_state
+	update_visuals()
+
 func update_visuals():
 	# Default base color based on state
 	var base_color = Constants.COLORS.grid
@@ -31,20 +35,27 @@ func update_visuals():
 		base_color = Constants.COLORS.unlocked
 	elif state == "locked_inner":
 		base_color = Constants.COLORS.locked_inner
+		# Debug color for visibility if needed, but using Constants is safer for style
+		# base_color = Color.DARK_GRAY
 	elif state == "locked_outer":
 		base_color = Constants.COLORS.locked_outer
+		# base_color = Color.BLACK
 	elif state == "spawn":
 		base_color = Constants.COLORS.spawn_point
 
 	if type == "core":
 		base_color = Constants.COLORS.core
-		$Label.text = "Core"
+		if has_node("Label"):
+			$Label.text = "Core"
 	else:
-		$Label.text = ""
+		if has_node("Label"):
+			$Label.text = ""
 
-	$ColorRect.color = base_color
+	if has_node("ColorRect"):
+		$ColorRect.color = base_color
 
 func set_highlight(active: bool):
+	if !has_node("ColorRect"): return
 	if active:
 		$ColorRect.color = $ColorRect.color.lightened(0.2)
 	else:
