@@ -263,12 +263,28 @@ func process_unit_combat(unit, tile, delta):
 		unit.play_attack_anim(unit.unit_data.attackType, target.global_position)
 
 		if unit.unit_data.attackType == "melee":
-			target.take_damage(unit.damage, unit, unit.unit_data.get("damageType", "physical"))
+			# AOE Cone Logic
+			var attack_dir = (target.global_position - unit.global_position).normalized()
+			var cone_angle = PI / 2.0
+			var aoe_radius = unit.range_val + 20.0
+
+			for enemy in get_tree().get_nodes_in_group("enemies"):
+				if !is_instance_valid(enemy): continue
+
+				var to_enemy_vec = enemy.global_position - unit.global_position
+				var dist = to_enemy_vec.length()
+
+				# Distance Check
+				if dist <= aoe_radius:
+					# Angle Check
+					var angle_diff = attack_dir.angle_to(to_enemy_vec)
+					if abs(angle_diff) <= cone_angle / 2.0:
+						enemy.take_damage(unit.damage, unit, unit.unit_data.get("damageType", "physical"))
 
 			var slash = SLASH_EFFECT_SCRIPT.new()
 			add_child(slash)
 			slash.global_position = target.global_position
-			slash.rotation = (target.global_position - unit.global_position).angle()
+			slash.rotation = attack_dir.angle()
 			slash.play()
 
 		elif unit.unit_data.attackType == "ranged" and unit.unit_data.get("proj") == "lightning":
