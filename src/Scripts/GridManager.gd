@@ -231,13 +231,20 @@ func remove_obstacle(node: Node):
 	obstacle_map.erase(node)
 
 func get_nav_path(start_pos: Vector2, end_pos: Vector2) -> PackedVector2Array:
-	var start_grid = Vector2i(round(start_pos.x / TILE_SIZE), round(start_pos.y / TILE_SIZE))
-	var end_grid = Vector2i(round(end_pos.x / TILE_SIZE), round(end_pos.y / TILE_SIZE))
+	var local_start = to_local(start_pos)
+	var local_end = to_local(end_pos)
+
+	var start_grid = Vector2i(round(local_start.x / TILE_SIZE), round(local_start.y / TILE_SIZE))
+	var end_grid = Vector2i(round(local_end.x / TILE_SIZE), round(local_end.y / TILE_SIZE))
 
 	if not astar_grid.is_in_boundsv(start_grid) or not astar_grid.is_in_boundsv(end_grid):
 		return PackedVector2Array()
 
-	return astar_grid.get_point_path(start_grid, end_grid)
+	var path = astar_grid.get_point_path(start_grid, end_grid)
+	var global_path = PackedVector2Array()
+	for point in path:
+		global_path.append(to_global(point))
+	return global_path
 
 func get_spawn_points() -> Array[Vector2]:
 	var points: Array[Vector2] = []
