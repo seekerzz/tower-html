@@ -50,15 +50,57 @@ func _ready():
 	_setup_stats_panel()
 
 func _setup_ui_styles():
-	var bg_style = StyleBoxFlat.new()
-	bg_style.bg_color = Color("00000080")
-	bg_style.set_corner_radius_all(8)
+	var bg_color = Color(0.1, 0.1, 0.1, 0.8)
+	var border_color = Color(0.0, 0.0, 0.0, 1.0)
+	var radius = 6
 
-	var bars = [hp_bar, food_bar, mana_bar, enemy_bar]
-	for bar in bars:
-		if bar:
-			bar.add_theme_stylebox_override("background", bg_style)
-			# Do not override "fill" to keep original colors or default theme
+	var bg_style = StyleBoxFlat.new()
+	bg_style.bg_color = bg_color
+	bg_style.set_corner_radius_all(radius)
+	bg_style.border_width_bottom = 2
+	bg_style.border_width_left = 2
+	bg_style.border_width_right = 2
+	bg_style.border_width_top = 2
+	bg_style.border_color = border_color
+
+	# HP Fill
+	var hp_fill = StyleBoxFlat.new()
+	hp_fill.bg_color = Color(0.8, 0.1, 0.1)
+	hp_fill.set_corner_radius_all(radius)
+
+	# Food Fill
+	var food_fill = StyleBoxFlat.new()
+	food_fill.bg_color = Color(1.0, 0.84, 0.0)
+	food_fill.set_corner_radius_all(radius)
+
+	# Mana Fill
+	var mana_fill = StyleBoxFlat.new()
+	mana_fill.bg_color = Color(0.2, 0.4, 1.0)
+	mana_fill.set_corner_radius_all(radius)
+
+	# Enemy Fill
+	var enemy_fill = StyleBoxFlat.new()
+	enemy_fill.bg_color = Color(0.6, 0.2, 0.8)
+	enemy_fill.set_corner_radius_all(radius)
+
+	if hp_bar:
+		hp_bar.add_theme_stylebox_override("background", bg_style)
+		hp_bar.add_theme_stylebox_override("fill", hp_fill)
+	if food_bar:
+		food_bar.add_theme_stylebox_override("background", bg_style)
+		food_bar.add_theme_stylebox_override("fill", food_fill)
+	if mana_bar:
+		mana_bar.add_theme_stylebox_override("background", bg_style)
+		mana_bar.add_theme_stylebox_override("fill", mana_fill)
+	if enemy_bar:
+		enemy_bar.add_theme_stylebox_override("background", bg_style)
+		enemy_bar.add_theme_stylebox_override("fill", enemy_fill)
+
+	var labels = [hp_label, food_label, mana_label, enemy_label]
+	for label in labels:
+		if label:
+			label.add_theme_constant_override("outline_size", 4)
+			label.add_theme_color_override("font_outline_color", Color.BLACK)
 
 func _setup_stats_panel():
 	# Anchor to Center Right
@@ -76,16 +118,20 @@ func _animate_stats_panel():
 		stats_tween.kill()
 	stats_tween = create_tween()
 
+	# Ensure panel is on top
+	damage_stats_panel.z_index = 10
+
 	var viewport_width = get_viewport_rect().size.x
 	var panel_width = damage_stats_panel.size.x
 
 	var target_pos_x
 	if is_stats_collapsed:
 		stats_header.text = "📊"
+		stats_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		stats_scroll.visible = false
 		damage_stats_panel.custom_minimum_size.y = 30 # Small height
-		# Move mostly off-screen, leave 40px visible
-		target_pos_x = viewport_width - 40
+		# Move mostly off-screen, leave 60px visible to ensure it's clickable
+		target_pos_x = viewport_width - 60
 	else:
 		stats_header.text = "Damage Stats"
 		stats_scroll.visible = true
