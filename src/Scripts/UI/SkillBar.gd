@@ -109,12 +109,9 @@ func refresh_skills():
 		cd_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 		# Create a white 1x1 texture for the progress
-		var placeholder = GradientTexture2D.new()
-		placeholder.width = 1
-		placeholder.height = 1
-		placeholder.fill = GradientTexture2D.FILL_SOLID
-		placeholder.gradient = Gradient.new()
-		placeholder.gradient.set_color(0, Color.WHITE)
+		var img = Image.create(1, 1, false, Image.FORMAT_RGBA8)
+		img.fill(Color.WHITE)
+		var placeholder = ImageTexture.create_from_image(img)
 		cd_bar.texture_progress = placeholder
 
 		layout.add_child(cd_bar)
