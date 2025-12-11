@@ -15,6 +15,22 @@ func setup(grid_x: int, grid_y: int, tile_type: String = "normal"):
 	x = grid_x
 	y = grid_y
 	type = tile_type
+
+	if has_node("ColorRect") and !has_node("VisualPanel"):
+		var cr = $ColorRect
+		var panel = Panel.new()
+		panel.name = "VisualPanel"
+		panel.size = cr.size
+		panel.position = cr.position
+		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+		var style = StyleMaker.get_flat_style(cr.color, 4)
+		panel.add_theme_stylebox_override("panel", style)
+
+		add_child(panel)
+		move_child(panel, cr.get_index())
+		cr.visible = false
+
 	update_visuals()
 
 	# Add Drop Target
@@ -51,13 +67,32 @@ func update_visuals():
 		if has_node("Label"):
 			$Label.text = ""
 
-	if has_node("ColorRect"):
-		$ColorRect.color = base_color
+	if has_node("VisualPanel"):
+		var panel = $VisualPanel
+		var style = panel.get_theme_stylebox("panel")
+		if style:
+			create_tween().tween_property(style, "bg_color", base_color, 0.2)
+	elif has_node("ColorRect"):
+		create_tween().tween_property($ColorRect, "color", base_color, 0.2)
 
 func set_highlight(active: bool):
-	if !has_node("ColorRect"): return
+	var target = null
+	var current_color = Color.BLACK
+	var property = ""
+
+	if has_node("VisualPanel"):
+		target = $VisualPanel.get_theme_stylebox("panel")
+		current_color = target.bg_color
+		property = "bg_color"
+	elif has_node("ColorRect"):
+		target = $ColorRect
+		current_color = target.color
+		property = "color"
+
+	if !target: return
+
 	if active:
-		$ColorRect.color = $ColorRect.color.lightened(0.2)
+		create_tween().tween_property(target, property, current_color.lightened(0.2), 0.1)
 	else:
 		update_visuals()
 
