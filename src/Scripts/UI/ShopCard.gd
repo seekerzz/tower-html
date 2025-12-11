@@ -13,7 +13,7 @@ var name_label: Label
 var price_label: Label
 var content_container: VBoxContainer
 
-func _ready():
+func _init():
 	# 1. Setup Base Style
 	base_style = StyleMaker.get_flat_style(Color("#2c3e50"), 8)
 	add_theme_stylebox_override("panel", base_style)
@@ -45,6 +45,9 @@ func _ready():
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
+
+func _ready():
+	pass
 
 func setup(key: String):
 	unit_key = key
