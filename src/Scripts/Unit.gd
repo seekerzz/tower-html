@@ -38,6 +38,7 @@ var start_position: Vector2 = Vector2.ZERO
 var is_dragging: bool = false
 var drag_offset: Vector2 = Vector2.ZERO
 var ghost_node: Node2D = null
+var is_hovered: bool = false
 
 const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 
@@ -320,6 +321,8 @@ func _on_area_2d_input_event(viewport, event, shape_idx):
 			unit_clicked.emit(self)
 
 func _on_area_2d_mouse_entered():
+	is_hovered = true
+	queue_redraw()
 	var current_stats = {
 		"level": level,
 		"damage": damage,
@@ -329,7 +332,21 @@ func _on_area_2d_mouse_entered():
 	GameManager.show_tooltip.emit(unit_data, current_stats, active_buffs, global_position)
 
 func _on_area_2d_mouse_exited():
+	is_hovered = false
+	queue_redraw()
 	GameManager.hide_tooltip.emit()
+
+func _draw():
+	if is_hovered:
+		var draw_radius = range_val
+		if unit_data.get("attackType") == "melee":
+			# For melee, use actual range if it's reasonable, or a fixed visual range if range_val is too small (e.g. < 50)
+			# But prompt suggests "fixed smaller range (e.g. 100) or actual range".
+			# Most melee units have range around 80-100.
+			draw_radius = max(range_val, 100.0)
+
+		draw_circle(Vector2.ZERO, draw_radius, Color(1, 1, 1, 0.1))
+		draw_arc(Vector2.ZERO, draw_radius, 0, TAU, 64, Color(1, 1, 1, 0.3), 1.0)
 
 func _input(event):
 	if is_dragging:
