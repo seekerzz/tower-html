@@ -22,6 +22,10 @@ var path: PackedVector2Array = []
 var nav_timer: float = 0.0
 var path_index: int = 0
 
+var current_target_tile: Node2D = null
+var is_attacking_base: bool = false
+var base_attack_timer: float = 0.0
+
 func _ready():
 	add_to_group("enemies")
 	# We also need to monitor layer 2 (traps) for overlaps
@@ -141,7 +145,9 @@ func _process(delta):
 	temp_speed_mod = 1.0
 	check_traps(delta)
 
-	if attacking_wall and is_instance_valid(attacking_wall):
+	if is_attacking_base:
+		attack_base_logic(delta)
+	elif attacking_wall and is_instance_valid(attacking_wall):
 		attack_wall_logic(delta)
 	else:
 		if attacking_wall != null:
@@ -179,10 +185,36 @@ func attack_wall_logic(delta):
 		attacking_wall.take_damage(enemy_data.dmg)
 		attack_timer = 1.0
 
+func attack_base_logic(delta):
+	base_attack_timer -= delta
+	if base_attack_timer <= 0:
+		GameManager.damage_core(enemy_data.dmg)
+		base_attack_timer = 1.0 / enemy_data.atkSpeed # Use enemy attack speed
+		_play_state_particles(true)
+
+		# Check if target tile still exists (if it was destroyed, stop attacking)
+		if current_target_tile and not is_instance_valid(current_target_tile):
+			is_attacking_base = false
+			current_target_tile = null
+			update_path()
+
 func update_path():
 	if !GameManager.grid_manager: return
-	var core_pos = GameManager.grid_manager.global_position
-	path = GameManager.grid_manager.get_nav_path(global_position, core_pos)
+
+	var target_pos = Vector2.ZERO
+	current_target_tile = null
+
+	if GameManager.grid_manager.has_method("get_closest_unlocked_tile"):
+		current_target_tile = GameManager.grid_manager.get_closest_unlocked_tile(global_position)
+		if current_target_tile:
+			target_pos = current_target_tile.global_position
+		else:
+			target_pos = GameManager.grid_manager.global_position
+	else:
+		# Fallback
+		target_pos = GameManager.grid_manager.global_position
+
+	path = GameManager.grid_manager.get_nav_path(global_position, target_pos)
 
 	# If path is empty, it means no path found (blocked)
 	# But AStarGrid2D returns empty if no path.
@@ -200,7 +232,18 @@ func update_path():
 
 func move_along_path(delta):
 	if !GameManager.grid_manager: return
+
+	# Check for attack range to current target tile
+	if current_target_tile and is_instance_valid(current_target_tile):
+		var dist_to_target = global_position.distance_to(current_target_tile.global_position)
+		if dist_to_target < 40.0:
+			is_attacking_base = true
+			_play_state_particles(true)
+			return
+
 	var target_pos = GameManager.grid_manager.global_position # Default core
+	if current_target_tile and is_instance_valid(current_target_tile):
+		target_pos = current_target_tile.global_position
 
 	if path.size() > path_index:
 		target_pos = path[path_index]
@@ -212,8 +255,8 @@ func move_along_path(delta):
 			if path_index < path.size():
 				target_pos = path[path_index]
 			else:
-				# Reached end of path (Core)
-				target_pos = GameManager.grid_manager.global_position
+				# Reached end of path
+				pass
 
 	var direction = (target_pos - global_position).normalized()
 
@@ -252,8 +295,8 @@ func move_along_path(delta):
 
 	position += direction * current_speed * delta
 
-	# Check if reached core
-	if global_position.distance_to(GameManager.grid_manager.global_position) < 30:
+	# Legacy check if reached core (GridManager center) - Fallback
+	if !current_target_tile and global_position.distance_to(GameManager.grid_manager.global_position) < 30:
 		GameManager.damage_core(enemy_data.dmg)
 		queue_free()
 
