@@ -276,6 +276,7 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 
 	_set_tiles_occupied(x, y, w, h, unit)
 	recalculate_buffs()
+	GameManager.recalculate_max_health()
 	return true
 
 func _set_tiles_occupied(x: int, y: int, w: int, h: int, unit):
@@ -332,6 +333,7 @@ func remove_unit_from_grid(unit):
 	_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
 	unit.queue_free()
 	recalculate_buffs()
+	GameManager.recalculate_max_health()
 
 # Drag and Drop Implementation
 func handle_bench_drop_at(target_tile, data):
@@ -366,6 +368,7 @@ func handle_bench_drop_at(target_tile, data):
 				GameManager.main_game.remove_from_bench(bench_index)
 			recalculate_buffs()
 			temp_unit.queue_free()
+			GameManager.recalculate_max_health()
 			return
 
 		# Check Devour
@@ -375,6 +378,7 @@ func handle_bench_drop_at(target_tile, data):
 				GameManager.main_game.remove_from_bench(bench_index)
 			recalculate_buffs()
 			temp_unit.queue_free()
+			GameManager.recalculate_max_health()
 			return
 
 		temp_unit.queue_free()
