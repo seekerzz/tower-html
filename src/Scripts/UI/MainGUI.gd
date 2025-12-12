@@ -1,5 +1,7 @@
 extends Control
 
+signal sacrifice_requested
+
 @onready var hp_bar = $Panel/VBoxContainer/HPBar
 @onready var food_bar = $Panel/VBoxContainer/FoodBar
 @onready var mana_bar = $Panel/VBoxContainer/ManaBar
@@ -15,6 +17,10 @@ extends Control
 @onready var damage_stats_panel = $DamageStats
 @onready var stats_scroll = $DamageStats/ScrollContainer
 @onready var stats_header = $DamageStats/Header
+
+# New UI Elements for Rewards
+var artifacts_hud: HBoxContainer
+var sacrifice_button: Button
 
 const FLOATING_TEXT_SCENE = preload("res://src/Scenes/UI/FloatingText.tscn")
 const BUILD_PANEL_SCENE = preload("res://src/Scenes/UI/BuildPanel.tscn")
@@ -48,6 +54,94 @@ func _ready():
 	update_timeline()
 	_setup_build_panel()
 	_setup_stats_panel()
+	_setup_artifacts_hud()
+	_setup_sacrifice_button()
+
+func _setup_artifacts_hud():
+	artifacts_hud = HBoxContainer.new()
+	artifacts_hud.name = "ArtifactsHUD"
+	# Position at top right or similar.
+	# Let's put it top left, under wave label or similar.
+	# Or top right corner.
+	artifacts_hud.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	artifacts_hud.position = Vector2(-200, 10) # Offset from right anchor? No, position is relative to anchor.
+	# Let's use layout properly.
+	add_child(artifacts_hud)
+	artifacts_hud.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	artifacts_hud.position = Vector2(get_viewport_rect().size.x - 20, 10)
+
+	# Connect to RewardManager if available
+	var rm = GameManager.get("reward_manager")
+	if not rm and GameManager.has_meta("reward_manager"):
+		rm = GameManager.get_meta("reward_manager")
+
+	if rm:
+		rm.reward_added.connect(_on_reward_added)
+
+func _setup_sacrifice_button():
+	sacrifice_button = Button.new()
+	sacrifice_button.name = "SacrificeButton"
+	sacrifice_button.text = "SACRIFICE"
+	sacrifice_button.modulate = Color(1, 0, 0)
+	sacrifice_button.visible = false
+	sacrifice_button.pressed.connect(_on_sacrifice_button_pressed)
+
+	# Place next to HP bar
+	if hp_bar:
+		# Add to hp_bar parent or nearby
+		hp_bar.get_parent().add_child(sacrifice_button)
+		hp_bar.get_parent().move_child(sacrifice_button, hp_bar.get_index() + 1)
+	else:
+		add_child(sacrifice_button)
+
+func _on_reward_added(id):
+	_update_artifacts_hud()
+
+	if id == "sacrifice_protocol":
+		sacrifice_button.visible = true
+
+func _update_artifacts_hud():
+	if not artifacts_hud: return
+
+	for child in artifacts_hud.get_children():
+		child.queue_free()
+
+	var rm = GameManager.get("reward_manager")
+	if not rm and GameManager.has_meta("reward_manager"):
+		rm = GameManager.get_meta("reward_manager")
+
+	if not rm: return
+
+	for artifact_id in rm.acquired_artifacts:
+		var icon = TextureRect.new()
+		# Assuming we can get data from RewardManager REWARDS
+		if rm.REWARDS.has(artifact_id):
+			var data = rm.REWARDS[artifact_id]
+			var tex_path = data.get("icon")
+			if tex_path and ResourceLoader.exists(tex_path):
+				icon.texture = load(tex_path)
+			else:
+				# Placeholder rect
+				icon.custom_minimum_size = Vector2(32, 32)
+				var placeholder = GradientTexture2D.new()
+				placeholder.width = 32
+				placeholder.height = 32
+				icon.texture = placeholder
+
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.custom_minimum_size = Vector2(32, 32)
+		icon.tooltip_text = rm.REWARDS[artifact_id].get("name", artifact_id)
+		artifacts_hud.add_child(icon)
+
+func _on_sacrifice_button_pressed():
+	emit_signal("sacrifice_requested")
+	# Also notify RewardManager if needed
+	var rm = GameManager.get("reward_manager")
+	if not rm and GameManager.has_meta("reward_manager"):
+		rm = GameManager.get_meta("reward_manager")
+
+	if rm:
+		rm.activate_sacrifice()
 
 func _setup_ui_styles():
 	var bg_color = Color(0.1, 0.1, 0.1, 0.8)
