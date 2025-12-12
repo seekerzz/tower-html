@@ -33,6 +33,10 @@ var crit_dmg: float = 1.5
 var bounce_count: int = 0
 var split_count: int = 0
 
+# Focus Fire
+var focus_target: Object = null
+var focus_stacks: int = 0
+
 # Grid
 var grid_pos: Vector2i = Vector2i.ZERO
 var start_position: Vector2 = Vector2.ZERO
@@ -114,6 +118,10 @@ func reset_stats():
 	attack_cost_food = unit_data.get("foodCost", 1.0)
 	attack_cost_mana = unit_data.get("manaCost", 0.0)
 	skill_mana_cost = unit_data.get("skillCost", 30.0)
+
+	# Focus Fire Artifact Check
+	if GameManager.reward_manager and GameManager.reward_manager.has_artifact("focus_fire"):
+		range_val *= 1.2
 
 	update_visuals()
 	if level > 1:
@@ -282,6 +290,24 @@ func start_breathe_anim():
 	breathe_tween = create_tween().set_loops()
 	breathe_tween.tween_property(visual_holder, "scale", Vector2(1.05, 1.05), 1.0).set_trans(Tween.TRANS_SINE)
 	breathe_tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 1.0).set_trans(Tween.TRANS_SINE)
+
+func get_damage_against(target: Object) -> float:
+	var final_dmg = damage
+
+	if GameManager.reward_manager and GameManager.reward_manager.has_artifact("focus_fire"):
+		if target == focus_target:
+			focus_stacks += 1
+		else:
+			focus_target = target
+			focus_stacks = 0
+
+		final_dmg *= (1.0 + (0.05 * focus_stacks))
+	else:
+		# Reset if artifact lost or not present? Or just unused.
+		focus_target = null
+		focus_stacks = 0
+
+	return final_dmg
 
 func play_attack_anim(attack_type: String, target_pos: Vector2):
 	if !visual_holder: return

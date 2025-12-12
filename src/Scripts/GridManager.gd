@@ -599,8 +599,16 @@ func clear_ghosts():
 	ghost_tiles.clear()
 
 func on_ghost_clicked(x, y):
-	if GameManager.gold >= expansion_cost:
-		if GameManager.spend_gold(expansion_cost):
+	var current_cost = expansion_cost
+	if GameManager.reward_manager and GameManager.reward_manager.has_artifact("rapid_expansion"):
+		current_cost = int(current_cost * 0.7)
+
+	if GameManager.gold >= current_cost:
+		if GameManager.spend_gold(current_cost):
+			if GameManager.reward_manager and GameManager.reward_manager.has_artifact("rapid_expansion"):
+				GameManager.extra_max_health += 50
+				GameManager.recalculate_max_health()
+
 			expansion_cost += 10
 			var key = get_tile_key(x, y)
 			if tiles.has(key):

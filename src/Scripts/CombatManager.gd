@@ -270,7 +270,12 @@ func process_unit_combat(unit, tile, delta):
 
 			# Crit Calculation
 			var is_critical = randf() < unit.crit_rate
+
+			# Use get_damage_against if available (for Focus Fire artifact)
 			var final_damage = unit.damage
+			if unit.has_method("get_damage_against"):
+				final_damage = unit.get_damage_against(target)
+
 			var dmg_type = unit.unit_data.get("damageType", "physical")
 			if is_critical:
 				final_damage *= unit.crit_dmg
@@ -324,7 +329,12 @@ func perform_lightning_attack(source_unit, start_pos, target, chain_left, hit_li
 	if !is_instance_valid(target): return
 
 	# Apply damage
-	target.take_damage(source_unit.damage, source_unit, "lightning")
+	# Calculate damage
+	var dmg = source_unit.damage
+	if source_unit.has_method("get_damage_against"):
+		dmg = source_unit.get_damage_against(target)
+
+	target.take_damage(dmg, source_unit, "lightning")
 	hit_list.append(target)
 
 	# Visual
@@ -376,7 +386,13 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 
 	# Crit Calculation
 	var is_critical = randf() < source_unit.crit_rate
-	var final_damage = source_unit.damage
+
+	# Base damage
+	var base_dmg = source_unit.damage
+	if source_unit.has_method("get_damage_against") and target:
+		base_dmg = source_unit.get_damage_against(target)
+
+	var final_damage = base_dmg
 	if is_critical:
 		final_damage *= source_unit.crit_dmg
 

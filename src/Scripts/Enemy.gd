@@ -358,6 +358,21 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 		die()
 
 func die():
+	# Scrap Recycling
+	if GameManager.reward_manager and GameManager.reward_manager.has_artifact("scrap"):
+		if GameManager.grid_manager:
+			var core_pos = GameManager.grid_manager.global_position
+			if global_position.distance_to(core_pos) < 200.0:
+				# Use heal_core if available, otherwise direct manipulate.
+				if GameManager.has_method("heal_core"):
+					GameManager.heal_core(5)
+				else:
+					# Fallback or just do it
+					GameManager.core_health = min(GameManager.max_core_health, GameManager.core_health + 5)
+					GameManager.resource_changed.emit()
+
+				GameManager.add_gold(1)
+
 	GameManager.add_gold(1)
 	GameManager.spawn_floating_text(global_position, "+1💰", Color.YELLOW)
 	GameManager.food += 2
