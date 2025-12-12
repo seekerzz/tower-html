@@ -41,13 +41,35 @@ func show_upgrades():
 
 func create_card(data):
 	var btn = Button.new()
-	# Simple text formatting
-	# Adjust for data keys: title->name, description->desc
-	var title = data.get("name", data.get("title", "Unknown"))
-	var desc = data.get("desc", data.get("description", ""))
-
-	btn.text = "%s\n\n%s" % [title, desc]
 	btn.custom_minimum_size = Vector2(200, 300)
+
+	var vbox = VBoxContainer.new()
+	vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Allow mouse input to pass to the button
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	btn.add_child(vbox)
+
+	var icon_label = Label.new()
+	icon_label.text = data.get("icon", "")
+	# Make icon big
+	icon_label.add_theme_font_size_override("font_size", 64)
+	icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(icon_label)
+
+	var title = data.get("name", data.get("title", "Unknown"))
+	var title_label = Label.new()
+	title_label.text = title
+	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_label.add_theme_font_size_override("font_size", 20)
+	vbox.add_child(title_label)
+
+	var desc = data.get("desc", data.get("description", ""))
+	var desc_label = Label.new()
+	desc_label.text = desc
+	desc_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_child(desc_label)
 
 	if data.get("rarity") == "epic":
 		btn.modulate = Color(1, 0.5, 1) # Purpleish
