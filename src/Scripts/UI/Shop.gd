@@ -19,6 +19,8 @@ func _ready():
 	GameManager.resource_changed.connect(update_ui)
 	GameManager.wave_started.connect(on_wave_started)
 	GameManager.wave_ended.connect(on_wave_ended)
+	if GameManager.has_signal("wave_reset"):
+		GameManager.wave_reset.connect(on_wave_reset)
 	refresh_shop(true)
 	update_ui()
 
@@ -122,6 +124,13 @@ func on_wave_ended():
 	start_wave_btn.disabled = false
 	start_wave_btn.text = "Start Wave"
 	refresh_shop(true)
+
+func on_wave_reset():
+	refresh_btn.disabled = false
+	expand_btn.disabled = false
+	start_wave_btn.disabled = false
+	start_wave_btn.text = "Start Wave"
+	# Do not refresh shop on retry
 
 func _on_start_wave_button_pressed():
 	GameManager.start_wave()

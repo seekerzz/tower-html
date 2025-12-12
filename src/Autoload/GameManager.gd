@@ -3,6 +3,7 @@ extends Node
 signal resource_changed
 signal wave_started
 signal wave_ended
+signal wave_reset
 signal game_over
 signal unit_purchased(unit_data)
 signal unit_sold(amount)
@@ -131,8 +132,8 @@ func retry_wave():
 	# Reset state
 	is_wave_active = false
 
-	# Restart wave
-	start_wave()
+	# Notify systems that wave is reset (so they can re-enable UI etc)
+	wave_reset.emit()
 
 	# Update UI
 	resource_changed.emit()
