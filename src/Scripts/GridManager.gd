@@ -13,6 +13,7 @@ var ghost_tiles: Array = []
 var expansion_mode: bool = false
 var expansion_cost: int = 50 # Base cost
 var spawn_tiles: Array = [] # List of tiles (Vector2i) used as spawn points
+var active_territory_tiles: Array = [] # List of Tile instances that are unlocked or core
 
 var astar_grid: AStarGrid2D
 
@@ -52,6 +53,7 @@ func create_initial_grid():
 		tiles[key].queue_free()
 	tiles.clear()
 	spawn_tiles.clear()
+	active_territory_tiles.clear()
 
 	var half_w = Constants.MAP_WIDTH / 2
 	var half_h = Constants.MAP_HEIGHT / 2
@@ -116,6 +118,10 @@ func create_tile(x: int, y: int, type: String = "normal", state: String = "locke
 	tile.position = Vector2(x * TILE_SIZE, y * TILE_SIZE)
 	add_child(tile)
 	tiles[key] = tile
+
+	if state == "unlocked" or type == "core":
+		if not active_territory_tiles.has(tile):
+			active_territory_tiles.append(tile)
 
 	tile.tile_clicked.connect(_on_tile_clicked)
 
@@ -600,6 +606,8 @@ func on_ghost_clicked(x, y):
 			if tiles.has(key):
 				var tile = tiles[key]
 				tile.set_state("unlocked")
+				if not active_territory_tiles.has(tile):
+					active_territory_tiles.append(tile)
 				# tile.update_visuals() # set_state calls update_visuals
 
 			# Refresh ghosts to show new expansion options
@@ -610,3 +618,25 @@ func on_ghost_clicked(x, y):
 	else:
 		# Feedback for not enough gold?
 		GameManager.spawn_floating_text(Vector2(x*TILE_SIZE, y*TILE_SIZE), "Need Gold!", Color.RED)
+
+func get_closest_unlocked_tile(world_pos: Vector2) -> Node2D:
+	if active_territory_tiles.is_empty():
+		# Fallback to core if exists
+		var core_key = get_tile_key(0, 0)
+		if tiles.has(core_key):
+			return tiles[core_key]
+		return null
+
+	var closest_tile = null
+	var min_dist_sq = INF
+
+	for tile in active_territory_tiles:
+		# Check if valid instance
+		if not is_instance_valid(tile): continue
+
+		var dist_sq = tile.global_position.distance_squared_to(world_pos)
+		if dist_sq < min_dist_sq:
+			min_dist_sq = dist_sq
+			closest_tile = tile
+
+	return closest_tile
