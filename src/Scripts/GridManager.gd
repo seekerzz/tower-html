@@ -58,17 +58,13 @@ func create_initial_grid():
 	var half_w = Constants.MAP_WIDTH / 2
 	var half_h = Constants.MAP_HEIGHT / 2
 
-	# Determine spawn candidates (outermost ring)
-	var spawn_candidates = []
-	for x in range(-half_w, half_w + 1):
-		for y in range(-half_h, half_h + 1):
-			if abs(x) == half_w or abs(y) == half_h:
-				spawn_candidates.append(Vector2i(x,y))
-
-	# Select 4-6 random spawn points
-	var num_spawns = randi_range(4, 6)
-	spawn_candidates.shuffle()
-	var chosen_spawns = spawn_candidates.slice(0, num_spawns)
+	# Determine spawn candidates (Four corners)
+	var chosen_spawns = [
+		Vector2i(-half_w, -half_h),
+		Vector2i(half_w, -half_h),
+		Vector2i(-half_w, half_h),
+		Vector2i(half_w, half_h)
+	]
 
 	for x in range(-half_w, half_w + 1):
 		for y in range(-half_h, half_h + 1):
