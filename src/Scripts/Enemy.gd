@@ -14,6 +14,7 @@ var burn_tick_timer: float = 0.0
 
 var attack_timer: float = 0.0
 var attacking_wall: Node = null
+var attacking_unit: Node = null # New logic: attack unit transfers to core damage
 var temp_speed_mod: float = 1.0
 
 var wobble_scale = Vector2.ONE
@@ -139,13 +140,18 @@ func _process(delta):
 		slow_timer -= delta
 
 	temp_speed_mod = 1.0
-	check_traps(delta)
+	check_collisions(delta) # Handles traps and unit detection
 
-	if attacking_wall and is_instance_valid(attacking_wall):
+	if attacking_unit and is_instance_valid(attacking_unit):
+		attack_unit_logic(delta)
+	elif attacking_wall and is_instance_valid(attacking_wall):
 		attack_wall_logic(delta)
 	else:
 		if attacking_wall != null:
 			attacking_wall = null # Reset if invalid or destroyed
+			_play_state_particles(false)
+		if attacking_unit != null:
+			attacking_unit = null
 			_play_state_particles(false)
 
 		# Update Navigation Path
@@ -156,22 +162,54 @@ func _process(delta):
 
 		move_along_path(delta)
 
-func check_traps(delta):
+func check_collisions(delta):
+	# Check for Units (Attack targets)
+	var areas = get_overlapping_areas()
+	var found_unit = false
+
+	# Prioritize attacking units found in areas (Units are Area2D)
+	for a in areas:
+		if a.is_in_group("units"):
+			start_attacking_unit(a)
+			found_unit = true
+			break # Focus on one unit
+
 	var bodies = get_overlapping_bodies()
+
+	# If no unit found in areas, check bodies for units
+	if not found_unit:
+		for b in bodies:
+			if b.is_in_group("units"):
+				start_attacking_unit(b)
+				found_unit = true
+				break
+
+	# Always check bodies for traps (walls/traps are bodies)
+	# This loop runs independently of unit attack status to ensure traps work while attacking
 	for b in bodies:
 		if b.get("type") and Constants.BARRICADE_TYPES.has(b.type):
 			var props = Constants.BARRICADE_TYPES[b.type]
 			var b_type = props.type
 
-			# Only interact with non-solid traps here, or any?
-			# The logic is fine for both, but usually we move through traps.
 			if b_type == "slow":
 				temp_speed_mod = 0.5
 			elif b_type == "poison":
 				effects.poison = 1.0
 			elif b_type == "reflect":
-				# Fang trap reflects damage or deals damage
 				take_damage(props.strength * delta)
+
+func start_attacking_unit(unit):
+	if attacking_unit != unit:
+		attacking_unit = unit
+		attack_timer = 0.5 # Initial delay
+		_play_state_particles(true)
+
+func attack_unit_logic(delta):
+	attack_timer -= delta
+	if attack_timer <= 0:
+		# Attack unit -> Damage Core
+		GameManager.damage_core(enemy_data.dmg)
+		attack_timer = enemy_data.atkSpeed # Use enemy atkSpeed
 
 func attack_wall_logic(delta):
 	attack_timer -= delta
@@ -252,7 +290,8 @@ func move_along_path(delta):
 
 	position += direction * current_speed * delta
 
-	# Check if reached core
+	# Check if reached core (Center)
+	# Legacy check in case there are no units blocking
 	if global_position.distance_to(GameManager.grid_manager.global_position) < 30:
 		GameManager.damage_core(enemy_data.dmg)
 		queue_free()

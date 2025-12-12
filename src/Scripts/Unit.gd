@@ -45,6 +45,28 @@ const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 signal unit_clicked(unit)
 
 func _ready():
+	add_to_group("units")
+	# Ensure collision setup for enemy detection
+	# Assuming Enemy monitors collision_mask that includes our layer.
+	# Enemy uses mask=3 (Layer 1 Walls + Layer 2 Traps).
+	# We want Unit to be detected as a Wall-like obstacle or Unit obstacle.
+	# Let's use Layer 1 (Value 1).
+
+	# If this Area2D is used for detection, we ensure it's on a layer enemies check.
+	# NOTE: Node2D does not have collision_layer. We must find the Area2D child.
+	var area = get_node_or_null("Area2D")
+	if not area:
+		# Search children
+		for child in get_children():
+			if child is Area2D:
+				area = child
+				break
+
+	if area:
+		area.collision_layer = 1
+		area.collision_mask = 1 | 128
+		area.add_to_group("units") # Ensure area is also in units group if Enemy checks areas
+
 	_ensure_visual_hierarchy()
 	# If unit_data is already populated (e.g. from scene or prior setup), update visuals
 	if !unit_data.is_empty():

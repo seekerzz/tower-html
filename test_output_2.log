@@ -1,8 +1,0 @@
-Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
-
-ERROR: Cannot open file 'res://TestRunner.tscn'.
-   at: load (scene/resources/resource_format_text.cpp:1387)
-ERROR: Failed loading resource: res://TestRunner.tscn.
-   at: _load (core/io/resource_loader.cpp:343)
-ERROR: Failed loading scene: res://TestRunner.tscn.
-   at: start (main/main.cpp:4560)
