@@ -40,9 +40,19 @@ var grid_manager = null
 var combat_manager = null
 var ui_manager = null
 var main_game = null
+var reward_manager: Node = null
+
+var permanent_health_bonus: float = 0.0
 
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
+
+	if reward_manager == null:
+		var rm_scene = load("res://src/Scripts/Managers/RewardManager.gd")
+		if rm_scene:
+			reward_manager = rm_scene.new()
+			add_child(reward_manager)
+			reward_manager.sacrifice_state_changed.connect(_on_sacrifice_state_changed)
 
 func _process(delta):
 	if is_wave_active and core_health > 0:
@@ -102,6 +112,9 @@ func _on_upgrade_selected(upgrade_data):
 	_finish_wave_process()
 
 func damage_core(amount: float):
+	if amount > 0 and reward_manager and "biomass_armor" in reward_manager.acquired_artifacts:
+		amount = min(amount, max_core_health * 0.05)
+
 	core_health -= amount
 	resource_changed.emit()
 	if core_health <= 0:
@@ -131,7 +144,13 @@ func recalculate_max_health():
 			processed_units[tile.unit] = true
 
 	var old_max = max_core_health
-	max_core_health = Constants.BASE_CORE_HP + total_unit_hp
+	max_core_health = Constants.BASE_CORE_HP + total_unit_hp + permanent_health_bonus
+
+	# Note: Biomass Armor (+500 HP) is applied in RewardManager._apply_immediate_effects.
+	# If we add it here, we might need to ensure consistency.
+	# Reviewer requested removal of explicit check here to match spec strictness.
+	# if reward_manager and "biomass_armor" in reward_manager.acquired_artifacts:
+	# 	max_core_health += 500.0
 
 	if max_core_health != old_max:
 		var diff = max_core_health - old_max
@@ -151,6 +170,14 @@ func recalculate_max_health():
 			game_over.emit()
 
 		resource_changed.emit()
+
+func _on_sacrifice_state_changed(is_active: bool):
+	if is_active:
+		damage_core(core_health * 0.1)
+		damage_multiplier *= 2.0
+	else:
+		damage_multiplier /= 2.0
+	resource_changed.emit()
 
 func add_material(type: String, amount: int = 1):
 	if materials.has(type):
