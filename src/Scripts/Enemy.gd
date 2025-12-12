@@ -338,23 +338,23 @@ func play_attack_animation(target_pos: Vector2, hit_callback: Callable = Callabl
 
 	# 1. Anticipation (Retreat + Squash)
 	# Retreat slightly away from target
-	var retreat_pos = original_pos - direction * 15.0
-	var squash_scale = Vector2(0.8, 0.8) # Squash
+	var retreat_pos = original_pos - direction * 5.0
+	var squash_scale = Vector2(0.9, 0.9) # Squash
 
 	anim_tween.set_parallel(true)
-	anim_tween.tween_property(self, "global_position", retreat_pos, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	anim_tween.tween_property(self, "wobble_scale", squash_scale, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	anim_tween.tween_property(self, "global_position", retreat_pos, 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	anim_tween.tween_property(self, "wobble_scale", squash_scale, 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	anim_tween.set_parallel(false)
 
 	# 2. Strike (Dash + Stretch)
 	# Dash to target (or slightly before/past to simulate impact)
 	# User requirement: "Position at 'Strike' contact ... instantiate SlashEffect".
 	# We move to target_pos (or close to it).
-	var strike_scale = Vector2(1.3, 1.3) # Stretch/Enlarge
+	var strike_scale = Vector2(1.1, 1.1) # Stretch/Enlarge
 
 	anim_tween.set_parallel(true)
-	anim_tween.tween_property(self, "global_position", target_pos - direction * 5.0, 0.1).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
-	anim_tween.tween_property(self, "wobble_scale", strike_scale, 0.1)
+	anim_tween.tween_property(self, "global_position", target_pos - direction * 2.0, 0.05).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+	anim_tween.tween_property(self, "wobble_scale", strike_scale, 0.05)
 	anim_tween.set_parallel(false)
 
 	# Impact Effect Callback
@@ -370,8 +370,8 @@ func play_attack_animation(target_pos: Vector2, hit_callback: Callable = Callabl
 
 	# 3. Recovery (Return + Normal Scale)
 	anim_tween.set_parallel(true)
-	anim_tween.tween_property(self, "global_position", original_pos, 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	anim_tween.tween_property(self, "wobble_scale", Vector2.ONE, 0.15)
+	anim_tween.tween_property(self, "global_position", original_pos, 0.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	anim_tween.tween_property(self, "wobble_scale", Vector2.ONE, 0.1)
 	anim_tween.set_parallel(false)
 
 	anim_tween.tween_callback(func(): is_playing_attack_anim = false)
