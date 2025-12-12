@@ -599,8 +599,12 @@ func clear_ghosts():
 	ghost_tiles.clear()
 
 func on_ghost_clicked(x, y):
-	if GameManager.gold >= expansion_cost:
-		if GameManager.spend_gold(expansion_cost):
+	var cost = expansion_cost
+	if GameManager.reward_manager and "rapid_expansion" in GameManager.reward_manager.acquired_artifacts:
+		cost = int(cost * 0.7)
+
+	if GameManager.gold >= cost:
+		if GameManager.spend_gold(cost):
 			expansion_cost += 10
 			var key = get_tile_key(x, y)
 			if tiles.has(key):
@@ -608,7 +612,13 @@ func on_ghost_clicked(x, y):
 				tile.set_state("unlocked")
 				if not active_territory_tiles.has(tile):
 					active_territory_tiles.append(tile)
-				# tile.update_visuals() # set_state calls update_visuals
+
+				# Artifact: Rapid Expansion Bonus
+				if GameManager.reward_manager and "rapid_expansion" in GameManager.reward_manager.acquired_artifacts:
+					GameManager.permanent_health_bonus += 50.0
+					GameManager.max_core_health += 50.0
+					GameManager.core_health += 50.0 # Heal by the added amount
+					GameManager.resource_changed.emit()
 
 			# Refresh ghosts to show new expansion options
 			# Must use call_deferred or just call it?

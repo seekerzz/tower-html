@@ -431,6 +431,16 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 
 func die():
 	GameManager.add_gold(1)
+
+	# Artifact: Scrap Recycling
+	if GameManager.reward_manager and "scrap_recycling" in GameManager.reward_manager.acquired_artifacts:
+		if GameManager.grid_manager:
+			var core_pos = GameManager.grid_manager.global_position
+			if global_position.distance_to(core_pos) < 200.0:
+				GameManager.damage_core(-5)
+				GameManager.add_gold(1)
+				GameManager.spawn_floating_text(global_position, "+1💰 (Recycle)", Color.GOLD)
+
 	GameManager.spawn_floating_text(global_position, "+1💰", Color.YELLOW)
 	GameManager.food += 2
 
