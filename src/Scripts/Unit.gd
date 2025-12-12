@@ -29,6 +29,7 @@ var visual_node: CanvasItem = null
 var is_starving: bool = false
 var is_no_mana: bool = false
 var crit_rate: float = 0.0
+var crit_dmg: float = 1.5
 var bounce_count: int = 0
 var split_count: int = 0
 
@@ -104,7 +105,8 @@ func reset_stats():
 	damage = unit_data.damage
 	range_val = unit_data.range
 	atk_speed = unit_data.atk_speed if "atk_speed" in unit_data else unit_data.get("atkSpeed", 1.0)
-	crit_rate = 0.0
+	crit_rate = unit_data.get("crit_rate", 0.1)
+	crit_dmg = unit_data.get("crit_dmg", 1.5)
 	bounce_count = 0
 	split_count = 0
 	active_buffs.clear()
@@ -330,7 +332,9 @@ func _on_area_2d_mouse_entered():
 		"level": level,
 		"damage": damage,
 		"range": range_val,
-		"atk_speed": atk_speed
+		"atk_speed": atk_speed,
+		"crit_rate": crit_rate,
+		"crit_dmg": crit_dmg
 	}
 	GameManager.show_tooltip.emit(unit_data, current_stats, active_buffs, global_position)
 

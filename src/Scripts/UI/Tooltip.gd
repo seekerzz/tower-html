@@ -12,11 +12,17 @@ func show_tooltip(unit_data: Dictionary, current_stats: Dictionary, active_buffs
 
 	var desc = unit_data.get("desc", "")
 	var stats_text = ""
-	var level = current_stats.get("level", 1)
-	stats_text += "Level: %d\n" % level
-	stats_text += "Damage: %d\n" % floor(current_stats.get("damage", 0))
-	stats_text += "Range: %d\n" % floor(current_stats.get("range", 0))
-	stats_text += "Speed: %.2f\n" % current_stats.get("atk_speed", 0)
+
+	# Emoji Style
+	var max_hp = unit_data.get("hp", 0)
+	stats_text += "❤️ %d\n" % floor(max_hp)
+	stats_text += "⚔️ %d\n" % floor(current_stats.get("damage", 0))
+	stats_text += "⚡ %.1f/s\n" % (1.0 / max(0.01, current_stats.get("atk_speed", 1.0)))
+	stats_text += "🏹 %d\n" % floor(current_stats.get("range", 0))
+
+	var crit_rate = current_stats.get("crit_rate", 0.1)
+	var crit_dmg = current_stats.get("crit_dmg", 1.5)
+	stats_text += "💥 %d%% (x%.1f)\n" % [floor(crit_rate * 100), crit_dmg]
 
 	if desc != "":
 		stats_text += "\n[color=#aaaaaa]" + desc + "[/color]"

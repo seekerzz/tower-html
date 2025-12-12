@@ -268,6 +268,14 @@ func process_unit_combat(unit, tile, delta):
 			var cone_angle = PI / 2.0
 			var aoe_radius = unit.range_val + 20.0
 
+			# Crit Calculation
+			var is_critical = randf() < unit.crit_rate
+			var final_damage = unit.damage
+			var dmg_type = unit.unit_data.get("damageType", "physical")
+			if is_critical:
+				final_damage *= unit.crit_dmg
+				dmg_type = "crit"
+
 			for enemy in get_tree().get_nodes_in_group("enemies"):
 				if !is_instance_valid(enemy): continue
 
@@ -279,7 +287,7 @@ func process_unit_combat(unit, tile, delta):
 					# Angle Check
 					var angle_diff = attack_dir.angle_to(to_enemy_vec)
 					if abs(angle_diff) <= cone_angle / 2.0:
-						enemy.take_damage(unit.damage, unit, unit.unit_data.get("damageType", "physical"))
+						enemy.take_damage(final_damage, unit, dmg_type)
 
 			var slash = SLASH_EFFECT_SCRIPT.new()
 			add_child(slash)
@@ -366,13 +374,20 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 
 	var proj = PROJECTILE_SCENE.instantiate()
 
+	# Crit Calculation
+	var is_critical = randf() < source_unit.crit_rate
+	var final_damage = source_unit.damage
+	if is_critical:
+		final_damage *= source_unit.crit_dmg
+
 	# Gather stats from unit data + active buffs
 	var stats = {
 		"pierce": source_unit.unit_data.get("pierce", 0),
 		"bounce": source_unit.unit_data.get("bounce", 0),
 		"split": source_unit.unit_data.get("split", 0),
 		"chain": source_unit.unit_data.get("chain", 0),
-		"damageType": source_unit.unit_data.get("damageType", "physical")
+		"damageType": source_unit.unit_data.get("damageType", "physical"),
+		"is_critical": is_critical
 	}
 
 	# Merge buffs from Unit.gd (if present)
@@ -397,5 +412,5 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	stats.merge(extra_stats, true)
 	stats.source = source_unit
 
-	proj.setup(pos, target, source_unit.damage, 400.0, source_unit.unit_data.proj, stats)
+	proj.setup(pos, target, final_damage, 400.0, source_unit.unit_data.proj, stats)
 	add_child(proj)
