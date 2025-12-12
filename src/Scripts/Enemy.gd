@@ -22,6 +22,8 @@ var path: PackedVector2Array = []
 var nav_timer: float = 0.0
 var path_index: int = 0
 
+const PUSH_STRENGTH = 150.0
+
 func _ready():
 	add_to_group("enemies")
 	# We also need to monitor layer 2 (traps) for overlaps
@@ -215,6 +217,16 @@ func move_along_path(delta):
 				# Reached end of path (Core)
 				target_pos = GameManager.grid_manager.global_position
 
+	# Check for obstacles on the immediate path target
+	var grid_pos = Vector2i(round(target_pos.x / Constants.TILE_SIZE), round(target_pos.y / Constants.TILE_SIZE))
+	if GameManager.grid_manager.obstacles.has(grid_pos):
+		var obstacle = GameManager.grid_manager.obstacles[grid_pos]
+		# Only stop and attack if it is a blocking wall (not a trap) and NOT immune
+		if is_blocking_wall(obstacle):
+			if not (obstacle.get("props") and obstacle.props.get("immune")):
+				start_attacking(obstacle)
+				return
+
 	var direction = (target_pos - global_position).normalized()
 
 	# Simple wall detection for attacking (if we are stuck or path leads to a wall we must break)
@@ -241,8 +253,9 @@ func move_along_path(delta):
 			var collider = result.collider
 			if is_blocking_wall(collider):
 				if collider.get("props") and collider.props.get("immune"):
-					# Do not attack immune walls. Jitter to avoid logic lock.
-					position += Vector2(randf(), randf()) * 0.1
+					# Immune Wall Detected: Push away logic (slide around)
+					var push_dir = (global_position - collider.global_position).normalized()
+					position += push_dir * PUSH_STRENGTH * delta
 					return
 				start_attacking(collider)
 				return
