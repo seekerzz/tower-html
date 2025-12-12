@@ -5,7 +5,7 @@ signal sacrifice_state_changed(is_active)
 
 const REWARDS = {
 	"combat_repair": {
-		"icon": "res://src/Assets/Icons/repair.png", # Placeholder
+		"icon": "🔧",
 		"name": "Combat Repair",
 		"rarity": "common",
 		"type": "stat",
@@ -13,7 +13,7 @@ const REWARDS = {
 		"unique": false
 	},
 	"war_bonds": {
-		"icon": "res://src/Assets/Icons/gold.png", # Placeholder
+		"icon": "💰",
 		"name": "War Bonds",
 		"rarity": "common",
 		"type": "stat",
@@ -21,7 +21,7 @@ const REWARDS = {
 		"unique": false
 	},
 	"biomass_armor": {
-		"icon": "res://src/Assets/Icons/armor.png", # Placeholder
+		"icon": "🛡️",
 		"name": "Biomass Armor",
 		"rarity": "rare",
 		"type": "artifact",
@@ -29,7 +29,7 @@ const REWARDS = {
 		"unique": true
 	},
 	"focus_fire": {
-		"icon": "res://src/Assets/Icons/damage.png", # Placeholder
+		"icon": "🎯",
 		"name": "Focus Fire",
 		"rarity": "common",
 		"type": "stat",
@@ -37,7 +37,7 @@ const REWARDS = {
 		"unique": false
 	},
 	"sacrifice_protocol": {
-		"icon": "res://src/Assets/Icons/skull.png", # Placeholder
+		"icon": "🩸",
 		"name": "Sacrifice Protocol",
 		"rarity": "epic",
 		"type": "artifact",
@@ -45,7 +45,7 @@ const REWARDS = {
 		"unique": true
 	},
 	"scrap_recycling": {
-		"icon": "res://src/Assets/Icons/recycle.png", # Placeholder
+		"icon": "♻️",
 		"name": "Scrap Recycling",
 		"rarity": "rare",
 		"type": "artifact",
@@ -53,7 +53,7 @@ const REWARDS = {
 		"unique": true
 	},
 	"rapid_expansion": {
-		"icon": "res://src/Assets/Icons/expand.png", # Placeholder
+		"icon": "🏗️",
 		"name": "Rapid Expansion",
 		"rarity": "rare",
 		"type": "stat",
@@ -61,7 +61,7 @@ const REWARDS = {
 		"unique": false
 	},
 	"ammo_improvement": {
-		"icon": "res://src/Assets/Icons/ammo.png", # Placeholder
+		"icon": "⚔️",
 		"name": "Ammo Improvement",
 		"rarity": "common",
 		"type": "stat",
