@@ -24,11 +24,11 @@ func _unhandled_input(event):
 		return
 
 	if event is InputEventMouseMotion:
-		_update_ghost(event.global_position if "global_position" in event else get_global_mouse_position())
+		_update_ghost(get_global_mouse_position())
 
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-			_try_build(event.global_position if "global_position" in event else get_global_mouse_position())
+			_try_build(get_global_mouse_position())
 
 func select_material(mat_key: String):
 	if GameManager.materials.has(mat_key):
