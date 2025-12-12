@@ -42,6 +42,8 @@ var is_dragging: bool = false
 var drag_offset: Vector2 = Vector2.ZERO
 var ghost_node: Node2D = null
 var is_hovered: bool = false
+var focus_target: Node2D = null
+var focus_stacks: int = 0
 
 const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 
@@ -115,9 +117,27 @@ func reset_stats():
 	attack_cost_mana = unit_data.get("manaCost", 0.0)
 	skill_mana_cost = unit_data.get("skillCost", 30.0)
 
+	# Artifact Effects
+	if GameManager.reward_manager and "focus_fire" in GameManager.reward_manager.acquired_artifacts:
+		range_val *= 1.2
+
 	update_visuals()
 	if level > 1:
 		damage *= pow(1.5, level - 1)
+
+func calculate_damage_against(target_node: Node2D) -> float:
+	var final_damage = damage
+
+	if GameManager.reward_manager and "focus_fire" in GameManager.reward_manager.acquired_artifacts:
+		if target_node == focus_target:
+			focus_stacks = min(focus_stacks + 1, 10)
+		else:
+			focus_target = target_node
+			focus_stacks = 0
+
+		final_damage *= (1.0 + 0.05 * focus_stacks)
+
+	return final_damage
 
 func apply_buff(buff_type: String):
 	if buff_type in active_buffs: return
