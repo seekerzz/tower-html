@@ -21,6 +21,7 @@ var wave: int = 1
 var is_wave_active: bool = false
 var core_health: float = 1000.0
 var max_core_health: float = 1000.0
+var damage_multiplier: float = 1.0
 
 var base_food_rate: float = 50.0
 var base_mana_rate: float = 10.0
@@ -31,6 +32,8 @@ var materials: Dictionary = {
 }
 
 var tile_cost: int = 50
+
+var upgrade_selection_scene = preload("res://src/Scenes/UI/UpgradeSelection.tscn")
 
 # Global references
 var grid_manager = null
@@ -59,6 +62,23 @@ func start_wave():
 
 func end_wave():
 	is_wave_active = false
+
+	# Pause logic implicitly by not emitting wave_ended immediately if we want to block new wave
+	# But actually we usually want to show the UI now.
+
+	if upgrade_selection_scene:
+		var upgrade_ui = upgrade_selection_scene.instantiate()
+		# Add directly to GameManager (Autoload) since the scene is a CanvasLayer
+		# This ensures it overlays on top of everything regardless of the current scene.
+		add_child(upgrade_ui)
+
+		# Connect signal
+		upgrade_ui.upgrade_selected.connect(_on_upgrade_selected)
+	else:
+		# Fallback if no scene
+		_finish_wave_process()
+
+func _finish_wave_process():
 	wave += 1
 	gold += 20 + (wave * 5)
 
@@ -68,6 +88,18 @@ func end_wave():
 
 	wave_ended.emit()
 	resource_changed.emit()
+
+func _on_upgrade_selected(upgrade_data):
+	match upgrade_data.id:
+		"heal_core":
+			core_health = min(max_core_health, core_health + (max_core_health * 0.1))
+		"gold_boost":
+			gold += 50
+		"damage_boost":
+			damage_multiplier += 0.1
+
+	resource_changed.emit()
+	_finish_wave_process()
 
 func damage_core(amount: float):
 	core_health -= amount
