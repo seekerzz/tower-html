@@ -26,6 +26,9 @@ var current_target_tile: Node2D = null
 var is_attacking_base: bool = false
 var base_attack_timer: float = 0.0
 
+var is_playing_attack_anim: bool = false
+var anim_tween: Tween
+
 func _ready():
 	add_to_group("enemies")
 	# We also need to monitor layer 2 (traps) for overlaps
@@ -125,10 +128,11 @@ func _process(delta):
 		if hp <= 0: die()
 
 	# Wobble Effect
-	var time = Time.get_ticks_msec() * 0.005
-	var scale_x = 1.0 + sin(time) * 0.1
-	var scale_y = 1.0 + cos(time) * 0.1
-	wobble_scale = Vector2(scale_x, scale_y)
+	if !is_playing_attack_anim:
+		var time = Time.get_ticks_msec() * 0.005
+		var scale_x = 1.0 + sin(time) * 0.1
+		var scale_y = 1.0 + cos(time) * 0.1
+		wobble_scale = Vector2(scale_x, scale_y)
 
 	if has_node("Label"):
 		$Label.scale = wobble_scale
@@ -152,7 +156,7 @@ func _process(delta):
 	else:
 		if attacking_wall != null:
 			attacking_wall = null # Reset if invalid or destroyed
-			_play_state_particles(false)
+			# _play_state_particles(false) # Removed legacy particle
 
 		# Update Navigation Path
 		nav_timer -= delta
@@ -182,21 +186,30 @@ func check_traps(delta):
 func attack_wall_logic(delta):
 	attack_timer -= delta
 	if attack_timer <= 0:
-		attacking_wall.take_damage(enemy_data.dmg)
+		if is_instance_valid(attacking_wall):
+			play_attack_animation(attacking_wall.global_position)
+
 		attack_timer = 1.0
 
 func attack_base_logic(delta):
 	base_attack_timer -= delta
 	if base_attack_timer <= 0:
-		GameManager.damage_core(enemy_data.dmg)
-		base_attack_timer = 1.0 / enemy_data.atkSpeed # Use enemy attack speed
-		_play_state_particles(true)
+		# GameManager.damage_core(enemy_data.dmg) # Moved to animation
+		base_attack_timer = 1.0 / enemy_data.atkSpeed
+		# _play_state_particles(true) # Replaced
 
-		# Check if target tile still exists (if it was destroyed, stop attacking)
-		if current_target_tile and not is_instance_valid(current_target_tile):
-			is_attacking_base = false
-			current_target_tile = null
-			update_path()
+		var target_pos = GameManager.grid_manager.global_position
+		if current_target_tile and is_instance_valid(current_target_tile):
+			target_pos = current_target_tile.global_position
+
+		play_attack_animation(target_pos, func():
+			GameManager.damage_core(enemy_data.dmg)
+			# Check validity after attack
+			if current_target_tile and not is_instance_valid(current_target_tile):
+				is_attacking_base = false
+				current_target_tile = null
+				update_path()
+		)
 
 func update_path():
 	if !GameManager.grid_manager: return
@@ -238,7 +251,7 @@ func move_along_path(delta):
 		var dist_to_target = global_position.distance_to(current_target_tile.global_position)
 		if dist_to_target < 40.0:
 			is_attacking_base = true
-			_play_state_particles(true)
+			# _play_state_particles(true) # Removed legacy
 			return
 
 	var target_pos = GameManager.grid_manager.global_position # Default core
@@ -307,28 +320,87 @@ func start_attacking(wall):
 	if attacking_wall != wall:
 		attacking_wall = wall
 		attack_timer = 0.5
-		_play_state_particles(true)
+		# _play_state_particles(true) # Removed legacy
 
-func _play_state_particles(is_attacking: bool):
-	var particle = CPUParticles2D.new()
-	add_child(particle)
-	particle.emitting = true
-	particle.one_shot = true
-	particle.explosiveness = 1.0
-	particle.lifetime = 0.5
-	particle.spread = 180
-	particle.gravity = Vector2(0, 0)
-	particle.initial_velocity_min = 20
-	particle.initial_velocity_max = 50
-	particle.scale_amount_min = 2
-	particle.scale_amount_max = 4
+func play_attack_animation(target_pos: Vector2, hit_callback: Callable = Callable()):
+	if is_playing_attack_anim: return # Prevent overlapping attacks
 
-	if is_attacking:
-		particle.color = Color.RED
+	is_playing_attack_anim = true
+
+	# If we have an existing tween, kill it
+	if anim_tween and anim_tween.is_valid():
+		anim_tween.kill()
+
+	anim_tween = create_tween()
+	var original_pos = global_position
+	var diff = target_pos - original_pos
+	var direction = diff.normalized()
+
+	# 1. Anticipation (Retreat + Squash)
+	# Retreat slightly away from target
+	var retreat_pos = original_pos - direction * 15.0
+	var squash_scale = Vector2(0.8, 0.8) # Squash
+
+	anim_tween.set_parallel(true)
+	anim_tween.tween_property(self, "global_position", retreat_pos, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	anim_tween.tween_property(self, "wobble_scale", squash_scale, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	anim_tween.set_parallel(false)
+
+	# 2. Strike (Dash + Stretch)
+	# Dash to target (or slightly before/past to simulate impact)
+	# User requirement: "Position at 'Strike' contact ... instantiate SlashEffect".
+	# We move to target_pos (or close to it).
+	var strike_scale = Vector2(1.3, 1.3) # Stretch/Enlarge
+
+	anim_tween.set_parallel(true)
+	anim_tween.tween_property(self, "global_position", target_pos - direction * 5.0, 0.1).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+	anim_tween.tween_property(self, "wobble_scale", strike_scale, 0.1)
+	anim_tween.set_parallel(false)
+
+	# Impact Effect Callback
+	anim_tween.tween_callback(func():
+		spawn_slash_effect(target_pos)
+		if hit_callback.is_valid():
+			hit_callback.call()
+
+		# Also handle wall damage here if no callback passed (legacy fallback or specific logic)
+		if attacking_wall and is_instance_valid(attacking_wall) and !hit_callback.is_valid():
+			attacking_wall.take_damage(enemy_data.dmg)
+	)
+
+	# 3. Recovery (Return + Normal Scale)
+	anim_tween.set_parallel(true)
+	anim_tween.tween_property(self, "global_position", original_pos, 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	anim_tween.tween_property(self, "wobble_scale", Vector2.ONE, 0.15)
+	anim_tween.set_parallel(false)
+
+	anim_tween.tween_callback(func(): is_playing_attack_anim = false)
+
+func spawn_slash_effect(pos: Vector2):
+	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
+	get_parent().add_child(effect)
+	effect.global_position = pos
+
+	effect.rotation = randf() * TAU
+
+	var shape = "slash"
+	var col = Color.WHITE
+
+	if type_key in ["wolf", "boss", "hydra"]:
+		shape = "bite"
+		col = Color.RED
+	elif type_key in ["slime", "poison"]:
+		shape = "bite"
+		col = Color.WHITE
 	else:
-		particle.color = Color.WHITE
+		shape = "cross"
+		col = Color.WHITE
 
-	particle.finished.connect(particle.queue_free)
+	# Override color for "Strike" feeling
+	if randf() > 0.5: col = Color(1.0, 0.8, 0.8) # Slightly red tint
+
+	effect.configure(shape, col)
+	effect.play()
 
 func is_blocking_wall(node):
 	if node.get("type") and Constants.BARRICADE_TYPES.has(node.type):

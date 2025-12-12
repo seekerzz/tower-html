@@ -1,5 +1,13 @@
 extends Node2D
 
+var color: Color = Color.WHITE
+var shape_type: String = "slash"
+
+func configure(type: String, col: Color):
+	shape_type = type
+	color = col
+	queue_redraw()
+
 func play():
 	# Initial state
 	scale = Vector2.ZERO
@@ -18,13 +26,20 @@ func play():
 	queue_free()
 
 func _draw():
+	if shape_type == "cross":
+		draw_cross_slash()
+	elif shape_type == "bite":
+		draw_bite()
+	else:
+		draw_slash()
+
+func draw_slash():
 	# Draw a white crescent/fan shape simulating a slash
 	var center = Vector2.ZERO
 	var radius = 20.0
 	var start_angle = -PI / 3
 	var end_angle = PI / 3
 	var point_count = 32
-	var color = Color.WHITE
 
 	var points = PackedVector2Array()
 
@@ -48,3 +63,45 @@ func _draw():
 		points.append(dir * (radius - thickness / 2.0))
 
 	draw_colored_polygon(points, color)
+
+func draw_cross_slash():
+	# Save current transform
+	draw_set_transform_matrix(Transform2D())
+
+	# Rotate -45 deg
+	draw_set_transform(Vector2.ZERO, deg_to_rad(-45), Vector2.ONE)
+	draw_slash()
+
+	# Rotate +45 deg
+	draw_set_transform(Vector2.ZERO, deg_to_rad(45), Vector2.ONE)
+	draw_slash()
+
+	# Reset
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+func draw_bite():
+	# Draw two arcs representing a bite
+	var width = 20.0
+	var height = 15.0
+
+	# Top teeth
+	var top_points = PackedVector2Array()
+	top_points.append(Vector2(-width, -height))
+	top_points.append(Vector2(-width/2, -5))
+	top_points.append(Vector2(0, -height))
+	top_points.append(Vector2(width/2, -5))
+	top_points.append(Vector2(width, -height))
+	top_points.append(Vector2(width, -height-5))
+	top_points.append(Vector2(-width, -height-5))
+	draw_colored_polygon(top_points, color)
+
+	# Bottom teeth
+	var bot_points = PackedVector2Array()
+	bot_points.append(Vector2(-width, height))
+	bot_points.append(Vector2(-width/2, 5))
+	bot_points.append(Vector2(0, height))
+	bot_points.append(Vector2(width/2, 5))
+	bot_points.append(Vector2(width, height))
+	bot_points.append(Vector2(width, height+5))
+	bot_points.append(Vector2(-width, height+5))
+	draw_colored_polygon(bot_points, color)
