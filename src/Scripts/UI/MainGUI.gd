@@ -12,6 +12,7 @@ signal sacrifice_requested
 @onready var enemy_label = $Panel/VBoxContainer/EnemyProgressBar/Label
 @onready var wave_label = $Panel/WaveLabel
 @onready var debug_button = $Panel/DebugButton
+@onready var skip_button = $Panel/SkipButton
 @onready var wave_timeline = $WaveTimeline
 @onready var stats_container = $DamageStats/ScrollContainer/VBoxContainer
 @onready var damage_stats_panel = $DamageStats
@@ -48,6 +49,8 @@ func _ready():
 
 	if debug_button:
 		debug_button.pressed.connect(_on_debug_button_pressed)
+	if skip_button:
+		skip_button.pressed.connect(_on_skip_button_pressed)
 	_setup_tooltip()
 
 	update_ui()
@@ -435,3 +438,17 @@ func _on_wave_ended_stats():
 
 func _on_debug_button_pressed():
 	GameManager.activate_cheat()
+
+func _on_skip_button_pressed():
+	if not GameManager.is_wave_active:
+		return
+
+	# Clear all enemies
+	get_tree().call_group("enemies", "queue_free")
+
+	# Stop spawning
+	if GameManager.combat_manager:
+		GameManager.combat_manager.enemies_to_spawn = 0
+
+	# End wave
+	GameManager.end_wave()
