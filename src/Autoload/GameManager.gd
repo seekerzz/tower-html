@@ -121,6 +121,22 @@ func damage_core(amount: float):
 		core_health = 0
 		game_over.emit()
 
+func retry_wave():
+	# Restore core health
+	core_health = max_core_health
+
+	# Clear enemies
+	get_tree().call_group("enemies", "queue_free")
+
+	# Reset state
+	is_wave_active = false
+
+	# Restart wave
+	start_wave()
+
+	# Update UI
+	resource_changed.emit()
+
 func recalculate_max_health():
 	if !grid_manager: return
 

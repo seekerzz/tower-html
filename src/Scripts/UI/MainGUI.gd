@@ -19,6 +19,10 @@ signal sacrifice_requested
 @onready var stats_scroll = $DamageStats/ScrollContainer
 @onready var stats_header = $DamageStats/Header
 
+@onready var game_over_panel = $GameOverPanel
+@onready var retry_button = $GameOverPanel/RetryWaveButton
+@onready var new_game_button = $GameOverPanel/NewGameButton
+
 # New UI Elements for Rewards
 var artifacts_hud: HBoxContainer
 
@@ -37,6 +41,7 @@ func _ready():
 	GameManager.resource_changed.connect(update_ui)
 	GameManager.wave_started.connect(update_ui)
 	GameManager.wave_ended.connect(update_ui)
+	GameManager.game_over.connect(_on_game_over)
 
 	GameManager.damage_dealt.connect(_on_damage_dealt)
 	GameManager.ftext_spawn_requested.connect(_on_ftext_spawn_requested)
@@ -50,6 +55,12 @@ func _ready():
 		debug_button.pressed.connect(_on_debug_button_pressed)
 	if skip_button:
 		skip_button.pressed.connect(_on_skip_button_pressed)
+
+	if retry_button:
+		retry_button.pressed.connect(_on_retry_wave_pressed)
+	if new_game_button:
+		new_game_button.pressed.connect(_on_new_game_pressed)
+
 	_setup_tooltip()
 
 	update_ui()
@@ -492,3 +503,15 @@ func _on_skip_button_pressed():
 
 	# End wave
 	GameManager.end_wave()
+
+func _on_game_over():
+	if game_over_panel:
+		game_over_panel.show()
+
+func _on_retry_wave_pressed():
+	if game_over_panel:
+		game_over_panel.hide()
+	GameManager.retry_wave()
+
+func _on_new_game_pressed():
+	get_tree().reload_current_scene()
