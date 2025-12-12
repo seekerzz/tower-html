@@ -117,6 +117,15 @@ offset_bottom = 181.0
 focus_mode = 0
 text = "🛠️ 作弊"
 
+[node name="SkipButton" type="Button" parent="Panel"]
+layout_mode = 0
+offset_left = 90.0
+offset_top = 150.0
+offset_right = 170.0
+offset_bottom = 181.0
+focus_mode = 0
+text = "⏩ 跳过"
+
 [node name="WaveTimeline" type="HBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 5
