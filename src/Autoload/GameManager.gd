@@ -76,6 +76,50 @@ func damage_core(amount: float):
 		core_health = 0
 		game_over.emit()
 
+func recalculate_max_health():
+	if !grid_manager: return
+
+	var total_unit_hp = 0.0
+
+	# Iterate all tiles to find units
+	# grid_manager.tiles is Dictionary { key: Tile }
+	# We can also keep a list of units in GridManager to be faster, but for now iterating tiles is safe.
+	# Or better, GridManager should probably expose a way to get all units.
+	# But since we are modifying GameManager, and GridManager is a child, we can access it.
+	# However, GridManager.tiles is internal.
+
+	# Let's rely on iterating tiles for now, or check if GridManager has a list.
+	# Looking at GridManager.gd, it has `tiles`.
+
+	var processed_units = {}
+	for key in grid_manager.tiles:
+		var tile = grid_manager.tiles[key]
+		if tile.unit and not processed_units.has(tile.unit):
+			total_unit_hp += tile.unit.max_hp
+			processed_units[tile.unit] = true
+
+	var old_max = max_core_health
+	max_core_health = Constants.BASE_CORE_HP + total_unit_hp
+
+	if max_core_health != old_max:
+		var diff = max_core_health - old_max
+		# If max health increased, we heal the core by that amount (so current health % doesn't drop weirdly,
+		# or rather, adding a unit adds its health to the pool immediately).
+		# If max health decreased, we clamp current health.
+
+		# Prompt says: "if current health exceeds max, clamp; if not injured, adjust proportionally or by difference.
+		# To simplify, simply add the difference."
+
+		core_health += diff
+		if core_health > max_core_health:
+			core_health = max_core_health
+		if core_health <= 0:
+			core_health = 0 # Should not happen unless removing unit kills us?
+			# If removing a unit drops HP below 0, it means we die?
+			game_over.emit()
+
+		resource_changed.emit()
+
 func add_material(type: String, amount: int = 1):
 	if materials.has(type):
 		materials[type] += amount

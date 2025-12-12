@@ -17,6 +17,8 @@ var attack_cost_food: float = 0.0
 var attack_cost_mana: float = 0.0
 var skill_mana_cost: float = 30.0
 
+var max_hp: float = 0.0
+
 var production_timer: float = 0.0
 
 # Visual Holder for animations and structure
@@ -82,6 +84,7 @@ func setup(key: String):
 	_ensure_visual_hierarchy()
 	type_key = key
 	unit_data = Constants.UNIT_TYPES[key].duplicate()
+	max_hp = unit_data.get("hp", 0)
 	reset_stats()
 	update_visuals()
 
