@@ -3,6 +3,7 @@ extends Node
 signal resource_changed
 signal wave_started
 signal wave_ended
+signal wave_reset
 signal game_over
 signal unit_purchased(unit_data)
 signal unit_sold(amount)
@@ -120,6 +121,22 @@ func damage_core(amount: float):
 	if core_health <= 0:
 		core_health = 0
 		game_over.emit()
+
+func retry_wave():
+	# Restore core health
+	core_health = max_core_health
+
+	# Clear enemies
+	get_tree().call_group("enemies", "queue_free")
+
+	# Reset state
+	is_wave_active = false
+
+	# Notify systems that wave is reset (so they can re-enable UI etc)
+	wave_reset.emit()
+
+	# Update UI
+	resource_changed.emit()
 
 func recalculate_max_health():
 	if !grid_manager: return
