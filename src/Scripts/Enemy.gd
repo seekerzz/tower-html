@@ -339,7 +339,7 @@ func play_attack_animation(target_pos: Vector2, hit_callback: Callable = Callabl
 	# 1. Anticipation (Retreat + Squash)
 	# Retreat slightly away from target
 	var retreat_pos = original_pos - direction * 15.0
-	var squash_scale = Vector2(0.8, 0.8) # Squash
+	var squash_scale = Vector2(0.95, 0.95) # Squash
 
 	anim_tween.set_parallel(true)
 	anim_tween.tween_property(self, "global_position", retreat_pos, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -350,16 +350,19 @@ func play_attack_animation(target_pos: Vector2, hit_callback: Callable = Callabl
 	# Dash to target (or slightly before/past to simulate impact)
 	# User requirement: "Position at 'Strike' contact ... instantiate SlashEffect".
 	# We move to target_pos (or close to it).
-	var strike_scale = Vector2(1.3, 1.3) # Stretch/Enlarge
+	var strike_scale = Vector2(1.05, 1.05) # Stretch/Enlarge
+
+	# Calculate edge contact point (35px from center)
+	var strike_pos = target_pos - direction * 35.0
 
 	anim_tween.set_parallel(true)
-	anim_tween.tween_property(self, "global_position", target_pos - direction * 5.0, 0.1).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+	anim_tween.tween_property(self, "global_position", strike_pos, 0.1).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
 	anim_tween.tween_property(self, "wobble_scale", strike_scale, 0.1)
 	anim_tween.set_parallel(false)
 
 	# Impact Effect Callback
 	anim_tween.tween_callback(func():
-		spawn_slash_effect(target_pos)
+		spawn_slash_effect(strike_pos)
 		if hit_callback.is_valid():
 			hit_callback.call()
 
