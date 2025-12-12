@@ -15,6 +15,7 @@ var bounce: int = 0
 var split: int = 0
 var chain: int = 0
 var damage_type: String = "physical"
+var is_critical: bool = false
 
 # Visuals
 var visual_node: Node2D = null
@@ -45,6 +46,7 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 	split = stats.get("split", 0)
 	chain = stats.get("chain", 0)
 	damage_type = stats.get("damageType", "physical")
+	is_critical = stats.get("is_critical", false)
 
 	# Initial rotation
 	if target and is_instance_valid(target):
@@ -57,6 +59,11 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 		visual_node = get_node("Sprite2D")
 	elif has_node("Polygon2D"):
 		visual_node = get_node("Polygon2D")
+
+	if is_critical:
+		scale *= 1.2
+		# Optionally change color or modulation to indicate crit visually on the projectile itself
+		# modulate = Color(1.5, 1.2, 0.5) # Example glow
 
 	# Swarm Wave Visuals
 	if type == "swarm_wave":
@@ -160,7 +167,11 @@ func _on_area_2d_area_entered(area):
 		if area in hit_list: return
 
 		# Apply Damage
-		area.take_damage(damage, source_unit, damage_type)
+		var final_damage_type = damage_type
+		if is_critical:
+			final_damage_type = "crit"
+
+		area.take_damage(damage, source_unit, final_damage_type)
 
 		# Apply Status Effects
 		if effects.get("burn", 0.0) > 0.0:

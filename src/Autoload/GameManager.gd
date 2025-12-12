@@ -217,6 +217,7 @@ func spawn_floating_text(pos: Vector2, value: String, type_or_color: Variant):
 			"poison": color = Color.GREEN
 			"lightning": color = Color.PURPLE
 			"magic": color = Color.BLUE
+			"crit": color = Color(1, 0.8, 0.2)
 			_: color = Color.WHITE
 
 	ftext_spawn_requested.emit(pos, value, color)
