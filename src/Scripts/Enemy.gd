@@ -22,6 +22,10 @@ var path: PackedVector2Array = []
 var nav_timer: float = 0.0
 var path_index: int = 0
 
+# Territory Defense variables
+var current_target_tile: Node2D = null
+var is_attacking_core_tile: bool = false
+
 func _ready():
 	add_to_group("enemies")
 	# We also need to monitor layer 2 (traps) for overlaps
@@ -44,9 +48,7 @@ func update_visuals():
 	# Ensure label is centered and pivot is set for correct scaling
 	$Label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	$Label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	# Label size is not explicitly set here, relying on default or scene.
-	# Assuming Label is centered on (0,0) via position or anchors.
-	# If Label is centered:
+
 	if $Label.size.x == 0:
 		$Label.size = Vector2(40, 40) # Estimate
 		$Label.position = -$Label.size / 2
@@ -143,6 +145,8 @@ func _process(delta):
 
 	if attacking_wall and is_instance_valid(attacking_wall):
 		attack_wall_logic(delta)
+	elif is_attacking_core_tile:
+		attack_core_logic(delta)
 	else:
 		if attacking_wall != null:
 			attacking_wall = null # Reset if invalid or destroyed
@@ -154,7 +158,8 @@ func _process(delta):
 			update_path()
 			nav_timer = 0.5
 
-		move_along_path(delta)
+		if !is_attacking_core_tile:
+			move_along_path(delta)
 
 func check_traps(delta):
 	var bodies = get_overlapping_bodies()
@@ -177,31 +182,75 @@ func attack_wall_logic(delta):
 	attack_timer -= delta
 	if attack_timer <= 0:
 		attacking_wall.take_damage(enemy_data.dmg)
-		attack_timer = 1.0
+		attack_timer = enemy_data.get("atkSpeed", 1.0)
+
+func attack_core_logic(delta):
+	if !is_instance_valid(current_target_tile):
+		is_attacking_core_tile = false
+		_play_state_particles(false)
+		return
+
+	# Check if still in range (with hysteresis)
+	if global_position.distance_to(current_target_tile.global_position) > 50.0:
+		is_attacking_core_tile = false
+		_play_state_particles(false)
+		return
+
+	attack_timer -= delta
+	if attack_timer <= 0:
+		GameManager.damage_core(enemy_data.dmg)
+		attack_timer = enemy_data.get("atkSpeed", 1.0)
+		_play_state_particles(true)
 
 func update_path():
 	if !GameManager.grid_manager: return
-	var core_pos = GameManager.grid_manager.global_position
-	path = GameManager.grid_manager.get_nav_path(global_position, core_pos)
 
-	# If path is empty, it means no path found (blocked)
-	# But AStarGrid2D returns empty if no path.
-	# If no path, we might need to attack the nearest wall blocking us?
-	# Or just move towards core directly and hit the wall.
+	var target_pos = Vector2.ZERO
+	var found_tile = false
+
+	# Attempt to get the closest unlocked tile
+	if GameManager.grid_manager.has_method("get_closest_unlocked_tile"):
+		var tile = GameManager.grid_manager.get_closest_unlocked_tile(global_position)
+		if tile:
+			current_target_tile = tile
+			target_pos = tile.global_position
+			found_tile = true
+		else:
+			current_target_tile = null
+	else:
+		# Fallback compatibility
+		current_target_tile = null
+
+	if !found_tile:
+		target_pos = GameManager.grid_manager.global_position
+
+	# Check if we are already close enough to target
+	if found_tile and current_target_tile and is_instance_valid(current_target_tile):
+		if global_position.distance_to(target_pos) < 40:
+			is_attacking_core_tile = true
+			return # Stop movement/pathfinding updates
+
+	path = GameManager.grid_manager.get_nav_path(global_position, target_pos)
+
 	if path.size() == 0:
-		# Fallback: simple direction
 		path = []
 	else:
 		path_index = 0
-		# The first point is usually the current cell or close to it, so start index 0
-		# But if we are already there, skip
 		if path.size() > 0 and global_position.distance_to(path[0]) < 10:
 			path_index = 1
 
 func move_along_path(delta):
 	if !GameManager.grid_manager: return
+
 	var target_pos = GameManager.grid_manager.global_position # Default core
 
+	# If we have a target tile, ensure we are checking distance to it
+	if current_target_tile and is_instance_valid(current_target_tile):
+		if global_position.distance_to(current_target_tile.global_position) < 40:
+			is_attacking_core_tile = true
+			return
+
+	# Determine next movement target from path
 	if path.size() > path_index:
 		target_pos = path[path_index]
 
@@ -212,26 +261,22 @@ func move_along_path(delta):
 			if path_index < path.size():
 				target_pos = path[path_index]
 			else:
-				# Reached end of path (Core)
-				target_pos = GameManager.grid_manager.global_position
+				# Reached end of path
+				if current_target_tile and is_instance_valid(current_target_tile):
+					target_pos = current_target_tile.global_position
+				else:
+					target_pos = GameManager.grid_manager.global_position
 
 	var direction = (target_pos - global_position).normalized()
 
-	# Simple wall detection for attacking (if we are stuck or path leads to a wall we must break)
-	# Wait, if AStar gives a path, it avoids walls.
-	# If AStar returns NO path, we need to break walls.
-
 	if path.size() == 0:
-		# No path found -> Blocked completely. Move towards core and attack what's in front.
-		direction = (GameManager.grid_manager.global_position - global_position).normalized()
+		# No path found -> Move towards core/target directly and attack what's in front.
+		var final_dest = GameManager.grid_manager.global_position
+		if current_target_tile and is_instance_valid(current_target_tile):
+			final_dest = current_target_tile.global_position
 
-		# We need to detect what's blocking us
-		# Use a small raycast or just check for collision?
-		# Since we removed the raycast member, let's just use overlapping bodies if we are very close,
-		# OR re-add a small raycast for attack logic.
-		# Let's create a temporary RayCast logic or just check distance to walls.
+		direction = (final_dest - global_position).normalized()
 
-		# For simplicity, if no path, we are likely near a wall.
 		var space_state = get_world_2d().direct_space_state
 		var query = PhysicsRayQueryParameters2D.create(global_position, global_position + direction * 40)
 		query.collision_mask = 1 # Walls
@@ -241,7 +286,6 @@ func move_along_path(delta):
 			var collider = result.collider
 			if is_blocking_wall(collider):
 				if collider.get("props") and collider.props.get("immune"):
-					# Do not attack immune walls. Jitter to avoid logic lock.
 					position += Vector2(randf(), randf()) * 0.1
 					return
 				start_attacking(collider)
@@ -252,8 +296,8 @@ func move_along_path(delta):
 
 	position += direction * current_speed * delta
 
-	# Check if reached core
-	if global_position.distance_to(GameManager.grid_manager.global_position) < 30:
+	# Legacy/Fallback Check if reached core directly (if no tile targeting)
+	if !current_target_tile and global_position.distance_to(GameManager.grid_manager.global_position) < 30:
 		GameManager.damage_core(enemy_data.dmg)
 		queue_free()
 
