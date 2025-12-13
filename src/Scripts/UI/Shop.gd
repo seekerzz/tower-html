@@ -5,13 +5,17 @@ var shop_items: Array = []
 var shop_locked: Array = [false, false, false, false]
 const SHOP_SIZE = 4
 
-@onready var shop_container = $Panel/HBoxContainer
-@onready var gold_label = $Panel/GoldLabel
-@onready var refresh_btn = $Panel/RefreshButton
-@onready var expand_btn = $Panel/ExpandButton
-@onready var start_wave_btn = $Panel/StartWaveButton
+@onready var shop_container = $Panel/MainLayout/CoreArea/ShopContainer
+@onready var bench_panel = $Panel/MainLayout/CoreArea/BenchPanel
+@onready var gold_label = $Panel/MainLayout/WaveInfo/GoldLabel
+@onready var refresh_btn = $Panel/MainLayout/LeftButtons/RefreshButton
+@onready var expand_btn = $Panel/MainLayout/LeftButtons/ExpandButton
+@onready var start_wave_btn = $Panel/MainLayout/LeftButtons/StartWaveButton
+@onready var timeline_label = $Panel/MainLayout/WaveInfo/TimelineLabel
+@onready var details_label = $Panel/MainLayout/WaveInfo/DetailsLabel
+@onready var sell_zone = $Panel/MainLayout/SellZone
+@onready var toggle_handle = $Panel/ToggleHandle
 
-var sell_zone = null
 var is_collapsed: bool = false
 var panel_initial_y: float = 0.0
 
@@ -23,26 +27,42 @@ func _ready():
 	GameManager.wave_ended.connect(on_wave_ended)
 	if GameManager.has_signal("wave_reset"):
 		GameManager.wave_reset.connect(on_wave_reset)
+
 	refresh_shop(true)
 	update_ui()
 
-	expand_btn.pressed.connect(_on_expand_button_pressed)
-
-	_create_sell_zone()
-	call_deferred("_setup_collapse_handle")
-
-func _setup_collapse_handle():
 	panel_initial_y = $Panel.position.y
+	_setup_sell_zone_visuals()
+	_setup_bench_visuals()
 
-	var handle = Button.new()
-	handle.name = "ToggleHandle"
-	handle.text = "▼"
-	handle.size = Vector2(80, 24)
-	$Panel.add_child(handle)
+func _setup_bench_visuals():
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0, 0, 0, 0.3)
+	style.set_corner_radius_all(10)
+	bench_panel.add_theme_stylebox_override("panel", style)
 
-	# Position at top center, sticking out
-	handle.position = Vector2(($Panel.size.x - handle.size.x) / 2, -handle.size.y)
-	handle.pressed.connect(_on_toggle_handle_pressed)
+func _setup_sell_zone_visuals():
+	# Configure visual style for Sell Zone (Big Rounded Rect)
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(1, 0.3, 0.3, 0.2)
+	style.set_corner_radius_all(20)
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.border_color = Color(1, 0, 0, 0.5)
+	sell_zone.add_theme_stylebox_override("panel", style)
+
+	# Ensure label exists or add one if needed, though TSCN uses PanelContainer.
+	# The script SellZone.gd attached to it might handle drop logic.
+	# Let's add a label to it for clarity if it doesn't have one.
+	if sell_zone.get_child_count() == 0:
+		var lbl = Label.new()
+		lbl.text = "💰\nSELL"
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lbl.add_theme_font_size_override("font_size", 20)
+		sell_zone.add_child(lbl)
 
 func _on_toggle_handle_pressed():
 	if is_collapsed:
@@ -53,35 +73,33 @@ func _on_toggle_handle_pressed():
 func collapse_shop():
 	if is_collapsed: return
 	is_collapsed = true
-	var handle = $Panel.get_node_or_null("ToggleHandle")
-	if handle: handle.text = "▲"
+	toggle_handle.text = "▲"
 
 	var tween = create_tween()
 	# Move panel down so only handle is visible at bottom
+	# Since handle is at y = -24 (external top), we want panel top to be at screen bottom.
+	# Actually, if panel moves down by its height, the handle (child) moves with it.
+	# The handle is at -24 relative to Panel.
+	# If Panel moves to Screen Bottom (y + height), handle will be at Screen Bottom - 24.
+	# This keeps handle visible.
 	var target_y = panel_initial_y + $Panel.size.y
 	tween.tween_property($Panel, "position:y", target_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func expand_shop():
 	if !is_collapsed: return
 	is_collapsed = false
-	var handle = $Panel.get_node_or_null("ToggleHandle")
-	if handle: handle.text = "▼"
+	toggle_handle.text = "▼"
 
 	var tween = create_tween()
 	tween.tween_property($Panel, "position:y", panel_initial_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
-	# Style Panel
-	var panel = $Panel
-	var panel_style = StyleBoxFlat.new()
-	panel_style.bg_color = Color(0.1, 0.1, 0.15, 0.9)
-	panel_style.border_width_top = 2
-	panel_style.border_color = Color("#ffffff")
-	panel.add_theme_stylebox_override("panel", panel_style)
+	# Update styles
+	update_button_styles()
 
-	# Style Buttons
+func update_button_styles():
 	apply_button_style(refresh_btn, Color("#3498db")) # Blue
 	apply_button_style(expand_btn, Color("#2ecc71")) # Green
-	apply_button_style(start_wave_btn, Color("#e74c3c"), true) # Red, Main Action
+	apply_button_style(start_wave_btn, Color("#e74c3c"), true) # Red
 
 func apply_button_style(button: Button, color: Color, is_main_action: bool = false):
 	var corner_radius = 12 if is_main_action else 10
@@ -91,11 +109,11 @@ func apply_button_style(button: Button, color: Color, is_main_action: bool = fal
 	style_normal.bg_color = color
 	style_normal.set_corner_radius_all(corner_radius)
 
-	# Hover State (Brighter)
+	# Hover State
 	var style_hover = style_normal.duplicate()
 	style_hover.bg_color = color.lightened(0.2)
 
-	# Pressed State (Darker)
+	# Pressed State
 	var style_pressed = style_normal.duplicate()
 	style_pressed.bg_color = color.darkened(0.2)
 
@@ -103,48 +121,52 @@ func apply_button_style(button: Button, color: Color, is_main_action: bool = fal
 	button.add_theme_stylebox_override("hover", style_hover)
 	button.add_theme_stylebox_override("pressed", style_pressed)
 
-	if is_main_action:
-		# Make it bold/larger. Since we can't easily switch font to bold without resource,
-		# we assume default font or use scale/size.
-		# Increasing font size override.
-		button.add_theme_font_size_override("font_size", 20)
-		# Add outline to make it pop
-		button.add_theme_constant_override("outline_size", 2)
-		button.add_theme_color_override("font_outline_color", Color.BLACK)
-
-func _create_sell_zone():
-	# Create a visual area for selling
-	sell_zone = PanelContainer.new()
-	sell_zone.set_script(load("res://src/Scripts/UI/SellZone.gd"))
-	var lbl = Label.new()
-	lbl.text = "💰\nSELL"
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	sell_zone.add_child(lbl)
-
-	# Place it to the right of bench or somewhere prominent
-	$Panel.add_child(sell_zone)
-	sell_zone.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
-	sell_zone.position = Vector2($Panel.size.x - 100, 20)
-	sell_zone.custom_minimum_size = Vector2(80, 80)
-	# Remove modulate as we are using StyleBox
-	# sell_zone.modulate = Color(1, 0.5, 0.5)
-	sell_zone.mouse_filter = MOUSE_FILTER_STOP
-
-	# Style Sell Zone
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(1, 0.3, 0.3, 0.3)
-	style.set_corner_radius_all(40) # Circular for 80x80
-	style.border_width_left = 2
-	style.border_width_top = 2
-	style.border_width_right = 2
-	style.border_width_bottom = 2
-	style.border_color = Color(1, 0, 0, 0.5)
-
-	sell_zone.add_theme_stylebox_override("panel", style)
+	button.add_theme_font_size_override("font_size", 32) # Emoji size
 
 func update_ui():
 	gold_label.text = "💰 %d" % GameManager.gold
+	update_wave_info()
+
+func update_wave_info():
+	if !GameManager.combat_manager: return
+
+	# Global Preview (Timeline)
+	var timeline_text = ""
+	var current_wave = GameManager.wave
+	for i in range(1, 6):
+		var w = current_wave + i
+		var type = GameManager.combat_manager.get_wave_type(w)
+		var icon = "?"
+		if Constants.ENEMY_VARIANTS.has(type):
+			icon = Constants.ENEMY_VARIANTS[type].icon
+		elif type == 'event':
+			icon = "⚠️"
+		elif type == 'boss':
+			icon = "👹"
+		timeline_text += icon + " "
+
+	timeline_label.text = timeline_text.strip_edges()
+
+	# Current Wave Details
+	var preview = GameManager.combat_manager.get_wave_preview(current_wave)
+	var type_key = preview.type
+	var count = preview.count
+
+	# Resolve event/boss specific icon/text
+	var display_icon = "❓"
+	var display_name = type_key.capitalize()
+
+	if Constants.ENEMY_VARIANTS.has(type_key):
+		display_icon = Constants.ENEMY_VARIANTS[type_key].icon
+		display_name = Constants.ENEMY_VARIANTS[type_key].name
+	elif type_key == 'event':
+		display_icon = "⚠️"
+		display_name = "Event"
+	elif type_key == 'boss':
+		display_icon = "👹"
+		display_name = "Boss"
+
+	details_label.text = "[center]%s x%d\n%s[/center]" % [display_icon, count, display_name]
 
 func refresh_shop(force: bool = false):
 	if !force and GameManager.gold < 10: return
@@ -168,18 +190,16 @@ func refresh_shop(force: bool = false):
 	for i in range(SHOP_SIZE):
 		create_shop_card(i, shop_items[i])
 
+	# Re-apply styles after refresh logic if needed
+	update_button_styles()
+
 func create_shop_card(index, unit_key):
 	var card = ShopCard.new()
 	card.setup(unit_key)
 	card.custom_minimum_size = Vector2(100, 120)
+	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
 	card.card_clicked.connect(func(key): buy_unit(index, key, card))
-
-	# Connect Tooltip signals (ShopCard handles its own mouse_entered/exited for visuals,
-	# but we can also connect for tooltip here or let ShopCard handle it?
-	# ShopCard sets tooltip_text, which is standard Godot tooltip.
-	# But existing code uses GameManager.show_tooltip custom signal.
-	# I should preserve that behavior.)
 
 	card.mouse_entered.connect(func():
 		var proto = Constants.UNIT_TYPES[unit_key]
@@ -188,7 +208,6 @@ func create_shop_card(index, unit_key):
 			"range": proto.range,
 			"atk_speed": proto.get("atkSpeed", proto.get("atk_speed", 1.0))
 		}
-		# Need global position. ShopCard is a Control.
 		GameManager.show_tooltip.emit(proto, stats, [], card.get_global_mouse_position())
 	)
 	card.mouse_exited.connect(func(): GameManager.hide_tooltip.emit())
@@ -202,9 +221,8 @@ func buy_unit(index, unit_key, card_ref):
 		if GameManager.main_game and GameManager.main_game.add_to_bench(unit_key):
 			GameManager.spend_gold(proto.cost)
 			unit_bought.emit(unit_key)
-			# Disable card (visual indication?)
-			card_ref.modulate = Color(0.5, 0.5, 0.5) # Dim it
-			card_ref.mouse_filter = MOUSE_FILTER_IGNORE # Disable clicks
+			card_ref.modulate = Color(0.5, 0.5, 0.5)
+			card_ref.mouse_filter = MOUSE_FILTER_IGNORE
 		else:
 			print("Bench Full")
 	else:
@@ -214,14 +232,14 @@ func on_wave_started():
 	refresh_btn.disabled = true
 	expand_btn.disabled = true
 	start_wave_btn.disabled = true
-	start_wave_btn.text = "Fighting..."
+	start_wave_btn.text = "🚫" # Locked/Fighting
 	collapse_shop()
 
 func on_wave_ended():
 	refresh_btn.disabled = false
 	expand_btn.disabled = false
 	start_wave_btn.disabled = false
-	start_wave_btn.text = "Start Wave"
+	start_wave_btn.text = "⚔️"
 	refresh_shop(true)
 	expand_shop()
 
@@ -229,8 +247,7 @@ func on_wave_reset():
 	refresh_btn.disabled = false
 	expand_btn.disabled = false
 	start_wave_btn.disabled = false
-	start_wave_btn.text = "Start Wave"
-	# Do not refresh shop on retry
+	start_wave_btn.text = "⚔️"
 
 func _on_start_wave_button_pressed():
 	GameManager.start_wave()
@@ -241,6 +258,3 @@ func _on_refresh_button_pressed():
 func _on_expand_button_pressed():
 	if GameManager.grid_manager:
 		GameManager.grid_manager.toggle_expansion_mode()
-
-# Drag and Drop for Shop (Sell)
-# Delegated to SellZone.gd
