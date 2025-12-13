@@ -28,13 +28,56 @@ func _ready():
 
 	_create_sell_zone()
 
+	# Style Panel
+	var panel = $Panel
+	var panel_style = StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.1, 0.1, 0.15, 0.9)
+	panel_style.border_width_top = 2
+	panel_style.border_color = Color("#ffffff")
+	panel.add_theme_stylebox_override("panel", panel_style)
+
+	# Style Buttons
+	apply_button_style(refresh_btn, Color("#3498db")) # Blue
+	apply_button_style(expand_btn, Color("#2ecc71")) # Green
+	apply_button_style(start_wave_btn, Color("#e74c3c"), true) # Red, Main Action
+
+func apply_button_style(button: Button, color: Color, is_main_action: bool = false):
+	var corner_radius = 12 if is_main_action else 10
+
+	# Normal State
+	var style_normal = StyleBoxFlat.new()
+	style_normal.bg_color = color
+	style_normal.set_corner_radius_all(corner_radius)
+
+	# Hover State (Brighter)
+	var style_hover = style_normal.duplicate()
+	style_hover.bg_color = color.lightened(0.2)
+
+	# Pressed State (Darker)
+	var style_pressed = style_normal.duplicate()
+	style_pressed.bg_color = color.darkened(0.2)
+
+	button.add_theme_stylebox_override("normal", style_normal)
+	button.add_theme_stylebox_override("hover", style_hover)
+	button.add_theme_stylebox_override("pressed", style_pressed)
+
+	if is_main_action:
+		# Make it bold/larger. Since we can't easily switch font to bold without resource,
+		# we assume default font or use scale/size.
+		# Increasing font size override.
+		button.add_theme_font_size_override("font_size", 20)
+		# Add outline to make it pop
+		button.add_theme_constant_override("outline_size", 2)
+		button.add_theme_color_override("font_outline_color", Color.BLACK)
+
 func _create_sell_zone():
 	# Create a visual area for selling
 	sell_zone = PanelContainer.new()
 	sell_zone.set_script(load("res://src/Scripts/UI/SellZone.gd"))
 	var lbl = Label.new()
-	lbl.text = "SELL\nZONE"
+	lbl.text = "💰\nSELL"
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	sell_zone.add_child(lbl)
 
 	# Place it to the right of bench or somewhere prominent
@@ -42,8 +85,21 @@ func _create_sell_zone():
 	sell_zone.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
 	sell_zone.position = Vector2($Panel.size.x - 100, 20)
 	sell_zone.custom_minimum_size = Vector2(80, 80)
-	sell_zone.modulate = Color(1, 0.5, 0.5)
+	# Remove modulate as we are using StyleBox
+	# sell_zone.modulate = Color(1, 0.5, 0.5)
 	sell_zone.mouse_filter = MOUSE_FILTER_STOP
+
+	# Style Sell Zone
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(1, 0.3, 0.3, 0.3)
+	style.set_corner_radius_all(40) # Circular for 80x80
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.border_color = Color(1, 0, 0, 0.5)
+
+	sell_zone.add_theme_stylebox_override("panel", style)
 
 func update_ui():
 	gold_label.text = "💰 %d" % GameManager.gold
