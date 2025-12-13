@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3 uid="uid://gui123"]
+[gd_scene load_steps=4 format=3 uid="uid://gui123"]
 
 [ext_resource type="Script" uid="uid://l0y7jifgu4bm" path="res://src/Scripts/UI/MainGUI.gd" id="1_gui"]
 [ext_resource type="PackedScene" uid="uid://c3u372lrjivmc" path="res://src/Scenes/UI/SkillBar.tscn" id="2_skillbar"]
+[ext_resource type="PackedScene" uid="uid://enemyprogressbar" path="res://src/Scenes/HUD/EnemyProgressBar.tscn" id="3_enemybar"]
 
 [node name="MainGUI" type="Control"]
 layout_mode = 3
@@ -79,24 +80,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/font_size = 12
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="EnemyProgressBar" type="ProgressBar" parent="Panel/VBoxContainer"]
-modulate = Color(1, 0, 1, 1)
-layout_mode = 2
-max_value = 1.0
-show_percentage = false
-
-[node name="Label" type="Label" parent="Panel/VBoxContainer/EnemyProgressBar"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_font_sizes/font_size = 12
-text = "Enemies"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -183,6 +166,8 @@ offset_left = -482.0
 offset_top = -274.0
 offset_right = -482.0
 offset_bottom = -194.0
+
+[node name="EnemyProgressBar" parent="." instance=ExtResource("3_enemybar")]
 
 [node name="GameOverPanel" type="Panel" parent="."]
 visible = false
