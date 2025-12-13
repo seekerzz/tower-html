@@ -77,8 +77,16 @@ func _process(delta):
 		var damage_per_sec = max_hp / duration
 		take_damage(damage_per_sec * delta)
 
-func take_damage(amount: float):
+func take_damage(amount: float, source = null):
 	hp -= amount
 	GameManager.spawn_floating_text(global_position, str(int(amount)), Color.RED)
+
+	if props and props.type == "reflect" and source and is_instance_valid(source):
+		if source.has_method("take_damage"):
+			var dmg = props.get("strength", 10.0)
+			source.take_damage(dmg, self, "physical")
+
 	if hp <= 0:
+		if GameManager.grid_manager:
+			GameManager.grid_manager.remove_obstacle(self)
 		queue_free()

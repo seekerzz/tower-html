@@ -6,6 +6,7 @@ var max_hp: float
 var speed: float
 var enemy_data: Dictionary
 var slow_timer: float = 0.0
+var freeze_timer: float = 0.0
 var effects = { "burn": 0.0, "poison": 0.0 }
 var heat_accumulation: float = 0.0
 
@@ -146,8 +147,22 @@ func _process(delta):
 	if slow_timer > 0:
 		slow_timer -= delta
 
+	if freeze_timer > 0:
+		freeze_timer -= delta
+		# Frozen visual
+		modulate = Color(0.5, 0.5, 1.0)
+	else:
+		modulate = Color.WHITE
+
 	temp_speed_mod = 1.0
+
+	if freeze_timer > 0:
+		temp_speed_mod = 0.0
+		queue_redraw()
+		return # Stop all logic if frozen
+
 	check_traps(delta)
+	check_unit_interactions(delta)
 
 	if is_attacking_base:
 		attack_base_logic(delta)
@@ -183,11 +198,51 @@ func check_traps(delta):
 				# Fang trap reflects damage or deals damage
 				take_damage(props.strength * delta)
 
+func check_unit_interactions(delta):
+	if !GameManager.grid_manager: return
+
+	# Check for unit on current tile (for Rabbit or others)
+	var tile_key = GameManager.grid_manager.get_tile_key(int(round(global_position.x / GameManager.grid_manager.TILE_SIZE)), int(round(global_position.y / GameManager.grid_manager.TILE_SIZE)))
+	if GameManager.grid_manager.tiles.has(tile_key):
+		var tile = GameManager.grid_manager.tiles[tile_key]
+		var unit = tile.unit
+		if unit and is_instance_valid(unit):
+			# Rabbit Logic
+			if unit.unit_data.get("trait") == "dodge_counter":
+				_trigger_rabbit_interaction(unit)
+
+var _rabbit_interaction_timer: float = 0.0
+
+func _trigger_rabbit_interaction(unit):
+	if _rabbit_interaction_timer > 0:
+		_rabbit_interaction_timer -= get_process_delta_time()
+		return
+
+	_rabbit_interaction_timer = 1.0 # Interact once per second
+
+	var dodge_rate = unit.unit_data.get("dodge_rate", 0.3)
+	if randf() < dodge_rate:
+		# Dodge success: Enemy takes damage (Counter), Unit safe
+		GameManager.spawn_floating_text(unit.global_position, "Miss!", Color.YELLOW)
+		take_damage(unit.damage, unit, "physical")
+	else:
+		# Dodge fail: Damage Core (via Unit)
+		# Note: Rabbit is not a wall, so we walk through it, but we "attack" it on passing.
+		# Since we are overlapping, we just apply damage logic.
+		# But wait, Rabbit is "Melee". It attacks enemies normally via CombatManager.
+		# This "interaction" represents the Enemy attacking the Rabbit.
+
+		unit.play_attack_anim("melee", global_position) # Visual only?
+		# Apply damage to Unit (Core)
+		unit.take_damage(enemy_data.dmg, self)
+
 func attack_wall_logic(delta):
 	attack_timer -= delta
 	if attack_timer <= 0:
 		if is_instance_valid(attacking_wall):
 			play_attack_animation(attacking_wall.global_position)
+		else:
+			attacking_wall = null
 
 		attack_timer = 1.0
 
@@ -365,7 +420,17 @@ func play_attack_animation(target_pos: Vector2, hit_callback: Callable = Callabl
 
 		# Also handle wall damage here if no callback passed (legacy fallback or specific logic)
 		if attacking_wall and is_instance_valid(attacking_wall) and !hit_callback.is_valid():
-			attacking_wall.take_damage(enemy_data.dmg)
+			if attacking_wall.has_method("take_damage"):
+				# Pass source self for Reflect logic
+				attacking_wall.take_damage(enemy_data.dmg, self)
+			else:
+				# Fallback for old barricades without source param or different signature
+				if attacking_wall.has_method("take_damage_legacy"):
+					attacking_wall.take_damage_legacy(enemy_data.dmg)
+				else:
+					# Assuming Barricade.gd has take_damage(amount)
+					# We should check argument count or just pass amount if standard
+					attacking_wall.take_damage(enemy_data.dmg)
 	)
 
 	# 3. Recovery (Return + Normal Scale)
