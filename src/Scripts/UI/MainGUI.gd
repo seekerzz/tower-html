@@ -292,10 +292,23 @@ func _animate_stats_panel():
 func _setup_build_panel():
 	var build_panel = BUILD_PANEL_SCENE.instantiate()
 	add_child(build_panel)
-	# Position on the left side
-	build_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	build_panel.position = Vector2(20, 100) # Offset from top
-	# Ensure it stays on screen? Anchors should handle if set correctly, but manual pos for now.
+	# Position on the right side
+	build_panel.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	# When using anchors, position is offset. CENTER_RIGHT centers vertically on the right edge.
+	# We might want to offset it slightly to the left so it's visible, or if the anchor is exactly right edge (1, 0.5),
+	# and grow direction is LEFT (default for RIGHT presets?), then (0,0) is at the anchor?
+	# Usually for Right anchor: position.x is 0 (right edge) or -width.
+
+	# Let's rely on the BuildPanel's internal sizing.
+	# We set grow direction to BEGIN (Left) so it grows into the screen.
+	build_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	build_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+
+	# Adjust position/offset if needed.
+	# Using anchors, we usually set offsets.
+	# offset_right = 0 means right edge touches screen right edge.
+	build_panel.offset_right = 0
+	# Adjust Y position if needed (it's centered by PRESET_CENTER_RIGHT)
 
 func _setup_tooltip():
 	tooltip_instance = TOOLTIP_SCENE.instantiate()
