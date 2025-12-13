@@ -5,11 +5,9 @@ signal sacrifice_requested
 @onready var hp_bar = $Panel/VBoxContainer/HPBar
 @onready var food_bar = $Panel/VBoxContainer/FoodBar
 @onready var mana_bar = $Panel/VBoxContainer/ManaBar
-@onready var enemy_bar = $Panel/VBoxContainer/EnemyProgressBar
 @onready var hp_label = $Panel/VBoxContainer/HPBar/Label
 @onready var food_label = $Panel/VBoxContainer/FoodBar/Label
 @onready var mana_label = $Panel/VBoxContainer/ManaBar/Label
-@onready var enemy_label = $Panel/VBoxContainer/EnemyProgressBar/Label
 @onready var wave_label = $Panel/WaveLabel
 @onready var debug_button = $Panel/DebugButton
 @onready var skip_button = $Panel/SkipButton
@@ -42,6 +40,10 @@ func _ready():
 	GameManager.resource_changed.connect(update_ui)
 	GameManager.wave_started.connect(update_ui)
 	GameManager.wave_ended.connect(update_ui)
+
+	GameManager.wave_started.connect(_update_hud_visibility)
+	GameManager.wave_ended.connect(_update_hud_visibility)
+
 	GameManager.game_over.connect(_on_game_over)
 
 	GameManager.damage_dealt.connect(_on_damage_dealt)
@@ -69,6 +71,15 @@ func _ready():
 	_setup_build_panel()
 	_setup_stats_panel()
 	_setup_artifacts_hud()
+
+	# Initial visibility state
+	_update_hud_visibility()
+
+func _update_hud_visibility():
+	var active = GameManager.is_wave_active
+	hp_bar.visible = active
+	food_bar.visible = active
+	mana_bar.visible = active
 
 func _setup_artifacts_hud():
 	artifacts_hud = HBoxContainer.new()
@@ -200,7 +211,6 @@ func _on_sacrifice_icon_input(event):
 
 func _setup_ui_styles():
 	var bg_color = Color(0.1, 0.1, 0.1, 0.8)
-	var border_color = Color(0.0, 0.0, 0.0, 1.0)
 	var radius = 6
 
 	var bg_style = StyleBoxFlat.new()
@@ -210,42 +220,52 @@ func _setup_ui_styles():
 	bg_style.border_width_left = 2
 	bg_style.border_width_right = 2
 	bg_style.border_width_top = 2
-	bg_style.border_color = border_color
+	bg_style.border_color = Color.BLACK
 
 	# HP Fill
 	var hp_fill = StyleBoxFlat.new()
 	hp_fill.bg_color = Color(0.8, 0.1, 0.1)
 	hp_fill.set_corner_radius_all(radius)
+	hp_fill.border_width_bottom = 2
+	hp_fill.border_width_left = 2
+	hp_fill.border_width_right = 2
+	hp_fill.border_width_top = 2
+	hp_fill.border_color = Color.TRANSPARENT
 
 	# Food Fill
 	var food_fill = StyleBoxFlat.new()
 	food_fill.bg_color = Color(1.0, 0.84, 0.0)
 	food_fill.set_corner_radius_all(radius)
+	food_fill.border_width_bottom = 2
+	food_fill.border_width_left = 2
+	food_fill.border_width_right = 2
+	food_fill.border_width_top = 2
+	food_fill.border_color = Color.TRANSPARENT
 
 	# Mana Fill
 	var mana_fill = StyleBoxFlat.new()
 	mana_fill.bg_color = Color(0.2, 0.4, 1.0)
 	mana_fill.set_corner_radius_all(radius)
-
-	# Enemy Fill
-	var enemy_fill = StyleBoxFlat.new()
-	enemy_fill.bg_color = Color(0.6, 0.2, 0.8)
-	enemy_fill.set_corner_radius_all(radius)
+	mana_fill.border_width_bottom = 2
+	mana_fill.border_width_left = 2
+	mana_fill.border_width_right = 2
+	mana_fill.border_width_top = 2
+	mana_fill.border_color = Color.TRANSPARENT
 
 	if hp_bar:
 		hp_bar.add_theme_stylebox_override("background", bg_style)
 		hp_bar.add_theme_stylebox_override("fill", hp_fill)
+		hp_bar.custom_minimum_size.y = 20 # Thicker
 	if food_bar:
 		food_bar.add_theme_stylebox_override("background", bg_style)
 		food_bar.add_theme_stylebox_override("fill", food_fill)
+		food_bar.custom_minimum_size.y = 20 # Thicker
 	if mana_bar:
 		mana_bar.add_theme_stylebox_override("background", bg_style)
 		mana_bar.add_theme_stylebox_override("fill", mana_fill)
-	if enemy_bar:
-		enemy_bar.add_theme_stylebox_override("background", bg_style)
-		enemy_bar.add_theme_stylebox_override("fill", enemy_fill)
+		mana_bar.custom_minimum_size.y = 20 # Thicker
 
-	var labels = [hp_label, food_label, mana_label, enemy_label]
+	var labels = [hp_label, food_label, mana_label]
 	for label in labels:
 		if label:
 			label.add_theme_constant_override("outline_size", 4)
@@ -315,29 +335,6 @@ func _process(delta):
 	if last_sort_time > 0:
 		last_sort_time -= delta
 
-	_update_enemy_progress()
-
-func _update_enemy_progress():
-	if GameManager.is_wave_active and GameManager.combat_manager:
-		var total = GameManager.combat_manager.total_enemies_for_wave
-		var alive = get_tree().get_nodes_in_group("enemies").size()
-		var to_spawn = GameManager.combat_manager.enemies_to_spawn
-		var current_alive = alive + to_spawn
-
-		# Progress: How many died? (Total - Current Alive) / Total
-		# Or Remaining: Current Alive / Total
-		# User requested: enemies_alive / total_wave_enemies
-
-		if total > 0:
-			enemy_bar.max_value = total
-			enemy_bar.value = current_alive
-			enemy_label.text = "%d / %d" % [current_alive, total]
-		else:
-			enemy_label.text = "0 / 0"
-	else:
-		enemy_label.text = "Waiting..."
-		enemy_bar.value = 0
-
 func _input(event):
 	if event.is_action_pressed("ui_focus_next"): # Default F1 mapping often varies, but let's check scancode or specific action if defined
 		pass
@@ -345,6 +342,8 @@ func _input(event):
 		GameManager.activate_cheat()
 
 func update_ui():
+	_update_hud_visibility()
+
 	var target_hp = (GameManager.core_health / GameManager.max_core_health) * 100
 	create_tween().tween_property(hp_bar, "value", target_hp, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
