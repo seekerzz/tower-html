@@ -70,6 +70,12 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 		_setup_swarm_wave()
 	elif type == "black_hole":
 		_setup_black_hole()
+	elif type == "stinger":
+		_setup_stinger()
+	elif type == "roar":
+		_setup_roar()
+	elif type == "dragon_breath":
+		_setup_dragon_breath()
 
 func fade_out():
 	if is_fading: return
@@ -83,7 +89,7 @@ func fade_out():
 	tween.set_parallel(true)
 	tween.tween_property(self, "modulate:a", 0.0, 0.2)
 
-	if type != "swarm_wave":
+	if type != "swarm_wave" and type != "roar":
 		# Slight expansion for explosion effect
 		tween.tween_property(self, "scale", scale * 1.5, 0.2)
 
@@ -109,6 +115,19 @@ func _process(delta):
 		if has_node("WaveLine"):
 			var line = get_node("WaveLine")
 			line.width += delta * 15.0
+
+	# Roar Logic
+	if type == "roar":
+		scale += Vector2(delta, delta) * speed * 0.01
+		modulate.a = max(0, modulate.a - delta * 0.8)
+		# No movement for roar, it expands from center (or source) usually,
+		# but if it's a projectile, it might move.
+		# If it acts like a wave, we expand it. If it moves like a projectile, we move it.
+		# Ref implies it's a "projectile" replacement for Cannon, so it likely moves?
+		# Or Cannon was "swarm_wave" which expands.
+		# "Roar" sounds like it expands. "Cannon" desc was "swarm_wave".
+		# Let's assume it expands like swarm_wave but looks different.
+		pass
 
 	var direction = Vector2.RIGHT.rotated(rotation)
 
@@ -339,3 +358,98 @@ func _setup_black_hole():
 	particles.texture = tex
 
 	add_child(particles)
+
+func _setup_stinger():
+	if visual_node: visual_node.hide()
+
+	# Yellow/Black long triangle or line
+	var poly = Polygon2D.new()
+	# Narrow triangle
+	poly.polygon = PackedVector2Array([Vector2(-5, -2), Vector2(10, 0), Vector2(-5, 2)])
+	poly.color = Color.YELLOW
+
+	# Add a black line in middle or border
+	var line = Line2D.new()
+	line.points = PackedVector2Array([Vector2(-5, 0), Vector2(10, 0)])
+	line.width = 1.0
+	line.default_color = Color.BLACK
+
+	add_child(poly)
+	add_child(line)
+
+func _setup_roar():
+	if visual_node: visual_node.hide()
+
+	# Transparent white/pale yellow ripple rings
+	# Since _draw is not easily accessible without overriding, we can use Line2D as rings or a sprite.
+	# Or we can attach a Node2D script that has _draw.
+	# But simpler: Use Line2D to draw a circle (many points)
+
+	var line = Line2D.new()
+	var points = []
+	var radius = 20.0
+	var segments = 24
+	for i in range(segments + 1):
+		var angle = (float(i) / segments) * TAU
+		points.append(Vector2(cos(angle), sin(angle)) * radius)
+
+	line.points = PackedVector2Array(points)
+	line.width = 2.0
+	line.default_color = Color(1.0, 1.0, 0.8, 0.4) # Pale yellow transparent
+	line.closed = true
+	add_child(line)
+
+	# Maybe a second ring
+	var line2 = line.duplicate()
+	line2.scale = Vector2(0.7, 0.7)
+	add_child(line2)
+
+func _setup_dragon_breath():
+	if visual_node: visual_node.hide()
+
+	# Orange-red fire particles or irregular polygon
+	var particles = GPUParticles2D.new()
+	var material = ParticleProcessMaterial.new()
+
+	material.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	material.emission_sphere_radius = 5.0
+	material.gravity = Vector3.ZERO
+	material.spread = 20.0
+	material.initial_velocity_min = 50.0
+	material.initial_velocity_max = 100.0
+	# Direction is handled by node rotation
+
+	# Color ramp: Yellow -> Red -> Dark
+	var gradient = Gradient.new()
+	gradient.set_color(0, Color(1.0, 1.0, 0.0)) # Yellow
+	gradient.add_point(0.5, Color(1.0, 0.0, 0.0)) # Red
+	gradient.set_color(1, Color(0.2, 0.0, 0.0, 0.0)) # Dark transparent
+
+	var grad_tex = GradientTexture1D.new()
+	grad_tex.gradient = gradient
+	material.color_ramp = grad_tex
+	material.scale_min = 2.0
+	material.scale_max = 4.0
+
+	particles.process_material = material
+	particles.lifetime = 0.5
+	particles.amount = 30
+
+	# Create a simple texture
+	var img = Image.create(4, 4, false, Image.FORMAT_RGBA8)
+	img.fill(Color.WHITE)
+	var tex = ImageTexture.create_from_image(img)
+	particles.texture = tex
+
+	add_child(particles)
+
+	# Optional: Irregular polygon as core
+	var poly = Polygon2D.new()
+	var pts = []
+	for i in range(6):
+		var angle = i * TAU / 6
+		var r = randf_range(5.0, 10.0)
+		pts.append(Vector2(cos(angle), sin(angle)) * r)
+	poly.polygon = PackedVector2Array(pts)
+	poly.color = Color(1.0, 0.4, 0.0, 0.7) # Orange
+	add_child(poly)
