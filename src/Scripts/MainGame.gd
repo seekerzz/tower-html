@@ -13,14 +13,19 @@ var bench: Array = [null, null, null, null, null] # Array of Dictionary (Unit Da
 # Camera Control
 var zoom_target: Vector2 = Vector2(0.8, 0.8)
 var zoom_tween: Tween
+var default_zoom: Vector2 = Vector2(0.8, 0.8)
+var default_position: Vector2 = Vector2(640, 400)
 
 func _ready():
 	GameManager.ui_manager = main_gui
 	GameManager.main_game = self
 
+	GameManager.wave_started.connect(_on_wave_started)
+	GameManager.wave_ended.connect(_on_wave_ended)
+
 	# Camera Setup
-	camera.zoom = Vector2(0.8, 0.8)
-	camera.position = Vector2(640, 400)
+	camera.zoom = default_zoom
+	camera.position = default_position
 
 	# Connect Shop signals
 	# shop.unit_bought.connect(_on_unit_bought) # Now handled via add_to_bench in Shop
@@ -50,6 +55,42 @@ func _adjust_zoom(amount: float):
 
 	zoom_tween = create_tween()
 	zoom_tween.tween_property(camera, "zoom", zoom_target, 0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+func zoom_to_fit_board():
+	var map_width = Constants.MAP_WIDTH * Constants.TILE_SIZE
+	var map_height = Constants.MAP_HEIGHT * Constants.TILE_SIZE
+
+	var viewport_size = get_viewport_rect().size
+
+	# Calculate zoom to fit map with margin
+	var zoom_x = viewport_size.x / (map_width * 1.2)
+	var zoom_y = viewport_size.y / (map_height * 1.2)
+	var final_zoom = min(zoom_x, zoom_y)
+
+	var target_zoom = Vector2(final_zoom, final_zoom)
+
+	if zoom_tween and zoom_tween.is_valid():
+		zoom_tween.kill()
+
+	zoom_tween = create_tween()
+	zoom_tween.set_parallel(true)
+	zoom_tween.tween_property(camera, "zoom", target_zoom, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	zoom_tween.tween_property(camera, "position", default_position, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+func zoom_to_default():
+	if zoom_tween and zoom_tween.is_valid():
+		zoom_tween.kill()
+
+	zoom_tween = create_tween()
+	zoom_tween.set_parallel(true)
+	zoom_tween.tween_property(camera, "zoom", default_zoom, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	zoom_tween.tween_property(camera, "position", default_position, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+func _on_wave_started():
+	zoom_to_fit_board()
+
+func _on_wave_ended():
+	zoom_to_default()
 
 # Bench Logic
 func add_to_bench(unit_key: String) -> bool:
