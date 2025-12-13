@@ -39,13 +39,8 @@ func update_bench_ui(data):
 		panel.mouse_filter = MOUSE_FILTER_IGNORE # Let the slot handle events
 
 		var style = StyleBoxFlat.new()
-		style.bg_color = Color(0, 0, 0, 0.3)
-		style.border_width_left = 2
-		style.border_width_top = 2
-		style.border_width_right = 2
-		style.border_width_bottom = 2
-		style.border_color = Color(1, 1, 1, 0.3) # Dashed not natively supported easily in StyleBoxFlat without shader or texture, sticking to solid or basic style for now as requested "dashed OR dark background"
-		style.set_corner_radius_all(4)
+		style.bg_color = Color(0.2, 0.2, 0.2, 1) # Dark gray background
+		style.set_corner_radius_all(8) # Corner Radius: 8
 
 		panel.add_theme_stylebox_override("panel", style)
 		slot.add_child(panel)
