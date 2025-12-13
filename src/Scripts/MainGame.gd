@@ -3,7 +3,7 @@ extends Node2D
 @onready var grid_manager = $GridManager
 @onready var combat_manager = $CombatManager
 @onready var shop = $CanvasLayer/Shop
-@onready var bench_ui = $CanvasLayer/Bench
+@onready var bench_ui = find_child("Bench", true, false)
 @onready var main_gui = $CanvasLayer/MainGUI
 @onready var camera = $Camera2D
 
