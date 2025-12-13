@@ -11,7 +11,6 @@ signal sacrifice_requested
 @onready var wave_label = $Panel/WaveLabel
 @onready var debug_button = $Panel/DebugButton
 @onready var skip_button = $Panel/SkipButton
-@onready var wave_timeline = $WaveTimeline
 @onready var stats_container = $DamageStats/ScrollContainer/VBoxContainer
 @onready var damage_stats_panel = $DamageStats
 @onready var stats_scroll = $DamageStats/ScrollContainer
@@ -67,7 +66,6 @@ func _ready():
 	_setup_tooltip()
 
 	update_ui()
-	update_timeline()
 	_setup_build_panel()
 	_setup_stats_panel()
 	_setup_artifacts_hud()
@@ -355,48 +353,6 @@ func update_ui():
 	mana_label.text = "%d/%d (+%d/s)" % [int(GameManager.mana), int(GameManager.max_mana), int(GameManager.base_mana_rate)]
 
 	wave_label.text = "Wave %d" % GameManager.wave
-	update_timeline()
-
-func update_timeline():
-	for child in wave_timeline.get_children():
-		child.queue_free()
-
-	for i in range(10):
-		var wave_idx = GameManager.wave + i
-		var type_key = get_wave_type(wave_idx)
-
-		var icon_label = Label.new()
-		var icon_text = "?"
-		var color = Color.WHITE
-
-		if type_key == "boss":
-			icon_text = "👹"
-			color = Color.RED
-		elif type_key == "event":
-			icon_text = "🎁"
-			color = Color.PURPLE
-		elif Constants.ENEMY_VARIANTS.has(type_key):
-			var variant = Constants.ENEMY_VARIANTS[type_key]
-			icon_text = variant.get("icon", "?")
-			color = variant.get("color", Color.WHITE)
-
-		icon_label.text = icon_text
-		icon_label.modulate = color
-		icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-
-		if i == 0:
-			var panel = PanelContainer.new()
-			panel.add_child(icon_label)
-			wave_timeline.add_child(panel)
-		else:
-			wave_timeline.add_child(icon_label)
-
-func get_wave_type(n: int) -> String:
-	var types = ['slime', 'wolf', 'poison', 'treant', 'yeti', 'golem']
-	if n % 10 == 0: return 'boss'
-	if n % 3 == 0: return 'event'
-	var idx = int(min(types.size() - 1, floor((n - 1) / 2.0)))
-	return types[idx % types.size()]
 
 func _on_damage_dealt(unit, amount):
 	if not unit: return
