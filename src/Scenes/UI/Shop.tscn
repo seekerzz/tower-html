@@ -1,6 +1,7 @@
 [gd_scene load_steps=2 format=3 uid="uid://shop123"]
 
 [ext_resource type="Script" path="res://src/Scripts/UI/Shop.gd" id="1_shop"]
+[ext_resource type="PackedScene" uid="uid://benchui00001" path="res://src/Scenes/UI/Bench.tscn" id="2_bench"]
 
 [node name="Shop" type="Control"]
 layout_mode = 3
@@ -33,6 +34,10 @@ offset_bottom = 70.0
 grow_horizontal = 2
 theme_override_constants/separation = 10
 alignment = 1
+
+[node name="Bench" parent="Panel/BenchContainer" instance=ExtResource("2_bench")]
+layout_mode = 2
+custom_minimum_size = Vector2(340, 60)
 
 [node name="HBoxContainer" type="HBoxContainer" parent="Panel"]
 layout_mode = 1
