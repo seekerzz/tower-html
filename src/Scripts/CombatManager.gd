@@ -307,7 +307,7 @@ func process_unit_combat(unit, tile, delta):
 
 		elif unit.unit_data.attackType == "ranged" and unit.unit_data.get("proj") == "lightning":
 			# Lightning handling
-			# "tesla": "attackType": "ranged", "proj": "lightning", "chain": 4
+			# "eel": "attackType": "ranged", "proj": "lightning", "chain": 4
 			perform_lightning_attack(unit, tile.global_position, target, unit.unit_data.get("chain", 0))
 		else:
 			# Check for Multi-shot (projCount)
@@ -380,7 +380,7 @@ func spawn_multishot_projectile(source_unit, pos, target, count, spread):
 
 func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	# FIX: Shotgun logic - force straight flight by removing target
-	if source_unit.unit_data.get("proj") == "pellet":
+	if source_unit.unit_data.get("proj") == "ink":
 		target = null
 
 	var proj = PROJECTILE_SCENE.instantiate()

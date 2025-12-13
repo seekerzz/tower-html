@@ -9,14 +9,14 @@ func _ready():
 	# 1. Sunflower (Production)
 	grid_manager.place_unit("plant", -2, 0)
 
-	# 2. Cannon (Swarm Wave)
-	grid_manager.place_unit("cannon", 2, 0)
+	# 2. Lion (Roar)
+	grid_manager.place_unit("lion", 2, 0)
 
-	# 3. Singularity (Blackhole)
-	grid_manager.place_unit("void", 0, -2)
+	# 3. Dragon (Breath)
+	grid_manager.place_unit("dragon", 0, -2)
 
-	# 4. Tesla (Lightning Chain)
-	grid_manager.place_unit("tesla", 0, 2)
+	# 4. Eel (Lightning Chain)
+	grid_manager.place_unit("eel", 0, 2)
 
 	# --- Spawns ---
 
