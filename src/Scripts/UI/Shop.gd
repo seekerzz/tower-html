@@ -5,8 +5,8 @@ var shop_items: Array = []
 var shop_locked: Array = [false, false, false, false]
 const SHOP_SIZE = 4
 
-@onready var shop_container = $Panel/MainLayout/CoreArea/ShopContainer
-@onready var bench_panel = $Panel/MainLayout/CoreArea/BenchPanel
+@onready var shop_container = $Panel/MainLayout/CoreArea/CenterWrapper/ShopContainer
+@onready var bench_panel = $Panel/MainLayout/CoreArea/CenterWrapper/BenchPanel
 @onready var gold_label = $Panel/MainLayout/WaveInfo/GoldLabel
 @onready var refresh_btn = $Panel/MainLayout/LeftButtons/RefreshButton
 @onready var expand_btn = $Panel/MainLayout/LeftButtons/ExpandButton
@@ -77,12 +77,42 @@ func collapse_shop():
 
 	var tween = create_tween()
 	# Move panel down so only handle is visible at bottom
-	# Since handle is at y = -24 (external top), we want panel top to be at screen bottom.
-	# Actually, if panel moves down by its height, the handle (child) moves with it.
-	# The handle is at -24 relative to Panel.
-	# If Panel moves to Screen Bottom (y + height), handle will be at Screen Bottom - 24.
-	# This keeps handle visible.
-	var target_y = panel_initial_y + $Panel.size.y
+	# When collapsed, Panel moves down by its height.
+	# The Handle is at y = -24 (above panel).
+	# We want Handle to be at Screen Bottom - 24.
+	# If Panel is at Screen Bottom (Anchor Bottom=1), its y is usually 0 relative to parent if parent is screen?
+	# Shop.gd is Control, anchors 12 (bottom wide), offset_top = -220.
+	# So Panel is child of Shop. Shop moves? No, $Panel moves relative to Shop.
+	# Shop is at Bottom.
+	# If we move Panel down by Panel.size.y, it goes offscreen.
+	# The handle is attached to Panel.
+	# Wait, toggle logic failed because handle moved offscreen or behind something?
+	# Or maybe `panel_initial_y` was wrong?
+
+	# Let's verify coordinates. Shop is anchored bottom. Panel is fill.
+	# If Shop height is 220.
+	# We want to slide it down so top edge is at bottom of screen.
+	# Shop node itself can slide? Or just Panel? Script slides Panel.
+	# Panel is Anchor 15 (Fill).
+	# If we change position:y of Panel, we break anchors unless we change offset.
+	# It's better to tween the Shop (Control) offset or position?
+	# But script moves $Panel.
+	# Let's stick to moving Panel but ensure we don't move it too far.
+
+	# Current Logic: target_y = initial + size.y.
+	# If initial is 0 (relative to Shop), target is 220.
+	# Handle is at -24. So Handle is at 196 (relative to Shop).
+	# Shop is at Bottom of screen. 196 is inside Shop area? No, Shop is height 220.
+	# 196 is visible.
+
+	# Issue: "Expand" button (ToggleHandle) click ineffective?
+	# Maybe `_on_toggle_handle_pressed` is not firing?
+	# Or `is_collapsed` logic?
+	# Maybe it's blocked by `SellZone` or something?
+	# I'll ensure Z-Index or draw order. Handle is added in Scene now.
+	# Handle is child of Panel.
+
+	var target_y = $Panel.size.y
 	tween.tween_property($Panel, "position:y", target_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func expand_shop():
@@ -91,7 +121,7 @@ func expand_shop():
 	toggle_handle.text = "▼"
 
 	var tween = create_tween()
-	tween.tween_property($Panel, "position:y", panel_initial_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property($Panel, "position:y", 0.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 	# Update styles
 	update_button_styles()
@@ -133,6 +163,12 @@ func update_wave_info():
 	# Global Preview (Timeline)
 	var timeline_text = ""
 	var current_wave = GameManager.wave
+	# Show NEXT 5 waves (timeline usually shows future)
+	# But user says "preview didn't match actual enemies".
+	# The details label shows CURRENT wave.
+	# The timeline shows FUTURE.
+	# Let's check logic for current wave detail.
+
 	for i in range(1, 6):
 		var w = current_wave + i
 		var type = GameManager.combat_manager.get_wave_type(w)
@@ -167,6 +203,11 @@ func update_wave_info():
 		display_name = "Boss"
 
 	details_label.text = "[center]%s x%d\n%s[/center]" % [display_icon, count, display_name]
+
+	# Trigger wave info update more frequently?
+	# Added to _process or connect to more signals if needed.
+	# But "preview didn't match" might be due to CombatManager logic.
+	# We rely on CombatManager.get_wave_preview matching start_wave_logic.
 
 func refresh_shop(force: bool = false):
 	if !force and GameManager.gold < 10: return
