@@ -277,6 +277,11 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 	unit.grid_pos = Vector2i(x, y)
 
 	_set_tiles_occupied(x, y, w, h, unit)
+
+	# Register as obstacle if it's a defensive unit
+	if unit.unit_data.get("trait") in ["reflect", "flat_reduce"]:
+		register_obstacle(Vector2i(x, y), unit)
+
 	recalculate_buffs()
 	GameManager.recalculate_max_health()
 	return true
@@ -332,6 +337,10 @@ func remove_unit_from_grid(unit):
 	if unit == null: return
 	var w = unit.unit_data.size.x
 	var h = unit.unit_data.size.y
+
+	if unit.unit_data.get("trait") in ["reflect", "flat_reduce"]:
+		remove_obstacle(unit)
+
 	_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
 	unit.queue_free()
 	recalculate_buffs()

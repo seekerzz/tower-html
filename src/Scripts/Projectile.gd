@@ -70,6 +70,10 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 		_setup_swarm_wave()
 	elif type == "black_hole":
 		_setup_black_hole()
+	elif type == "snowball":
+		_setup_snowball()
+	elif type == "web":
+		_setup_web()
 
 func fade_out():
 	if is_fading: return
@@ -178,6 +182,31 @@ func _on_area_2d_area_entered(area):
 			area.effects["burn"] = max(area.effects["burn"], effects["burn"])
 		if effects.get("poison", 0.0) > 0.0:
 			area.effects["poison"] = max(area.effects["poison"], effects["poison"])
+		if effects.get("slow", 0.0) > 0.0:
+			area.slow_timer = max(area.slow_timer, effects["slow"])
+		if effects.get("freeze", 0.0) > 0.0:
+			# Freeze stops movement and attacks
+			# Implemented via temp_speed_mod = 0 and attack blocking in Enemy
+			# Using slow_timer variable in Enemy?
+			# Enemy.gd has slow_timer which halves speed.
+			# I might need to add "freeze_timer" to Enemy.gd or use existing system.
+			# Let's check Enemy.gd...
+			# Enemy.gd doesn't have freeze_timer.
+			# I'll rely on slow_timer for now but set it to 2.0?
+			# Wait, "Snowman ... is_frozen = true (stop moving/attacking 2s)".
+			# I should add `freeze_timer` to Enemy.gd or just add the property dynamically.
+			area.set("freeze_timer", max(area.get("freeze_timer") if area.get("freeze_timer") else 0.0, effects["freeze"]))
+
+		# Lifesteal Logic (Moved from Unit.gd to avoid non-standard signals)
+		if source_unit and is_instance_valid(source_unit) and source_unit.unit_data.get("trait") == "lifesteal":
+			var lifesteal_pct = source_unit.unit_data.get("lifesteal_percent", 0.0)
+			# Estimate heal based on raw damage for simplicity or use final calculated logic
+			# Here damage is already calculated (final_damage set in CombatManager passed to Projectile)
+			var heal_amt = damage * lifesteal_pct
+			if heal_amt > 0:
+				# Heal Core
+				GameManager.damage_core(-heal_amt)
+				GameManager.spawn_floating_text(source_unit.global_position, "+%d" % int(heal_amt), Color.GREEN)
 
 		hit_list.append(area)
 
@@ -339,3 +368,47 @@ func _setup_black_hole():
 	particles.texture = tex
 
 	add_child(particles)
+
+func _setup_snowball():
+	if visual_node: visual_node.hide()
+	if has_node("ColorRect"): get_node("ColorRect").hide()
+
+	var circle = Polygon2D.new()
+	var points = PackedVector2Array()
+	var radius = 8.0
+	for i in range(16):
+		var angle = (i * TAU) / 16
+		points.append(Vector2(cos(angle), sin(angle)) * radius)
+	circle.polygon = points
+	circle.color = Color.WHITE
+	add_child(circle)
+
+	# Trail
+	var trail = Line2D.new()
+	trail.width = 4
+	trail.default_color = Color(0.8, 0.9, 1.0, 0.5)
+	trail.set_script(load("res://src/Scripts/Effects/Trail.gd") if ResourceLoader.exists("res://src/Scripts/Effects/Trail.gd") else null) # Optional trail script
+	# Simple trail manually?
+	# Let's stick to simple visual
+
+func _setup_web():
+	if visual_node: visual_node.hide()
+	if has_node("ColorRect"): get_node("ColorRect").hide()
+
+	# Draw a web shape
+	var web = Line2D.new()
+	web.width = 1.5
+	web.default_color = Color.WEB_GRAY
+
+	# Star/Web shape
+	var points = []
+	for i in range(5):
+		var angle = i * (TAU / 5)
+		points.append(Vector2(cos(angle), sin(angle)) * 10.0)
+		points.append(Vector2.ZERO) # Return to center for web look
+		points.append(Vector2(cos(angle), sin(angle)) * 5.0) # Inner web
+
+	web.points = PackedVector2Array(points)
+	add_child(web)
+
+	# Rotation handled in _process

@@ -277,6 +277,11 @@ func process_unit_combat(unit, tile, delta):
 				final_damage *= unit.crit_dmg
 				dmg_type = "crit"
 
+			# Prepare Melee Effects (Poison etc)
+			var melee_effects = {}
+			if unit.unit_data.get("trait") == "poison_touch":
+				melee_effects["poison"] = 5.0
+
 			for enemy in get_tree().get_nodes_in_group("enemies"):
 				if !is_instance_valid(enemy): continue
 
@@ -289,6 +294,10 @@ func process_unit_combat(unit, tile, delta):
 					var angle_diff = attack_dir.angle_to(to_enemy_vec)
 					if abs(angle_diff) <= cone_angle / 2.0:
 						enemy.take_damage(final_damage, unit, dmg_type)
+
+						# Apply Melee Effects
+						if melee_effects.has("poison"):
+							enemy.effects["poison"] = max(enemy.effects.get("poison", 0), melee_effects["poison"])
 
 			var slash = SLASH_EFFECT_SCRIPT.new()
 			add_child(slash)
@@ -408,6 +417,15 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 		effects["burn"] = 3.0
 	if source_unit.unit_data.get("buffProvider") == "poison":
 		effects["poison"] = 5.0
+
+	# New Traits Logic
+	var unit_trait = source_unit.unit_data.get("trait")
+	if unit_trait == "poison_touch":
+		effects["poison"] = 5.0 # Accumulates
+	elif unit_trait == "slow":
+		effects["slow"] = 2.0 # Duration
+	elif unit_trait == "freeze":
+		effects["freeze"] = 2.0 # Duration
 
 	stats["effects"] = effects
 
