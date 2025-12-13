@@ -33,6 +33,14 @@ func get_wave_type(n: int) -> String:
 	var idx = min(types.size() - 1, floor((n - 1) / 2.0))
 	return types[int(idx) % types.size()]
 
+func get_wave_preview(wave_num: int) -> Dictionary:
+	var type = get_wave_type(wave_num)
+	var count = 20 + floor(wave_num * 6)
+	return {
+		"type": type,
+		"count": count
+	}
+
 func start_wave_logic():
 	var wave = GameManager.wave
 
