@@ -70,6 +70,27 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 		_setup_swarm_wave()
 	elif type == "black_hole":
 		_setup_black_hole()
+	elif type == "pinecone" or type == "ink" or type == "pollen":
+		_setup_simple_visuals(type)
+
+func _setup_simple_visuals(p_type: String):
+	if visual_node: visual_node.hide()
+	if has_node("ColorRect"): get_node("ColorRect").hide()
+
+	queue_redraw()
+
+func _draw():
+	if type == "pinecone":
+		# Oval/Circle, Saddle Brown
+		draw_circle(Vector2.ZERO, 6, Color.SADDLE_BROWN)
+	elif type == "ink":
+		# Black/Deep Purple
+		draw_circle(Vector2.ZERO, 5, Color("#2c003e"))
+		# Optional trail effect logic would go here or in _process
+	elif type == "pollen":
+		# Gold/Pink, Glowing
+		draw_circle(Vector2.ZERO, 5, Color.GOLD)
+		draw_arc(Vector2.ZERO, 7, 0, TAU, 16, Color.GOLD, 1.0) # Glow-ish ring
 
 func fade_out():
 	if is_fading: return
