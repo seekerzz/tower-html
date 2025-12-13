@@ -12,6 +12,8 @@ const SHOP_SIZE = 4
 @onready var start_wave_btn = $Panel/StartWaveButton
 
 var sell_zone = null
+var is_collapsed: bool = false
+var panel_initial_y: float = 0.0
 
 signal unit_bought(unit_key)
 
@@ -27,6 +29,46 @@ func _ready():
 	expand_btn.pressed.connect(_on_expand_button_pressed)
 
 	_create_sell_zone()
+	call_deferred("_setup_collapse_handle")
+
+func _setup_collapse_handle():
+	panel_initial_y = $Panel.position.y
+
+	var handle = Button.new()
+	handle.name = "ToggleHandle"
+	handle.text = "▼"
+	handle.size = Vector2(80, 24)
+	$Panel.add_child(handle)
+
+	# Position at top center, sticking out
+	handle.position = Vector2(($Panel.size.x - handle.size.x) / 2, -handle.size.y)
+	handle.pressed.connect(_on_toggle_handle_pressed)
+
+func _on_toggle_handle_pressed():
+	if is_collapsed:
+		expand_shop()
+	else:
+		collapse_shop()
+
+func collapse_shop():
+	if is_collapsed: return
+	is_collapsed = true
+	var handle = $Panel.get_node_or_null("ToggleHandle")
+	if handle: handle.text = "▲"
+
+	var tween = create_tween()
+	# Move panel down so only handle is visible at bottom
+	var target_y = panel_initial_y + $Panel.size.y
+	tween.tween_property($Panel, "position:y", target_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+func expand_shop():
+	if !is_collapsed: return
+	is_collapsed = false
+	var handle = $Panel.get_node_or_null("ToggleHandle")
+	if handle: handle.text = "▼"
+
+	var tween = create_tween()
+	tween.tween_property($Panel, "position:y", panel_initial_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func _create_sell_zone():
 	# Create a visual area for selling
@@ -117,6 +159,7 @@ func on_wave_started():
 	expand_btn.disabled = true
 	start_wave_btn.disabled = true
 	start_wave_btn.text = "Fighting..."
+	collapse_shop()
 
 func on_wave_ended():
 	refresh_btn.disabled = false
@@ -124,6 +167,7 @@ func on_wave_ended():
 	start_wave_btn.disabled = false
 	start_wave_btn.text = "Start Wave"
 	refresh_shop(true)
+	expand_shop()
 
 func on_wave_reset():
 	refresh_btn.disabled = false
