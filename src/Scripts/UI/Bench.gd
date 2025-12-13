@@ -41,6 +41,12 @@ func update_bench_ui(data):
 		var style = StyleBoxFlat.new()
 		style.bg_color = Color(0.2, 0.2, 0.2, 1) # Dark gray background
 		style.set_corner_radius_all(8) # Corner Radius: 8
+		# Add clear rounded rectangle border
+		style.border_width_left = 2
+		style.border_width_top = 2
+		style.border_width_right = 2
+		style.border_width_bottom = 2
+		style.border_color = Color(0.6, 0.6, 0.6, 0.8) # Light gray border
 
 		panel.add_theme_stylebox_override("panel", style)
 		slot.add_child(panel)
