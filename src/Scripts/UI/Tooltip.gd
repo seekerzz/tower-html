@@ -1,13 +1,23 @@
 extends PanelContainer
 
-@onready var title_label = $VBoxContainer/TitleLabel
-@onready var stats_label = $VBoxContainer/StatsLabel
-@onready var buff_label = $VBoxContainer/BuffLabel
+var title_label
+var stats_label
+var buff_label
 
 func _ready():
+	title_label = get_node("VBoxContainer/TitleLabel")
+	stats_label = get_node("VBoxContainer/StatsLabel")
+	buff_label = get_node("VBoxContainer/BuffLabel")
 	hide()
 
 func show_tooltip(unit_data: Dictionary, current_stats: Dictionary, active_buffs: Array, global_pos: Vector2):
+	if !title_label:
+		title_label = get_node("VBoxContainer/TitleLabel")
+	if !stats_label:
+		stats_label = get_node("VBoxContainer/StatsLabel")
+	if !buff_label:
+		buff_label = get_node("VBoxContainer/BuffLabel")
+
 	title_label.text = "[b]" + unit_data.get("icon", "") + " " + unit_data.get("name", "Unknown") + "[/b]"
 
 	var desc = unit_data.get("desc", "")
@@ -16,13 +26,16 @@ func show_tooltip(unit_data: Dictionary, current_stats: Dictionary, active_buffs
 	# Emoji Style
 	var max_hp = unit_data.get("hp", 0)
 	stats_text += "❤️ %d\n" % floor(max_hp)
-	stats_text += "⚔️ %d\n" % floor(current_stats.get("damage", 0))
-	stats_text += "⚡ %.1f/s\n" % (1.0 / max(0.01, current_stats.get("atk_speed", 1.0)))
-	stats_text += "🏹 %d\n" % floor(current_stats.get("range", 0))
 
-	var crit_rate = current_stats.get("crit_rate", 0.1)
-	var crit_dmg = current_stats.get("crit_dmg", 1.5)
-	stats_text += "💥 %d%% (x%.1f)\n" % [floor(crit_rate * 100), crit_dmg]
+	var damage = current_stats.get("damage", 0)
+	if damage > 0:
+		stats_text += "⚔️ %d\n" % floor(damage)
+		stats_text += "⚡ %.1f/s\n" % (1.0 / max(0.01, current_stats.get("atk_speed", 1.0)))
+		stats_text += "🏹 %d\n" % floor(current_stats.get("range", 0))
+
+		var crit_rate = current_stats.get("crit_rate", 0.1)
+		var crit_dmg = current_stats.get("crit_dmg", 1.5)
+		stats_text += "💥 %d%% (x%.1f)\n" % [floor(crit_rate * 100), crit_dmg]
 
 	if desc != "":
 		stats_text += "\n[color=#aaaaaa]" + desc + "[/color]"
