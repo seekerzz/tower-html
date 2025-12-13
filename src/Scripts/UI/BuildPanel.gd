@@ -5,7 +5,7 @@ const MATERIAL_KEYS = ["mucus", "poison", "fang", "wood", "snow", "stone"]
 # Main layout
 var main_hbox: HBoxContainer
 var toggle_button: Button
-var content_wrapper: PanelContainer # Wrapper to clip content
+var content_wrapper: Control # Wrapper to clip content
 var material_container: VBoxContainer
 
 var is_expanded: bool = true
