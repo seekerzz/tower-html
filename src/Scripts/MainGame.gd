@@ -71,8 +71,9 @@ func zoom_to_fit_board():
 
 	var target_zoom = Vector2(final_zoom, final_zoom)
 
-	# Center of board
-	var target_pos = Vector2(map_width / 2.0, map_height / 2.0)
+	# Center of board is GridManager's position
+	# GridManager places tiles around (0,0) locally, but GridManager itself is offset.
+	var target_pos = grid_manager.position
 
 	if zoom_tween and zoom_tween.is_valid():
 		zoom_tween.kill()
@@ -87,11 +88,6 @@ func zoom_to_shop_open():
 	var map_width = Constants.MAP_WIDTH * Constants.TILE_SIZE
 	var map_height = Constants.MAP_HEIGHT * Constants.TILE_SIZE
 
-	# We want to see the board AND the shop at the bottom.
-	# Shop takes up space at bottom.
-	# Let's assume we want to fit Map + some bottom margin.
-	# Or shift the camera center down.
-
 	var viewport_size = get_viewport_rect().size
 
 	# Make zoom slightly smaller to fit more vertical space
@@ -102,17 +98,10 @@ func zoom_to_shop_open():
 
 	var target_zoom = Vector2(final_zoom, final_zoom)
 
-	# Shift center down slightly so board is higher up, making room for shop
-	# Center of board is (map_width/2, map_height/2).
-	# We want camera to look at something lower than center?
-	# No, if we want board at top, we should look at center of board.
-	# If we want board to be visible + shop at bottom.
-	# If we center on board, shop might be cut off if zoom is too high.
-	# With zoom_y = viewport_size.y / (map_height * 1.5), we fit 1.5x map height.
-	# If we center on map center, we have 0.75x map height above and below.
-	# Map is 1x height. So we have 0.25x map height extra below.
-	# That should be enough for shop.
-	var target_pos = Vector2(map_width / 2.0, map_height / 2.0)
+	# For planning, we want to see the board centered or slightly high.
+	# Default position (640, 400) was working for planning.
+	# Or we can use grid_manager.position + small offset.
+	var target_pos = default_position
 
 	if zoom_tween and zoom_tween.is_valid():
 		zoom_tween.kill()
