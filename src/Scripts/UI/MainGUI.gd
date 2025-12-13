@@ -2,17 +2,17 @@ extends Control
 
 signal sacrifice_requested
 
-@onready var hp_bar = $Panel/VBoxContainer/HPBar
-@onready var food_bar = $Panel/VBoxContainer/FoodBar
-@onready var mana_bar = $Panel/VBoxContainer/ManaBar
-@onready var enemy_bar = $Panel/VBoxContainer/EnemyProgressBar
-@onready var hp_label = $Panel/VBoxContainer/HPBar/Label
-@onready var food_label = $Panel/VBoxContainer/FoodBar/Label
-@onready var mana_label = $Panel/VBoxContainer/ManaBar/Label
-@onready var enemy_label = $Panel/VBoxContainer/EnemyProgressBar/Label
-@onready var wave_label = $Panel/WaveLabel
-@onready var debug_button = $Panel/DebugButton
-@onready var skip_button = $Panel/SkipButton
+@onready var hp_bar = $BottomPanel/ResourceContainer/HPBar
+@onready var food_bar = $BottomPanel/ResourceContainer/FoodBar
+@onready var mana_bar = $BottomPanel/ResourceContainer/ManaBar
+@onready var enemy_bar = $BottomPanel/EnemyProgressBar
+@onready var hp_label = $BottomPanel/ResourceContainer/HPBar/Label
+@onready var food_label = $BottomPanel/ResourceContainer/FoodBar/Label
+@onready var mana_label = $BottomPanel/ResourceContainer/ManaBar/Label
+@onready var enemy_label = $BottomPanel/EnemyProgressBar/Label
+@onready var wave_label = $WaveLabel
+@onready var debug_button = $DebugButton
+@onready var skip_button = $SkipButton
 @onready var wave_timeline = $WaveTimeline
 @onready var stats_container = $DamageStats/ScrollContainer/VBoxContainer
 @onready var damage_stats_panel = $DamageStats
@@ -78,11 +78,6 @@ func _setup_artifacts_hud():
 	artifacts_hud.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	artifacts_hud.alignment = BoxContainer.ALIGNMENT_END
 
-	# With Top Right preset, the node is anchored to the top right.
-	# We want to offset it slightly from the edge.
-	# Since grow_horizontal is BEGIN, it expands to the left.
-	# We set the position's x to be (ViewportWidth - Offset) or use offsets.
-	# A safe way is to set the offsets directly after preset.
 	artifacts_hud.offset_left = -320 # Starts 320px from right edge
 	artifacts_hud.offset_right = -20 # Ends 20px from right edge
 	artifacts_hud.offset_top = 20
@@ -102,7 +97,6 @@ func _on_reward_added(_id):
 	_update_artifacts_hud()
 
 func _on_sacrifice_state_changed(_is_active):
-	# Update HUD to reflect cooldown/active state if needed
 	_update_artifacts_hud()
 
 func _update_artifacts_hud():
@@ -151,16 +145,8 @@ func _create_hud_icon(id, count, rm):
 		count_label.text = "x%d" % count
 		count_label.add_theme_font_size_override("font_size", 12)
 		count_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-		# To make anchors work, parent needs to be control but Label inside container is managed.
-		# Easier: just add it and move it or use a MarginContainer overlay.
-		# Let's just add it as child of container, and set position manually or rely on order.
-		# Or use a MarginContainer for the icon and overlay the count.
-		# Simple approach: standard VBox/Overlay.
-		# Since PanelContainer only holds one child usually, let's change structure slightly.
 
-		# Better structure: MarginContainer
 		var margin = MarginContainer.new()
-		# Reparent label: remove from old parent first
 		label.get_parent().remove_child(label)
 		margin.add_child(label)
 
@@ -170,8 +156,6 @@ func _create_hud_icon(id, count, rm):
 		count_lbl_container.add_child(count_label)
 
 		margin.add_child(count_lbl_container)
-
-		# Add margin to container
 		icon_container.add_child(margin)
 
 	# Interaction for Sacrifice Protocol
@@ -179,12 +163,10 @@ func _create_hud_icon(id, count, rm):
 		icon_container.mouse_filter = Control.MOUSE_FILTER_STOP
 		icon_container.gui_input.connect(_on_sacrifice_icon_input)
 
-		# Visual feedback for cooldown
 		if rm.sacrifice_cooldown > 0:
-			label.modulate = Color(0.5, 0.5, 0.5, 0.5) # Greyed out
+			label.modulate = Color(0.5, 0.5, 0.5, 0.5)
 		elif rm.is_sacrifice_active:
-			label.modulate = Color(1, 0, 0) # Red glow/active?
-			# Or maybe scale pulse?
+			label.modulate = Color(1, 0, 0)
 
 	artifacts_hud.add_child(icon_container)
 
@@ -275,16 +257,16 @@ func _animate_stats_panel():
 	var target_pos_x
 	if is_stats_collapsed:
 		stats_header.text = "📊"
-		stats_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		stats_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT # Left aligned to be visible
 		stats_scroll.visible = false
-		damage_stats_panel.custom_minimum_size.y = 30 # Small height
+		damage_stats_panel.custom_minimum_size.y = 30
 		# Move mostly off-screen, leave 60px visible to ensure it's clickable
 		target_pos_x = viewport_width - 60
 	else:
 		stats_header.text = "Damage Stats"
+		stats_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		stats_scroll.visible = true
 		damage_stats_panel.custom_minimum_size.y = 300
-		# Fully visible. Ensure panel width is at least something reasonable if dynamic
 		target_pos_x = viewport_width - max(panel_width, 200)
 
 	stats_tween.tween_property(damage_stats_panel, "position:x", target_pos_x, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -292,10 +274,15 @@ func _animate_stats_panel():
 func _setup_build_panel():
 	var build_panel = BUILD_PANEL_SCENE.instantiate()
 	add_child(build_panel)
-	# Position on the left side
-	build_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	build_panel.position = Vector2(20, 100) # Offset from top
-	# Ensure it stays on screen? Anchors should handle if set correctly, but manual pos for now.
+	# Position on the right side
+	build_panel.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	# Position will be handled by anchor, but ensure it's not offscreen or overlapping weirdly.
+	# With Center Right, it should be anchored to the right edge.
+	# Note: DamageStats is also there. BuildPanel might overlap when stats are expanded.
+	# But when stats are collapsed (default), BuildPanel should be visible.
+	# We might need to adjust Z-index or offsets if needed.
+	# For now, just setting anchor as requested.
+	# build_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 
 func _setup_tooltip():
 	tooltip_instance = TOOLTIP_SCENE.instantiate()
@@ -325,10 +312,6 @@ func _update_enemy_progress():
 		var to_spawn = GameManager.combat_manager.enemies_to_spawn
 		var current_alive = alive + to_spawn
 
-		# Progress: How many died? (Total - Current Alive) / Total
-		# Or Remaining: Current Alive / Total
-		# User requested: enemies_alive / total_wave_enemies
-
 		if total > 0:
 			enemy_bar.max_value = total
 			enemy_bar.value = current_alive
@@ -340,7 +323,7 @@ func _update_enemy_progress():
 		enemy_bar.value = 0
 
 func _input(event):
-	if event.is_action_pressed("ui_focus_next"): # Default F1 mapping often varies, but let's check scancode or specific action if defined
+	if event.is_action_pressed("ui_focus_next"):
 		pass
 	if event is InputEventKey and event.pressed and event.keycode == KEY_F1:
 		GameManager.activate_cheat()
@@ -437,7 +420,6 @@ func _on_damage_dealt(unit, amount):
 		last_sort_time = sort_interval
 
 func _sort_stats():
-	# Simple bubble sort or reordering of children based on amount
 	var children = stats_container.get_children()
 	children.sort_custom(func(a, b):
 		var amt_a = _get_amount_from_row(a)
@@ -457,17 +439,14 @@ func _get_amount_from_row(row):
 func _on_ftext_spawn_requested(pos, value, color):
 	var ftext = FLOATING_TEXT_SCENE.instantiate()
 
-	# Random Offset
 	var offset = Vector2(randf_range(-20, 20), randf_range(-30, -10))
 	var world_pos = pos + offset
 
-	# Convert world position to canvas (UI) position if needed.
 	var screen_pos = get_viewport().canvas_transform * world_pos
 
 	ftext.position = screen_pos
 	add_child(ftext)
 
-	# Ensure value is integer formatted if it looks like a number
 	var display_value = value
 	if value.is_valid_float():
 		display_value = str(int(float(value)))
@@ -480,11 +459,6 @@ func _on_stats_header_input(event):
 		_animate_stats_panel()
 
 func _on_wave_ended_stats():
-	# Reset stats on wave end? The ref implementation seems to reset on startWave.
-	# Let's reset on wave start actually, but here we can clear if we want.
-	# For now, let's keep them accumulative or reset on start_wave if we had that signal connected.
-	# The ref code: game.damageStats = {}; in startWave.
-	# So I should clear it in start_wave via update_ui logic or separate handler.
 	pass
 
 func _on_debug_button_pressed():
@@ -494,14 +468,11 @@ func _on_skip_button_pressed():
 	if not GameManager.is_wave_active:
 		return
 
-	# Clear all enemies
 	get_tree().call_group("enemies", "queue_free")
 
-	# Stop spawning
 	if GameManager.combat_manager:
 		GameManager.combat_manager.enemies_to_spawn = 0
 
-	# End wave
 	GameManager.end_wave()
 
 func _on_game_over():
