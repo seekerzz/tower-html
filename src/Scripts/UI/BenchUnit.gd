@@ -11,6 +11,16 @@ func setup(key: String, index: int):
 	bench_index = index
 	var proto = Constants.UNIT_TYPES[key]
 
+	# Background Panel
+	var panel = Panel.new()
+	panel.anchors_preset = 15
+	panel.mouse_filter = MOUSE_FILTER_IGNORE
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.3, 0.3, 0.3, 1) # Slightly popped out color
+	style.set_corner_radius_all(6)
+	panel.add_theme_stylebox_override("panel", style)
+	add_child(panel)
+
 	# Visuals (Using existing children or creating new)
 	var label = Label.new()
 	label.text = proto.icon
@@ -24,7 +34,7 @@ func setup(key: String, index: int):
 	label.grow_vertical = 2
 
 	# Adjust font size for icon
-	label.add_theme_font_size_override("font_size", 32)
+	label.add_theme_font_size_override("font_size", 42)
 
 	add_child(label)
 
