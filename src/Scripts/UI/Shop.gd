@@ -5,7 +5,7 @@ var shop_items: Array = []
 var shop_locked: Array = [false, false, false, false]
 const SHOP_SIZE = 4
 
-@onready var shop_container = $Panel/HBoxContainer
+@onready var shop_container = $Panel/ShopContainer
 @onready var gold_label = $Panel/GoldLabel
 @onready var refresh_btn = $Panel/RefreshButton
 @onready var expand_btn = $Panel/ExpandButton
@@ -37,11 +37,35 @@ func _create_sell_zone():
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sell_zone.add_child(lbl)
 
-	# Place it to the right of bench or somewhere prominent
+	# Place it at the bottom of the sidebar or side of it
 	$Panel.add_child(sell_zone)
-	sell_zone.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
-	sell_zone.position = Vector2($Panel.size.x - 100, 20)
-	sell_zone.custom_minimum_size = Vector2(80, 80)
+	# In vertical layout, maybe above the refresh button or at the very bottom
+	sell_zone.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	# Adjust position based on new layout.
+	# Shop width is ~140. Let's put it near bottom, above expand button maybe?
+	# Or let's put it to the RIGHT of the shop panel (offset x = 140)
+	sell_zone.position = Vector2(150, get_viewport_rect().size.y - 120)
+	# Wait, get_viewport_rect might not be reliable in ready if not resized.
+	# Better to anchor it relative to parent if parent is full screen.
+	# But parent is Shop (width 140).
+	# Let's put it inside the Panel but at the bottom, above buttons?
+	# Or beside the bench.
+
+	# Current plan: Put it near the bench (which is at bottom left, offset from shop).
+	# Bench is at x=160.
+	# Let's put SellZone at x=160, y=Bottom-100?
+
+	sell_zone.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	# Use offsets since anchors are set to Bottom Left.
+	# Anchor Bottom means Y=ParentHeight. Refresh button is at -120.
+	# SellZone height is 60. To avoid overlap and add spacing (10px):
+	# Bottom of SellZone should be at -130. Top = -130 - 60 = -190.
+	sell_zone.offset_left = 10
+	sell_zone.offset_top = -190
+	sell_zone.offset_bottom = -130
+	sell_zone.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sell_zone.custom_minimum_size = Vector2(120, 60)
+
 	sell_zone.modulate = Color(1, 0.5, 0.5)
 	sell_zone.mouse_filter = MOUSE_FILTER_STOP
 

@@ -33,6 +33,8 @@ func _init():
 	# 4. Name
 	name_label = Label.new()
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_label.add_theme_font_size_override("font_size", 14)
 	content_container.add_child(name_label)
 
 	# 5. Price
