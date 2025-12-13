@@ -15,8 +15,8 @@ func _ready():
 
 	# Test 1: Add to bench via API
 	print("Test 1: Add to Bench")
-	var success = main_game.add_to_bench("hydra")
-	if success and main_game.bench[0] != null and main_game.bench[0].key == "hydra":
+	var success = main_game.add_to_bench("squirrel")
+	if success and main_game.bench[0] != null and main_game.bench[0].key == "squirrel":
 		print("PASS: Added to bench")
 	else:
 		print("FAIL: Add to bench failed")
@@ -25,7 +25,7 @@ func _ready():
 	# Test 2: Drag from Grid to Bench
 	print("Test 2: Grid -> Bench")
 	# First place a unit on grid
-	grid_manager.place_unit("hydra", 1, 1)
+	grid_manager.place_unit("squirrel", 1, 1)
 
 	var tile = grid_manager.tiles["1,1"]
 	var unit = tile.unit
@@ -34,7 +34,7 @@ func _ready():
 		get_tree().quit(1)
 
 	# Check tiles before drop
-	# Hydra is 2x2. Placed at 1,1. Occupies (1,1), (2,1), (1,2), (2,2)
+	# Squirrel is 1x1. Placed at 1,1.
 	# But place_unit handles size.
 	# Let's check unit.grid_pos
 
@@ -78,16 +78,15 @@ func _ready():
 
 	# Test 3: Bench -> Grid
 	print("Test 3: Bench -> Grid")
-	# We have a unit in bench[0] ("hydra")
+	# We have a unit in bench[0] ("squirrel")
 	# We want to place it at 2,2
-	# Since previous test failed to clear 1,1 and hydra is 2x2, 2,2 might be occupied or blocked.
 
 	var ghost = Node2D.new()
 	var target_x = -2 # Safe spot
 	var target_y = -2
 	var tile_size = 60
-	var unit_w = 2
-	var unit_h = 2
+	var unit_w = 1
+	var unit_h = 1
 
 	var center_x = (target_x * tile_size) + ((unit_w-1) * tile_size * 0.5)
 	var center_y = (target_y * tile_size) + ((unit_h-1) * tile_size * 0.5)
@@ -95,7 +94,7 @@ func _ready():
 	ghost.global_position = grid_manager.to_global(Vector2(center_x, center_y))
 	add_child(ghost)
 
-	var placed = grid_manager.handle_bench_drop(ghost, "hydra", 0)
+	var placed = grid_manager.handle_bench_drop(ghost, "squirrel", 0)
 	if placed:
 		if main_game.bench[0] == null:
 			print("PASS: Removed from bench")

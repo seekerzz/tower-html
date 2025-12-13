@@ -31,7 +31,7 @@ func _ready():
 	# shop.unit_bought.connect(_on_unit_bought) # Now handled via add_to_bench in Shop
 
 	# Initial Setup
-	grid_manager.place_unit("mouse", 0, 1) # Starting unit
+	grid_manager.place_unit("squirrel", 0, 1) # Starting unit
 	update_bench_ui() # Ensure UI is initialized
 
 func _unhandled_input(event):

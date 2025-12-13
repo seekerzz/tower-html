@@ -451,7 +451,7 @@ func spawn_slash_effect(pos: Vector2):
 	var shape = "slash"
 	var col = Color.WHITE
 
-	if type_key in ["wolf", "boss", "hydra"]:
+	if type_key in ["wolf", "boss"]:
 		shape = "bite"
 		col = Color.RED
 	elif type_key in ["slime", "poison"]:

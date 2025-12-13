@@ -4,7 +4,7 @@ var target = null # Enemy node
 var speed: float = 400.0
 var damage: float = 10.0
 var life: float = 2.0
-var type: String = "dot"
+var type: String = "pinecone"
 var hit_list = []
 var source_unit = null
 var effects: Dictionary = {}
@@ -21,10 +21,10 @@ var is_critical: bool = false
 var visual_node: Node2D = null
 var is_fading: bool = false
 
-# Blackhole State
+# Dragon Breath State
 enum State { MOVING, HOVERING }
 var state = State.MOVING
-var blackhole_timer: float = 0.0
+var dragon_breath_timer: float = 0.0
 
 const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
 
@@ -74,6 +74,22 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 		_setup_snowball()
 	elif type == "web":
 		_setup_web()
+	# Visual Setup
+	elif type == "roar":
+		_setup_roar()
+	elif type == "dragon_breath":
+		_setup_dragon_breath()
+	elif type == "pinecone":
+		_setup_simple_visual(Color("8B4513"), "circle") # Brown circle
+	elif type == "ink":
+		_setup_simple_visual(Color.BLACK, "blob")
+	elif type == "stinger":
+		_setup_simple_visual(Color.YELLOW, "triangle")
+	elif type == "pollen":
+		_setup_simple_visual(Color.PINK, "star")
+	elif type == "lightning":
+		# Keep lightning if it was handled elsewhere or add simple visual
+		_setup_simple_visual(Color.CYAN, "line")
 
 func fade_out():
 	if is_fading: return
@@ -87,7 +103,7 @@ func fade_out():
 	tween.set_parallel(true)
 	tween.tween_property(self, "modulate:a", 0.0, 0.2)
 
-	if type != "swarm_wave":
+	if type != "roar":
 		# Slight expansion for explosion effect
 		tween.tween_property(self, "scale", scale * 1.5, 0.2)
 
@@ -96,20 +112,20 @@ func fade_out():
 func _process(delta):
 	if is_fading: return
 
-	# Blackhole Logic
-	if type == "blackhole" or type == "black_hole":
-		_process_blackhole(delta)
-		return # Blackhole handles its own life/movement
+	# Dragon Breath Logic
+	if type == "dragon_breath":
+		_process_dragon_breath(delta)
+		return
 
 	life -= delta
 	if life <= 0:
 		fade_out()
 		return
 
-	# Swarm Logic
-	if type == "swarm_wave":
-		scale += Vector2(delta, delta) * speed * 0.01 # Adjusted growth based on speed
-		modulate.a = max(0, modulate.a - delta * 0.8) # Faster fade
+	# Roar Logic
+	if type == "roar":
+		scale += Vector2(delta, delta) * speed * 0.01
+		modulate.a = max(0, modulate.a - delta * 0.8)
 		if has_node("WaveLine"):
 			var line = get_node("WaveLine")
 			line.width += delta * 15.0
@@ -127,9 +143,9 @@ func _process(delta):
 	if visual_node:
 		visual_node.rotation += delta * 15.0
 
-func _process_blackhole(delta):
+func _process_dragon_breath(delta):
 	if state == State.MOVING:
-		life -= delta # Safety
+		life -= delta
 		if life <= 0:
 			fade_out()
 			return
@@ -141,19 +157,18 @@ func _process_blackhole(delta):
 
 			if dist < 10.0:
 				state = State.HOVERING
-				blackhole_timer = 3.0 # Duration
+				dragon_breath_timer = 3.0 # Duration
 		else:
-			# Lost target, move straight or just stop
 			state = State.HOVERING
-			blackhole_timer = 2.0
+			dragon_breath_timer = 2.0
 
 	elif state == State.HOVERING:
-		blackhole_timer -= delta
-		if blackhole_timer <= 0:
+		dragon_breath_timer -= delta
+		if dragon_breath_timer <= 0:
 			fade_out()
 			return
 
-		# Pull enemies
+		# Pull/Damage enemies
 		var pull_radius = 150.0
 		var enemies = get_tree().get_nodes_in_group("enemies")
 		for enemy in enemies:
@@ -165,7 +180,7 @@ func _process_blackhole(delta):
 
 func _on_area_2d_area_entered(area):
 	if is_fading: return
-	if type == "blackhole" or type == "black_hole": return # Blackhole damages in _process
+	if type == "dragon_breath": return
 
 	if area.is_in_group("enemies"):
 		if area in hit_list: return
@@ -219,34 +234,25 @@ func _on_area_2d_area_entered(area):
 			bounced = perform_bounce(area)
 
 		# 2. Pierce & Split Logic
-		# If we bounced, the original "energy" went into the bounce (conceptually),
-		# so we don't pierce on the original line. The projectile effectively moved.
-		# If we didn't bounce, we check pierce.
 		if not bounced:
-			if type == "swarm_wave":
-				# Swarm wave has infinite pierce by default
+			if type == "roar":
 				pass
 			elif pierce > 0:
 				pierce -= 1
 			else:
-				# Destroying - check for split
-				if split > 0 and type != "swarm_wave":
+				if split > 0 and type != "roar":
 					perform_split()
 				fade_out()
 
-func _setup_swarm_wave():
-	# Hide default visuals if any
+func _setup_roar():
 	if visual_node: visual_node.hide()
-	# Fix: Use get_node_or_null since ColorRect might not exist or be moved in other contexts
-	if has_node("ColorRect"):
-		get_node("ColorRect").hide()
+	if has_node("ColorRect"): get_node("ColorRect").hide()
 
 	var line = Line2D.new()
 	line.name = "WaveLine"
 	line.width = 3.0
-	line.default_color = Color(0.2, 0.8, 0.4, 0.8)
+	line.default_color = Color(0.8, 0.6, 0.2, 0.8)
 
-	# Create Arc
 	var points_arr = []
 	var radius = 20.0
 	var segments = 12
@@ -260,6 +266,43 @@ func _setup_swarm_wave():
 
 	line.points = PackedVector2Array(points_arr)
 	add_child(line)
+
+func _setup_simple_visual(color, shape):
+	if visual_node: visual_node.hide()
+	if has_node("ColorRect"): get_node("ColorRect").hide()
+
+	var poly = Polygon2D.new()
+	var points = PackedVector2Array()
+
+	if shape == "circle":
+		var radius = 6.0
+		for i in range(12):
+			var angle = (i * TAU) / 12
+			points.append(Vector2(cos(angle), sin(angle)) * radius)
+	elif shape == "blob":
+		# Irregular blob
+		points = PackedVector2Array([
+			Vector2(-4, -6), Vector2(4, -5),
+			Vector2(7, 2), Vector2(2, 6),
+			Vector2(-5, 5), Vector2(-7, 0)
+		])
+	elif shape == "triangle":
+		points = PackedVector2Array([Vector2(8, 0), Vector2(-4, -4), Vector2(-4, 4)])
+	elif shape == "star":
+		# Simple 4-point star
+		points = PackedVector2Array([
+			Vector2(6, 0), Vector2(2, 2),
+			Vector2(0, 6), Vector2(-2, 2),
+			Vector2(-6, 0), Vector2(-2, -2),
+			Vector2(0, -6), Vector2(2, -2)
+		])
+	else:
+		# Box
+		points = PackedVector2Array([Vector2(-4,-4), Vector2(4,-4), Vector2(4,4), Vector2(-4,4)])
+
+	poly.polygon = points
+	poly.color = color
+	add_child(poly)
 
 func perform_split():
 	# Spawn 2 projectiles at +/- 0.5 radians (~28 degrees)
@@ -312,61 +355,46 @@ func perform_bounce(current_hit_enemy):
 
 	return false # No target to bounce to
 
-func _setup_black_hole():
-	# Step A: Hide default appearance
-	if has_node("ColorRect"):
-		get_node("ColorRect").hide()
-	# Check if VisualHolder/ColorRect exists (unlikely in Projectile.tscn but good practice if structure mimics Unit)
-	# Projectile.tscn structure is simpler usually, but let's be safe
+func _setup_dragon_breath():
+	if has_node("ColorRect"): get_node("ColorRect").hide()
+	if visual_node: visual_node.hide()
 
-	if visual_node:
-		visual_node.hide()
-
-	# Step B: Event Horizon (Black solid circle)
+	# Red-Orange Fire Zone
 	var poly = Polygon2D.new()
 	var points = PackedVector2Array()
 	var radius = 12.0
-	var segments = 32
+	var segments = 16
 	for i in range(segments):
 		var angle = (i * TAU) / segments
 		points.append(Vector2(cos(angle), sin(angle)) * radius)
 	poly.polygon = points
-	poly.color = Color.BLACK
+	poly.color = Color(1.0, 0.3, 0.0, 0.8)
 	add_child(poly)
 
-	# Step C: Accretion Disk (Particle System)
 	var particles = GPUParticles2D.new()
 	var material = ParticleProcessMaterial.new()
-
 	material.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
-	material.emission_ring_inner_radius = 100.0
-	material.emission_ring_radius = 120.0
+	material.emission_ring_inner_radius = 60.0
+	material.emission_ring_radius = 80.0
 	material.gravity = Vector3.ZERO
-	material.radial_accel_min = -150.0
-	material.radial_accel_max = -100.0
-	material.tangential_accel_min = 60.0
-	material.tangential_accel_max = 100.0
+	material.radial_accel_min = -100.0
+	material.radial_accel_max = -80.0
+	material.tangential_accel_min = 30.0
+	material.tangential_accel_max = 60.0
 
-	# Gradient: Outer (Purple) to Inner (Black)
 	var gradient = Gradient.new()
-	# We want 0 (start) to be purple, 1 (end) to be black.
-	gradient.set_color(0, Color(0.5, 0.0, 1.0)) # Purple
-	gradient.set_color(1, Color.BLACK)
-
+	gradient.set_color(0, Color(1.0, 0.5, 0.0))
+	gradient.set_color(1, Color(1.0, 0.0, 0.0, 0.0))
 	var grad_tex = GradientTexture1D.new()
 	grad_tex.gradient = gradient
 	material.color_ramp = grad_tex
 
 	particles.process_material = material
 	particles.lifetime = 0.8
-	particles.amount = 60
-
-	# Create a 4x4 white placeholder texture
+	particles.amount = 40
 	var img = Image.create(4, 4, false, Image.FORMAT_RGBA8)
 	img.fill(Color.WHITE)
-	var tex = ImageTexture.create_from_image(img)
-	particles.texture = tex
-
+	particles.texture = ImageTexture.create_from_image(img)
 	add_child(particles)
 
 func _setup_snowball():
