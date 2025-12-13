@@ -57,17 +57,22 @@ func _adjust_zoom(amount: float):
 	zoom_tween.tween_property(camera, "zoom", zoom_target, 0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func zoom_to_fit_board():
+	# Shop Closed (Combat)
 	var map_width = Constants.MAP_WIDTH * Constants.TILE_SIZE
 	var map_height = Constants.MAP_HEIGHT * Constants.TILE_SIZE
 
 	var viewport_size = get_viewport_rect().size
 
-	# Calculate zoom to fit map with margin
-	var zoom_x = viewport_size.x / (map_width * 1.2)
-	var zoom_y = viewport_size.y / (map_height * 1.2)
+	# Calculate zoom to fit map with margin, focusing on board
+	# Use nearly full height
+	var zoom_x = viewport_size.x / (map_width * 1.1)
+	var zoom_y = viewport_size.y / (map_height * 1.1)
 	var final_zoom = min(zoom_x, zoom_y)
 
 	var target_zoom = Vector2(final_zoom, final_zoom)
+
+	# Center of board
+	var target_pos = Vector2(map_width / 2.0, map_height / 2.0)
 
 	if zoom_tween and zoom_tween.is_valid():
 		zoom_tween.kill()
@@ -75,22 +80,53 @@ func zoom_to_fit_board():
 	zoom_tween = create_tween()
 	zoom_tween.set_parallel(true)
 	zoom_tween.tween_property(camera, "zoom", target_zoom, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	zoom_tween.tween_property(camera, "position", default_position, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	zoom_tween.tween_property(camera, "position", target_pos, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
-func zoom_to_default():
+func zoom_to_shop_open():
+	# Shop Open (Planning)
+	var map_width = Constants.MAP_WIDTH * Constants.TILE_SIZE
+	var map_height = Constants.MAP_HEIGHT * Constants.TILE_SIZE
+
+	# We want to see the board AND the shop at the bottom.
+	# Shop takes up space at bottom.
+	# Let's assume we want to fit Map + some bottom margin.
+	# Or shift the camera center down.
+
+	var viewport_size = get_viewport_rect().size
+
+	# Make zoom slightly smaller to fit more vertical space
+	var zoom_x = viewport_size.x / (map_width * 1.2)
+	# Add extra height factor for shop
+	var zoom_y = viewport_size.y / (map_height * 1.5)
+	var final_zoom = min(zoom_x, zoom_y)
+
+	var target_zoom = Vector2(final_zoom, final_zoom)
+
+	# Shift center down slightly so board is higher up, making room for shop
+	# Center of board is (map_width/2, map_height/2).
+	# We want camera to look at something lower than center?
+	# No, if we want board at top, we should look at center of board.
+	# If we want board to be visible + shop at bottom.
+	# If we center on board, shop might be cut off if zoom is too high.
+	# With zoom_y = viewport_size.y / (map_height * 1.5), we fit 1.5x map height.
+	# If we center on map center, we have 0.75x map height above and below.
+	# Map is 1x height. So we have 0.25x map height extra below.
+	# That should be enough for shop.
+	var target_pos = Vector2(map_width / 2.0, map_height / 2.0)
+
 	if zoom_tween and zoom_tween.is_valid():
 		zoom_tween.kill()
 
 	zoom_tween = create_tween()
 	zoom_tween.set_parallel(true)
-	zoom_tween.tween_property(camera, "zoom", default_zoom, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	zoom_tween.tween_property(camera, "position", default_position, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	zoom_tween.tween_property(camera, "zoom", target_zoom, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	zoom_tween.tween_property(camera, "position", target_pos, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 func _on_wave_started():
 	zoom_to_fit_board()
 
 func _on_wave_ended():
-	zoom_to_default()
+	zoom_to_shop_open()
 
 # Bench Logic
 func add_to_bench(unit_key: String) -> bool:

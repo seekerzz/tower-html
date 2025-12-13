@@ -177,6 +177,13 @@ grow_horizontal = 2
 text = "Damage Stats"
 horizontal_alignment = 1
 
+[node name="ToggleButton" type="Button" parent="DamageStats"]
+layout_mode = 1
+offset_left = -40.0
+offset_bottom = 40.0
+focus_mode = 0
+text = "📊"
+
 [node name="SkillBar" parent="." instance=ExtResource("2_skillbar")]
 layout_mode = 1
 offset_left = -482.0

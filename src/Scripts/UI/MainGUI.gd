@@ -18,6 +18,7 @@ signal sacrifice_requested
 @onready var damage_stats_panel = $DamageStats
 @onready var stats_scroll = $DamageStats/ScrollContainer
 @onready var stats_header = $DamageStats/Header
+@onready var stats_toggle_btn = $DamageStats/ToggleButton
 
 @onready var game_over_panel = $GameOverPanel
 @onready var retry_button = $GameOverPanel/RetryWaveButton
@@ -47,7 +48,7 @@ func _ready():
 	GameManager.ftext_spawn_requested.connect(_on_ftext_spawn_requested)
 	GameManager.wave_ended.connect(_on_wave_ended_stats)
 
-	stats_header.gui_input.connect(_on_stats_header_input)
+	stats_toggle_btn.pressed.connect(_on_stats_toggle_pressed)
 
 	_setup_ui_styles()
 
@@ -274,17 +275,15 @@ func _animate_stats_panel():
 
 	var target_pos_x
 	if is_stats_collapsed:
-		stats_header.text = "📊"
-		stats_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		stats_scroll.visible = false
-		damage_stats_panel.custom_minimum_size.y = 30 # Small height
-		# Move mostly off-screen, leave 60px visible to ensure it's clickable
-		target_pos_x = viewport_width - 60
+		damage_stats_panel.custom_minimum_size.y = 30
+		# Move completely off-screen (panel width), but ToggleButton (offset -40) stays visible
+		# If panel is at viewport_width, the button at -40 is at viewport_width-40.
+		target_pos_x = viewport_width
 	else:
-		stats_header.text = "Damage Stats"
 		stats_scroll.visible = true
 		damage_stats_panel.custom_minimum_size.y = 300
-		# Fully visible. Ensure panel width is at least something reasonable if dynamic
+		# Fully visible
 		target_pos_x = viewport_width - max(panel_width, 200)
 
 	stats_tween.tween_property(damage_stats_panel, "position:x", target_pos_x, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -474,10 +473,9 @@ func _on_ftext_spawn_requested(pos, value, color):
 
 	ftext.setup(display_value, color)
 
-func _on_stats_header_input(event):
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		is_stats_collapsed = !is_stats_collapsed
-		_animate_stats_panel()
+func _on_stats_toggle_pressed():
+	is_stats_collapsed = !is_stats_collapsed
+	_animate_stats_panel()
 
 func _on_wave_ended_stats():
 	# Reset stats on wave end? The ref implementation seems to reset on startWave.

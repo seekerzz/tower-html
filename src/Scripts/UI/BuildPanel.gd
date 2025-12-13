@@ -2,15 +2,17 @@ extends PanelContainer
 
 const MATERIAL_KEYS = ["mucus", "poison", "fang", "wood", "snow", "stone"]
 
-@onready var container = VBoxContainer.new()
+@onready var container = $VBoxContainer
+@onready var header_container = $VBoxContainer/HeaderContainer
+@onready var toggle_btn = $VBoxContainer/HeaderContainer/ToggleButton
 
 var buttons: Dictionary = {} # mat_key -> Button
+var is_collapsed: bool = false
+var panel_tween: Tween
 
 func _ready():
-	add_child(container)
-
-	# Setup container layout
-	container.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# container already exists from tscn
+	toggle_btn.pressed.connect(_on_toggle_pressed)
 
 	# Create buttons
 	for mat_key in MATERIAL_KEYS:
@@ -30,6 +32,41 @@ func _ready():
 		GameManager.resource_changed.connect(_update_ui)
 
 	_update_ui()
+
+func _on_toggle_pressed():
+	is_collapsed = !is_collapsed
+	_animate_panel()
+
+func _animate_panel():
+	if panel_tween and panel_tween.is_valid():
+		panel_tween.kill()
+	panel_tween = create_tween()
+
+	var target_x: float
+	if is_collapsed:
+		toggle_btn.text = "▶"
+		# Collapse to left.
+		# If we move to x = -width, it's hidden.
+		# We want the button to be visible.
+		# The button is inside the panel.
+		# We can just move the panel offscreen.
+		# But the button needs to stick out?
+		# Or we use a negative margin?
+
+		# Current structure: PanelContainer -> VBox -> Header(Label+Button)
+		# Button is on the right of header.
+		# If we want panel to go Left, but keep button visible on Right edge of panel.
+		# And panel is at Left of screen.
+
+		# If we move panel to -Width + ButtonWidth?
+		var width = size.x
+		var btn_width = toggle_btn.size.x
+		target_x = -width + btn_width + 10 # +10 margin
+	else:
+		toggle_btn.text = "◀"
+		target_x = 20 # Original offset
+
+	panel_tween.tween_property(self, "position:x", target_x, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func _on_material_clicked(selected_key: String):
 	var draw_manager = _get_draw_manager()
