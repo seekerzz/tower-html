@@ -66,11 +66,7 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 		# modulate = Color(1.5, 1.2, 0.5) # Example glow
 
 	# Swarm Wave Visuals
-	if type == "swarm_wave":
-		_setup_swarm_wave()
-	elif type == "black_hole":
-		_setup_black_hole()
-	elif type == "snowball":
+	if type == "snowball":
 		_setup_snowball()
 	elif type == "web":
 		_setup_web()
@@ -259,28 +255,6 @@ func _on_area_2d_area_entered(area):
 					perform_split()
 				fade_out()
 
-func _setup_roar():
-	if visual_node: visual_node.hide()
-	if has_node("ColorRect"): get_node("ColorRect").hide()
-
-	var line = Line2D.new()
-	line.name = "WaveLine"
-	line.width = 3.0
-	line.default_color = Color(0.8, 0.6, 0.2, 0.8)
-
-	var points_arr = []
-	var radius = 20.0
-	var segments = 12
-	var start_angle = deg_to_rad(-60)
-	var end_angle = deg_to_rad(60)
-
-	for i in range(segments + 1):
-		var t = float(i) / segments
-		var angle = lerp(start_angle, end_angle, t)
-		points_arr.append(Vector2(cos(angle), sin(angle)) * radius)
-
-	line.points = PackedVector2Array(points_arr)
-	add_child(line)
 
 func _setup_simple_visual(color, shape):
 	if visual_node: visual_node.hide()
@@ -370,47 +344,6 @@ func perform_bounce(current_hit_enemy):
 
 	return false # No target to bounce to
 
-func _setup_dragon_breath():
-	if has_node("ColorRect"): get_node("ColorRect").hide()
-	if visual_node: visual_node.hide()
-
-	# Red-Orange Fire Zone
-	var poly = Polygon2D.new()
-	var points = PackedVector2Array()
-	var radius = 12.0
-	var segments = 16
-	for i in range(segments):
-		var angle = (i * TAU) / segments
-		points.append(Vector2(cos(angle), sin(angle)) * radius)
-	poly.polygon = points
-	poly.color = Color(1.0, 0.3, 0.0, 0.8)
-	add_child(poly)
-
-	var particles = GPUParticles2D.new()
-	var material = ParticleProcessMaterial.new()
-	material.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
-	material.emission_ring_inner_radius = 60.0
-	material.emission_ring_radius = 80.0
-	material.gravity = Vector3.ZERO
-	material.radial_accel_min = -100.0
-	material.radial_accel_max = -80.0
-	material.tangential_accel_min = 30.0
-	material.tangential_accel_max = 60.0
-
-	var gradient = Gradient.new()
-	gradient.set_color(0, Color(1.0, 0.5, 0.0))
-	gradient.set_color(1, Color(1.0, 0.0, 0.0, 0.0))
-	var grad_tex = GradientTexture1D.new()
-	grad_tex.gradient = gradient
-	material.color_ramp = grad_tex
-
-	particles.process_material = material
-	particles.lifetime = 0.8
-	particles.amount = 40
-	var img = Image.create(4, 4, false, Image.FORMAT_RGBA8)
-	img.fill(Color.WHITE)
-	particles.texture = ImageTexture.create_from_image(img)
-	add_child(particles)
 
 func _setup_snowball():
 	if visual_node: visual_node.hide()
