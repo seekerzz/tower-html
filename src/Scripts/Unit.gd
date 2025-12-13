@@ -95,6 +95,10 @@ func setup(key: String):
 	if unit_data.has("produce"):
 		production_timer = 1.0
 
+	# Cow Healing logic setup
+	if unit_data.has("skill") and unit_data.skill == "milk_aura":
+		production_timer = 5.0 # Reuse production_timer for periodic skill
+
 	start_breathe_anim()
 
 	var drag_handler = Control.new()
@@ -102,6 +106,32 @@ func setup(key: String):
 	add_child(drag_handler)
 	drag_handler.setup(self)
 	# --- Merged Logic End ---
+
+func take_damage(amount: float, source_enemy = null):
+	# Handle Reflect (Hedgehog)
+	if unit_data.get("trait") == "reflect":
+		var reflect_pct = unit_data.get("reflect_percent", 0.3)
+		var reflect_dmg = amount * reflect_pct
+		if source_enemy and is_instance_valid(source_enemy):
+			source_enemy.take_damage(reflect_dmg, self, "physical")
+			GameManager.spawn_floating_text(global_position, "Reflect!", Color.RED)
+
+	# Handle Flat Reduction (Iron Turtle)
+	if unit_data.get("trait") == "flat_reduce":
+		var reduce = unit_data.get("flat_amount", 0)
+		amount = max(1, amount - reduce)
+		# Visual feedback for block?
+		# GameManager.spawn_floating_text(global_position, "Block", Color.GRAY)
+
+	# Shared Health Logic: Unit acts as a wall/entity linked to Core
+	GameManager.damage_core(amount)
+
+	# Trigger breathe anim or shake to show impact
+	if visual_holder:
+		var tween = create_tween()
+		tween.tween_property(visual_holder, "position", Vector2(randf_range(-2,2), randf_range(-2,2)), 0.05).set_trans(Tween.TRANS_BOUNCE)
+		tween.tween_property(visual_holder, "position", Vector2.ZERO, 0.05)
+
 
 func reset_stats():
 	damage = unit_data.damage
@@ -277,6 +307,15 @@ func _process(delta):
 			GameManager.spawn_floating_text(global_position, "+%d%s" % [p_amt, icon], color)
 
 			production_timer = 1.0
+
+	# Cow Milk Aura Logic
+	if unit_data.has("skill") and unit_data.skill == "milk_aura":
+		production_timer -= delta
+		if production_timer <= 0:
+			# Heal core
+			GameManager.damage_core(-50)
+			GameManager.spawn_floating_text(global_position, "+50", Color.GREEN)
+			production_timer = 5.0
 
 	if cooldown > 0:
 		cooldown -= delta
