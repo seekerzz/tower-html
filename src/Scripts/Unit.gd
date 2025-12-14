@@ -223,8 +223,38 @@ func update_visuals():
 
 	var star_label = visual_holder.get_node_or_null("StarLabel")
 
-	if label:
-		label.text = unit_data.icon
+	# Try to load icon image
+	var icon_texture = AssetLoader.get_unit_icon(type_key)
+
+	if icon_texture:
+		var tex_rect = visual_holder.get_node_or_null("TextureRect")
+		if !tex_rect:
+			tex_rect = TextureRect.new()
+			tex_rect.name = "TextureRect"
+			tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			visual_holder.add_child(tex_rect)
+
+		tex_rect.texture = icon_texture
+		tex_rect.show()
+
+		if label:
+			label.hide()
+
+		# Resize TextureRect to match color_rect
+		if color_rect:
+			tex_rect.size = color_rect.size
+			tex_rect.position = color_rect.position
+	else:
+		# Fallback to label
+		var tex_rect = visual_holder.get_node_or_null("TextureRect")
+		if tex_rect:
+			tex_rect.hide()
+
+		if label:
+			label.text = unit_data.icon
+			label.show()
 	
 	# Size update
 	if color_rect:
@@ -236,6 +266,13 @@ func update_visuals():
 			label.position = color_rect.position
 			label.size = color_rect.size
 			label.pivot_offset = label.size / 2
+
+		# Ensure TextureRect follows same positioning
+		var tex_rect = visual_holder.get_node_or_null("TextureRect")
+		if tex_rect:
+			tex_rect.size = color_rect.size
+			tex_rect.position = color_rect.position
+			tex_rect.pivot_offset = tex_rect.size / 2
 
 	if level > 1:
 		if star_label:
