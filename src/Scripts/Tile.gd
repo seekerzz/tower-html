@@ -23,13 +23,13 @@ func _ready():
 		_load_textures()
 
 func _load_textures():
-	if ResourceLoader.exists("res://src/assets/images/UI/tile_sheet.png"):
-		tile_sheet_texture = load("res://src/assets/images/UI/tile_sheet.png")
+	if ResourceLoader.exists("res://assets/images/UI/tile_sheet.png"):
+		tile_sheet_texture = load("res://assets/images/UI/tile_sheet.png")
 	else:
 		tile_sheet_texture = AssetGenerator.get_tile_sheet()
 
-	if ResourceLoader.exists("res://src/assets/images/UI/tile_spawn.png"):
-		tile_spawn_texture = load("res://src/assets/images/UI/tile_spawn.png")
+	if ResourceLoader.exists("res://assets/images/UI/tile_spawn.png"):
+		tile_spawn_texture = load("res://assets/images/UI/tile_spawn.png")
 	else:
 		tile_spawn_texture = AssetGenerator.get_spawn_texture()
 
