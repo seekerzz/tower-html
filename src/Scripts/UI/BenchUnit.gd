@@ -22,21 +22,56 @@ func setup(key: String, index: int):
 	add_child(panel)
 
 	# Visuals (Using existing children or creating new)
-	var label = Label.new()
-	label.text = proto.icon
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var icon_texture = AssetLoader.get_unit_icon(unit_key)
 
-	# Ensure proper centering
-	label.layout_mode = 1 # Anchors
-	label.anchors_preset = 15 # Full Rect
-	label.grow_horizontal = 2
-	label.grow_vertical = 2
+	if icon_texture:
+		# Use TextureRect
+		var tex_rect = get_node_or_null("IconTexture")
+		if !tex_rect:
+			tex_rect = TextureRect.new()
+			tex_rect.name = "IconTexture"
+			tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tex_rect.layout_mode = 1
+			tex_rect.anchors_preset = 15
+			tex_rect.grow_horizontal = 2
+			tex_rect.grow_vertical = 2
+			# Add margin
+			tex_rect.offset_left = 5
+			tex_rect.offset_top = 5
+			tex_rect.offset_right = -5
+			tex_rect.offset_bottom = -5
+			add_child(tex_rect)
 
-	# Adjust font size for icon
-	label.add_theme_font_size_override("font_size", 42)
+		tex_rect.texture = icon_texture
+		tex_rect.show()
 
-	add_child(label)
+		# Hide Label if exists
+		if has_node("IconLabel"):
+			get_node("IconLabel").hide()
+	else:
+		# Use Label
+		var label = get_node_or_null("IconLabel")
+		if !label:
+			label = Label.new()
+			label.name = "IconLabel"
+			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			# Ensure proper centering
+			label.layout_mode = 1 # Anchors
+			label.anchors_preset = 15 # Full Rect
+			label.grow_horizontal = 2
+			label.grow_vertical = 2
+			# Adjust font size for icon
+			label.add_theme_font_size_override("font_size", 42)
+			add_child(label)
+
+		label.text = proto.icon
+		label.show()
+
+		# Hide TextureRect if exists
+		if has_node("IconTexture"):
+			get_node("IconTexture").hide()
 
 	custom_minimum_size = Vector2(60, 60)
 	mouse_filter = MOUSE_FILTER_PASS
