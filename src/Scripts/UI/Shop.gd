@@ -6,14 +6,16 @@ var shop_locked: Array = [false, false, false, false]
 const SHOP_SIZE = 4
 
 # Node References
-@onready var shop_container = $Panel/MainContainer/Zone2/ShopContainer
-@onready var refresh_btn = $Panel/MainContainer/Zone1/FunctionButtons/RefreshButton
-@onready var expand_btn = $Panel/MainContainer/Zone1/FunctionButtons/ExpandButton
-@onready var start_wave_btn = $Panel/MainContainer/Zone1/FunctionButtons/StartWaveButton
-@onready var sell_zone_container = $Panel/MainContainer/Zone1/SellZoneContainer
-@onready var global_preview = $Panel/MainContainer/Zone3/GlobalPreview
-@onready var current_details = $Panel/MainContainer/Zone3/CurrentDetails
-@onready var gold_label = $Panel/MainContainer/Zone2/GoldLabel
+# Updated references based on new layout
+@onready var shop_container = $Panel/MainContainer/LeftZone/ShopContainer
+@onready var refresh_btn = $Panel/MainContainer/RightZone/RefreshButton
+@onready var expand_btn = $Panel/MainContainer/RightZone/ExpandButton
+@onready var start_wave_btn = $Panel/MainContainer/RightZone/StartWaveButton
+@onready var sell_zone_container = $Panel/MainContainer/RightZone/SellZoneContainer
+# These are removed from scene, checking if we can just remove them or if we need to keep vars as null safe
+# @onready var global_preview = $Panel/MainContainer/Zone3/GlobalPreview # REMOVED
+# @onready var current_details = $Panel/MainContainer/Zone3/CurrentDetails # REMOVED
+@onready var gold_label = $Panel/MainContainer/MiddleZone/GoldLabel
 @onready var toggle_handle = $Panel/ToggleHandle
 
 var sell_zone = null
@@ -31,7 +33,7 @@ func _ready():
 
 	refresh_shop(true)
 	update_ui()
-	update_wave_info()
+	# update_wave_info() # Removed functionality
 
 	expand_btn.pressed.connect(_on_expand_button_pressed)
 
@@ -62,6 +64,7 @@ func collapse_shop():
 
 	var tween = create_tween()
 	# Move panel down so only handle is visible at bottom
+	# Since handle is hidden/invisible, we might not see anything. But logic is preserved as requested.
 	var target_y = panel_initial_y + $Panel.size.y
 	tween.tween_property($Panel, "position:y", target_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
@@ -143,53 +146,9 @@ func _create_sell_zone():
 func update_ui():
 	if gold_label:
 		gold_label.text = "💰 %d" % GameManager.gold
-	update_wave_info()
+	# update_wave_info() # REMOVED
 
-func update_wave_info():
-	if !global_preview: return
-
-	# Clear previous
-	for child in global_preview.get_children():
-		child.queue_free()
-
-	# Global Preview (Timeline) - Next 5 waves
-	for i in range(5):
-		var wave_idx = GameManager.wave + i
-		var type_key = get_wave_type(wave_idx)
-
-		var icon = Label.new()
-		icon.text = get_wave_icon(type_key)
-		icon.tooltip_text = "Wave %d: %s" % [wave_idx, type_key.capitalize()]
-
-		if i == 0:
-			icon.modulate = Color(1, 1, 0) # Highlight current
-			icon.add_theme_font_size_override("font_size", 20)
-		else:
-			icon.modulate = Color(1, 1, 1, 0.7)
-
-		global_preview.add_child(icon)
-
-	# Current Details
-	if current_details:
-		var type = get_wave_type(GameManager.wave)
-		var total_enemies = 20 + floor(GameManager.wave * 6)
-		var enemy_name = type.capitalize()
-		var icon = get_wave_icon(type)
-		current_details.text = "%s %s\nx%d" % [icon, enemy_name, total_enemies]
-
-func get_wave_type(n: int) -> String:
-	var types = ['slime', 'wolf', 'poison', 'treant', 'yeti', 'golem']
-	if n % 10 == 0: return 'boss'
-	if n % 3 == 0: return 'event'
-	var idx = int(min(types.size() - 1, floor((n - 1) / 2.0)))
-	return types[idx % types.size()]
-
-func get_wave_icon(type_key: String) -> String:
-	if type_key == "boss": return "👹"
-	if type_key == "event": return "🎁"
-	if Constants.ENEMY_VARIANTS.has(type_key):
-		return Constants.ENEMY_VARIANTS[type_key].get("icon", "?")
-	return "?"
+# Removed update_wave_info, get_wave_type, get_wave_icon as they were used for GlobalPreview/CurrentDetails
 
 func refresh_shop(force: bool = false):
 	if !force and GameManager.gold < 10: return
@@ -216,7 +175,7 @@ func refresh_shop(force: bool = false):
 func create_shop_card(index, unit_key):
 	var card = ShopCard.new()
 	card.setup(unit_key)
-	card.custom_minimum_size = Vector2(80, 100)
+	card.custom_minimum_size = Vector2(80, 80) # Adjusted size for smaller shop
 	card.size_flags_horizontal = SIZE_EXPAND_FILL
 
 	card.card_clicked.connect(func(key): buy_unit(index, key, card))

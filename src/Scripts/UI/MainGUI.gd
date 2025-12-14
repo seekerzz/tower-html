@@ -41,6 +41,7 @@ func _ready():
 	GameManager.wave_ended.connect(update_ui)
 
 	GameManager.wave_started.connect(_update_hud_visibility)
+	GameManager.wave_started.connect(_force_collapse_stats) # Added for requirement
 	GameManager.wave_ended.connect(_update_hud_visibility)
 
 	# Connect for sidebar movement
@@ -291,6 +292,11 @@ func _on_ftext_spawn_requested(pos, value, color):
 func _on_stats_toggle_pressed():
 	is_stats_collapsed = !is_stats_collapsed
 	_animate_stats_panel()
+
+func _force_collapse_stats():
+	if !is_stats_collapsed:
+		is_stats_collapsed = true
+		_animate_stats_panel()
 
 func _on_wave_ended_stats():
 	# Auto pop up stats

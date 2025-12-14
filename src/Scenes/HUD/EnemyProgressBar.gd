@@ -3,6 +3,7 @@ extends MarginContainer
 @onready var icon_label = $HBoxContainer/IconLabel
 @onready var progress_bar = $HBoxContainer/ProgressBar
 @onready var label = $HBoxContainer/ProgressBar/Label
+@onready var wave_info_label = $HBoxContainer/WaveInfoLabel
 
 func _process(delta):
 	if GameManager.is_wave_active:
@@ -30,5 +31,9 @@ func _process(delta):
 			else:
 				progress_bar.value = 100
 				label.text = "Wave Clear"
+
+			# Update Wave Info Label
+			if wave_info_label:
+				wave_info_label.text = "Wave %d | Enemies: %d/%d" % [GameManager.wave, killed, total]
 	else:
 		visible = false

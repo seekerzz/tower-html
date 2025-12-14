@@ -8,7 +8,7 @@ extends Node2D
 @onready var camera = $Camera2D
 
 # Bench
-var bench: Array = [null, null, null, null, null] # Array of Dictionary (Unit Data) or null
+var bench: Array = [] # Array of Dictionary (Unit Data) or null
 
 # Camera Control
 var zoom_target: Vector2 = Vector2(0.8, 0.8)
@@ -17,6 +17,10 @@ var default_zoom: Vector2 = Vector2(0.8, 0.8)
 var default_position: Vector2 = Vector2(640, 400)
 
 func _ready():
+	# Initialize bench array with nulls based on constant
+	bench.resize(Constants.BENCH_SIZE)
+	bench.fill(null)
+
 	GameManager.ui_manager = main_gui
 	GameManager.main_game = self
 
@@ -90,7 +94,9 @@ func zoom_to_shop_open():
 	var map_width = Constants.MAP_WIDTH * Constants.TILE_SIZE
 	var map_height = Constants.MAP_HEIGHT * Constants.TILE_SIZE
 
-	var SHOP_HEIGHT = 220
+	# Updated Shop Height: ~120px (per requirement "half of 200px")
+	# We use 140px to be safe with margins
+	var SHOP_HEIGHT = 140
 	var viewport_size = get_viewport_rect().size
 	var visible_height = viewport_size.y - SHOP_HEIGHT
 
@@ -102,14 +108,28 @@ func zoom_to_shop_open():
 	var target_zoom = Vector2(final_zoom, final_zoom)
 
 	# Calculate Camera Offset
-	# Screen center: viewport_size.y / 2
-	# Visible area center: visible_height / 2
-	var offset_y = (viewport_size.y / 2.0) - (visible_height / 2.0)
+	# We want the map center to be at the center of the available visible area (above shop)
+	# Map center is at (0,0) in our camera world if grid_manager is centered?
+	# GridManager position is center of grid.
 
-	# Target position: Grid center + offset adjusted by zoom
-	# We want the board center (grid_manager.position) to appear at the center of the visible area.
+	# The visible area center in screen coordinates is:
+	# X: viewport_size.x / 2
+	# Y: visible_height / 2
+
+	# The full viewport center is:
+	# Y: viewport_size.y / 2
+
+	# The offset from center of screen we want to shift the camera:
+	var screen_center_y = viewport_size.y / 2.0
+	var visible_center_y = visible_height / 2.0
+	var shift_y = screen_center_y - visible_center_y
+
+	# Since camera position is where the center of the screen points to in world space.
+	# If we want the map center (grid_manager.position) to appear at visible_center_y,
+	# we need to move the camera DOWN (positive Y) so the map moves UP relative to center.
+
 	var target_pos = grid_manager.position
-	target_pos.y += offset_y / final_zoom
+	target_pos.y += shift_y / final_zoom
 
 	print("Shop Zoom: ", target_zoom, " Target Pos: ", target_pos)
 
