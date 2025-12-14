@@ -1,12 +1,14 @@
 extends MarginContainer
 
-var artifacts_container: HBoxContainer
+var artifacts_container: GridContainer
 
 func _ready():
 	# Create internal container
-	artifacts_container = HBoxContainer.new()
+	artifacts_container = GridContainer.new()
+	artifacts_container.columns = 5
 	add_child(artifacts_container)
-	artifacts_container.add_theme_constant_override("separation", 5)
+	artifacts_container.add_theme_constant_override("h_separation", 5)
+	artifacts_container.add_theme_constant_override("v_separation", 5)
 
 	# Connect to RewardManager
 	var rm = GameManager.get("reward_manager")
