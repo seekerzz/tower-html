@@ -39,12 +39,23 @@ func try_spawn_trap(world_pos: Vector2, type_key: String):
 	var tile = tiles[key]
 
 	# Check requirements: No unit, No core, No obstacle
-	if tile.unit != null: return
-	if tile.occupied_by != Vector2i.ZERO: return
-	if tile.type == "core": return
-	if obstacles.has(grid_pos): return
+	# Strict checks for unit/occupied removed to allow traps under enemies
 
-	# _spawn_barricade(tile, type_key)
+	if tile.type == "core":
+		# print("Spawn fail: Tile is core")
+		return
+
+	# Allow overwrite if it's a trap or ensure correct logic
+	if obstacles.has(grid_pos):
+		# If there is already an obstacle, check if we should block spawning
+		var obs = obstacles[grid_pos]
+		# If it's another trap (starts with Obstacle_), we prevent stacking for now
+		if obs.name.begins_with("Obstacle_"):
+			# print("Spawn fail: Tile has obstacle ", obs.name)
+			return
+
+	print("Spawn success at ", grid_pos)
+	_spawn_barricade(tile, type_key)
 
 	# Inline spawning logic to ensure explicit implementation as requested and avoid confusion
 	var data = Constants.BARRICADE_TYPES[type_key]

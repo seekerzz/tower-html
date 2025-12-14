@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://testtrapgen"]
+
+[ext_resource type="Script" path="res://src/Scripts/Tests/TestTrapGeneration.gd" id="1_test"]
+
+[node name="TestTrapGen" type="Node"]
+script = ExtResource("1_test")

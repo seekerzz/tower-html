@@ -235,7 +235,9 @@ func _on_area_2d_area_entered(area):
 				GameManager.spawn_floating_text(source_unit.global_position, "+%d" % int(heal_amt), Color.GREEN)
 
 		# Trap Spawning Logic
-		if source_unit and is_instance_valid(source_unit) and randf() < 0.25:
+		# TODO: Revert this debug change (randf() < 0.25)
+		if source_unit and is_instance_valid(source_unit) and true:
+			print("Projectile: Triggering trap spawn for ", source_unit.type_key)
 			var trap_type = ""
 			match source_unit.type_key:
 				"scorpion": trap_type = "fang"
