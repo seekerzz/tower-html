@@ -42,11 +42,18 @@ var combat_manager = null
 var ui_manager = null
 var main_game = null
 var reward_manager: Node = null
+var data_manager: Node = null
 
 var permanent_health_bonus: float = 0.0
 
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
+
+	# Initialize DataManager and load data first
+	var DataManagerScript = load("res://src/Scripts/Managers/DataManager.gd")
+	data_manager = DataManagerScript.new()
+	add_child(data_manager)
+	data_manager.load_data()
 
 	if reward_manager == null:
 		var rm_scene = load("res://src/Scripts/Managers/RewardManager.gd")
