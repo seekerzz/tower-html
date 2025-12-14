@@ -54,11 +54,25 @@ func update_visuals():
 		bs.hframes = 1
 		bs.vframes = 1
 		bs.frame = 0
+
+		# Scale to fit TILE_SIZE (60)
+		if bs.texture:
+			var tex_size = bs.texture.get_size()
+			var scale_factor = 60.0 / max(tex_size.x, 1.0)
+			bs.scale = Vector2(scale_factor, scale_factor)
+
 	elif state == "unlocked" or type == "core":
 		bs.texture = TEXTURE_SHEET
 		bs.hframes = 5
 		bs.vframes = 5
 		bs.frame = random_frame_index
+
+		# Scale to fit TILE_SIZE (60)
+		if bs.texture:
+			var frame_width = bs.texture.get_width() / bs.hframes
+			var scale_factor = 60.0 / max(frame_width, 1.0)
+			bs.scale = Vector2(scale_factor, scale_factor)
+
 	elif "locked" in state:
 		bs.visible = false
 		bs.texture = null
