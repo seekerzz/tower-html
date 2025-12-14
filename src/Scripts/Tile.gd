@@ -7,29 +7,25 @@ var state: String = "locked_inner" # unlocked, locked_inner, locked_outer, spawn
 var unit = null
 var occupied_by: Vector2i
 
+# Random frame index for sprite randomization
+var random_frame_index: int = 0
+
 signal tile_clicked(tile)
 
 const DROP_HANDLER_SCRIPT = preload("res://src/Scripts/UI/TileDropHandler.gd")
+
+const TILE_SHEET = preload("res://assets/images/UI/tile_sheet.png")
+const TILE_SPAWN = preload("res://assets/images/UI/tile_spawn.png")
+
+func _ready():
+	random_frame_index = randi() % 25
 
 func setup(grid_x: int, grid_y: int, tile_type: String = "normal"):
 	x = grid_x
 	y = grid_y
 	type = tile_type
 
-	if has_node("ColorRect") and !has_node("VisualPanel"):
-		var cr = $ColorRect
-		var panel = Panel.new()
-		panel.name = "VisualPanel"
-		panel.size = cr.size
-		panel.position = cr.position
-		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-		var style = StyleMaker.get_flat_style(cr.color, 4)
-		panel.add_theme_stylebox_override("panel", style)
-
-		add_child(panel)
-		move_child(panel, cr.get_index())
-		cr.visible = false
+	random_frame_index = randi() % 25
 
 	update_visuals()
 
@@ -44,56 +40,54 @@ func set_state(new_state: String):
 	update_visuals()
 
 func update_visuals():
-	# Default base color based on state
-	var base_color = Constants.COLORS.grid
+	var sprite = $BaseSprite
+	if not sprite: return
+
+	sprite.hframes = 5
+	sprite.vframes = 5
+
+	# Reset modulation
+	sprite.modulate = Color.WHITE
 
 	if state == "unlocked":
-		base_color = Constants.COLORS.unlocked
+		sprite.texture = TILE_SHEET
+		sprite.frame = random_frame_index
 	elif state == "locked_inner":
-		base_color = Constants.COLORS.locked_inner
-		# Debug color for visibility if needed, but using Constants is safer for style
-		# base_color = Color.DARK_GRAY
+		sprite.texture = TILE_SHEET
+		sprite.frame = random_frame_index
+		sprite.modulate = Color(0.3, 0.3, 0.3) # Darkened
 	elif state == "locked_outer":
-		base_color = Constants.COLORS.locked_outer
-		# base_color = Color.BLACK
+		sprite.texture = TILE_SHEET
+		sprite.frame = random_frame_index
+		sprite.modulate = Color(0.1, 0.1, 0.1) # Very dark
 	elif state == "spawn":
-		base_color = Constants.COLORS.spawn_point
+		sprite.texture = TILE_SPAWN
+		# For spawn points, maybe use the same random frame, or a different one.
+		# Requirement: "randomly display one of the frames"
+		sprite.frame = random_frame_index
 
 	if type == "core":
-		base_color = Constants.COLORS.core
+		# Core might need special visual or just label
 		if has_node("Label"):
 			$Label.text = "Core"
 	else:
 		if has_node("Label"):
 			$Label.text = ""
 
-	if has_node("VisualPanel"):
-		var panel = $VisualPanel
-		var style = panel.get_theme_stylebox("panel")
-		if style:
-			create_tween().tween_property(style, "bg_color", base_color, 0.2)
-	elif has_node("ColorRect"):
-		create_tween().tween_property($ColorRect, "color", base_color, 0.2)
+func set_grid_visible(active: bool):
+	if has_node("GridBorder"):
+		$GridBorder.visible = active
 
 func set_highlight(active: bool):
-	var target = null
-	var current_color = Color.BLACK
-	var property = ""
-
-	if has_node("VisualPanel"):
-		target = $VisualPanel.get_theme_stylebox("panel")
-		current_color = target.bg_color
-		property = "bg_color"
-	elif has_node("ColorRect"):
-		target = $ColorRect
-		current_color = target.color
-		property = "color"
-
-	if !target: return
+	var sprite = $BaseSprite
+	if !sprite: return
 
 	if active:
-		create_tween().tween_property(target, property, current_color.lightened(0.2), 0.1)
+		# Lighten slightly
+		var tween = create_tween()
+		tween.tween_property(sprite, "modulate", sprite.modulate.lightened(0.2), 0.1)
 	else:
+		# Revert to normal visual state (which sets modulate based on state)
 		update_visuals()
 
 func _on_area_2d_input_event(viewport, event, shape_idx):

@@ -173,6 +173,9 @@ func create_tile(x: int, y: int, type: String = "normal", state: String = "locke
 	# Explicitly call set_state to ensure visuals are updated
 	tile.set_state(state)
 
+	# Ensure grid is hidden by default
+	tile.set_grid_visible(false)
+
 	tile.position = Vector2(x * TILE_SIZE, y * TILE_SIZE)
 	add_child(tile)
 	tiles[key] = tile
@@ -622,6 +625,12 @@ func _apply_buff_to_neighbors(provider_unit, buff_type):
 
 func toggle_expansion_mode():
 	expansion_mode = !expansion_mode
+
+	# Toggle grid visibility for all tiles
+	for key in tiles:
+		if is_instance_valid(tiles[key]):
+			tiles[key].set_grid_visible(expansion_mode)
+
 	if expansion_mode:
 		spawn_expansion_ghosts()
 	else:

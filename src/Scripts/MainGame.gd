@@ -33,12 +33,40 @@ func _ready():
 	# Initial camera position will be set by zoom_to_fit_board later or we call it now to verify
 	call_deferred("zoom_to_shop_open")
 
+	# Background Setup
+	call_deferred("update_background")
+
 	# Connect Shop signals
 	# shop.unit_bought.connect(_on_unit_bought) # Now handled via add_to_bench in Shop
 
 	# Initial Setup
 	grid_manager.place_unit("squirrel", 0, 1) # Starting unit
 	update_bench_ui() # Ensure UI is initialized
+
+	get_tree().root.size_changed.connect(_on_viewport_size_changed)
+
+func _on_viewport_size_changed():
+	update_background()
+	if GameManager.is_wave_active:
+		zoom_to_fit_board()
+	else:
+		zoom_to_shop_open()
+
+func update_background():
+	if !has_node("Background"): return
+	var bg = $Background
+
+	# Determine visible area at maximum field of view (min zoom)
+	# Assuming min zoom can be around 0.5 (as per _adjust_zoom clamp)
+	var min_zoom = 0.5
+	var vp_size = get_viewport_rect().size
+	var world_size = vp_size / min_zoom
+
+	# Make background slightly larger to be safe
+	var target_size = world_size * 1.2
+
+	bg.size = target_size
+	bg.position = grid_manager.position - (bg.size / 2)
 
 func _unhandled_input(event):
 	if event is InputEventMouseMotion:
