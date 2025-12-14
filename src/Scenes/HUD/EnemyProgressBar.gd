@@ -34,6 +34,6 @@ func _process(delta):
 
 			# Update Wave Info Label
 			if wave_info_label:
-				wave_info_label.text = "Wave %d | Enemies: %d/%d" % [GameManager.wave, killed, total]
+				wave_info_label.text = "Wave %d" % GameManager.wave
 	else:
 		visible = false

@@ -15,7 +15,7 @@ const SHOP_SIZE = 4
 # These are removed from scene, checking if we can just remove them or if we need to keep vars as null safe
 # @onready var global_preview = $Panel/MainContainer/Zone3/GlobalPreview # REMOVED
 # @onready var current_details = $Panel/MainContainer/Zone3/CurrentDetails # REMOVED
-@onready var gold_label = $Panel/MainContainer/MiddleZone/GoldLabel
+@onready var gold_label = $Panel/MainContainer/LeftZone/GoldLabel
 @onready var toggle_handle = $Panel/ToggleHandle
 
 var sell_zone = null
