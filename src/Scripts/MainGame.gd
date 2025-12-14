@@ -24,8 +24,10 @@ func _ready():
 	GameManager.wave_ended.connect(_on_wave_ended)
 
 	# Camera Setup
-	camera.zoom = default_zoom
-	camera.position = default_position
+	# camera.zoom = default_zoom
+	# camera.position = default_position
+	# Initial camera position will be set by zoom_to_fit_board later or we call it now to verify
+	call_deferred("zoom_to_fit_board")
 
 	# Connect Shop signals
 	# shop.unit_bought.connect(_on_unit_bought) # Now handled via add_to_bench in Shop
@@ -63,17 +65,17 @@ func zoom_to_fit_board():
 
 	var viewport_size = get_viewport_rect().size
 
-	# Calculate zoom to fit map with margin, focusing on board
-	# Use nearly full height
-	var zoom_x = viewport_size.x / (map_width * 1.1)
-	var zoom_y = viewport_size.y / (map_height * 1.1)
+	# Calculate zoom to fit map with 5% margin
+	var zoom_x = viewport_size.x / (map_width * 1.05)
+	var zoom_y = viewport_size.y / (map_height * 1.05)
 	var final_zoom = min(zoom_x, zoom_y)
 
 	var target_zoom = Vector2(final_zoom, final_zoom)
 
 	# Center of board is GridManager's position
-	# GridManager places tiles around (0,0) locally, but GridManager itself is offset.
 	var target_pos = grid_manager.position
+
+	print("Combat Zoom: ", target_zoom, " Target Pos: ", target_pos)
 
 	if zoom_tween and zoom_tween.is_valid():
 		zoom_tween.kill()
@@ -88,20 +90,28 @@ func zoom_to_shop_open():
 	var map_width = Constants.MAP_WIDTH * Constants.TILE_SIZE
 	var map_height = Constants.MAP_HEIGHT * Constants.TILE_SIZE
 
+	var SHOP_HEIGHT = 220
 	var viewport_size = get_viewport_rect().size
+	var visible_height = viewport_size.y - SHOP_HEIGHT
 
-	# Make zoom slightly smaller to fit more vertical space
-	var zoom_x = viewport_size.x / (map_width * 1.2)
-	# Add extra height factor for shop
-	var zoom_y = viewport_size.y / (map_height * 1.5)
+	# Calculate Zoom to fit visible_height area (with margin)
+	var zoom_x = viewport_size.x / (map_width * 1.05)
+	var zoom_y = visible_height / (map_height * 1.05)
 	var final_zoom = min(zoom_x, zoom_y)
 
 	var target_zoom = Vector2(final_zoom, final_zoom)
 
-	# For planning, we want to see the board centered or slightly high.
-	# Default position (640, 400) was working for planning.
-	# Or we can use grid_manager.position + small offset.
-	var target_pos = default_position
+	# Calculate Camera Offset
+	# Screen center: viewport_size.y / 2
+	# Visible area center: visible_height / 2
+	var offset_y = (viewport_size.y / 2.0) - (visible_height / 2.0)
+
+	# Target position: Grid center + offset adjusted by zoom
+	# We want the board center (grid_manager.position) to appear at the center of the visible area.
+	var target_pos = grid_manager.position
+	target_pos.y += offset_y / final_zoom
+
+	print("Shop Zoom: ", target_zoom, " Target Pos: ", target_pos)
 
 	if zoom_tween and zoom_tween.is_valid():
 		zoom_tween.kill()
