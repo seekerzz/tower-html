@@ -25,7 +25,52 @@ func _ready():
 		BARRICADE_SCENE = load("res://src/Scenes/Game/Barricade.tscn")
 	_init_astar()
 	create_initial_grid()
-	_generate_random_obstacles()
+	# _generate_random_obstacles()
+
+func try_spawn_trap(world_pos: Vector2, type_key: String):
+	var gx = int(round(world_pos.x / TILE_SIZE))
+	var gy = int(round(world_pos.y / TILE_SIZE))
+	var grid_pos = Vector2i(gx, gy)
+	var key = get_tile_key(gx, gy)
+
+	if not tiles.has(key):
+		return
+
+	var tile = tiles[key]
+
+	# Check requirements: No unit, No core, No obstacle
+	if tile.unit != null: return
+	if tile.occupied_by != Vector2i.ZERO: return
+	if tile.type == "core": return
+	if obstacles.has(grid_pos): return
+
+	# _spawn_barricade(tile, type_key)
+
+	# Inline spawning logic to ensure explicit implementation as requested and avoid confusion
+	var data = Constants.BARRICADE_TYPES[type_key]
+	var obstacle
+
+	if BARRICADE_SCENE:
+		obstacle = BARRICADE_SCENE.instantiate()
+	else:
+		obstacle = Node2D.new()
+		obstacle.name = "Obstacle_" + type_key
+		var visual = ColorRect.new()
+		visual.size = Vector2(40, 40)
+		visual.position = Vector2(-20, -20)
+		if "color" in data:
+			visual.color = data["color"]
+		else:
+			visual.color = Color.DARK_SLATE_GRAY
+		obstacle.add_child(visual)
+
+	add_child(obstacle)
+	obstacle.position = tile.position
+
+	if obstacle.has_method("init"):
+		obstacle.init(Vector2i(tile.x, tile.y), type_key)
+
+	register_obstacle(Vector2i(tile.x, tile.y), obstacle)
 
 func _init_astar():
 	astar_grid = AStarGrid2D.new()
