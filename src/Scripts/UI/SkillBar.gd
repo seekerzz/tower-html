@@ -5,6 +5,7 @@ extends Control
 var skill_units = []
 
 func _ready():
+	# Ensure the container is set up correctly
 	if container:
 		container.add_theme_constant_override("separation", 10)
 		var parent = container.get_parent()
@@ -46,7 +47,9 @@ func refresh_skills():
 
 		# Base Card (PanelContainer)
 		var card = PanelContainer.new()
-		card.custom_minimum_size = Vector2(80, 100)
+		# Use correct size flag for Godot 4
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.custom_minimum_size.y = 80 # Height fixed, width expands
 		card.name = "SkillCard_%d" % i
 
 		# Style
@@ -104,6 +107,7 @@ func refresh_skills():
 		cd_bar.fill_mode = TextureProgressBar.FILL_CLOCKWISE
 		cd_bar.value = 0
 		cd_bar.max_value = 100
+		cd_bar.step = 0.01 # Smooth progress
 		cd_bar.tint_progress = Color(0, 0, 0, 0.7) # Semi-transparent black
 		cd_bar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		cd_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -115,17 +119,6 @@ func refresh_skills():
 		cd_bar.texture_progress = placeholder
 
 		layout.add_child(cd_bar)
-
-		# Countdown Label (Center of Overlay)
-		var cd_count_lbl = Label.new()
-		cd_count_lbl.name = "CD_Count"
-		cd_count_lbl.text = ""
-		cd_count_lbl.add_theme_font_size_override("font_size", 24)
-		cd_count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		cd_count_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		cd_count_lbl.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-		cd_count_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cd_bar.add_child(cd_count_lbl)
 
 		# Interaction
 		card.gui_input.connect(func(ev): _on_card_gui_input(ev, unit))
@@ -147,7 +140,6 @@ func _process(_delta):
 		if card.get_child_count() == 0: continue
 		var layout = card.get_child(0)
 		var cd_bar = layout.get_node("CD_Overlay")
-		var cd_count_lbl = cd_bar.get_node("CD_Count")
 		var cost_lbl = layout.get_node("CostLabel")
 
 		# Cooldown Logic
@@ -156,10 +148,8 @@ func _process(_delta):
 			cd_bar.visible = true
 			cd_bar.max_value = max_cd
 			cd_bar.value = unit.skill_cooldown # Remaining time
-			cd_count_lbl.text = str(ceil(unit.skill_cooldown))
 		else:
 			cd_bar.visible = false
-			cd_count_lbl.text = ""
 
 		# Mana Logic & Styling
 		var style = card.get_theme_stylebox("panel")
