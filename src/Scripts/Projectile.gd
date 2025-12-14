@@ -234,6 +234,18 @@ func _on_area_2d_area_entered(area):
 				GameManager.damage_core(-heal_amt)
 				GameManager.spawn_floating_text(source_unit.global_position, "+%d" % int(heal_amt), Color.GREEN)
 
+		# Trap Spawning Logic
+		if source_unit and is_instance_valid(source_unit) and randf() < 0.25:
+			var trap_type = ""
+			match source_unit.type_key:
+				"scorpion": trap_type = "fang"
+				"viper": trap_type = "poison"
+				"spider": trap_type = "mucus"
+
+			if trap_type != "":
+				if GameManager.grid_manager and GameManager.grid_manager.has_method("try_spawn_trap"):
+					GameManager.grid_manager.try_spawn_trap(area.global_position, trap_type)
+
 		hit_list.append(area)
 
 		# 1. Bounce/Chain Logic
