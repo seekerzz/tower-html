@@ -1,7 +1,7 @@
 extends Node
 
 const TILE_SIZE = 60
-const BENCH_SIZE = 5
+const BENCH_SIZE = 8
 
 const MAP_WIDTH = 11
 const MAP_HEIGHT = 11

@@ -8,7 +8,7 @@ extends Node2D
 @onready var camera = $Camera2D
 
 # Bench
-var bench: Array = [null, null, null, null, null] # Array of Dictionary (Unit Data) or null
+var bench: Array = [] # Initialized in _ready based on Constants
 
 # Camera Control
 var zoom_target: Vector2 = Vector2(0.8, 0.8)
@@ -28,6 +28,10 @@ func _ready():
 	# camera.position = default_position
 	# Initial camera position will be set by zoom_to_fit_board later or we call it now to verify
 	call_deferred("zoom_to_shop_open")
+
+	# Initialize Bench
+	bench.resize(Constants.BENCH_SIZE)
+	bench.fill(null)
 
 	# Connect Shop signals
 	# shop.unit_bought.connect(_on_unit_bought) # Now handled via add_to_bench in Shop
@@ -90,7 +94,7 @@ func zoom_to_shop_open():
 	var map_width = Constants.MAP_WIDTH * Constants.TILE_SIZE
 	var map_height = Constants.MAP_HEIGHT * Constants.TILE_SIZE
 
-	var SHOP_HEIGHT = 220
+	var SHOP_HEIGHT = 120 # Reduced height
 	var viewport_size = get_viewport_rect().size
 	var visible_height = viewport_size.y - SHOP_HEIGHT
 

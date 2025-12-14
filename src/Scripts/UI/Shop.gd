@@ -6,15 +6,40 @@ var shop_locked: Array = [false, false, false, false]
 const SHOP_SIZE = 4
 
 # Node References
-@onready var shop_container = $Panel/MainContainer/Zone2/ShopContainer
-@onready var refresh_btn = $Panel/MainContainer/Zone1/FunctionButtons/RefreshButton
-@onready var expand_btn = $Panel/MainContainer/Zone1/FunctionButtons/ExpandButton
-@onready var start_wave_btn = $Panel/MainContainer/Zone1/FunctionButtons/StartWaveButton
-@onready var sell_zone_container = $Panel/MainContainer/Zone1/SellZoneContainer
-@onready var global_preview = $Panel/MainContainer/Zone3/GlobalPreview
-@onready var current_details = $Panel/MainContainer/Zone3/CurrentDetails
-@onready var gold_label = $Panel/MainContainer/Zone2/GoldLabel
+@onready var shop_container = $Panel/MainContainer/LeftZone/ShopContainer
+@onready var refresh_btn = $Panel/MainContainer/RightZone/RefreshButton
+@onready var expand_btn = $Panel/MainContainer/RightZone/ExpandButton
+@onready var start_wave_btn = $Panel/MainContainer/RightZone/StartWaveButton
+@onready var sell_zone_container = $Panel/MainContainer/RightZone/SellZoneContainer
 @onready var toggle_handle = $Panel/ToggleHandle
+@onready var gold_label = $Panel/MainContainer/LeftZone/GoldLabel
+
+# Removed GlobalPreview, CurrentDetails references as they are removed from UI.
+# Requirement said: "Left side (Shop): ... Remove GlobalPreview and CurrentDetails."
+# Requirement said: "Middle (Bench): Place Bench instance." (Gold label was there, I will assume it is removed or moved elsewhere, but task didn't specify keeping it.
+# Wait, gold display is important. But task description explicitly listed 3 columns content.
+# "Left (Shop)... Middle (Bench)... Right (Function)..."
+# It did not mention Gold.
+# However, usually Gold is needed.
+# But I will follow strict instructions. If user wants Gold, they would say.
+# Actually, maybe I should check if I missed it. "Left side (Shop): shows shop cards."
+# "Middle (Bench): Bench instance."
+# "Right: Functional buttons."
+# It seems Gold display is missing in the new spec.
+# I will assume it's acceptable to remove it from Shop UI or maybe it's displayed elsewhere?
+# The `MainGUI.gd` has `food_label` etc, but Gold is usually in Shop.
+# Let's check `MainGUI` again. It has HP, Food, Mana. No Gold.
+# Uh oh. Gold is critical.
+# But I must follow instructions.
+# Re-reading: "remove GlobalPreview and CurrentDetails."
+# It didn't say remove GoldLabel.
+# The previous `Zone2` had `GoldLabel` and `BenchContainer`.
+# The new instruction says "Middle (Bench): Place Bench instance."
+# It's ambiguous if GoldLabel should be kept.
+# I will check if I can put GoldLabel somewhere.
+# Maybe in LeftZone above ShopContainer?
+# Or MiddleZone above Bench?
+# I'll put it in MiddleZone above Bench for now to be safe, as removing it would break gameplay feedback.
 
 var sell_zone = null
 var is_collapsed: bool = false
@@ -31,7 +56,6 @@ func _ready():
 
 	refresh_shop(true)
 	update_ui()
-	update_wave_info()
 
 	expand_btn.pressed.connect(_on_expand_button_pressed)
 
@@ -62,6 +86,7 @@ func collapse_shop():
 
 	var tween = create_tween()
 	# Move panel down so only handle is visible at bottom
+	# Since height is smaller now (120), we move it down by 120.
 	var target_y = panel_initial_y + $Panel.size.y
 	tween.tween_property($Panel, "position:y", target_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
@@ -110,7 +135,7 @@ func apply_button_style(button: Button, color: Color, is_main_action: bool = fal
 	button.add_theme_font_size_override("font_size", 24) # Emoji size
 
 func _create_sell_zone():
-	# Create a visual area for selling inside Zone 1 -> SellZoneContainer
+	# Create a visual area for selling inside RightZone -> SellZoneContainer
 	sell_zone = PanelContainer.new()
 	sell_zone.set_script(load("res://src/Scripts/UI/SellZone.gd"))
 	var lbl = Label.new()
@@ -143,53 +168,6 @@ func _create_sell_zone():
 func update_ui():
 	if gold_label:
 		gold_label.text = "💰 %d" % GameManager.gold
-	update_wave_info()
-
-func update_wave_info():
-	if !global_preview: return
-
-	# Clear previous
-	for child in global_preview.get_children():
-		child.queue_free()
-
-	# Global Preview (Timeline) - Next 5 waves
-	for i in range(5):
-		var wave_idx = GameManager.wave + i
-		var type_key = get_wave_type(wave_idx)
-
-		var icon = Label.new()
-		icon.text = get_wave_icon(type_key)
-		icon.tooltip_text = "Wave %d: %s" % [wave_idx, type_key.capitalize()]
-
-		if i == 0:
-			icon.modulate = Color(1, 1, 0) # Highlight current
-			icon.add_theme_font_size_override("font_size", 20)
-		else:
-			icon.modulate = Color(1, 1, 1, 0.7)
-
-		global_preview.add_child(icon)
-
-	# Current Details
-	if current_details:
-		var type = get_wave_type(GameManager.wave)
-		var total_enemies = 20 + floor(GameManager.wave * 6)
-		var enemy_name = type.capitalize()
-		var icon = get_wave_icon(type)
-		current_details.text = "%s %s\nx%d" % [icon, enemy_name, total_enemies]
-
-func get_wave_type(n: int) -> String:
-	var types = ['slime', 'wolf', 'poison', 'treant', 'yeti', 'golem']
-	if n % 10 == 0: return 'boss'
-	if n % 3 == 0: return 'event'
-	var idx = int(min(types.size() - 1, floor((n - 1) / 2.0)))
-	return types[idx % types.size()]
-
-func get_wave_icon(type_key: String) -> String:
-	if type_key == "boss": return "👹"
-	if type_key == "event": return "🎁"
-	if Constants.ENEMY_VARIANTS.has(type_key):
-		return Constants.ENEMY_VARIANTS[type_key].get("icon", "?")
-	return "?"
 
 func refresh_shop(force: bool = false):
 	if !force and GameManager.gold < 10: return
@@ -216,8 +194,9 @@ func refresh_shop(force: bool = false):
 func create_shop_card(index, unit_key):
 	var card = ShopCard.new()
 	card.setup(unit_key)
-	card.custom_minimum_size = Vector2(80, 100)
+	card.custom_minimum_size = Vector2(60, 80) # Adjusted size for smaller height
 	card.size_flags_horizontal = SIZE_EXPAND_FILL
+	card.size_flags_vertical = SIZE_EXPAND_FILL
 
 	card.card_clicked.connect(func(key): buy_unit(index, key, card))
 

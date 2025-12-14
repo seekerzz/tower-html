@@ -12,6 +12,12 @@ script = ExtResource("1_script")
 layout_mode = 2
 size_flags_horizontal = 3
 
+[node name="WaveInfoLabel" type="Label" parent="HBoxContainer"]
+layout_mode = 2
+text = "Wave 0 |"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="IconLabel" type="Label" parent="HBoxContainer"]
 layout_mode = 2
 text = "💀"
