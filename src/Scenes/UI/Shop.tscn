@@ -9,7 +9,7 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -200.0
+offset_top = -120.0
 grow_horizontal = 2
 grow_vertical = 0
 script = ExtResource("1_shop")
@@ -32,76 +32,72 @@ grow_vertical = 2
 theme_override_constants/separation = 10
 alignment = 1
 
-[node name="Zone1" type="HBoxContainer" parent="Panel/MainContainer"]
+[node name="LeftZone" type="VBoxContainer" parent="Panel/MainContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.0
-
-[node name="FunctionButtons" type="HBoxContainer" parent="Panel/MainContainer/Zone1"]
-layout_mode = 2
-theme_override_constants/separation = 5
-
-[node name="RefreshButton" type="Button" parent="Panel/MainContainer/Zone1/FunctionButtons"]
-custom_minimum_size = Vector2(60, 0)
-layout_mode = 2
-text = "🔄"
-
-[node name="ExpandButton" type="Button" parent="Panel/MainContainer/Zone1/FunctionButtons"]
-custom_minimum_size = Vector2(60, 0)
-layout_mode = 2
-text = "🏗️"
-
-[node name="StartWaveButton" type="Button" parent="Panel/MainContainer/Zone1/FunctionButtons"]
-custom_minimum_size = Vector2(60, 0)
-layout_mode = 2
-text = "⚔️"
-
-[node name="SellZoneContainer" type="Control" parent="Panel/MainContainer/Zone1"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="Zone2" type="VBoxContainer" parent="Panel/MainContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.0
 alignment = 1
 
-[node name="GoldLabel" type="Label" parent="Panel/MainContainer/Zone2"]
+[node name="Label" type="Label" parent="Panel/MainContainer/LeftZone"]
+layout_mode = 2
+text = "SHOP"
+horizontal_alignment = 1
+
+[node name="ShopContainer" type="HBoxContainer" parent="Panel/MainContainer/LeftZone"]
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 1
+
+[node name="MiddleZone" type="VBoxContainer" parent="Panel/MainContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+
+[node name="GoldLabel" type="Label" parent="Panel/MainContainer/MiddleZone"]
 layout_mode = 2
 text = "💰 0"
 horizontal_alignment = 1
 
-[node name="BenchContainer" type="CenterContainer" parent="Panel/MainContainer/Zone2"]
+[node name="BenchContainer" type="CenterContainer" parent="Panel/MainContainer/MiddleZone"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="Bench" parent="Panel/MainContainer/Zone2/BenchContainer" instance=ExtResource("2_bench")]
+[node name="Bench" parent="Panel/MainContainer/MiddleZone/BenchContainer" instance=ExtResource("2_bench")]
 layout_mode = 2
-custom_minimum_size = Vector2(340, 60)
+custom_minimum_size = Vector2(300, 100)
 
-[node name="ShopContainer" type="HBoxContainer" parent="Panel/MainContainer/Zone2"]
+[node name="RightZone" type="HBoxContainer" parent="Panel/MainContainer"]
 layout_mode = 2
-size_flags_vertical = 3
-alignment = 1
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
 
-[node name="Zone3" type="VBoxContainer" parent="Panel/MainContainer"]
+[node name="SellZoneContainer" type="Control" parent="Panel/MainContainer/RightZone"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+
+[node name="RefreshButton" type="Button" parent="Panel/MainContainer/RightZone"]
+custom_minimum_size = Vector2(40, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 1.0
+text = "🔄"
 
-[node name="GlobalPreview" type="HBoxContainer" parent="Panel/MainContainer/Zone3"]
+[node name="ExpandButton" type="Button" parent="Panel/MainContainer/RightZone"]
+custom_minimum_size = Vector2(40, 0)
 layout_mode = 2
-size_flags_vertical = 3
-alignment = 1
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+text = "🏗️"
 
-[node name="CurrentDetails" type="Label" parent="Panel/MainContainer/Zone3"]
+[node name="StartWaveButton" type="Button" parent="Panel/MainContainer/RightZone"]
+custom_minimum_size = Vector2(40, 0)
 layout_mode = 2
-size_flags_vertical = 3
-horizontal_alignment = 1
-vertical_alignment = 1
-autowrap_mode = 3
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+text = "⚔️"
 
 [node name="ToggleHandle" type="Button" parent="Panel"]
+visible = false
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
@@ -112,5 +108,5 @@ offset_right = 0.0
 grow_horizontal = 0
 text = "▼"
 
-[connection signal="pressed" from="Panel/MainContainer/Zone1/FunctionButtons/StartWaveButton" to="." method="_on_start_wave_button_pressed"]
-[connection signal="pressed" from="Panel/MainContainer/Zone1/FunctionButtons/RefreshButton" to="." method="_on_refresh_button_pressed"]
+[connection signal="pressed" from="Panel/MainContainer/RightZone/StartWaveButton" to="." method="_on_start_wave_button_pressed"]
+[connection signal="pressed" from="Panel/MainContainer/RightZone/RefreshButton" to="." method="_on_refresh_button_pressed"]

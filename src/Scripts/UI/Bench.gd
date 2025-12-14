@@ -1,6 +1,5 @@
 extends Control
 
-const SLOT_COUNT = 5
 var bench_data = []
 
 @onready var slots_container = $PanelContainer/SlotsContainer
@@ -10,7 +9,8 @@ const BENCH_SLOT_SCRIPT = preload("res://src/Scripts/UI/BenchSlot.gd")
 
 func _ready():
 	if slots_container:
-		slots_container.add_theme_constant_override("separation", 10)
+		slots_container.add_theme_constant_override("h_separation", 10)
+		slots_container.add_theme_constant_override("v_separation", 10)
 		var parent = slots_container.get_parent()
 		if parent is PanelContainer:
 			var style = StyleBoxEmpty.new()
@@ -26,16 +26,21 @@ func update_bench_ui(data):
 		slots_container.remove_child(child)
 		child.queue_free()
 
-	# Create 5 slots
-	for i in range(SLOT_COUNT):
+	# Create slots using Constants.BENCH_SIZE (should be 8)
+	var slot_count = Constants.BENCH_SIZE
+
+	for i in range(slot_count):
 		var slot = Control.new()
 		slot.custom_minimum_size = Vector2(60, 60)
 		slot.set_script(BENCH_SLOT_SCRIPT)
 		slot.slot_index = i
 
 		# Visual style: Panel child
+		# To make sure it is visible, we add a Panel node with StyleBoxFlat
+		# and ensure it expands to fill the Control.
 		var panel = Panel.new()
-		panel.anchors_preset = 15 # Full rect
+		panel.layout_mode = 1 # Anchors
+		panel.anchors_preset = 15 # Full Rect
 		panel.mouse_filter = MOUSE_FILTER_IGNORE # Let the slot handle events
 
 		var style = StyleBoxFlat.new()
