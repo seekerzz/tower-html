@@ -509,9 +509,4 @@ func die():
 	GameManager.spawn_floating_text(global_position, "+1💰", Color.YELLOW)
 	GameManager.food += 2
 
-	# Drop Logic
-	if "drop" in enemy_data:
-		if randf() < enemy_data.dropRate:
-			GameManager.add_material(enemy_data.drop)
-
 	queue_free()

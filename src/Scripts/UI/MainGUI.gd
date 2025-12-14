@@ -25,7 +25,6 @@ signal sacrifice_requested
 var artifacts_hud: HBoxContainer
 
 const FLOATING_TEXT_SCENE = preload("res://src/Scenes/UI/FloatingText.tscn")
-const BUILD_PANEL_SCENE = preload("res://src/Scenes/UI/BuildPanel.tscn")
 const TOOLTIP_SCENE = preload("res://src/Scenes/UI/Tooltip.tscn")
 
 var damage_stats = {} # unit_id -> {name, icon, amount, node}
@@ -66,7 +65,6 @@ func _ready():
 	_setup_tooltip()
 
 	update_ui()
-	_setup_build_panel()
 	_setup_stats_panel()
 	_setup_artifacts_hud()
 
@@ -305,14 +303,6 @@ func _animate_stats_panel():
 		target_pos_x = viewport_width - max(panel_width, 200)
 
 	stats_tween.tween_property(damage_stats_panel, "position:x", target_pos_x, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-
-func _setup_build_panel():
-	var build_panel = BUILD_PANEL_SCENE.instantiate()
-	add_child(build_panel)
-	# Position on the left side
-	build_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	build_panel.position = Vector2(20, 100) # Offset from top
-	# Ensure it stays on screen? Anchors should handle if set correctly, but manual pos for now.
 
 func _setup_tooltip():
 	tooltip_instance = TOOLTIP_SCENE.instantiate()
