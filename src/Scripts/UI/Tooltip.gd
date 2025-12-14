@@ -1,24 +1,45 @@
 extends PanelContainer
 
+var icon_rect
 var title_label
 var stats_label
 var buff_label
 
 func _ready():
-	title_label = get_node("VBoxContainer/TitleLabel")
+	icon_rect = get_node("VBoxContainer/HeaderContainer/IconRect")
+	title_label = get_node("VBoxContainer/HeaderContainer/TitleLabel")
 	stats_label = get_node("VBoxContainer/StatsLabel")
 	buff_label = get_node("VBoxContainer/BuffLabel")
 	hide()
 
 func show_tooltip(unit_data: Dictionary, current_stats: Dictionary, active_buffs: Array, global_pos: Vector2):
+	if !icon_rect:
+		icon_rect = get_node("VBoxContainer/HeaderContainer/IconRect")
 	if !title_label:
-		title_label = get_node("VBoxContainer/TitleLabel")
+		title_label = get_node("VBoxContainer/HeaderContainer/TitleLabel")
 	if !stats_label:
 		stats_label = get_node("VBoxContainer/StatsLabel")
 	if !buff_label:
 		buff_label = get_node("VBoxContainer/BuffLabel")
 
-	title_label.text = "[b]" + unit_data.get("icon", "") + " " + unit_data.get("name", "Unknown") + "[/b]"
+	# Set Icon
+	var unit_key = unit_data.get("key", "")
+	if unit_key == "":
+		# Try to fallback or find key elsewhere if not in data directly
+		# For now assuming key is passed or available in data
+		unit_key = unit_data.get("id", "") # Sometimes id is used as key
+
+	if unit_key != "":
+		var icon = AssetLoader.get_unit_icon(unit_key)
+		if icon:
+			icon_rect.texture = icon
+			icon_rect.show()
+		else:
+			icon_rect.hide() # Or show placeholder?
+	else:
+		icon_rect.hide()
+
+	title_label.text = "[b]" + unit_data.get("name", "Unknown") + "[/b]"
 
 	var desc = unit_data.get("desc", "")
 	var stats_text = ""
@@ -64,7 +85,13 @@ func show_tooltip(unit_data: Dictionary, current_stats: Dictionary, active_buffs
 	$VBoxContainer.custom_minimum_size.x = width
 	$VBoxContainer.size.x = width
 
-	title_label.custom_minimum_size.x = width
+	# title_label is now inside HeaderContainer, so we constrain HeaderContainer or the label inside?
+	# We should constrain the header container width mainly.
+	$VBoxContainer/HeaderContainer.custom_minimum_size.x = width
+
+	# For TitleLabel inside HBox, we probably don't need to force width if we use size flags,
+	# but keeping consistency with old logic:
+	title_label.custom_minimum_size.x = width - 40 # Subtract icon width + spacing estimate
 	stats_label.custom_minimum_size.x = width
 	buff_label.custom_minimum_size.x = width
 
@@ -73,7 +100,7 @@ func show_tooltip(unit_data: Dictionary, current_stats: Dictionary, active_buffs
 	stats_label.fit_content = false
 	buff_label.fit_content = false
 
-	title_label.size = Vector2(width, 0)
+	title_label.size = Vector2(width - 40, 0)
 	stats_label.size = Vector2(width, 0)
 	buff_label.size = Vector2(width, 0)
 

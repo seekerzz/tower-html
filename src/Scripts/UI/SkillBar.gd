@@ -66,14 +66,25 @@ func refresh_skills():
 		card.add_child(layout)
 
 		# Icon (Center)
-		var icon_lbl = Label.new()
-		icon_lbl.text = unit.unit_data.get("icon", "❓")
-		icon_lbl.add_theme_font_size_override("font_size", 40)
-		icon_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		icon_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		icon_lbl.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-		icon_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		layout.add_child(icon_lbl)
+		var icon_tex = AssetLoader.get_unit_icon(unit.type_key)
+		# Always create TextureRect, even if texture is null (as per requirements)
+		var icon_rect = TextureRect.new()
+		if icon_tex:
+			icon_rect.texture = icon_tex
+
+		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon_rect.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+		icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# Make it fill a good portion of the card height
+		icon_rect.custom_minimum_size = Vector2(50, 50)
+		icon_rect.size = Vector2(50, 50)
+		# Re-center with offsets
+		icon_rect.offset_left = -25
+		icon_rect.offset_top = -25
+		icon_rect.offset_right = 25
+		icon_rect.offset_bottom = 25
+		layout.add_child(icon_rect)
 
 		# Hotkey (Top Right)
 		var hotkey_lbl = Label.new()

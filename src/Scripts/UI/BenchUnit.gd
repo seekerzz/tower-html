@@ -77,22 +77,7 @@ func setup(key: String, index: int):
 	mouse_filter = MOUSE_FILTER_PASS
 
 func _get_drag_data(at_position):
-	var preview = Control.new()
-	var rect = ColorRect.new()
-	rect.size = Vector2(50, 50)
-	rect.color = Color(1, 1, 1, 0.5)
-
-	var lbl = Label.new()
-	var proto = Constants.UNIT_TYPES[unit_key]
-	lbl.text = proto.icon
-	lbl.size = rect.size
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-
-	preview.add_child(rect)
-	preview.add_child(lbl)
-	preview.z_index = 100 # On top
-
+	var preview = _create_drag_preview()
 	set_drag_preview(preview)
 
 	return {
@@ -100,3 +85,23 @@ func _get_drag_data(at_position):
 		"index": bench_index,
 		"key": unit_key
 	}
+
+func _create_drag_preview() -> Control:
+	var preview = Control.new()
+	var rect = ColorRect.new()
+	rect.size = Vector2(50, 50)
+	rect.color = Color(1, 1, 1, 0.5)
+	preview.add_child(rect)
+
+	var tex_rect = TextureRect.new()
+	var icon_texture = AssetLoader.get_unit_icon(unit_key)
+	if icon_texture:
+		tex_rect.texture = icon_texture
+
+	tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tex_rect.size = rect.size
+	preview.add_child(tex_rect)
+
+	preview.z_index = 100 # On top
+	return preview
