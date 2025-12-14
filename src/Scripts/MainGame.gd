@@ -6,6 +6,7 @@ extends Node2D
 @onready var bench_ui = find_child("Bench", true, false)
 @onready var main_gui = $CanvasLayer/MainGUI
 @onready var camera = $Camera2D
+@onready var background = $Background
 
 # Bench
 var bench: Array = [] # Array of Dictionary (Unit Data) or null
@@ -40,6 +41,43 @@ func _ready():
 	grid_manager.place_unit("squirrel", 0, 1) # Starting unit
 	update_bench_ui() # Ensure UI is initialized
 
+	# Initial background update
+	get_tree().root.size_changed.connect(_on_viewport_size_changed)
+
+func _on_viewport_size_changed():
+	_update_background_size()
+
+func _update_background_size():
+	if !background or !camera: return
+
+	# Determine the minimum expected zoom (maximum field of view)
+	# This usually corresponds to the zoom when the shop is open or when fitting the board on a large screen
+
+	var map_width = Constants.MAP_WIDTH * Constants.TILE_SIZE
+	var map_height = Constants.MAP_HEIGHT * Constants.TILE_SIZE
+	var viewport_size = get_viewport_rect().size
+
+	# Calculate what the zoom WOULD be if we fit the whole board
+	var zoom_x = viewport_size.x / (map_width * 1.05)
+	var zoom_y = viewport_size.y / (map_height * 1.05)
+	var min_zoom_val = min(zoom_x, zoom_y)
+
+	# Or use the current target zoom if it's smaller (seeing more area)
+	# But we want to ensure background COVERS the area regardless of current zoom
+	# So we need to cover the Visible World Size at the smallest possible zoom.
+	# Let's say the smallest allowed zoom is 0.5 (from _adjust_zoom clamp)
+	var worst_case_zoom = 0.5
+
+	# Calculate visible world size at worst case zoom
+	var visible_w = viewport_size.x / worst_case_zoom
+	var visible_h = viewport_size.y / worst_case_zoom
+
+	background.size = Vector2(visible_w, visible_h)
+
+	# Center the background on the grid/camera center
+	# Since background is a TextureRect, position is top-left
+	background.position = grid_manager.position - (background.size / 2)
+
 func _unhandled_input(event):
 	if event is InputEventMouseMotion:
 		if event.button_mask == MOUSE_BUTTON_MASK_RIGHT:
@@ -61,6 +99,7 @@ func _adjust_zoom(amount: float):
 
 	zoom_tween = create_tween()
 	zoom_tween.tween_property(camera, "zoom", zoom_target, 0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_update_background_size()
 
 func zoom_to_fit_board():
 	# Shop Closed (Combat)
@@ -88,6 +127,8 @@ func zoom_to_fit_board():
 	zoom_tween.set_parallel(true)
 	zoom_tween.tween_property(camera, "zoom", target_zoom, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	zoom_tween.tween_property(camera, "position", target_pos, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+	_update_background_size()
 
 func zoom_to_shop_open():
 	# Shop Open (Planning)
@@ -140,6 +181,8 @@ func zoom_to_shop_open():
 	zoom_tween.set_parallel(true)
 	zoom_tween.tween_property(camera, "zoom", target_zoom, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	zoom_tween.tween_property(camera, "position", target_pos, 0.8).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+	_update_background_size()
 
 func _on_wave_started():
 	zoom_to_fit_board()

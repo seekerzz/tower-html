@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://maingame123"]
+[gd_scene load_steps=9 format=3 uid="uid://maingame123"]
 
 [ext_resource type="Script" uid="uid://yevi5jhibo13" path="res://src/Scripts/MainGame.gd" id="1_main"]
 [ext_resource type="PackedScene" uid="uid://grid123456" path="res://src/Scenes/Game/GridManager.tscn" id="2_grid"]
@@ -6,9 +6,17 @@
 [ext_resource type="PackedScene" uid="uid://shop123" path="res://src/Scenes/UI/Shop.tscn" id="4_shop"]
 [ext_resource type="PackedScene" uid="uid://gui123" path="res://src/Scenes/UI/MainGUI.tscn" id="5_gui"]
 [ext_resource type="PackedScene" path="res://src/Scenes/Game/DrawManager.tscn" id="6_draw"]
+[ext_resource type="Texture2D" path="res://assets/images/UI/bg_battle.png" id="7_bg"]
 
 [node name="MainGame" type="Node2D"]
 script = ExtResource("1_main")
+
+[node name="Background" type="TextureRect" parent="."]
+offset_right = 1920.0
+offset_bottom = 1080.0
+texture = ExtResource("7_bg")
+expand_mode = 1
+stretch_mode = 6
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(640, 360)

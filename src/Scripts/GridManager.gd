@@ -88,8 +88,8 @@ func _init_astar():
 
 	if GameManager.has_signal("wave_started"):
 		GameManager.wave_started.connect(func():
-			expansion_mode = false
-			clear_ghosts()
+			if expansion_mode:
+				toggle_expansion_mode() # Properly close expansion mode
 		)
 
 func create_initial_grid():
@@ -172,6 +172,10 @@ func create_tile(x: int, y: int, type: String = "normal", state: String = "locke
 	tile.setup(x, y, type)
 	# Explicitly call set_state to ensure visuals are updated
 	tile.set_state(state)
+
+	# Ensure grid default is hidden
+	if tile.has_method("set_grid_visible"):
+		tile.set_grid_visible(false)
 
 	tile.position = Vector2(x * TILE_SIZE, y * TILE_SIZE)
 	add_child(tile)
@@ -622,6 +626,13 @@ func _apply_buff_to_neighbors(provider_unit, buff_type):
 
 func toggle_expansion_mode():
 	expansion_mode = !expansion_mode
+
+	# Update Grid Visibility
+	for key in tiles:
+		var tile = tiles[key]
+		if tile.has_method("set_grid_visible"):
+			tile.set_grid_visible(expansion_mode)
+
 	if expansion_mode:
 		spawn_expansion_ghosts()
 	else:

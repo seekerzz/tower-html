@@ -6,17 +6,15 @@ var shop_locked: Array = [false, false, false, false]
 const SHOP_SIZE = 4
 
 # Node References
-# Updated references based on new layout
-@onready var shop_container = $Panel/MainContainer/LeftZone/ShopContainer
-@onready var refresh_btn = $Panel/MainContainer/RightZone/RefreshButton
-@onready var expand_btn = $Panel/MainContainer/RightZone/ExpandButton
-@onready var start_wave_btn = $Panel/MainContainer/RightZone/StartWaveButton
-@onready var sell_zone_container = $Panel/MainContainer/RightZone/SellZoneContainer
-# These are removed from scene, checking if we can just remove them or if we need to keep vars as null safe
-# @onready var global_preview = $Panel/MainContainer/Zone3/GlobalPreview # REMOVED
-# @onready var current_details = $Panel/MainContainer/Zone3/CurrentDetails # REMOVED
-@onready var gold_label = $Panel/MainContainer/LeftZone/GoldLabel
-@onready var toggle_handle = $Panel/ToggleHandle
+# Updated references based on new layout with SlidingPanel
+@onready var sliding_panel = $SlidingPanel
+@onready var shop_container = $SlidingPanel/MainContainer/LeftZone/ShopContainer
+@onready var refresh_btn = $SlidingPanel/MainContainer/RightZone/RefreshButton
+@onready var expand_btn = $SlidingPanel/MainContainer/RightZone/ExpandButton
+@onready var start_wave_btn = $SlidingPanel/MainContainer/RightZone/StartWaveButton
+@onready var sell_zone_container = $SlidingPanel/MainContainer/RightZone/SellZoneContainer
+@onready var gold_label = $SlidingPanel/MainContainer/LeftZone/GoldLabel
+@onready var toggle_handle = $SlidingPanel/ToggleHandle
 
 var sell_zone = null
 var is_collapsed: bool = false
@@ -33,7 +31,6 @@ func _ready():
 
 	refresh_shop(true)
 	update_ui()
-	# update_wave_info() # Removed functionality
 
 	expand_btn.pressed.connect(_on_expand_button_pressed)
 
@@ -44,7 +41,8 @@ func _ready():
 	_apply_styles()
 
 func _setup_collapse_handle():
-	panel_initial_y = $Panel.position.y
+	# Animate the SlidingPanel's position instead of Shop position
+	panel_initial_y = sliding_panel.position.y
 
 	# ToggleHandle is now in Tscn, just connect signal
 	if toggle_handle:
@@ -63,10 +61,10 @@ func collapse_shop():
 	if toggle_handle: toggle_handle.text = "▲"
 
 	var tween = create_tween()
-	# Move panel down so only handle is visible at bottom
-	# Since handle is hidden/invisible, we might not see anything. But logic is preserved as requested.
-	var target_y = panel_initial_y + $Panel.size.y
-	tween.tween_property($Panel, "position:y", target_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	# Collapse by moving the SlidingPanel down
+	# Size is ~160. Move down by 140.
+	var target_y = panel_initial_y + 140
+	tween.tween_property(sliding_panel, "position:y", target_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func expand_shop():
 	if !is_collapsed: return
@@ -74,17 +72,9 @@ func expand_shop():
 	if toggle_handle: toggle_handle.text = "▼"
 
 	var tween = create_tween()
-	tween.tween_property($Panel, "position:y", panel_initial_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(sliding_panel, "position:y", panel_initial_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func _apply_styles():
-	# Style Panel
-	var panel = $Panel
-	var panel_style = StyleBoxFlat.new()
-	panel_style.bg_color = Color(0.1, 0.1, 0.15, 0.95)
-	panel_style.border_width_top = 2
-	panel_style.border_color = Color("#ffffff")
-	panel.add_theme_stylebox_override("panel", panel_style)
-
 	# Style Buttons
 	apply_button_style(refresh_btn, Color("#3498db")) # Blue
 	apply_button_style(expand_btn, Color("#2ecc71")) # Green
@@ -146,9 +136,6 @@ func _create_sell_zone():
 func update_ui():
 	if gold_label:
 		gold_label.text = "💰 %d" % GameManager.gold
-	# update_wave_info() # REMOVED
-
-# Removed update_wave_info, get_wave_type, get_wave_icon as they were used for GlobalPreview/CurrentDetails
 
 func refresh_shop(force: bool = false):
 	if !force and GameManager.gold < 10: return
