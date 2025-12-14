@@ -66,22 +66,12 @@ func _ensure_visual_hierarchy():
 		add_child(visual_holder)
 
 		# Move existing visual elements into holder
-		# NOTE: Exclude "ColorRect" from moving to visual_holder to keep it static (not affected by breathe/attack anims)
 		var visual_elements = ["Label", "StarLabel"]
 		for child_name in visual_elements:
 			var child = get_node_or_null(child_name)
 			if child:
 				remove_child(child)
 				visual_holder.add_child(child)
-
-		# Ensure visual_holder is rendered *after* ColorRect (so icons are on top)
-		# Since ColorRect stays in root, and visual_holder is added via add_child (which appends to end),
-		# check if ColorRect exists and make sure visual_holder is above it.
-		var color_rect = get_node_or_null("ColorRect")
-		if color_rect:
-			# If color_rect index is greater than visual_holder, swap or move visual_holder
-			if color_rect.get_index() > visual_holder.get_index():
-				move_child(visual_holder, color_rect.get_index() + 1)
 
 func setup(key: String):
 	_ensure_visual_hierarchy()
@@ -198,15 +188,11 @@ func activate_skill():
 		var skill_name = unit_data.skill
 		GameManager.spawn_floating_text(global_position, skill_name.capitalize() + "!", Color.CYAN)
 
-		# Find ColorRect in self, or fallback
-		var color_rect = get_node_or_null("ColorRect")
-		if !color_rect and visual_holder:
-			color_rect = visual_holder.get_node_or_null("ColorRect")
-
-		if color_rect:
+		# Use visual_holder for scale effect
+		if visual_holder:
 			var tween = create_tween()
-			tween.tween_property(color_rect, "scale", Vector2(1.2, 1.2), 0.1)
-			tween.tween_property(color_rect, "scale", Vector2(1.0, 1.0), 0.1)
+			tween.tween_property(visual_holder, "scale", Vector2(1.2, 1.2), 0.1)
+			tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.1)
 
 	else:
 		is_no_mana = true
@@ -215,64 +201,46 @@ func activate_skill():
 func update_visuals():
 	_ensure_visual_hierarchy()
 	var label = visual_holder.get_node_or_null("Label")
-
-	# ColorRect should now be in self, but check logic to be safe
-	var color_rect = get_node_or_null("ColorRect")
-	if !color_rect and visual_holder:
-		color_rect = visual_holder.get_node_or_null("ColorRect")
-
 	var star_label = visual_holder.get_node_or_null("StarLabel")
 
 	# Try to load icon image
 	var icon_texture = AssetLoader.get_unit_icon(type_key)
 
-	if icon_texture:
-		var tex_rect = visual_holder.get_node_or_null("TextureRect")
-		if !tex_rect:
-			tex_rect = TextureRect.new()
-			tex_rect.name = "TextureRect"
-			tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			visual_holder.add_child(tex_rect)
+	var tex_rect = visual_holder.get_node_or_null("TextureRect")
+	if !tex_rect:
+		tex_rect = TextureRect.new()
+		tex_rect.name = "TextureRect"
+		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		visual_holder.add_child(tex_rect)
+		# Ensure TextureRect is below labels if possible, though visual_holder order matters
+		if label: visual_holder.move_child(tex_rect, label.get_index())
 
+	if icon_texture:
 		tex_rect.texture = icon_texture
 		tex_rect.show()
-
-		if label:
-			label.hide()
-
-		# Resize TextureRect to match color_rect
-		if color_rect:
-			tex_rect.size = color_rect.size
-			tex_rect.position = color_rect.position
+		if label: label.hide()
 	else:
-		# Fallback to label
-		var tex_rect = visual_holder.get_node_or_null("TextureRect")
-		if tex_rect:
-			tex_rect.hide()
-
+		tex_rect.hide()
 		if label:
 			label.text = unit_data.icon
 			label.show()
 	
-	# Size update
-	if color_rect:
-		var size = unit_data.size
-		color_rect.size = Vector2(size.x * 60 - 4, size.y * 60 - 4)
-		color_rect.position = -(color_rect.size / 2) # Center inside parent (Unit node)
+	# Size update based on unit_data
+	var size = unit_data.size
+	var target_size = Vector2(size.x * 60 - 4, size.y * 60 - 4)
+	var target_pos = -(target_size / 2) # Center inside parent (Unit node)
 
-		if label:
-			label.position = color_rect.position
-			label.size = color_rect.size
-			label.pivot_offset = label.size / 2
+	if tex_rect:
+		tex_rect.size = target_size
+		tex_rect.position = target_pos
+		tex_rect.pivot_offset = tex_rect.size / 2
 
-		# Ensure TextureRect follows same positioning
-		var tex_rect = visual_holder.get_node_or_null("TextureRect")
-		if tex_rect:
-			tex_rect.size = color_rect.size
-			tex_rect.position = color_rect.position
-			tex_rect.pivot_offset = tex_rect.size / 2
+	if label:
+		label.size = target_size
+		label.position = target_pos
+		label.pivot_offset = label.size / 2
 
 	if level > 1:
 		if star_label:
@@ -291,16 +259,13 @@ func _update_buff_icons():
 		buff_container.name = "BuffContainer"
 		buff_container.alignment = BoxContainer.ALIGNMENT_CENTER
 
-		# Find ColorRect in self first, then fallback
-		var color_rect = get_node_or_null("ColorRect")
-		if !color_rect and visual_holder:
-			color_rect = visual_holder.get_node_or_null("ColorRect")
+		# Calculate size based on unit data since ColorRect is gone
+		var size = Vector2(60, 60) # Default
+		if unit_data and unit_data.has("size"):
+			size = Vector2(unit_data.size.x * 60, unit_data.size.y * 60)
 
-		if color_rect:
-			buff_container.position = Vector2(-color_rect.size.x/2, color_rect.size.y/2 - 15)
-			buff_container.size = Vector2(color_rect.size.x, 15)
-		else:
-			buff_container.position = Vector2(0, 20)
+		buff_container.position = Vector2(-size.x/2, size.y/2 - 20) # Just an approximation
+		buff_container.size = Vector2(size.x, 15)
 
 		buff_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(buff_container)
@@ -485,18 +450,13 @@ func create_ghost():
 	if ghost_node: return
 	ghost_node = Node2D.new()
 
-	var color_rect = get_node_or_null("ColorRect")
-	if !color_rect and visual_holder:
-		color_rect = visual_holder.get_node_or_null("ColorRect")
+	# Clone visuals
+	# Since visual_holder contains TextureRect and Label, we can try to duplicate it or its children
+	# NOTE: Duplicate() is shallow by default but can be deep.
 
-	if color_rect:
-		var rect = color_rect.duplicate()
-		ghost_node.add_child(rect)
-
-	var label = visual_holder.get_node_or_null("Label") if visual_holder else get_node_or_null("Label")
-	if label:
-		var lbl = label.duplicate()
-		ghost_node.add_child(lbl)
+	if visual_holder:
+		var dup_visual = visual_holder.duplicate(7) # Duplicate scripts, signals, groups
+		ghost_node.add_child(dup_visual)
 
 	get_parent().add_child(ghost_node)
 	ghost_node.position = start_position
