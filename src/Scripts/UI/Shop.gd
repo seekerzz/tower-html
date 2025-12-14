@@ -7,16 +7,16 @@ const SHOP_SIZE = 4
 
 # Node References
 # Updated references based on new layout
-@onready var shop_container = $Panel/MainContainer/LeftZone/ShopContainer
-@onready var refresh_btn = $Panel/MainContainer/RightZone/RefreshButton
-@onready var expand_btn = $Panel/MainContainer/RightZone/ExpandButton
-@onready var start_wave_btn = $Panel/MainContainer/RightZone/StartWaveButton
-@onready var sell_zone_container = $Panel/MainContainer/RightZone/SellZoneContainer
+@onready var shop_container = $MainContainer/LeftZone/ShopContainer
+@onready var refresh_btn = $MainContainer/RightZone/RefreshButton
+@onready var expand_btn = $MainContainer/RightZone/ExpandButton
+@onready var start_wave_btn = $MainContainer/RightZone/StartWaveButton
+@onready var sell_zone_container = $MainContainer/RightZone/SellZoneContainer
 # These are removed from scene, checking if we can just remove them or if we need to keep vars as null safe
 # @onready var global_preview = $Panel/MainContainer/Zone3/GlobalPreview # REMOVED
 # @onready var current_details = $Panel/MainContainer/Zone3/CurrentDetails # REMOVED
-@onready var gold_label = $Panel/MainContainer/LeftZone/GoldLabel
-@onready var toggle_handle = $Panel/ToggleHandle
+@onready var gold_label = $MainContainer/LeftZone/GoldLabel
+@onready var toggle_handle = $ToggleHandle
 
 var sell_zone = null
 var is_collapsed: bool = false

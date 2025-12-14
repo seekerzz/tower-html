@@ -104,7 +104,7 @@ size_flags_horizontal = 3
 size_flags_stretch_ratio = 1.0
 text = "⚔️"
 
-[node name="ToggleHandle" type="Button" parent="Panel"]
+[node name="ToggleHandle" type="Button" parent="."]
 visible = false
 layout_mode = 1
 anchors_preset = 1
@@ -116,5 +116,5 @@ offset_right = 0.0
 grow_horizontal = 0
 text = "▼"
 
-[connection signal="pressed" from="Panel/MainContainer/RightZone/StartWaveButton" to="." method="_on_start_wave_button_pressed"]
-[connection signal="pressed" from="Panel/MainContainer/RightZone/RefreshButton" to="." method="_on_refresh_button_pressed"]
+[connection signal="pressed" from="MainContainer/RightZone/StartWaveButton" to="." method="_on_start_wave_button_pressed"]
+[connection signal="pressed" from="MainContainer/RightZone/RefreshButton" to="." method="_on_refresh_button_pressed"]
