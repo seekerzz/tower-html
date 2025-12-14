@@ -1,5 +1,6 @@
 extends MarginContainer
 
+@onready var wave_label = $HBoxContainer/WaveLabel
 @onready var icon_label = $HBoxContainer/IconLabel
 @onready var progress_bar = $HBoxContainer/ProgressBar
 @onready var label = $HBoxContainer/ProgressBar/Label
@@ -23,10 +24,12 @@ func _process(delta):
 			var alive_or_pending = to_spawn + active
 			var killed = max(0, total - alive_or_pending)
 
+			wave_label.text = "Wave %d" % GameManager.wave
+
 			if total > 0:
 				var progress = float(killed) / float(total) * 100
 				progress_bar.value = progress
-				label.text = "%d / %d" % [killed, total]
+				label.text = "Enemies: %d / %d" % [killed, total]
 			else:
 				progress_bar.value = 100
 				label.text = "Wave Clear"

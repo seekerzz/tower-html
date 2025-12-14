@@ -49,6 +49,8 @@ func _ready():
 
 	# Connect to wave ended for stats auto-popup as requested
 	GameManager.wave_ended.connect(_on_wave_ended_stats)
+	# Connect to wave started for stats auto-collapse
+	GameManager.wave_started.connect(_on_wave_started_stats)
 
 	GameManager.game_over.connect(_on_game_over)
 
@@ -291,6 +293,12 @@ func _on_ftext_spawn_requested(pos, value, color):
 func _on_stats_toggle_pressed():
 	is_stats_collapsed = !is_stats_collapsed
 	_animate_stats_panel()
+
+func _on_wave_started_stats():
+	# Auto collapse stats
+	if !is_stats_collapsed:
+		is_stats_collapsed = true
+		_animate_stats_panel()
 
 func _on_wave_ended_stats():
 	# Auto pop up stats

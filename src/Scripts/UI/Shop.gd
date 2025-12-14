@@ -6,19 +6,18 @@ var shop_locked: Array = [false, false, false, false]
 const SHOP_SIZE = 4
 
 # Node References
-@onready var shop_container = $Panel/MainContainer/Zone2/ShopContainer
-@onready var refresh_btn = $Panel/MainContainer/Zone1/FunctionButtons/RefreshButton
-@onready var expand_btn = $Panel/MainContainer/Zone1/FunctionButtons/ExpandButton
-@onready var start_wave_btn = $Panel/MainContainer/Zone1/FunctionButtons/StartWaveButton
-@onready var sell_zone_container = $Panel/MainContainer/Zone1/SellZoneContainer
-@onready var global_preview = $Panel/MainContainer/Zone3/GlobalPreview
-@onready var current_details = $Panel/MainContainer/Zone3/CurrentDetails
-@onready var gold_label = $Panel/MainContainer/Zone2/GoldLabel
-@onready var toggle_handle = $Panel/ToggleHandle
+# Updated references based on new 3-column layout
+@onready var shop_container = $Panel/MainContainer/LeftColumn/ShopContainer
+@onready var gold_label = $Panel/MainContainer/LeftColumn/GoldLabel
+
+# Bench is now in MiddleColumn, handled by its own script via instance
+
+@onready var sell_zone_container = $Panel/MainContainer/RightColumn/SellZoneContainer
+@onready var refresh_btn = $Panel/MainContainer/RightColumn/FunctionButtons/RefreshButton
+@onready var expand_btn = $Panel/MainContainer/RightColumn/FunctionButtons/ExpandButton
+@onready var start_wave_btn = $Panel/MainContainer/RightColumn/FunctionButtons/StartWaveButton
 
 var sell_zone = null
-var is_collapsed: bool = false
-var panel_initial_y: float = 0.0
 
 signal unit_bought(unit_key)
 
@@ -31,47 +30,13 @@ func _ready():
 
 	refresh_shop(true)
 	update_ui()
-	update_wave_info()
 
 	expand_btn.pressed.connect(_on_expand_button_pressed)
 
 	_create_sell_zone()
-	call_deferred("_setup_collapse_handle")
 
 	# Apply styles
 	_apply_styles()
-
-func _setup_collapse_handle():
-	panel_initial_y = $Panel.position.y
-
-	# ToggleHandle is now in Tscn, just connect signal
-	if toggle_handle:
-		if not toggle_handle.pressed.is_connected(_on_toggle_handle_pressed):
-			toggle_handle.pressed.connect(_on_toggle_handle_pressed)
-
-func _on_toggle_handle_pressed():
-	if is_collapsed:
-		expand_shop()
-	else:
-		collapse_shop()
-
-func collapse_shop():
-	if is_collapsed: return
-	is_collapsed = true
-	if toggle_handle: toggle_handle.text = "▲"
-
-	var tween = create_tween()
-	# Move panel down so only handle is visible at bottom
-	var target_y = panel_initial_y + $Panel.size.y
-	tween.tween_property($Panel, "position:y", target_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-
-func expand_shop():
-	if !is_collapsed: return
-	is_collapsed = false
-	if toggle_handle: toggle_handle.text = "▼"
-
-	var tween = create_tween()
-	tween.tween_property($Panel, "position:y", panel_initial_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func _apply_styles():
 	# Style Panel
@@ -110,7 +75,7 @@ func apply_button_style(button: Button, color: Color, is_main_action: bool = fal
 	button.add_theme_font_size_override("font_size", 24) # Emoji size
 
 func _create_sell_zone():
-	# Create a visual area for selling inside Zone 1 -> SellZoneContainer
+	# Create a visual area for selling
 	sell_zone = PanelContainer.new()
 	sell_zone.set_script(load("res://src/Scripts/UI/SellZone.gd"))
 	var lbl = Label.new()
@@ -143,53 +108,6 @@ func _create_sell_zone():
 func update_ui():
 	if gold_label:
 		gold_label.text = "💰 %d" % GameManager.gold
-	update_wave_info()
-
-func update_wave_info():
-	if !global_preview: return
-
-	# Clear previous
-	for child in global_preview.get_children():
-		child.queue_free()
-
-	# Global Preview (Timeline) - Next 5 waves
-	for i in range(5):
-		var wave_idx = GameManager.wave + i
-		var type_key = get_wave_type(wave_idx)
-
-		var icon = Label.new()
-		icon.text = get_wave_icon(type_key)
-		icon.tooltip_text = "Wave %d: %s" % [wave_idx, type_key.capitalize()]
-
-		if i == 0:
-			icon.modulate = Color(1, 1, 0) # Highlight current
-			icon.add_theme_font_size_override("font_size", 20)
-		else:
-			icon.modulate = Color(1, 1, 1, 0.7)
-
-		global_preview.add_child(icon)
-
-	# Current Details
-	if current_details:
-		var type = get_wave_type(GameManager.wave)
-		var total_enemies = 20 + floor(GameManager.wave * 6)
-		var enemy_name = type.capitalize()
-		var icon = get_wave_icon(type)
-		current_details.text = "%s %s\nx%d" % [icon, enemy_name, total_enemies]
-
-func get_wave_type(n: int) -> String:
-	var types = ['slime', 'wolf', 'poison', 'treant', 'yeti', 'golem']
-	if n % 10 == 0: return 'boss'
-	if n % 3 == 0: return 'event'
-	var idx = int(min(types.size() - 1, floor((n - 1) / 2.0)))
-	return types[idx % types.size()]
-
-func get_wave_icon(type_key: String) -> String:
-	if type_key == "boss": return "👹"
-	if type_key == "event": return "🎁"
-	if Constants.ENEMY_VARIANTS.has(type_key):
-		return Constants.ENEMY_VARIANTS[type_key].get("icon", "?")
-	return "?"
 
 func refresh_shop(force: bool = false):
 	if !force and GameManager.gold < 10: return
@@ -253,14 +171,12 @@ func on_wave_started():
 	expand_btn.disabled = true
 	start_wave_btn.disabled = true
 	start_wave_btn.text = "⚔️"
-	collapse_shop()
 
 func on_wave_ended():
 	refresh_btn.disabled = false
 	expand_btn.disabled = false
 	start_wave_btn.disabled = false
 	refresh_shop(true)
-	expand_shop()
 
 func on_wave_reset():
 	refresh_btn.disabled = false
