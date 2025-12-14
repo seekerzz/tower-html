@@ -27,7 +27,7 @@ func _ready():
 	# camera.zoom = default_zoom
 	# camera.position = default_position
 	# Initial camera position will be set by zoom_to_fit_board later or we call it now to verify
-	call_deferred("zoom_to_fit_board")
+	call_deferred("zoom_to_shop_open")
 
 	# Connect Shop signals
 	# shop.unit_bought.connect(_on_unit_bought) # Now handled via add_to_bench in Shop
