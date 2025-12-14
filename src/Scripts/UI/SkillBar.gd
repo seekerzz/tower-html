@@ -1,13 +1,14 @@
 extends Control
 
-@onready var container = $PanelContainer/HBoxContainer
+@onready var container = $PanelContainer/GridContainer
 
 var skill_units = []
 
 func _ready():
 	# Ensure the container is set up correctly
 	if container:
-		container.add_theme_constant_override("separation", 10)
+		container.add_theme_constant_override("h_separation", 10)
+		container.add_theme_constant_override("v_separation", 10)
 		var parent = container.get_parent()
 		if parent is PanelContainer:
 			var style = StyleBoxEmpty.new()
@@ -40,8 +41,26 @@ func refresh_skills():
 			units_with_skills.append(tile.unit)
 
 	# Create Cards
-	var hotkeys = ["Q", "W", "E", "R"]
-	for i in range(min(units_with_skills.size(), 4)):
+	var hotkeys = ["Q", "W", "E", "R", "D", "F"] # Extended hotkeys
+	# User wants "more skills -> new row above".
+	# GridContainer adds rows below.
+	# If we want visual "new row above", we might need to change child order or layout logic.
+	# But VBoxContainer holding SkillBar (in LeftSidebar) aligns to Bottom.
+	# If SkillBar grows (Grid adds rows), the whole SkillBar grows upwards because of VBox alignment.
+	# So standard Grid append is fine:
+	# Row 1: Skill 1, Skill 2
+	# Row 2: Skill 3, Skill 4 (appears below Row 1)
+	# Since Sidebar is Bottom-aligned:
+	# [Artifacts/Resource]
+	# ...
+	# [Row 1]
+	# [Row 2]
+	# [EnemyBar]
+	# This seems standard. User said "expand new row *above*".
+	# If they mean literally new skills appear visually above old skills, I'd need to invert sort or pre-pend?
+	# "Expand upwards" usually refers to the container bounds. I'll stick to standard order.
+
+	for i in range(units_with_skills.size()):
 		var unit = units_with_skills[i]
 		skill_units.append(unit)
 
@@ -75,7 +94,11 @@ func refresh_skills():
 
 		# Hotkey (Top Right)
 		var hotkey_lbl = Label.new()
-		hotkey_lbl.text = hotkeys[i]
+		var key_text = ""
+		if i < hotkeys.size():
+			key_text = hotkeys[i]
+
+		hotkey_lbl.text = key_text
 		hotkey_lbl.add_theme_font_size_override("font_size", 14)
 		hotkey_lbl.add_theme_color_override("font_color", Color.WHITE)
 		hotkey_lbl.set_anchors_preset(Control.PRESET_TOP_RIGHT)
@@ -180,6 +203,8 @@ func _unhandled_input(event):
 			KEY_W: index = 1
 			KEY_E: index = 2
 			KEY_R: index = 3
+			KEY_D: index = 4
+			KEY_F: index = 5
 
 		if index != -1 and index < skill_units.size():
 			_on_skill_btn_pressed(skill_units[index])
