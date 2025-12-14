@@ -24,11 +24,14 @@ func init(grid_pos: Vector2i, type_key: String):
 		# we should probably add a ColorRect programmatically or repurpose.
 		# I will add a ColorRect programmatically.
 
-		visual_rect = ColorRect.new()
-		visual_rect.size = Vector2(tile_size, tile_size)
-		visual_rect.position = offset
-		visual_rect.color = props.get("color", Color.WHITE)
-		add_child(visual_rect)
+		var label = Label.new()
+		label.text = props.get("icon", "?")
+		label.add_theme_font_size_override("font_size", 32)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.custom_minimum_size = Vector2(tile_size, tile_size)
+		label.position = offset
+		add_child(label)
 
 		# Hide Line2D if it exists
 		if has_node("Line2D"):

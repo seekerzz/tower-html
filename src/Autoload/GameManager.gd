@@ -120,6 +120,8 @@ func damage_core(amount: float):
 	resource_changed.emit()
 	if core_health <= 0:
 		core_health = 0
+		is_wave_active = false
+		get_tree().call_group("enemies", "queue_free")
 		game_over.emit()
 
 func retry_wave():
