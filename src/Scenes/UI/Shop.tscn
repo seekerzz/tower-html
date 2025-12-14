@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://shop123"]
+[gd_scene load_steps=3 format=3 uid="uid://shop123"]
 
 [ext_resource type="Script" path="res://src/Scripts/UI/Shop.gd" id="1_shop"]
 [ext_resource type="PackedScene" uid="uid://benchui00001" path="res://src/Scenes/UI/Bench.tscn" id="2_bench"]
@@ -21,6 +21,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="Background" type="TextureRect" parent="Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 6
 
 [node name="MainContainer" type="HBoxContainer" parent="Panel"]
 layout_mode = 1

@@ -24,7 +24,13 @@ var panel_initial_y: float = 0.0
 
 signal unit_bought(unit_key)
 
+const AssetGenerator = preload("res://src/Scripts/Utils/AssetGenerator.gd")
+
 func _ready():
+	# Set Background Texture
+	if has_node("Panel/Background"):
+		$Panel/Background.texture = AssetGenerator.get_bg_shop()
+
 	GameManager.resource_changed.connect(update_ui)
 	GameManager.wave_started.connect(on_wave_started)
 	GameManager.wave_ended.connect(on_wave_ended)

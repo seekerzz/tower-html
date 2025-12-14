@@ -16,7 +16,17 @@ var zoom_tween: Tween
 var default_zoom: Vector2 = Vector2(0.8, 0.8)
 var default_position: Vector2 = Vector2(640, 400)
 
+const AssetGenerator = preload("res://src/Scripts/Utils/AssetGenerator.gd")
+
 func _ready():
+	# Ensure assets exist before anything else tries to load them
+	# Ideally this should be an Autoload, but MainGame is the entry point for now.
+	AssetGenerator.ensure_assets_exist()
+
+	# Set Background Texture
+	if has_node("Background"):
+		$Background.texture = AssetGenerator.get_bg_battle()
+
 	# Initialize bench array with nulls based on constant
 	bench.resize(Constants.BENCH_SIZE)
 	bench.fill(null)

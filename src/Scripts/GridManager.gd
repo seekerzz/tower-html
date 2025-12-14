@@ -622,6 +622,12 @@ func _apply_buff_to_neighbors(provider_unit, buff_type):
 
 func toggle_expansion_mode():
 	expansion_mode = !expansion_mode
+
+	# Toggle grid border visibility on all tiles
+	for key in tiles:
+		if tiles[key].has_method("set_grid_visible"):
+			tiles[key].set_grid_visible(expansion_mode)
+
 	if expansion_mode:
 		spawn_expansion_ghosts()
 	else:
