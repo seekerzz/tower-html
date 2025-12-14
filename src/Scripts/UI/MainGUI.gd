@@ -2,27 +2,27 @@ extends Control
 
 signal sacrifice_requested
 
-@onready var hp_bar = $Panel/VBoxContainer/HPBar
-@onready var food_bar = $Panel/VBoxContainer/FoodBar
-@onready var mana_bar = $Panel/VBoxContainer/ManaBar
-@onready var hp_label = $Panel/VBoxContainer/HPBar/Label
-@onready var food_label = $Panel/VBoxContainer/FoodBar/Label
-@onready var mana_label = $Panel/VBoxContainer/ManaBar/Label
+@onready var hp_bar = $TopLeftPanel/HPBar
+@onready var food_bar = $TopLeftPanel/FoodBar
+@onready var mana_bar = $TopLeftPanel/ManaBar
+@onready var hp_label = $TopLeftPanel/HPBar/Label
+@onready var food_label = $TopLeftPanel/FoodBar/Label
+@onready var mana_label = $TopLeftPanel/ManaBar/Label
 @onready var wave_label = $Panel/WaveLabel
-@onready var debug_button = $Panel/DebugButton
-@onready var skip_button = $Panel/SkipButton
+@onready var debug_button = $DebugButton
+@onready var skip_button = $SkipButton
 @onready var stats_container = $DamageStats/ScrollContainer/VBoxContainer
 @onready var damage_stats_panel = $DamageStats
 @onready var stats_scroll = $DamageStats/ScrollContainer
 @onready var stats_header = $DamageStats/Header
 @onready var stats_toggle_btn = $DamageStats/ToggleButton
+@onready var left_sidebar = $LeftSidebar
 
 @onready var game_over_panel = $GameOverPanel
 @onready var retry_button = $GameOverPanel/RetryWaveButton
 @onready var new_game_button = $GameOverPanel/NewGameButton
 
-# New UI Elements for Rewards
-var artifacts_hud: HBoxContainer
+# Artifacts logic moved to ArtifactsPanel.gd, which is instanced in Scene.
 
 const FLOATING_TEXT_SCENE = preload("res://src/Scenes/UI/FloatingText.tscn")
 const TOOLTIP_SCENE = preload("res://src/Scenes/UI/Tooltip.tscn")
@@ -33,6 +33,7 @@ var tooltip_instance = null
 var sort_interval: float = 1.0
 var is_stats_collapsed: bool = true
 var stats_tween: Tween
+var sidebar_tween: Tween
 
 func _ready():
 	GameManager.resource_changed.connect(update_ui)
@@ -42,11 +43,17 @@ func _ready():
 	GameManager.wave_started.connect(_update_hud_visibility)
 	GameManager.wave_ended.connect(_update_hud_visibility)
 
+	# Connect for sidebar movement
+	GameManager.wave_started.connect(_update_sidebar_position)
+	GameManager.wave_ended.connect(_update_sidebar_position)
+
+	# Connect to wave ended for stats auto-popup as requested
+	GameManager.wave_ended.connect(_on_wave_ended_stats)
+
 	GameManager.game_over.connect(_on_game_over)
 
 	GameManager.damage_dealt.connect(_on_damage_dealt)
 	GameManager.ftext_spawn_requested.connect(_on_ftext_spawn_requested)
-	GameManager.wave_ended.connect(_on_wave_ended_stats)
 
 	stats_toggle_btn.pressed.connect(_on_stats_toggle_pressed)
 
@@ -66,10 +73,10 @@ func _ready():
 
 	update_ui()
 	_setup_stats_panel()
-	_setup_artifacts_hud()
 
 	# Initial visibility state
 	_update_hud_visibility()
+	_update_sidebar_position()
 
 func _update_hud_visibility():
 	var active = GameManager.is_wave_active
@@ -77,195 +84,60 @@ func _update_hud_visibility():
 	food_bar.visible = active
 	mana_bar.visible = active
 
-func _setup_artifacts_hud():
-	artifacts_hud = HBoxContainer.new()
-	artifacts_hud.name = "ArtifactsHUD"
-	# Position at top right
-	add_child(artifacts_hud)
-	artifacts_hud.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	artifacts_hud.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	artifacts_hud.alignment = BoxContainer.ALIGNMENT_END
+func _update_sidebar_position():
+	if sidebar_tween and sidebar_tween.is_valid():
+		sidebar_tween.kill()
+	sidebar_tween = create_tween()
 
-	# With Top Right preset, the node is anchored to the top right.
-	# We want to offset it slightly from the edge.
-	# Since grow_horizontal is BEGIN, it expands to the left.
-	# We set the position's x to be (ViewportWidth - Offset) or use offsets.
-	# A safe way is to set the offsets directly after preset.
-	artifacts_hud.offset_left = -320 # Starts 320px from right edge
-	artifacts_hud.offset_right = -20 # Ends 20px from right edge
-	artifacts_hud.offset_top = 20
-	artifacts_hud.offset_bottom = 60 # 40px height
+	var target_offset_bottom = -10 # Default for combat
+	if not GameManager.is_wave_active:
+		# Shop is open, occupy bottom 200px
+		target_offset_bottom = -210
 
-	# Connect to RewardManager if available
-	var rm = GameManager.get("reward_manager")
-	if not rm and GameManager.has_meta("reward_manager"):
-		rm = GameManager.get_meta("reward_manager")
-
-	if rm:
-		rm.reward_added.connect(_on_reward_added)
-		if rm.has_signal("sacrifice_state_changed"):
-			rm.sacrifice_state_changed.connect(_on_sacrifice_state_changed)
-
-func _on_reward_added(_id):
-	_update_artifacts_hud()
-
-func _on_sacrifice_state_changed(_is_active):
-	# Update HUD to reflect cooldown/active state if needed
-	_update_artifacts_hud()
-
-func _update_artifacts_hud():
-	if not artifacts_hud: return
-
-	for child in artifacts_hud.get_children():
-		child.queue_free()
-
-	var rm = GameManager.get("reward_manager")
-	if not rm and GameManager.has_meta("reward_manager"):
-		rm = GameManager.get_meta("reward_manager")
-
-	if not rm: return
-
-	# 1. Process Active Buffs (Stats)
-	for buff_id in rm.active_buffs:
-		_create_hud_icon(buff_id, rm.active_buffs[buff_id], rm)
-
-	# 2. Process Artifacts
-	for artifact_id in rm.acquired_artifacts:
-		_create_hud_icon(artifact_id, 1, rm)
-
-func _create_hud_icon(id, count, rm):
-	if not rm.REWARDS.has(id): return
-
-	var data = rm.REWARDS[id]
-	var icon_container = PanelContainer.new()
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0, 0, 0, 0.5)
-	style.set_corner_radius_all(4)
-	icon_container.add_theme_stylebox_override("panel", style)
-
-	var label = Label.new()
-	label.text = data.get("icon", "?")
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.custom_minimum_size = Vector2(40, 40)
-	label.add_theme_font_size_override("font_size", 24)
-	label.tooltip_text = data.get("name", id) + "\n" + data.get("desc", "")
-
-	icon_container.add_child(label)
-
-	# Stack count
-	if count > 1:
-		var count_label = Label.new()
-		count_label.text = "x%d" % count
-		count_label.add_theme_font_size_override("font_size", 12)
-		count_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-		# To make anchors work, parent needs to be control but Label inside container is managed.
-		# Easier: just add it and move it or use a MarginContainer overlay.
-		# Let's just add it as child of container, and set position manually or rely on order.
-		# Or use a MarginContainer for the icon and overlay the count.
-		# Simple approach: standard VBox/Overlay.
-		# Since PanelContainer only holds one child usually, let's change structure slightly.
-
-		# Better structure: MarginContainer
-		var margin = MarginContainer.new()
-		# Reparent label: remove from old parent first
-		label.get_parent().remove_child(label)
-		margin.add_child(label)
-
-		var count_lbl_container = MarginContainer.new()
-		count_lbl_container.add_theme_constant_override("margin_left", 20)
-		count_lbl_container.add_theme_constant_override("margin_top", 20)
-		count_lbl_container.add_child(count_label)
-
-		margin.add_child(count_lbl_container)
-
-		# Add margin to container
-		icon_container.add_child(margin)
-
-	# Interaction for Sacrifice Protocol
-	if id == "sacrifice_protocol":
-		icon_container.mouse_filter = Control.MOUSE_FILTER_STOP
-		icon_container.gui_input.connect(_on_sacrifice_icon_input)
-
-		# Visual feedback for cooldown
-		if rm.sacrifice_cooldown > 0:
-			label.modulate = Color(0.5, 0.5, 0.5, 0.5) # Greyed out
-		elif rm.is_sacrifice_active:
-			label.modulate = Color(1, 0, 0) # Red glow/active?
-			# Or maybe scale pulse?
-
-	artifacts_hud.add_child(icon_container)
-
-func _on_sacrifice_icon_input(event):
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var rm = GameManager.get("reward_manager")
-		if not rm and GameManager.has_meta("reward_manager"):
-			rm = GameManager.get_meta("reward_manager")
-
-		if rm:
-			rm.activate_sacrifice()
+	# Animate LeftSidebar
+	# We are animating offset_bottom.
+	# Note: LeftSidebar is anchored Bottom Left with Vertical Grow Up.
+	# So changing offset_bottom moves the whole container up/down relative to bottom anchor.
+	sidebar_tween.tween_property(left_sidebar, "offset_bottom", float(target_offset_bottom), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func _setup_ui_styles():
-	var bg_color = Color(0.1, 0.1, 0.1, 0.8)
 	var radius = 6
-
-	var bg_style = StyleBoxFlat.new()
-	bg_style.bg_color = bg_color
-	bg_style.set_corner_radius_all(radius)
-	bg_style.border_width_bottom = 2
-	bg_style.border_width_left = 2
-	bg_style.border_width_right = 2
-	bg_style.border_width_top = 2
-	bg_style.border_color = Color.BLACK
 
 	# HP Fill
 	var hp_fill = StyleBoxFlat.new()
 	hp_fill.bg_color = Color(0.8, 0.1, 0.1)
 	hp_fill.set_corner_radius_all(radius)
-	hp_fill.border_width_bottom = 2
-	hp_fill.border_width_left = 2
-	hp_fill.border_width_right = 2
-	hp_fill.border_width_top = 2
-	hp_fill.border_color = Color.TRANSPARENT
 
 	# Food Fill
 	var food_fill = StyleBoxFlat.new()
 	food_fill.bg_color = Color(1.0, 0.84, 0.0)
 	food_fill.set_corner_radius_all(radius)
-	food_fill.border_width_bottom = 2
-	food_fill.border_width_left = 2
-	food_fill.border_width_right = 2
-	food_fill.border_width_top = 2
-	food_fill.border_color = Color.TRANSPARENT
 
 	# Mana Fill
 	var mana_fill = StyleBoxFlat.new()
 	mana_fill.bg_color = Color(0.2, 0.4, 1.0)
 	mana_fill.set_corner_radius_all(radius)
-	mana_fill.border_width_bottom = 2
-	mana_fill.border_width_left = 2
-	mana_fill.border_width_right = 2
-	mana_fill.border_width_top = 2
-	mana_fill.border_color = Color.TRANSPARENT
+
+	var bg_style = StyleBoxFlat.new()
+	bg_style.bg_color = Color(0.1, 0.1, 0.1, 0.5)
+	bg_style.set_corner_radius_all(radius)
 
 	if hp_bar:
 		hp_bar.add_theme_stylebox_override("background", bg_style)
 		hp_bar.add_theme_stylebox_override("fill", hp_fill)
-		hp_bar.custom_minimum_size.y = 20 # Thicker
 	if food_bar:
 		food_bar.add_theme_stylebox_override("background", bg_style)
 		food_bar.add_theme_stylebox_override("fill", food_fill)
-		food_bar.custom_minimum_size.y = 20 # Thicker
 	if mana_bar:
 		mana_bar.add_theme_stylebox_override("background", bg_style)
 		mana_bar.add_theme_stylebox_override("fill", mana_fill)
-		mana_bar.custom_minimum_size.y = 20 # Thicker
 
 	var labels = [hp_label, food_label, mana_label]
 	for label in labels:
 		if label:
 			label.add_theme_constant_override("outline_size", 4)
 			label.add_theme_color_override("font_outline_color", Color.BLACK)
+			label.add_theme_font_size_override("font_size", 18) # Larger font
 
 func _setup_stats_panel():
 	# Anchor to Center Right
@@ -293,13 +165,10 @@ func _animate_stats_panel():
 	if is_stats_collapsed:
 		stats_scroll.visible = false
 		damage_stats_panel.custom_minimum_size.y = 30
-		# Move completely off-screen (panel width), but ToggleButton (offset -40) stays visible
-		# If panel is at viewport_width, the button at -40 is at viewport_width-40.
 		target_pos_x = viewport_width
 	else:
 		stats_scroll.visible = true
 		damage_stats_panel.custom_minimum_size.y = 300
-		# Fully visible
 		target_pos_x = viewport_width - max(panel_width, 200)
 
 	stats_tween.tween_property(damage_stats_panel, "position:x", target_pos_x, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -324,7 +193,7 @@ func _process(delta):
 		last_sort_time -= delta
 
 func _input(event):
-	if event.is_action_pressed("ui_focus_next"): # Default F1 mapping often varies, but let's check scancode or specific action if defined
+	if event.is_action_pressed("ui_focus_next"):
 		pass
 	if event is InputEventKey and event.pressed and event.keycode == KEY_F1:
 		GameManager.activate_cheat()
@@ -338,9 +207,10 @@ func update_ui():
 	food_bar.value = (GameManager.food / GameManager.max_food) * 100
 	mana_bar.value = (GameManager.mana / GameManager.max_mana) * 100
 
-	hp_label.text = "%d/%d" % [int(GameManager.core_health), int(GameManager.max_core_health)]
-	food_label.text = "%d/%d (+%d/s)" % [int(GameManager.food), int(GameManager.max_food), int(GameManager.base_food_rate)]
-	mana_label.text = "%d/%d (+%d/s)" % [int(GameManager.mana), int(GameManager.max_mana), int(GameManager.base_mana_rate)]
+	# Updated labels with Emojis as requested
+	hp_label.text = "❤️ %d/%d" % [int(GameManager.core_health), int(GameManager.max_core_health)]
+	food_label.text = "🌽 %d/%d" % [int(GameManager.food), int(GameManager.max_food)]
+	mana_label.text = "💧 %d/%d" % [int(GameManager.mana), int(GameManager.max_mana)]
 
 	wave_label.text = "Wave %d" % GameManager.wave
 
@@ -423,12 +293,10 @@ func _on_stats_toggle_pressed():
 	_animate_stats_panel()
 
 func _on_wave_ended_stats():
-	# Reset stats on wave end? The ref implementation seems to reset on startWave.
-	# Let's reset on wave start actually, but here we can clear if we want.
-	# For now, let's keep them accumulative or reset on start_wave if we had that signal connected.
-	# The ref code: game.damageStats = {}; in startWave.
-	# So I should clear it in start_wave via update_ui logic or separate handler.
-	pass
+	# Auto pop up stats
+	if is_stats_collapsed:
+		is_stats_collapsed = false
+		_animate_stats_panel()
 
 func _on_debug_button_pressed():
 	GameManager.activate_cheat()

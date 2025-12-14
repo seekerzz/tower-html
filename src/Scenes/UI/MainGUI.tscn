@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3 uid="uid://gui123"]
+[gd_scene load_steps=5 format=3 uid="uid://gui123"]
 
-[ext_resource type="Script" uid="uid://l0y7jifgu4bm" path="res://src/Scripts/UI/MainGUI.gd" id="1_gui"]
-[ext_resource type="PackedScene" uid="uid://c3u372lrjivmc" path="res://src/Scenes/UI/SkillBar.tscn" id="2_skillbar"]
+[ext_resource type="Script" path="res://src/Scripts/UI/MainGUI.gd" id="1_gui"]
+[ext_resource type="PackedScene" uid="uid://skillbarscene" path="res://src/Scenes/UI/SkillBar.tscn" id="2_skillbar"]
 [ext_resource type="PackedScene" uid="uid://enemyprogressbar" path="res://src/Scenes/HUD/EnemyProgressBar.tscn" id="3_enemybar"]
+[ext_resource type="PackedScene" uid="uid://artifactspanel" path="res://src/Scenes/UI/ArtifactsPanel.tscn" id="4_artifacts"]
 
 [node name="MainGUI" type="Control"]
 layout_mode = 3
@@ -14,46 +15,20 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_gui")
 
-[node name="Panel" type="Panel" parent="."]
+[node name="TopLeftPanel" type="VBoxContainer" parent="."]
 layout_mode = 0
-offset_left = 1066.0
+offset_left = 10.0
 offset_top = 10.0
-offset_right = 1266.0
-offset_bottom = 155.0
+offset_right = 270.0
+offset_bottom = 150.0
+theme_override_constants/separation = 5
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Panel"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-alignment = 1
-
-[node name="HPBar" type="ProgressBar" parent="Panel/VBoxContainer"]
-modulate = Color(1, 0, 0, 1)
+[node name="HPBar" type="ProgressBar" parent="TopLeftPanel"]
+custom_minimum_size = Vector2(0, 25)
 layout_mode = 2
-value = 100.0
 show_percentage = false
 
-[node name="Label" type="Label" parent="Panel/VBoxContainer/HPBar"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_font_sizes/font_size = 12
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="FoodBar" type="ProgressBar" parent="Panel/VBoxContainer"]
-modulate = Color(1, 1, 0, 1)
-layout_mode = 2
-value = 50.0
-show_percentage = false
-
-[node name="Label" type="Label" parent="Panel/VBoxContainer/FoodBar"]
+[node name="Label" type="Label" parent="TopLeftPanel/HPBar"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -61,51 +36,106 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 12
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="ManaBar" type="ProgressBar" parent="Panel/VBoxContainer"]
-modulate = Color(0, 0, 1, 1)
+[node name="FoodBar" type="ProgressBar" parent="TopLeftPanel"]
+custom_minimum_size = Vector2(0, 25)
 layout_mode = 2
-value = 50.0
 show_percentage = false
 
-[node name="Label" type="Label" parent="Panel/VBoxContainer/ManaBar"]
+[node name="Label" type="Label" parent="TopLeftPanel/FoodBar"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_font_sizes/font_size = 12
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="WaveLabel" type="Label" parent="Panel"]
-layout_mode = 0
-offset_left = 104.0
-offset_top = 156.0
-offset_right = 194.0
-offset_bottom = 179.0
-text = "Wave 1"
+[node name="ManaBar" type="ProgressBar" parent="TopLeftPanel"]
+custom_minimum_size = Vector2(0, 25)
+layout_mode = 2
+show_percentage = false
 
-[node name="DebugButton" type="Button" parent="Panel"]
+[node name="Label" type="Label" parent="TopLeftPanel/ManaBar"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ArtifactsPanel" parent="TopLeftPanel" instance=ExtResource("4_artifacts")]
+layout_mode = 2
+
+[node name="LeftSidebar" type="VBoxContainer" parent="."]
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = -260.0
+offset_right = 270.0
+offset_bottom = -10.0
+grow_vertical = 0
+mouse_filter = 2
+theme_override_constants/separation = 30
+alignment = 2
+
+[node name="SkillBar" parent="LeftSidebar" instance=ExtResource("2_skillbar")]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="EnemyProgressBar" parent="LeftSidebar" instance=ExtResource("3_enemybar")]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Panel" type="Panel" parent="."]
 layout_mode = 0
-offset_left = 5.0
-offset_top = 150.0
-offset_right = 85.0
-offset_bottom = 181.0
+offset_left = 1066.0
+offset_top = 10.0
+offset_right = 1266.0
+offset_bottom = 50.0
+
+[node name="WaveLabel" type="Label" parent="Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Wave 1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DebugButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 1071.0
+offset_top = 160.0
+offset_right = 1151.0
+offset_bottom = 191.0
 focus_mode = 0
 text = "🛠️ 作弊"
 
-[node name="SkipButton" type="Button" parent="Panel"]
+[node name="SkipButton" type="Button" parent="."]
 layout_mode = 0
-offset_left = 90.0
-offset_top = 150.0
-offset_right = 170.0
-offset_bottom = 181.0
+offset_left = 1156.0
+offset_top = 160.0
+offset_right = 1236.0
+offset_bottom = 191.0
 focus_mode = 0
 text = "⏩ 跳过"
 
@@ -154,15 +184,6 @@ offset_left = -40.0
 offset_bottom = 40.0
 focus_mode = 0
 text = "📊"
-
-[node name="SkillBar" parent="." instance=ExtResource("2_skillbar")]
-layout_mode = 1
-offset_left = -482.0
-offset_top = -274.0
-offset_right = -482.0
-offset_bottom = -194.0
-
-[node name="EnemyProgressBar" parent="." instance=ExtResource("3_enemybar")]
 
 [node name="GameOverPanel" type="Panel" parent="."]
 visible = false

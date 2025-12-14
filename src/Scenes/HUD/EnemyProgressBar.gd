@@ -1,60 +1,34 @@
-extends Control
+extends MarginContainer
 
-@onready var progress_bar = $ProgressBar
-@onready var label = $ProgressBar/Label
+@onready var icon_label = $HBoxContainer/IconLabel
+@onready var progress_bar = $HBoxContainer/ProgressBar
+@onready var label = $HBoxContainer/ProgressBar/Label
 
-func _ready():
-	hide()
-	GameManager.wave_started.connect(_on_wave_started)
-	GameManager.wave_ended.connect(_on_wave_ended)
+func _process(delta):
+	if GameManager.is_wave_active:
+		visible = true
+		if GameManager.combat_manager:
+			var total = GameManager.combat_manager.total_enemies_for_wave
+			# There is no 'enemies_killed' in CombatManager. We need to calculate it or check active enemies.
+			# But CombatManager has 'enemies_to_spawn' which decreases.
+			# And we can count active enemies in group "enemies".
+			# Killed = Total - (ToSpawn + Active)
 
-	_setup_style()
+			var to_spawn = GameManager.combat_manager.enemies_to_spawn
+			var active = get_tree().get_nodes_in_group("enemies").size()
 
-func _process(_delta):
-	if visible:
-		_update_progress()
+			# If wave just started, to_spawn is total, active is 0. Killed = 0.
+			# If wave ending, to_spawn is 0, active is 0. Killed = Total.
 
-func _update_progress():
-	if GameManager.is_wave_active and GameManager.combat_manager:
-		var total = GameManager.combat_manager.total_enemies_for_wave
-		var alive = get_tree().get_nodes_in_group("enemies").size()
-		var to_spawn = GameManager.combat_manager.enemies_to_spawn
-		var current_alive = alive + to_spawn
+			var alive_or_pending = to_spawn + active
+			var killed = max(0, total - alive_or_pending)
 
-		if total > 0:
-			progress_bar.max_value = total
-			progress_bar.value = current_alive
-			label.text = "%d / %d" % [current_alive, total]
-		else:
-			label.text = "0 / 0"
-
-func _on_wave_started():
-	show()
-
-func _on_wave_ended():
-	hide()
-
-func _setup_style():
-	var bg_style = StyleBoxFlat.new()
-	bg_style.bg_color = Color(0.1, 0.1, 0.1, 0.8)
-	bg_style.set_corner_radius_all(6)
-	bg_style.border_width_bottom = 2
-	bg_style.border_width_left = 2
-	bg_style.border_width_right = 2
-	bg_style.border_width_top = 2
-	bg_style.border_color = Color.BLACK
-
-	var fill_style = StyleBoxFlat.new()
-	fill_style.bg_color = Color(0.6, 0.2, 0.8) # Purple
-	fill_style.set_corner_radius_all(6)
-	fill_style.border_width_bottom = 2
-	fill_style.border_width_left = 2
-	fill_style.border_width_right = 2
-	fill_style.border_width_top = 2
-	fill_style.border_color = Color.TRANSPARENT # Or black if we want inner border
-
-	progress_bar.add_theme_stylebox_override("background", bg_style)
-	progress_bar.add_theme_stylebox_override("fill", fill_style)
-
-	label.add_theme_constant_override("outline_size", 4)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
+			if total > 0:
+				var progress = float(killed) / float(total) * 100
+				progress_bar.value = progress
+				label.text = "%d / %d" % [killed, total]
+			else:
+				progress_bar.value = 100
+				label.text = "Wave Clear"
+	else:
+		visible = false
