@@ -11,7 +11,8 @@ func setup(tile):
 
 func _can_drop_data(at_position, data):
 	if !data or !data.has("source"): return false
-	if GameManager.is_wave_active: return false
+	var gm = get_node_or_null("/root/GameManager")
+	if gm and gm.is_wave_active: return false
 
 	if data.source == "grid" or data.source == "bench":
 		return true
@@ -19,10 +20,12 @@ func _can_drop_data(at_position, data):
 
 func _drop_data(at_position, data):
 	if !tile_ref: return
+	var gm = get_node_or_null("/root/GameManager")
+	if !gm or !gm.grid_manager: return
 
 	if data.source == "bench":
 		# Call GridManager to place from bench
-		GameManager.grid_manager.handle_bench_drop_at(tile_ref, data)
+		gm.grid_manager.handle_bench_drop_at(tile_ref, data)
 	elif data.source == "grid":
 		# Call GridManager to move unit
-		GameManager.grid_manager.handle_grid_move_at(tile_ref, data)
+		gm.grid_manager.handle_grid_move_at(tile_ref, data)
