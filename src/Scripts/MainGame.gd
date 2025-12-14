@@ -33,6 +33,8 @@ func _ready():
 	# Calculate min allowed zoom (maximum field of view)
 	calculate_min_allowed_zoom()
 
+	setup_background()
+
 	# Initial camera position will be set by zoom_to_fit_board later or we call it now to verify
 	call_deferred("zoom_to_shop_open")
 
@@ -40,39 +42,48 @@ func _ready():
 	grid_manager.place_unit("squirrel", 0, 1) # Starting unit
 	update_bench_ui() # Ensure UI is initialized
 
-func _process(delta):
-	update_background()
+func setup_background():
+	if not background: return
+	background.position = grid_manager.position
 
-func update_background():
-	if background and camera:
-		background.global_position = camera.global_position
+	# Calculate required scale
+	# Viewport size
+	var vp_size = get_viewport_rect().size
+	var min_zoom = min_allowed_zoom.x # Assuming uniform
 
-		# Calculate scale to cover viewport
-		var viewport_size = get_viewport_rect().size
-		var tex_size = background.texture.get_size()
+	# Max view height in world units
+	var view_h = vp_size.y / min_zoom
+	var view_w = vp_size.x / min_zoom
 
-		# Current camera zoom
-		var current_zoom = camera.zoom
+	# Calculate offset
+	var SHOP_HEIGHT = 180
+	var visible_height = vp_size.y - SHOP_HEIGHT
+	var screen_center_y = vp_size.y / 2.0
+	var visible_center_y = visible_height / 2.0
+	var shift_y = screen_center_y - visible_center_y
+	var world_shift_y = shift_y / min_zoom
 
-		# We need to cover the viewport.
-		# Viewport size in world coordinates is viewport_size / zoom
-		# So background needs to be at least (viewport_size / zoom) / tex_size
+	# The camera view extends from (center + shift) +/- (size / 2)
+	# Relative to grid center (0):
+	# Top: world_shift_y - view_h / 2
+	# Bottom: world_shift_y + view_h / 2
 
-		# But wait, if zoom is small (zoomed out), world view is large.
-		# If zoom is large (zoomed in), world view is small.
+	# We need the background (centered at 0) to cover this.
+	# Half-height of background must be > max(abs(Top), abs(Bottom))
 
-		# To handle "Background Adapter", we can just use min_allowed_zoom as reference?
-		# Or always cover current viewport.
+	var max_y_dist = max(abs(world_shift_y - view_h/2), abs(world_shift_y + view_h/2))
+	var req_h = max_y_dist * 2
 
-		if tex_size.x > 0 and tex_size.y > 0 and current_zoom.x > 0 and current_zoom.y > 0:
-			var required_scale_x = (viewport_size.x / current_zoom.x) / tex_size.x
-			var required_scale_y = (viewport_size.y / current_zoom.y) / tex_size.y
+	var req_w = view_w # No shift in X usually
 
-			var final_scale = max(required_scale_x, required_scale_y)
-			# Add a small buffer to avoid edges
-			final_scale *= 1.05
+	var tex_size = background.texture.get_size()
+	if tex_size.x > 0 and tex_size.y > 0:
+		var scale_x = req_w / tex_size.x
+		var scale_y = req_h / tex_size.y
 
-			background.scale = Vector2(final_scale, final_scale)
+		var s = max(scale_x, scale_y) * 1.05 # Margin
+
+		background.scale = Vector2(s, s)
 
 func calculate_min_allowed_zoom():
 	# Calculate zoom needed to see the battlefield when shop is open
