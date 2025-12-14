@@ -11,26 +11,42 @@ signal tile_clicked(tile)
 
 const DROP_HANDLER_SCRIPT = preload("res://src/Scripts/UI/TileDropHandler.gd")
 
+# Textures
+static var tex_unlocked: Texture2D
+static var tex_spawn: Texture2D
+static var textures_loaded: bool = false
+
+func _init():
+	if not textures_loaded:
+		_load_textures()
+		textures_loaded = true
+
+func _load_textures():
+	tex_unlocked = _load_texture_or_fallback("res://assets/images/UI/tile_unlocked.png", Color(0.4, 0.4, 0.4))
+	tex_spawn = _load_texture_or_fallback("res://assets/images/UI/tile_spawn.png", Color(0.4, 0.2, 0.2))
+
+func _load_texture_or_fallback(path: String, fallback_color: Color) -> Texture2D:
+	if ResourceLoader.exists(path):
+		return load(path)
+	else:
+		var grad = GradientTexture2D.new()
+		grad.width = 60
+		grad.height = 60
+		grad.fill = GradientTexture2D.FILL_SQUARE
+		grad.fill_from = Vector2(0.5, 0.5)
+		grad.fill_to = Vector2(1, 0.5)
+		var gradient = Gradient.new()
+		gradient.set_color(0, fallback_color.lightened(0.1))
+		gradient.set_color(1, fallback_color)
+		grad.gradient = gradient
+		return grad
+
 func setup(grid_x: int, grid_y: int, tile_type: String = "normal"):
 	x = grid_x
 	y = grid_y
 	type = tile_type
 
-	if has_node("ColorRect") and !has_node("VisualPanel"):
-		var cr = $ColorRect
-		var panel = Panel.new()
-		panel.name = "VisualPanel"
-		panel.size = cr.size
-		panel.position = cr.position
-		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-		var style = StyleMaker.get_flat_style(cr.color, 4)
-		panel.add_theme_stylebox_override("panel", style)
-
-		add_child(panel)
-		move_child(panel, cr.get_index())
-		cr.visible = false
-
+	# Ensure visuals are updated based on type/state
 	update_visuals()
 
 	# Add Drop Target
@@ -44,57 +60,46 @@ func set_state(new_state: String):
 	update_visuals()
 
 func update_visuals():
-	# Default base color based on state
-	var base_color = Constants.COLORS.grid
+	var sprite = $BaseSprite
+	if not sprite: return
+
+	sprite.visible = true
+	sprite.modulate = Color.WHITE
 
 	if state == "unlocked":
-		base_color = Constants.COLORS.unlocked
-	elif state == "locked_inner":
-		base_color = Constants.COLORS.locked_inner
-		# Debug color for visibility if needed, but using Constants is safer for style
-		# base_color = Color.DARK_GRAY
-	elif state == "locked_outer":
-		base_color = Constants.COLORS.locked_outer
-		# base_color = Color.BLACK
+		sprite.texture = tex_unlocked
 	elif state == "spawn":
-		base_color = Constants.COLORS.spawn_point
+		sprite.texture = tex_spawn
+	elif state == "locked_inner":
+		sprite.texture = tex_unlocked
+		sprite.modulate = Color(0.3, 0.3, 0.3)
+	elif state == "locked_outer":
+		sprite.texture = tex_unlocked
+		sprite.modulate = Color(0.1, 0.1, 0.1)
 
 	if type == "core":
-		base_color = Constants.COLORS.core
+		# Keep core distinguishable
+		sprite.modulate = Color(0.5, 0.5, 1.0)
 		if has_node("Label"):
 			$Label.text = "Core"
 	else:
 		if has_node("Label"):
 			$Label.text = ""
 
-	if has_node("VisualPanel"):
-		var panel = $VisualPanel
-		var style = panel.get_theme_stylebox("panel")
-		if style:
-			create_tween().tween_property(style, "bg_color", base_color, 0.2)
-	elif has_node("ColorRect"):
-		create_tween().tween_property($ColorRect, "color", base_color, 0.2)
+func set_grid_visible(is_visible: bool):
+	if has_node("GridBorder"):
+		$GridBorder.visible = is_visible
 
 func set_highlight(active: bool):
-	var target = null
-	var current_color = Color.BLACK
-	var property = ""
+	if has_node("Highlight"):
+		$Highlight.visible = active
 
-	if has_node("VisualPanel"):
-		target = $VisualPanel.get_theme_stylebox("panel")
-		current_color = target.bg_color
-		property = "bg_color"
-	elif has_node("ColorRect"):
-		target = $ColorRect
-		current_color = target.color
-		property = "color"
-
-	if !target: return
-
-	if active:
-		create_tween().tween_property(target, property, current_color.lightened(0.2), 0.1)
-	else:
-		update_visuals()
+	# Fallback if Highlight node is missing for some reason
+	elif has_node("BaseSprite"):
+		if active:
+			$BaseSprite.modulate = $BaseSprite.modulate.lightened(0.2)
+		else:
+			update_visuals()
 
 func _on_area_2d_input_event(viewport, event, shape_idx):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
