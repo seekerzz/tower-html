@@ -26,9 +26,11 @@ func _process(delta):
 			if total > 0:
 				var progress = float(killed) / float(total) * 100
 				progress_bar.value = progress
-				label.text = "%d / %d" % [killed, total]
+				# label.text = "%d / %d" % [killed, total]
+				label.visible = false # Hide text info as requested
 			else:
 				progress_bar.value = 100
 				label.text = "Wave Clear"
+				label.visible = true
 	else:
 		visible = false
