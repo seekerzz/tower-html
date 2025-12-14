@@ -222,12 +222,26 @@ func _on_damage_dealt(unit, amount):
 	if not damage_stats.has(id):
 		# Create UI entry
 		var row = HBoxContainer.new()
+
+		# Icon
+		var icon_rect = TextureRect.new()
+		icon_rect.custom_minimum_size = Vector2(24, 24)
+		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+
+		if "type_key" in unit:
+			var icon = AssetLoader.get_unit_icon(unit.type_key)
+			if icon:
+				icon_rect.texture = icon
+
+		row.add_child(icon_rect)
+
 		var name_lbl = Label.new()
 		var dmg_lbl = Label.new()
 
 		var unit_name = "Unit"
 		if "unit_data" in unit and unit.unit_data:
-			unit_name = unit.unit_data.get("icon", "") + " " + unit.unit_data.get("name", "Unit")
+			unit_name = unit.unit_data.get("name", "Unit")
 
 		name_lbl.text = unit_name
 		dmg_lbl.text = "0"
