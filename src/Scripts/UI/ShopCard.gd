@@ -53,7 +53,30 @@ func setup(key: String):
 	unit_key = key
 	var proto = Constants.UNIT_TYPES[unit_key]
 
-	icon_label.text = proto.icon
+	# Try to load icon image
+	var icon_texture = AssetLoader.get_unit_icon(unit_key)
+
+	if icon_texture:
+		var tex_rect = content_container.get_node_or_null("IconTexture")
+		if !tex_rect:
+			tex_rect = TextureRect.new()
+			tex_rect.name = "IconTexture"
+			tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tex_rect.custom_minimum_size = Vector2(40, 40)
+			# Insert before icon_label
+			content_container.add_child(tex_rect)
+			content_container.move_child(tex_rect, icon_label.get_index())
+
+		tex_rect.texture = icon_texture
+		tex_rect.show()
+		icon_label.hide()
+	else:
+		if content_container.has_node("IconTexture"):
+			content_container.get_node("IconTexture").hide()
+		icon_label.text = proto.icon
+		icon_label.show()
+
 	name_label.text = proto.name
 	price_label.text = "%d💰" % proto.cost
 

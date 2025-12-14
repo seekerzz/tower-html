@@ -48,17 +48,42 @@ func setup(key: String, wave: int):
 	update_visuals()
 
 func update_visuals():
-	$Label.text = enemy_data.icon
-	# Ensure label is centered and pivot is set for correct scaling
-	$Label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	$Label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	# Label size is not explicitly set here, relying on default or scene.
-	# Assuming Label is centered on (0,0) via position or anchors.
-	# If Label is centered:
-	if $Label.size.x == 0:
-		$Label.size = Vector2(40, 40) # Estimate
-		$Label.position = -$Label.size / 2
-	$Label.pivot_offset = $Label.size / 2
+	var icon_texture = AssetLoader.get_enemy_icon(type_key)
+
+	if icon_texture:
+		var tex_rect = get_node_or_null("TextureRect")
+		if !tex_rect:
+			tex_rect = TextureRect.new()
+			tex_rect.name = "TextureRect"
+			tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tex_rect.size = Vector2(40, 40)
+			tex_rect.position = -tex_rect.size / 2
+			tex_rect.pivot_offset = tex_rect.size / 2
+			add_child(tex_rect)
+
+		tex_rect.texture = icon_texture
+		tex_rect.show()
+		if has_node("Label"):
+			$Label.hide()
+	else:
+		if has_node("TextureRect"):
+			$TextureRect.hide()
+
+		if has_node("Label"):
+			$Label.show()
+			$Label.text = enemy_data.icon
+			# Ensure label is centered and pivot is set for correct scaling
+			$Label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			$Label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			# Label size is not explicitly set here, relying on default or scene.
+			# Assuming Label is centered on (0,0) via position or anchors.
+			# If Label is centered:
+			if $Label.size.x == 0:
+				$Label.size = Vector2(40, 40) # Estimate
+				$Label.position = -$Label.size / 2
+			$Label.pivot_offset = $Label.size / 2
 
 	queue_redraw()
 
@@ -137,6 +162,8 @@ func _process(delta):
 
 	if has_node("Label"):
 		$Label.scale = wobble_scale
+	if has_node("TextureRect"):
+		$TextureRect.scale = wobble_scale
 
 	queue_redraw()
 
