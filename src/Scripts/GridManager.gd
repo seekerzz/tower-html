@@ -622,6 +622,12 @@ func _apply_buff_to_neighbors(provider_unit, buff_type):
 
 func toggle_expansion_mode():
 	expansion_mode = !expansion_mode
+
+	# Toggle grid lines on all tiles
+	for key in tiles:
+		if tiles[key].has_method("set_grid_visible"):
+			tiles[key].set_grid_visible(expansion_mode)
+
 	if expansion_mode:
 		spawn_expansion_ghosts()
 	else:
@@ -632,6 +638,11 @@ func spawn_expansion_ghosts():
 
 	for key in tiles:
 		var tile = tiles[key]
+
+		# Limit expansion ghost tiles to center 5x5 area (plus minus 2 from center)
+		if abs(tile.x) > 2 or abs(tile.y) > 2:
+			continue
+
 		# Find locked tiles that can be unlocked
 		if tile.state == "locked_inner" or tile.state == "locked_outer":
 			# Check neighbors

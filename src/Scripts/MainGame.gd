@@ -6,6 +6,7 @@ extends Node2D
 @onready var bench_ui = find_child("Bench", true, false)
 @onready var main_gui = $CanvasLayer/MainGUI
 @onready var camera = $Camera2D
+@onready var background = $Background
 
 # Bench
 var bench: Array = [] # Array of Dictionary (Unit Data) or null
@@ -15,6 +16,7 @@ var zoom_target: Vector2 = Vector2(0.8, 0.8)
 var zoom_tween: Tween
 var default_zoom: Vector2 = Vector2(0.8, 0.8)
 var default_position: Vector2 = Vector2(640, 400)
+var min_allowed_zoom: Vector2 = Vector2(0.5, 0.5)
 
 func _ready():
 	# Initialize bench array with nulls based on constant
@@ -28,17 +30,68 @@ func _ready():
 	GameManager.wave_ended.connect(_on_wave_ended)
 
 	# Camera Setup
-	# camera.zoom = default_zoom
-	# camera.position = default_position
+	# Calculate min allowed zoom (maximum field of view)
+	calculate_min_allowed_zoom()
+
 	# Initial camera position will be set by zoom_to_fit_board later or we call it now to verify
 	call_deferred("zoom_to_shop_open")
-
-	# Connect Shop signals
-	# shop.unit_bought.connect(_on_unit_bought) # Now handled via add_to_bench in Shop
 
 	# Initial Setup
 	grid_manager.place_unit("squirrel", 0, 1) # Starting unit
 	update_bench_ui() # Ensure UI is initialized
+
+func _process(delta):
+	update_background()
+
+func update_background():
+	if background and camera:
+		background.global_position = camera.global_position
+
+		# Calculate scale to cover viewport
+		var viewport_size = get_viewport_rect().size
+		var tex_size = background.texture.get_size()
+
+		# Current camera zoom
+		var current_zoom = camera.zoom
+
+		# We need to cover the viewport.
+		# Viewport size in world coordinates is viewport_size / zoom
+		# So background needs to be at least (viewport_size / zoom) / tex_size
+
+		# But wait, if zoom is small (zoomed out), world view is large.
+		# If zoom is large (zoomed in), world view is small.
+
+		# To handle "Background Adapter", we can just use min_allowed_zoom as reference?
+		# Or always cover current viewport.
+
+		if tex_size.x > 0 and tex_size.y > 0 and current_zoom.x > 0 and current_zoom.y > 0:
+			var required_scale_x = (viewport_size.x / current_zoom.x) / tex_size.x
+			var required_scale_y = (viewport_size.y / current_zoom.y) / tex_size.y
+
+			var final_scale = max(required_scale_x, required_scale_y)
+			# Add a small buffer to avoid edges
+			final_scale *= 1.05
+
+			background.scale = Vector2(final_scale, final_scale)
+
+func calculate_min_allowed_zoom():
+	# Calculate zoom needed to see the battlefield when shop is open
+	var map_width = Constants.MAP_WIDTH * Constants.TILE_SIZE
+	var map_height = Constants.MAP_HEIGHT * Constants.TILE_SIZE
+
+	var SHOP_HEIGHT = 180
+	var viewport_size = get_viewport_rect().size
+	var visible_height = viewport_size.y - SHOP_HEIGHT
+
+	var zoom_x = viewport_size.x / (map_width * 1.1) # 10% margin
+	var zoom_y = visible_height / (map_height * 1.1)
+	var final_zoom = min(zoom_x, zoom_y)
+
+	# Clamp to reasonable values
+	final_zoom = clamp(final_zoom, 0.3, 1.0)
+
+	min_allowed_zoom = Vector2(final_zoom, final_zoom)
+	# print("Calculated Min Allowed Zoom: ", min_allowed_zoom)
 
 func _unhandled_input(event):
 	if event is InputEventMouseMotion:
@@ -53,8 +106,14 @@ func _unhandled_input(event):
 
 func _adjust_zoom(amount: float):
 	zoom_target += Vector2(amount, amount)
-	zoom_target.x = clamp(zoom_target.x, 0.5, 1.2)
-	zoom_target.y = clamp(zoom_target.y, 0.5, 1.2)
+
+	# Clamp zoom so we don't zoom out more than allowed (min_allowed_zoom)
+	zoom_target.x = max(zoom_target.x, min_allowed_zoom.x)
+	zoom_target.y = max(zoom_target.y, min_allowed_zoom.y)
+
+	# Max zoom in
+	zoom_target.x = min(zoom_target.x, 2.0)
+	zoom_target.y = min(zoom_target.y, 2.0)
 
 	if zoom_tween and zoom_tween.is_valid():
 		zoom_tween.kill()
@@ -64,22 +123,22 @@ func _adjust_zoom(amount: float):
 
 func zoom_to_fit_board():
 	# Shop Closed (Combat)
+	# Recalculate based on full screen
 	var map_width = Constants.MAP_WIDTH * Constants.TILE_SIZE
 	var map_height = Constants.MAP_HEIGHT * Constants.TILE_SIZE
 
 	var viewport_size = get_viewport_rect().size
-
-	# Calculate zoom to fit map with 5% margin
 	var zoom_x = viewport_size.x / (map_width * 1.05)
 	var zoom_y = viewport_size.y / (map_height * 1.05)
 	var final_zoom = min(zoom_x, zoom_y)
 
-	var target_zoom = Vector2(final_zoom, final_zoom)
+	# Ensure we respect min allowed zoom (though combat zoom usually is > min allowed)
+	final_zoom = max(final_zoom, min_allowed_zoom.x)
 
-	# Center of board is GridManager's position
+	var target_zoom = Vector2(final_zoom, final_zoom)
 	var target_pos = grid_manager.position
 
-	print("Combat Zoom: ", target_zoom, " Target Pos: ", target_pos)
+	zoom_target = target_zoom
 
 	if zoom_tween and zoom_tween.is_valid():
 		zoom_tween.kill()
@@ -91,47 +150,22 @@ func zoom_to_fit_board():
 
 func zoom_to_shop_open():
 	# Shop Open (Planning)
-	var map_width = Constants.MAP_WIDTH * Constants.TILE_SIZE
-	var map_height = Constants.MAP_HEIGHT * Constants.TILE_SIZE
+	# This should roughly match min_allowed_zoom logic but setting position correctly
 
-	# Updated Shop Height: ~160px (per feedback to fit bench)
-	# We use 180px to be safe with margins
-	var SHOP_HEIGHT = 180
+	var target_zoom = min_allowed_zoom
+	zoom_target = target_zoom
+
+	# Recalculate position offset for shop
 	var viewport_size = get_viewport_rect().size
+	var SHOP_HEIGHT = 180
 	var visible_height = viewport_size.y - SHOP_HEIGHT
 
-	# Calculate Zoom to fit visible_height area (with margin)
-	var zoom_x = viewport_size.x / (map_width * 1.05)
-	var zoom_y = visible_height / (map_height * 1.05)
-	var final_zoom = min(zoom_x, zoom_y)
-
-	var target_zoom = Vector2(final_zoom, final_zoom)
-
-	# Calculate Camera Offset
-	# We want the map center to be at the center of the available visible area (above shop)
-	# Map center is at (0,0) in our camera world if grid_manager is centered?
-	# GridManager position is center of grid.
-
-	# The visible area center in screen coordinates is:
-	# X: viewport_size.x / 2
-	# Y: visible_height / 2
-
-	# The full viewport center is:
-	# Y: viewport_size.y / 2
-
-	# The offset from center of screen we want to shift the camera:
 	var screen_center_y = viewport_size.y / 2.0
 	var visible_center_y = visible_height / 2.0
 	var shift_y = screen_center_y - visible_center_y
 
-	# Since camera position is where the center of the screen points to in world space.
-	# If we want the map center (grid_manager.position) to appear at visible_center_y,
-	# we need to move the camera DOWN (positive Y) so the map moves UP relative to center.
-
 	var target_pos = grid_manager.position
-	target_pos.y += shift_y / final_zoom
-
-	print("Shop Zoom: ", target_zoom, " Target Pos: ", target_pos)
+	target_pos.y += shift_y / target_zoom.y
 
 	if zoom_tween and zoom_tween.is_valid():
 		zoom_tween.kill()

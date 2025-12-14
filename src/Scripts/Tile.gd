@@ -6,30 +6,29 @@ var type: String = "normal"
 var state: String = "locked_inner" # unlocked, locked_inner, locked_outer, spawn
 var unit = null
 var occupied_by: Vector2i
+var random_frame_index: int = 0
 
 signal tile_clicked(tile)
 
 const DROP_HANDLER_SCRIPT = preload("res://src/Scripts/UI/TileDropHandler.gd")
+const TEXTURE_SHEET = preload("res://assets/images/UI/tile_sheet.png")
+const TEXTURE_SPAWN = preload("res://assets/images/UI/tile_spawn.png")
 
 func setup(grid_x: int, grid_y: int, tile_type: String = "normal"):
 	x = grid_x
 	y = grid_y
 	type = tile_type
 
-	if has_node("ColorRect") and !has_node("VisualPanel"):
-		var cr = $ColorRect
-		var panel = Panel.new()
-		panel.name = "VisualPanel"
-		panel.size = cr.size
-		panel.position = cr.position
-		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	random_frame_index = randi() % 25
 
-		var style = StyleMaker.get_flat_style(cr.color, 4)
-		panel.add_theme_stylebox_override("panel", style)
+	if has_node("BaseSprite"):
+		var bs = $BaseSprite
+		bs.hframes = 5
+		bs.vframes = 5
 
-		add_child(panel)
-		move_child(panel, cr.get_index())
-		cr.visible = false
+	# Cleanup old nodes if they exist
+	if has_node("ColorRect"): $ColorRect.queue_free()
+	if has_node("VisualPanel"): $VisualPanel.queue_free()
 
 	update_visuals()
 
@@ -44,57 +43,46 @@ func set_state(new_state: String):
 	update_visuals()
 
 func update_visuals():
-	# Default base color based on state
-	var base_color = Constants.COLORS.grid
+	var bs = get_node_or_null("BaseSprite")
+	if !bs: return
 
-	if state == "unlocked":
-		base_color = Constants.COLORS.unlocked
-	elif state == "locked_inner":
-		base_color = Constants.COLORS.locked_inner
-		# Debug color for visibility if needed, but using Constants is safer for style
-		# base_color = Color.DARK_GRAY
-	elif state == "locked_outer":
-		base_color = Constants.COLORS.locked_outer
-		# base_color = Color.BLACK
-	elif state == "spawn":
-		base_color = Constants.COLORS.spawn_point
+	bs.visible = true
+	bs.modulate = Color.WHITE
+
+	if state == "spawn":
+		bs.texture = TEXTURE_SPAWN
+		bs.hframes = 1
+		bs.vframes = 1
+		bs.frame = 0
+	elif state == "unlocked" or type == "core":
+		bs.texture = TEXTURE_SHEET
+		bs.hframes = 5
+		bs.vframes = 5
+		bs.frame = random_frame_index
+	elif "locked" in state:
+		bs.visible = false
+		bs.texture = null
 
 	if type == "core":
-		base_color = Constants.COLORS.core
 		if has_node("Label"):
 			$Label.text = "Core"
 	else:
 		if has_node("Label"):
 			$Label.text = ""
 
-	if has_node("VisualPanel"):
-		var panel = $VisualPanel
-		var style = panel.get_theme_stylebox("panel")
-		if style:
-			create_tween().tween_property(style, "bg_color", base_color, 0.2)
-	elif has_node("ColorRect"):
-		create_tween().tween_property($ColorRect, "color", base_color, 0.2)
+func set_grid_visible(visible_state: bool):
+	var b = get_node_or_null("Border")
+	if b:
+		b.visible = visible_state
 
 func set_highlight(active: bool):
-	var target = null
-	var current_color = Color.BLACK
-	var property = ""
-
-	if has_node("VisualPanel"):
-		target = $VisualPanel.get_theme_stylebox("panel")
-		current_color = target.bg_color
-		property = "bg_color"
-	elif has_node("ColorRect"):
-		target = $ColorRect
-		current_color = target.color
-		property = "color"
-
-	if !target: return
+	var bs = get_node_or_null("BaseSprite")
+	if !bs: return
 
 	if active:
-		create_tween().tween_property(target, property, current_color.lightened(0.2), 0.1)
+		bs.modulate = Color(1.2, 1.2, 1.2)
 	else:
-		update_visuals()
+		bs.modulate = Color.WHITE
 
 func _on_area_2d_input_event(viewport, event, shape_idx):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
