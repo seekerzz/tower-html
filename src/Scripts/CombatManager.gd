@@ -76,42 +76,8 @@ func _run_batch_sequence(batches_left: int, enemies_per_batch: int):
 		# For now, strict adherence to the returned type.
 		pass
 
-	# Pick random angle for this batch (Used for warning indicator mainly)
-	var angle = randf() * TAU # TAU is 2*PI
-
-	# Show Warning (Still show directional warning, or maybe just generic?)
-	# Since spawn points are scattered, maybe show multiple warnings or just a general one?
-	# Requirement says: "刷怪逻辑改为从 `GridManager.get_spawn_points()` 随机取点"
-	# We can pick a random spawn point first, then show warning there.
-
-	# But batch logic implies they come together?
-	# If we want them to come from random spawn points, do we pick ONE spawn point for the whole batch,
-	# or random spawn point for EACH enemy?
-	# Usually batches come from one direction.
-	# Let's pick ONE spawn point for this batch to keep the "Wave" feel.
-
-	var spawn_pos = Vector2.ZERO
-	if GameManager.grid_manager:
-		var points = GameManager.grid_manager.get_spawn_points()
-		if points.size() > 0:
-			spawn_pos = points.pick_random()
-			# Calculate angle from center to spawn_pos for warning
-			var center = GameManager.grid_manager.global_position
-			angle = (spawn_pos - center).angle()
-		else:
-			# Fallback
-			spawn_pos = Vector2(cos(angle), sin(angle)) * 600
-
-	# Show Warning
-	show_warning_indicator(angle, type_key)
-
-	# Wait 1.5s
-	await get_tree().create_timer(1.5).timeout
-
-	if !GameManager.is_wave_active: return
-
 	# Spawn Batch
-	await _spawn_batch(spawn_pos, type_key, enemies_per_batch)
+	await _spawn_batch(type_key, enemies_per_batch)
 
 	# Schedule next batch
 	if batches_left > 1:
@@ -140,13 +106,23 @@ func start_win_check_loop():
 			break
 		await get_tree().create_timer(0.5).timeout
 
-func _spawn_batch(spawn_origin: Vector2, type_key: String, count: int):
+func _spawn_batch(type_key: String, count: int):
+	var points = []
+	if GameManager.grid_manager:
+		points = GameManager.grid_manager.get_spawn_points()
+
+	if points.size() == 0:
+		# Fallback to map center or some default
+		points.append(Vector2.ZERO)
+
 	for i in range(count):
 		if !GameManager.is_wave_active: break
 		if enemies_to_spawn <= 0: break
 
+		var spawn_point = points.pick_random()
+
 		# Spawn with slight spread around the chosen spawn point
-		var pos = spawn_origin + Vector2(randf_range(-20, 20), randf_range(-20, 20))
+		var pos = spawn_point + Vector2(randf_range(-20, 20), randf_range(-20, 20))
 		_spawn_enemy_at_pos(pos, type_key)
 
 		enemies_to_spawn -= 1
@@ -160,70 +136,6 @@ func _spawn_enemy_at_pos(pos: Vector2, type_key: String):
 	enemy.global_position = pos
 	add_child(enemy)
 
-func show_warning_indicator(angle: float, type_key: String):
-	# Calculate position at screen edge
-	var viewport_rect = get_viewport().get_visible_rect()
-	var center = viewport_rect.size / 2
-	# Or use Grid center if camera is fixed there?
-	# Let's assume viewport center is relevant for UI overlay.
-
-	# Radius should be slightly less than half screen
-	var r = min(viewport_rect.size.x, viewport_rect.size.y) / 2.0 - 50.0
-
-	var pos = center + Vector2(cos(angle), sin(angle)) * r
-
-	# Create Warning UI
-	var container = Node2D.new()
-	container.global_position = pos
-
-	# Rotation removed to keep icons upright.
-	# container.rotation = angle - PI/2
-
-	var label = Label.new()
-	label.text = "⚠️"
-	label.add_theme_font_size_override("font_size", 32)
-	label.modulate = Color.RED
-	# Center the label
-	label.position = Vector2(-16, -24)
-
-	# Add Enemy Icon if available
-	if Constants.ENEMY_VARIANTS.has(type_key):
-		var icon_label = Label.new()
-		icon_label.text = Constants.ENEMY_VARIANTS[type_key].icon
-		icon_label.add_theme_font_size_override("font_size", 24)
-		icon_label.position = Vector2(-12, 10) # Below the warning
-		container.add_child(icon_label)
-
-	container.add_child(label)
-
-	# Add to a CanvasLayer if possible to be on top of game, or just add_child if CombatManager is in world
-	# Ideally add to UI manager, but adding to self (CombatManager) works if it is in the scene.
-	# Warning: If CombatManager is just a Node, and Camera moves, this might drift.
-	# But prompt says "screen edge".
-	# If we use CanvasLayer, coordinates are screen relative.
-	# If we use Node2D in world, coordinates are world relative.
-	# Currently `_spawn_enemy_at_angle` uses world coords.
-	# Let's assume the game view is centered on Grid.
-	# If I add it as a child of CombatManager, and CombatManager is in MainGame (Node2D), it's world space.
-	# If the camera doesn't move (it seems static in ref.html), world space matches screen space with offset.
-	# However, `min(w,h)/2 - 40` implies a circle fitting in screen.
-	# I'll stick to world space relative to GridManager center, which ensures it points to the Core.
-
-	if GameManager.grid_manager:
-		var grid_pos = GameManager.grid_manager.global_position
-		container.global_position = grid_pos + Vector2(cos(angle), sin(angle)) * r
-
-	add_child(container)
-
-	# Animate
-	var tween = create_tween().set_loops()
-	tween.tween_property(container, "modulate:a", 0.2, 0.2)
-	tween.tween_property(container, "modulate:a", 1.0, 0.2)
-
-	# Remove
-	await get_tree().create_timer(1.5).timeout
-	if is_instance_valid(container):
-		container.queue_free()
 
 # ... Keep existing process_unit_combat logic ...
 func process_unit_combat(unit, tile, delta):
