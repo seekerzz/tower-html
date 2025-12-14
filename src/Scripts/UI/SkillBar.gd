@@ -41,24 +41,7 @@ func refresh_skills():
 			units_with_skills.append(tile.unit)
 
 	# Create Cards
-	var hotkeys = ["Q", "W", "E", "R", "D", "F"] # Extended hotkeys
-	# User wants "more skills -> new row above".
-	# GridContainer adds rows below.
-	# If we want visual "new row above", we might need to change child order or layout logic.
-	# But VBoxContainer holding SkillBar (in LeftSidebar) aligns to Bottom.
-	# If SkillBar grows (Grid adds rows), the whole SkillBar grows upwards because of VBox alignment.
-	# So standard Grid append is fine:
-	# Row 1: Skill 1, Skill 2
-	# Row 2: Skill 3, Skill 4 (appears below Row 1)
-	# Since Sidebar is Bottom-aligned:
-	# [Artifacts/Resource]
-	# ...
-	# [Row 1]
-	# [Row 2]
-	# [EnemyBar]
-	# This seems standard. User said "expand new row *above*".
-	# If they mean literally new skills appear visually above old skills, I'd need to invert sort or pre-pend?
-	# "Expand upwards" usually refers to the container bounds. I'll stick to standard order.
+	var hotkeys = ["Q", "W", "E", "R", "D", "F"]
 
 	for i in range(units_with_skills.size()):
 		var unit = units_with_skills[i]
@@ -111,15 +94,20 @@ func refresh_skills():
 		hotkey_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		layout.add_child(hotkey_lbl)
 
-		# Cost (Bottom Center)
+		# Cost (Bottom Right - inside cell)
 		var cost_lbl = Label.new()
 		cost_lbl.name = "CostLabel"
 		cost_lbl.text = "💧%d" % unit.skill_mana_cost
-		cost_lbl.add_theme_font_size_override("font_size", 16)
-		cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		cost_lbl.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-		# Adjust bottom offset to not touch the edge
-		cost_lbl.offset_bottom = -5
+		cost_lbl.add_theme_font_size_override("font_size", 14)
+		cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		cost_lbl.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+
+		cost_lbl.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+		cost_lbl.offset_left = -60
+		cost_lbl.offset_top = -25
+		cost_lbl.offset_right = -5
+		cost_lbl.offset_bottom = -2
+
 		cost_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		layout.add_child(cost_lbl)
 

@@ -16,6 +16,7 @@ signal sacrifice_requested
 @onready var stats_scroll = $DamageStats/ScrollContainer
 @onready var stats_header = $DamageStats/Header
 @onready var stats_toggle_btn = $DamageStats/ToggleButton
+@onready var left_sidebar = $LeftSidebar
 
 @onready var game_over_panel = $GameOverPanel
 @onready var retry_button = $GameOverPanel/RetryWaveButton
@@ -33,6 +34,7 @@ var tooltip_instance = null
 var sort_interval: float = 1.0
 var is_stats_collapsed: bool = true
 var stats_tween: Tween
+var sidebar_tween: Tween
 
 func _ready():
 	GameManager.resource_changed.connect(update_ui)
@@ -41,6 +43,10 @@ func _ready():
 
 	GameManager.wave_started.connect(_update_hud_visibility)
 	GameManager.wave_ended.connect(_update_hud_visibility)
+
+	# Connect for sidebar movement
+	GameManager.wave_started.connect(_update_sidebar_position)
+	GameManager.wave_ended.connect(_update_sidebar_position)
 
 	# Connect to wave ended for stats auto-popup as requested
 	GameManager.wave_ended.connect(_on_wave_ended_stats)
@@ -72,12 +78,29 @@ func _ready():
 
 	# Initial visibility state
 	_update_hud_visibility()
+	_update_sidebar_position()
 
 func _update_hud_visibility():
 	var active = GameManager.is_wave_active
 	hp_bar.visible = active
 	food_bar.visible = active
 	mana_bar.visible = active
+
+func _update_sidebar_position():
+	if sidebar_tween and sidebar_tween.is_valid():
+		sidebar_tween.kill()
+	sidebar_tween = create_tween()
+
+	var target_offset_bottom = -10 # Default for combat
+	if not GameManager.is_wave_active:
+		# Shop is open, occupy bottom 200px
+		target_offset_bottom = -210
+
+	# Animate LeftSidebar
+	# We are animating offset_bottom.
+	# Note: LeftSidebar is anchored Bottom Left with Vertical Grow Up.
+	# So changing offset_bottom moves the whole container up/down relative to bottom anchor.
+	sidebar_tween.tween_property(left_sidebar, "offset_bottom", float(target_offset_bottom), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func _setup_ui_styles():
 	var radius = 6
