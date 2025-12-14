@@ -94,9 +94,9 @@ func zoom_to_shop_open():
 	var map_width = Constants.MAP_WIDTH * Constants.TILE_SIZE
 	var map_height = Constants.MAP_HEIGHT * Constants.TILE_SIZE
 
-	# Updated Shop Height: ~120px (per requirement "half of 200px")
-	# We use 140px to be safe with margins
-	var SHOP_HEIGHT = 140
+	# Updated Shop Height: ~160px (per feedback to fit bench)
+	# We use 180px to be safe with margins
+	var SHOP_HEIGHT = 180
 	var viewport_size = get_viewport_rect().size
 	var visible_height = viewport_size.y - SHOP_HEIGHT
 
