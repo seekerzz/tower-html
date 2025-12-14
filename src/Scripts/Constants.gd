@@ -29,25 +29,14 @@ const CORE_TYPES = {
 	"war":        { "name": "战争图腾", "icon": "⚔️", "desc": "食物产出减半。\n所有友军单位伤害 +50%。", "bonus": { "foodRate": -25, "globalDmg": 0.5 } }
 }
 
-const MATERIAL_TYPES = {
-	"mucus": { "name": "粘液", "icon": "💧", "color": Color("#00cec9"), "desc": "减速陷阱" },
-	"poison":{ "name": "毒药", "icon": "🧪", "color": Color("#2ecc71"), "desc": "毒雾屏障" },
-	"fang":  { "name": "尖牙", "icon": "🦷", "color": Color("#e74c3c"), "desc": "尖刺陷阱" },
-	"wood":  { "name": "木头", "icon": "🪵", "color": Color("#d35400"), "desc": "木栅栏" },
-	"snow":  { "name": "雪团", "icon": "❄️", "color": Color("#74b9ff"), "desc": "冰墙" },
-	"stone": { "name": "石头", "icon": "🪨", "color": Color("#95a5a6"), "desc": "石墙" }
-}
-
 const BARRICADE_TYPES = {
-	"mucus": { "hp": 500, "type": "slow", "strength": 0.3, "color": Color("00cec9"), "width": 8, "name": "粘液网", "is_solid": false },
-	"poison":{ "hp": 10, "type": "poison", "strength": 200, "color": Color("2ecc71"), "width": 20, "name": "毒雾", "immune": true, "is_solid": false },
-	"fang":  { "hp": 800, "type": "reflect", "strength": 100, "color": Color("e74c3c"), "width": 6, "name": "荆棘", "is_solid": false },
-	"wood":  { "hp": 2000, "type": "block", "strength": 0, "color": Color("d35400"), "width": 6, "name": "木栏", "is_solid": true },
-	"snow":  { "hp": 2000, "type": "freeze", "strength": 1.5, "color": Color("74b9ff"), "width": 8, "name": "冰墙", "is_solid": true, "duration": 20.0, "immune": true },
-	"stone": { "hp": 10000, "type": "block", "strength": 0, "color": Color("7f8c8d"), "width": 10, "name": "石墙", "is_solid": true, "immune": true }
+	"mucus": { "hp": 500, "type": "slow", "strength": 0.3, "color": Color("00cec9"), "width": 8, "name": "粘液网", "is_solid": false, "icon": "🕸️" },
+	"poison":{ "hp": 10, "type": "poison", "strength": 200, "color": Color("2ecc71"), "width": 20, "name": "毒雾", "immune": true, "is_solid": false, "icon": "☠️" },
+	"fang":  { "hp": 800, "type": "reflect", "strength": 100, "color": Color("e74c3c"), "width": 6, "name": "荆棘", "is_solid": false, "icon": "🦷" }
 }
 
 const UNIT_TYPES = {
+	"scorpion": { "name": "蝎子", "icon": "🦂", "cost": 40, "size": Vector2i(1,1), "damage": 30, "range": 200, "atkSpeed": 1.0, "attackType": "ranged", "proj": "stinger", "desc": "攻击概率生成尖牙陷阱" },
 	"squirrel": { "name": "松鼠", "icon": "🐿️", "cost": 15, "size": Vector2i(1,1), "damage": 30, "range": 250, "atkSpeed": 0.15, "foodCost": 15, "manaCost": 0, "attackType": "ranged", "proj": "pinecone", "desc": "远程: 快速投掷松果", "damageType": "physical", "hp": 100, "crit_rate": 0.1, "crit_dmg": 1.5 },
 	"octopus": { "name": "八爪鱼", "icon": "🐙", "cost": 60, "size": Vector2i(1,1), "damage": 120, "range": 180, "atkSpeed": 1.5, "foodCost": 30, "manaCost": 0, "attackType": "ranged", "proj": "ink", "projCount": 5, "spread": 0.5, "desc": "散射: 同时喷射多道墨汁", "damageType": "physical", "hp": 150, "crit_rate": 0.1, "crit_dmg": 1.5 },
 	"bee": { "name": "蜜蜂", "icon": "🐝", "cost": 80, "size": Vector2i(1,1), "damage": 250, "range": 250, "atkSpeed": 0.8, "foodCost": 40, "manaCost": 0, "attackType": "ranged", "proj": "stinger", "pierce": 3, "desc": "穿透: 尖锐的蜂刺穿透敌人", "damageType": "physical", "hp": 180, "crit_rate": 0.2, "crit_dmg": 1.5 },
@@ -71,8 +60,8 @@ const UNIT_TYPES = {
 	"mosquito": { "name": "蚊子", "icon": "🦟", "cost": 25, "size": Vector2i(1,1), "damage": 20, "range": 200, "atkSpeed": 1.5, "foodCost": 10, "manaCost": 0, "attackType": "ranged", "proj": "dot", "trait": "lifesteal", "lifesteal_percent": 1.0, "desc": "造成伤害治疗核心", "damageType": "physical", "hp": 50, "crit_rate": 0.1, "crit_dmg": 1.5 },
 	"snowman": { "name": "雪人", "icon": "☃️", "cost": 60, "size": Vector2i(1,1), "damage": 40, "range": 250, "atkSpeed": 1.0, "foodCost": 40, "manaCost": 20, "attackType": "ranged", "proj": "snowball", "trait": "freeze", "desc": "攻击冻结敌人", "damageType": "magic", "hp": 200, "crit_rate": 0.1, "crit_dmg": 1.5 },
 	"rabbit": { "name": "兔子", "icon": "🐇", "cost": 35, "size": Vector2i(1,1), "damage": 80, "range": 80, "atkSpeed": 1.2, "foodCost": 20, "manaCost": 0, "attackType": "melee", "trait": "dodge_counter", "dodge_rate": 0.3, "desc": "30%闪避并反击", "damageType": "physical", "hp": 150, "crit_rate": 0.2, "crit_dmg": 1.5 },
-	"viper": { "name": "毒蛇", "icon": "🐍", "cost": 30, "size": Vector2i(1,1), "damage": 40, "range": 80, "atkSpeed": 1.2, "foodCost": 20, "manaCost": 0, "attackType": "melee", "trait": "poison_touch", "desc": "攻击叠加中毒", "damageType": "poison", "hp": 150, "crit_rate": 0.1, "crit_dmg": 1.5 },
-	"spider": { "name": "蜘蛛", "icon": "🕷️", "cost": 40, "size": Vector2i(1,1), "damage": 30, "range": 250, "atkSpeed": 1.0, "foodCost": 30, "manaCost": 0, "attackType": "ranged", "proj": "web", "trait": "slow", "desc": "攻击减速敌人", "damageType": "physical", "hp": 180, "crit_rate": 0.1, "crit_dmg": 1.5 }
+	"viper": { "name": "毒蛇", "icon": "🐍", "cost": 30, "size": Vector2i(1,1), "damage": 40, "range": 80, "atkSpeed": 1.2, "foodCost": 20, "manaCost": 0, "attackType": "melee", "trait": "poison_touch", "desc": "攻击概率生成毒液陷阱", "damageType": "poison", "hp": 150, "crit_rate": 0.1, "crit_dmg": 1.5 },
+	"spider": { "name": "蜘蛛", "icon": "🕷️", "cost": 40, "size": Vector2i(1,1), "damage": 30, "range": 250, "atkSpeed": 1.0, "foodCost": 30, "manaCost": 0, "attackType": "ranged", "proj": "web", "trait": "slow", "desc": "攻击概率生成蜘蛛网陷阱", "damageType": "physical", "hp": 180, "crit_rate": 0.1, "crit_dmg": 1.5 }
 }
 
 const TRAITS = [
