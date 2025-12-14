@@ -79,10 +79,12 @@ func expand_shop():
 func _apply_styles():
 	# Style Panel
 	var panel = $Panel
-	var panel_style = StyleBoxFlat.new()
-	panel_style.bg_color = Color(0.1, 0.1, 0.15, 0.95)
-	panel_style.border_width_top = 2
-	panel_style.border_color = Color("#ffffff")
+	var panel_style = StyleBoxTexture.new()
+	panel_style.texture = load("res://assets/images/UI/bg_shop.png")
+	# Ensure it stretches or tiles properly if needed, but for now default.
+	# Fallback or overlay for borders
+	# panel_style.border_width_top = 2 # StyleBoxTexture doesn't support border directly in same way
+	# panel_style.border_color = Color("#ffffff")
 	panel.add_theme_stylebox_override("panel", panel_style)
 
 	# Style Buttons
