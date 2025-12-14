@@ -42,6 +42,13 @@ func _ready():
 	grid_manager.place_unit("squirrel", 0, 1) # Starting unit
 	update_bench_ui() # Ensure UI is initialized
 
+	get_tree().root.size_changed.connect(_on_viewport_size_changed)
+
+func _on_viewport_size_changed():
+	calculate_min_allowed_zoom()
+	setup_background()
+	_adjust_zoom(0) # Re-clamp zoom
+
 func setup_background():
 	if not background: return
 	background.position = grid_manager.position
