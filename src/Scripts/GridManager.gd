@@ -59,12 +59,27 @@ func create_initial_grid():
 	var half_h = Constants.MAP_HEIGHT / 2
 
 	# Determine spawn candidates (Four corners)
-	var chosen_spawns = [
+	var chosen_spawns = []
+	var corners = [
 		Vector2i(-half_w, -half_h),
 		Vector2i(half_w, -half_h),
 		Vector2i(-half_w, half_h),
 		Vector2i(half_w, half_h)
 	]
+
+	for corner in corners:
+		chosen_spawns.append(corner)
+		# Determine direction towards center
+		var dx = 1 if corner.x < 0 else -1
+		var dy = 1 if corner.y < 0 else -1
+
+		# Horizontal extension
+		chosen_spawns.append(Vector2i(corner.x + dx, corner.y))
+		chosen_spawns.append(Vector2i(corner.x + dx * 2, corner.y))
+
+		# Vertical extension
+		chosen_spawns.append(Vector2i(corner.x, corner.y + dy))
+		chosen_spawns.append(Vector2i(corner.x, corner.y + dy * 2))
 
 	for x in range(-half_w, half_w + 1):
 		for y in range(-half_h, half_h + 1):
@@ -101,6 +116,8 @@ func create_initial_grid():
 				spawn_tiles.append(Vector2i(x,y))
 
 			create_tile(x, y, type, state)
+
+	print("Total Spawn Tiles: ", spawn_tiles.size())
 
 func create_tile(x: int, y: int, type: String = "normal", state: String = "locked_inner"):
 	var key = get_tile_key(x, y)
