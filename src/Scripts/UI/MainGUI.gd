@@ -230,6 +230,21 @@ func _update_cutin_position():
 		# Ensure correct X (aligned with sidebar)
 		cutin_manager.position.x = left_sidebar.position.x
 
+		# Calculate available height for stacking
+		# From Top of SkillBar (sb_global_y) to Bottom of TopLeftPanel
+		var top_panel = $TopLeftPanel
+		if top_panel:
+			var top_panel_bottom = top_panel.global_position.y + top_panel.size.y
+			# The space is between the top of the newest item (Manager Y) and the bottom of the top panel.
+			# But wait, Manager Y (sb_global_y - 120) is the Top-Left of the newest item.
+			# The newest item occupies space from Manager Y to Manager Y + 120 (which is sb_global_y).
+			# We stack UPWARDS from Manager Y.
+			# So we check space ABOVE Manager Y.
+			# Space = Manager Y - top_panel_bottom
+
+			var available = cutin_manager.global_position.y - top_panel_bottom
+			cutin_manager.set_available_height(max(0.0, available))
+
 func _input(event):
 	if event.is_action_pressed("ui_focus_next"):
 		pass
