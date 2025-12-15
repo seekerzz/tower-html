@@ -218,6 +218,7 @@ func activate_skill():
 
 		var skill_name = unit_data.skill
 		GameManager.spawn_floating_text(global_position, skill_name.capitalize() + "!", Color.CYAN)
+		GameManager.skill_activated.emit(self)
 
 		# Use visual_holder for scale effect
 		if visual_holder:
