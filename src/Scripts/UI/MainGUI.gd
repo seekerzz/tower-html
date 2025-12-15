@@ -215,20 +215,39 @@ func _update_cutin_position():
 		# Calculate global Y of SkillBar top
 		var sb_global_y = skill_bar.global_position.y
 
+		var item_height = 120.0
+		if cutin_manager and "ITEM_HEIGHT" in cutin_manager:
+			item_height = cutin_manager.ITEM_HEIGHT
+
 		# Set CutInManager position
 		# Assuming CutInManager is child of MainGUI (Control)
 		# We want local position relative to MainGUI
-		# We offset Y by -120 (ITEM_HEIGHT) because items are drawn downwards from (0,0) and we want them above the bar.
+		# We offset Y by -ITEM_HEIGHT because items are drawn downwards from (0,0) and we want them above the bar.
 		# The Manager acts as the anchor point for the bottom-most (newest) item's TOP edge?
-		# No, CutInManager spawns item at (0,0). Item height is 120.
-		# So item occupies (0,0) to (270, 120).
-		# If we want the BOTTOM of the item to be at sb_global_y, we need to place Manager at sb_global_y - 120.
+		# No, CutInManager spawns item at (0,0). Item height is ITEM_HEIGHT.
+		# So item occupies (0,0) to (width, ITEM_HEIGHT).
+		# If we want the BOTTOM of the item to be at sb_global_y, we need to place Manager at sb_global_y - ITEM_HEIGHT.
 
-		var local_pos = get_global_transform().affine_inverse() * Vector2(left_sidebar.global_position.x, sb_global_y - 120.0)
+		var local_pos = get_global_transform().affine_inverse() * Vector2(left_sidebar.global_position.x, sb_global_y - item_height)
 
 		cutin_manager.position = local_pos
 		# Ensure correct X (aligned with sidebar)
 		cutin_manager.position.x = left_sidebar.position.x
+
+		# Calculate available height for stacking
+		# Ceiling is the bottom of TopLeftPanel
+		var top_left_panel = $TopLeftPanel
+		if top_left_panel:
+			var panel_bottom = top_left_panel.global_position.y + top_left_panel.size.y
+			# The CutInManager is positioned at sb_global_y - item_height (which is the top of the NEWEST item)
+			# The stack grows UPWARDS from there.
+			# So we check space between CutInManager position and Panel bottom.
+			# However, we should consider that items are placed at negative Y relative to CutInManager.
+			# So valid Y range for items is [-available, 0].
+			# Effectively, available_height = (sb_global_y - item_height) - panel_bottom
+
+			var space = (sb_global_y - item_height) - panel_bottom
+			cutin_manager.available_height = max(0.0, space)
 
 func _input(event):
 	if event.is_action_pressed("ui_focus_next"):
