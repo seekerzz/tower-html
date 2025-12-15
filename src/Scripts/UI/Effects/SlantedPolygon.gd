@@ -1,5 +1,7 @@
 extends Node2D
 
+@export var color: Color = Color(0.2, 0.2, 0.2, 0.9)
+
 func _draw():
 	var parent = get_parent()
 	if not parent:
@@ -7,7 +9,6 @@ func _draw():
 
 	var width = parent.size.x
 	var height = parent.size.y
-	var color = parent.bg_color
 
 	# Slanted shape: [0,0], [width, 0], [width - 40, height], [0, height]
 	var points = PackedVector2Array([

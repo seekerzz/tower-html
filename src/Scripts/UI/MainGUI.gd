@@ -195,6 +195,41 @@ func _process(delta):
 	if last_sort_time > 0:
 		last_sort_time -= delta
 
+	_update_cutin_position()
+
+func _update_cutin_position():
+	if not cutin_manager or not left_sidebar: return
+
+	# Determine top of the active skill UI (SkillBar)
+	# LeftSidebar contains SkillBar at the top? No, it's VBox.
+	# children: SkillBar, EnemyProgressBar.
+	# If aligned to bottom (default for VBox unless specific anchors?), items are stacked.
+	# LeftSidebar is anchored Bottom Left.
+
+	# We want CutInManager to be just above the SkillBar.
+	# Since CutInManager stacks UP, its position should be the bottom-most point where new cutins appear.
+	# This point should be the Top of the SkillBar.
+
+	var skill_bar = left_sidebar.get_node_or_null("SkillBar")
+	if skill_bar and skill_bar.visible:
+		# Calculate global Y of SkillBar top
+		var sb_global_y = skill_bar.global_position.y
+
+		# Set CutInManager position
+		# Assuming CutInManager is child of MainGUI (Control)
+		# We want local position relative to MainGUI
+		# We offset Y by -120 (ITEM_HEIGHT) because items are drawn downwards from (0,0) and we want them above the bar.
+		# The Manager acts as the anchor point for the bottom-most (newest) item's TOP edge?
+		# No, CutInManager spawns item at (0,0). Item height is 120.
+		# So item occupies (0,0) to (270, 120).
+		# If we want the BOTTOM of the item to be at sb_global_y, we need to place Manager at sb_global_y - 120.
+
+		var local_pos = get_global_transform().affine_inverse() * Vector2(left_sidebar.global_position.x, sb_global_y - 120.0)
+
+		cutin_manager.position = local_pos
+		# Ensure correct X (aligned with sidebar)
+		cutin_manager.position.x = left_sidebar.position.x
+
 func _input(event):
 	if event.is_action_pressed("ui_focus_next"):
 		pass
@@ -219,7 +254,10 @@ func update_ui():
 
 func _on_skill_activated(unit):
 	if cutin_manager:
-		cutin_manager.trigger_cutin(unit.unit_data)
+		# Construct a rich data object including type_key for icon lookup
+		var data = unit.unit_data.duplicate()
+		data["type_key"] = unit.type_key
+		cutin_manager.trigger_cutin(data)
 
 func _on_damage_dealt(unit, amount):
 	if not unit: return

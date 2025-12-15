@@ -27,10 +27,14 @@ func setup(data):
 
 	if "color" in data:
 		bg_color = data["color"]
+		if background_node:
+			background_node.color = bg_color
+			background_node.queue_redraw()
 
-	# Redraw background with new color
-	if background_node:
-		background_node.queue_redraw()
+	if "type_key" in data and portrait_rect:
+		var icon = AssetLoader.get_unit_icon(data["type_key"])
+		if icon:
+			portrait_rect.texture = icon
 
 func animate_entry():
 	var tween = create_tween().set_parallel(true)
