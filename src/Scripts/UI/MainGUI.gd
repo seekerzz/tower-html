@@ -17,6 +17,7 @@ signal sacrifice_requested
 @onready var stats_header = $DamageStats/Header
 @onready var stats_toggle_btn = $DamageStats/ToggleButton
 @onready var left_sidebar = $LeftSidebar
+@onready var cutin_manager = $CutInManager
 
 @onready var game_over_panel = $GameOverPanel
 @onready var retry_button = $GameOverPanel/RetryWaveButton
@@ -54,6 +55,7 @@ func _ready():
 	GameManager.game_over.connect(_on_game_over)
 
 	GameManager.damage_dealt.connect(_on_damage_dealt)
+	GameManager.skill_activated.connect(_on_skill_activated)
 	GameManager.ftext_spawn_requested.connect(_on_ftext_spawn_requested)
 
 	stats_toggle_btn.pressed.connect(_on_stats_toggle_pressed)
@@ -214,6 +216,10 @@ func update_ui():
 	mana_label.text = "💧 %d/%d" % [int(GameManager.mana), int(GameManager.max_mana)]
 
 	wave_label.text = "Wave %d" % GameManager.wave
+
+func _on_skill_activated(unit):
+	if cutin_manager:
+		cutin_manager.trigger_cutin(unit.unit_data)
 
 func _on_damage_dealt(unit, amount):
 	if not unit: return

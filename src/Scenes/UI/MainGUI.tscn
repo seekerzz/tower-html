@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://skillbarscene" path="res://src/Scenes/UI/SkillBar.tscn" id="2_skillbar"]
 [ext_resource type="PackedScene" uid="uid://enemyprogressbar" path="res://src/Scenes/HUD/EnemyProgressBar.tscn" id="3_enemybar"]
 [ext_resource type="PackedScene" uid="uid://artifactspanel" path="res://src/Scenes/UI/ArtifactsPanel.tscn" id="4_artifacts"]
+[ext_resource type="PackedScene" uid="uid://cutinmanager" path="res://src/Scenes/UI/Effects/CutInManager.tscn" id="5_cutinmanager"]
 
 [node name="MainGUI" type="Control"]
 layout_mode = 3
@@ -102,6 +103,12 @@ mouse_filter = 2
 [node name="EnemyProgressBar" parent="LeftSidebar" instance=ExtResource("3_enemybar")]
 layout_mode = 2
 mouse_filter = 2
+
+[node name="CutInManager" parent="." instance=ExtResource("5_cutinmanager")]
+offset_left = 10.0
+offset_top = 450.0
+offset_right = 50.0
+offset_bottom = 490.0
 
 [node name="Panel" type="Panel" parent="."]
 layout_mode = 0
