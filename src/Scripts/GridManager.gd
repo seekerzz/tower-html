@@ -435,7 +435,7 @@ func handle_bench_drop_at(target_tile, data):
 		temp_unit.setup(unit_key)
 
 		# Check Merge
-		if target_unit.type_key == unit_key:
+		if target_unit.can_merge_with(temp_unit):
 			target_unit.merge_with(temp_unit)
 			if GameManager.main_game:
 				GameManager.main_game.remove_from_bench(bench_index)
@@ -486,7 +486,7 @@ func try_move_unit(unit, from_tile, to_tile) -> bool:
 	if target_unit == null: return false
 	if target_unit == unit: return false
 
-	if target_unit.type_key == unit.type_key:
+	if target_unit.can_merge_with(unit):
 		target_unit.merge_with(unit)
 		_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
 		unit.queue_free()

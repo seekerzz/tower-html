@@ -45,6 +45,7 @@ var is_hovered: bool = false
 var focus_target: Node2D = null
 var focus_stacks: int = 0
 
+const MAX_LEVEL = 3
 const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 
 signal unit_clicked(unit)
@@ -77,7 +78,7 @@ func setup(key: String):
 	_ensure_visual_hierarchy()
 	type_key = key
 	unit_data = Constants.UNIT_TYPES[key].duplicate()
-	max_hp = unit_data.get("hp", 0)
+	# reset_stats will handle reading stats from levels
 	reset_stats()
 	update_visuals()
 
@@ -124,26 +125,56 @@ func take_damage(amount: float, source_enemy = null):
 
 
 func reset_stats():
-	damage = unit_data.damage
-	range_val = unit_data.range
-	atk_speed = unit_data.atk_speed if "atk_speed" in unit_data else unit_data.get("atkSpeed", 1.0)
+	# Retrieve stats from levels dict if available
+	var stats = {}
+	if unit_data.has("levels") and unit_data["levels"].has(str(level)):
+		stats = unit_data["levels"][str(level)]
+	else:
+		# Fallback to root (should not happen with refactor, but safe)
+		stats = unit_data
+
+	# Load core stats
+	damage = stats.get("damage", unit_data.get("damage", 0))
+
+	# Handle hp: if max_hp changes, should we heal?
+	# For now, just set max_hp. Current HP handling is done by GameManager (Core Health) or Barricades.
+	# But some units act as walls? If so, they need local HP.
+	# The current Unit.gd seems to delegate damage to core usually, but let's set max_hp.
+	max_hp = stats.get("hp", unit_data.get("hp", 0))
+
+	# Non-leveled stats (unless moved to levels, which range/atkSpeed weren't in my script)
+	range_val = unit_data.get("range", 0)
+	atk_speed = unit_data.get("atkSpeed", 1.0)
+
 	crit_rate = unit_data.get("crit_rate", 0.1)
 	crit_dmg = unit_data.get("crit_dmg", 1.5)
-	bounce_count = 0
-	split_count = 0
-	active_buffs.clear()
 
+	# Costs
 	attack_cost_food = unit_data.get("foodCost", 1.0)
 	attack_cost_mana = unit_data.get("manaCost", 0.0)
 	skill_mana_cost = unit_data.get("skillCost", 30.0)
+
+	# Mechanics from Level
+	if stats.has("mechanics"):
+		var mechs = stats["mechanics"]
+		if mechs.has("crit_rate_bonus"):
+			crit_rate += mechs["crit_rate_bonus"]
+		# Add other mechanics here
+		# e.g. multi_shot_chance is handled in combat/projectile logic,
+		# so we might need to store it or apply it to a variable if Unit.gd handles shooting.
+		# Unit.gd doesn't seem to fire projectiles directly, usually CombatManager or Projectile.gd?
+		# Wait, Unit.gd doesn't have attack logic loop in _process?
+		# Ah, CombatManager handles attacks. We need to expose stats for CombatManager.
+
+	bounce_count = 0
+	split_count = 0
+	active_buffs.clear()
 
 	# Artifact Effects
 	if GameManager.reward_manager and "focus_fire" in GameManager.reward_manager.acquired_artifacts:
 		range_val *= 1.2
 
 	update_visuals()
-	if level > 1:
-		damage *= pow(1.5, level - 1)
 
 func calculate_damage_against(target_node: Node2D) -> float:
 	var final_damage = damage
@@ -371,9 +402,24 @@ func play_attack_anim(attack_type: String, target_pos: Vector2):
 
 	tween.finished.connect(func(): start_breathe_anim())
 
+func can_merge_with(other_unit) -> bool:
+	if other_unit == null: return false
+	if other_unit == self: return false
+	if other_unit.type_key != type_key: return false
+	if other_unit.level != level: return false
+	if level >= MAX_LEVEL: return false
+	return true
+
 func merge_with(other_unit):
 	level += 1
-	update_visuals()
+	reset_stats()
+
+	# Visual Effect
+	GameManager.spawn_floating_text(global_position, "Level Up!", Color.GOLD)
+	if visual_holder:
+		var tween = create_tween()
+		tween.tween_property(visual_holder, "scale", Vector2(1.5, 1.5), 0.2).set_trans(Tween.TRANS_BOUNCE)
+		tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.2)
 
 func devour(food_unit):
 	level += 1
