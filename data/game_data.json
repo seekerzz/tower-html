@@ -1,58 +1,1272 @@
 {
-	"CORE_TYPES": {
-		"cornucopia": { "name": "丰饶之角", "icon": "🌽", "desc": "基础食物产出 +100%。\n平稳发育，适合新手。", "bonus": { "foodRate": 50 } },
-		"thunder":    { "name": "雷霆尖塔", "icon": "⚡", "desc": "核心每秒发射闪电攻击最近敌人。\n伤害: 200 (随波次成长)", "ability": "attack", "damage": 200 },
-		"alchemy":    { "name": "炼金熔炉", "icon": "⚗️", "desc": "每秒产出 +20 法力。\n每波结束获得 10% 现有金币利息。", "bonus": { "manaRate": 20 } },
-		"war":        { "name": "战争图腾", "icon": "⚔️", "desc": "食物产出减半。\n所有友军单位伤害 +50%。", "bonus": { "foodRate": -25, "globalDmg": 0.5 } }
-	},
-	"BARRICADE_TYPES": {
-		"mucus": { "hp": 500, "type": "slow", "strength": 0.3, "color": "#00cec9", "width": 8, "name": "粘液网", "is_solid": false, "icon": "🕸️" },
-		"poison":{ "hp": 10, "type": "poison", "strength": 200, "color": "#2ecc71", "width": 20, "name": "毒雾", "immune": true, "is_solid": false, "icon": "☠️" },
-		"fang":  { "hp": 800, "type": "reflect", "strength": 100, "color": "#e74c3c", "width": 6, "name": "荆棘", "is_solid": false, "icon": "🦷" }
-	},
-	"UNIT_TYPES": {
-		"scorpion": { "name": "蝎子", "icon": "🦂", "cost": 40, "size": [1,1], "damage": 30, "range": 200, "atkSpeed": 1.0, "attackType": "ranged", "proj": "stinger", "desc": "攻击概率生成尖牙陷阱" },
-		"squirrel": { "name": "松鼠", "icon": "🐿️", "cost": 15, "size": [1,1], "damage": 30, "range": 250, "atkSpeed": 0.15, "foodCost": 15, "manaCost": 0, "attackType": "ranged", "proj": "pinecone", "desc": "远程: 快速投掷松果", "damageType": "physical", "hp": 100, "crit_rate": 0.1, "crit_dmg": 1.5 },
-		"octopus": { "name": "八爪鱼", "icon": "🐙", "cost": 60, "size": [1,1], "damage": 120, "range": 180, "atkSpeed": 1.5, "foodCost": 30, "manaCost": 0, "attackType": "ranged", "proj": "ink", "projCount": 5, "spread": 0.5, "desc": "散射: 同时喷射多道墨汁", "damageType": "physical", "hp": 150, "crit_rate": 0.1, "crit_dmg": 1.5 },
-		"bee": { "name": "蜜蜂", "icon": "🐝", "cost": 80, "size": [1,1], "damage": 250, "range": 250, "atkSpeed": 0.8, "foodCost": 40, "manaCost": 0, "attackType": "ranged", "proj": "stinger", "pierce": 3, "desc": "穿透: 尖锐的蜂刺穿透敌人", "damageType": "physical", "hp": 180, "crit_rate": 0.2, "crit_dmg": 1.5 },
-		"eel": { "name": "电鳗", "icon": "⚡", "cost": 70, "size": [1,1], "damage": 350, "range": 200, "atkSpeed": 1.2, "foodCost": 50, "manaCost": 50, "attackType": "ranged", "proj": "lightning", "chain": 4, "desc": "连锁: 释放电流攻击多个敌人", "damageType": "lightning", "hp": 200, "crit_rate": 0.1, "crit_dmg": 1.5 },
-		"lion": { "name": "狮子", "icon": "🦁", "cost": 90, "size": [1,1], "damage": 400, "range": 200, "atkSpeed": 2.0, "foodCost": 80, "manaCost": 0, "attackType": "ranged", "proj": "roar", "desc": "声波: 狮吼造成范围伤害", "damageType": "poison", "hp": 200, "crit_rate": 0.1, "crit_dmg": 1.5 },
-		"dragon": { "name": "龙", "icon": "🐉", "cost": 200, "size": [1,1], "damage": 50, "range": 300, "atkSpeed": 3.0, "foodCost": 150, "manaCost": 200, "attackType": "ranged", "proj": "dragon_breath", "desc": "龙息: 持续燃烧并吸引敌人的区域", "damageType": "magic", "hp": 250, "crit_rate": 0.1, "crit_dmg": 1.5 },
-		"dog": { "name": "恶霸犬", "icon": "🐕", "cost": 30, "size": [1,1], "damage": 200, "range": 100, "atkSpeed": 0.8, "foodCost": 40, "manaCost": 0, "attackType": "melee", "splash": 60, "skill": "rage", "skillCd": 10, "desc": "近战: 凶猛撕咬 (范围伤害)", "damageType": "physical", "hp": 300, "crit_rate": 0.1, "crit_dmg": 1.5 },
-		"bear":   { "name": "暴怒熊", "icon": "🐻", "cost": 65, "size": [1,1], "damage": 350, "range": 80, "atkSpeed": 1.2, "foodCost": 50, "manaCost": 0, "attackType": "melee", "skill": "stun", "skillCd": 15, "desc": "近战:重击晕眩\n技能:震慑(300💧)", "damageType": "physical", "hp": 400, "crit_rate": 0.1, "crit_dmg": 1.5 },
-		"butterfly": { "name": "蝴蝶", "icon": "🦋", "cost": 50, "size": [1,1], "damage": 600, "range": 350, "atkSpeed": 1.2, "foodCost": 10, "manaCost": 50, "attackType": "ranged", "proj": "pollen", "splash": 30, "skill": "nova", "skillCd": 12, "desc": "魔法: 消耗法力释放强力花粉", "damageType": "magic", "hp": 150, "crit_rate": 0.1, "crit_dmg": 1.5 },
-		"phoenix":{ "name": "凤凰", "icon": "🦅", "cost": 150, "size": [1,1], "damage": 250, "range": 300, "atkSpeed": 0.6, "foodCost": 100, "manaCost": 0, "attackType": "ranged", "proj": "fire", "splash": 40, "skill": "firestorm", "skillCd": 20, "desc": "远程:AOE轰炸\n技能:火雨(300💧)", "damageType": "fire", "hp": 250, "crit_rate": 0.1, "crit_dmg": 1.5 },
-		"plant":  { "name": "向日葵", "icon": "🌻", "cost": 20, "size": [1,1], "damage": 0, "range": 0, "atkSpeed": 1.0, "foodCost": -60, "manaCost": 0, "attackType": "none", "produce": "food", "produceAmt": 60, "desc": "产出:食物+60/s", "hp": 50, "crit_rate": 0.0, "crit_dmg": 1.5 },
-		"torch":  { "name": "红莲火炬", "icon": "🔥", "cost": 35, "size": [1,1], "damage": 0, "range": 0, "atkSpeed": 0, "foodCost": 0, "manaCost": 0, "attackType": "none", "buffProvider": "fire", "desc": "邻接:赋予燃烧", "hp": 100, "crit_rate": 0.0, "crit_dmg": 1.5 },
-		"cauldron":{ "name": "剧毒大锅", "icon": "🧪", "cost": 35, "size": [1,1], "damage": 0, "range": 0, "atkSpeed": 0, "foodCost": 0, "manaCost": 0, "attackType": "none", "buffProvider": "poison", "desc": "邻接:赋予中毒", "hp": 100, "crit_rate": 0.0, "crit_dmg": 1.5 },
-		"drum":   { "name": "战鼓", "icon": "🥁", "cost": 40, "size": [1,1], "damage": 0, "range": 0, "atkSpeed": 0, "foodCost": 0, "manaCost": 0, "attackType": "none", "buffProvider": "speed", "desc": "邻接:攻速+20%", "hp": 100, "crit_rate": 0.0, "crit_dmg": 1.5 },
-		"mirror": { "name": "反射魔镜", "icon": "🪞", "cost": 50, "size": [1,1], "damage": 0, "range": 0, "atkSpeed": 0, "foodCost": 0, "manaCost": 0, "attackType": "none", "buffProvider": "bounce", "desc": "邻接:子弹弹射+1", "hp": 100, "crit_rate": 0.0, "crit_dmg": 1.5 },
-		"splitter":{ "name": "多重棱镜", "icon": "💠", "cost": 55, "size": [1,1], "damage": 0, "range": 0, "atkSpeed": 0, "foodCost": 0, "manaCost": 0, "attackType": "none", "buffProvider": "split", "desc": "邻接:子弹分裂+1", "hp": 100, "crit_rate": 0.0, "crit_dmg": 1.5 },
-		"meat":   { "name": "五花肉", "icon": "🥓", "cost": 10, "size": [1,1], "damage": 0, "range": 0, "atkSpeed": 0, "foodCost": 0, "manaCost": 0, "isFood": true, "xp": 50, "attackType": "none", "desc": "喂食获得大量Buff", "hp": 10, "crit_rate": 0.0, "crit_dmg": 1.5 },
-		"hedgehog": { "name": "刺猬", "icon": "🦔", "cost": 40, "size": [1,1], "damage": 50, "range": 80, "atkSpeed": 1.0, "foodCost": 30, "manaCost": 0, "attackType": "melee", "trait": "reflect", "reflect_percent": 0.3, "desc": "反伤30%", "damageType": "physical", "hp": 400, "crit_rate": 0.0, "crit_dmg": 1.5 },
-		"iron_turtle": { "name": "铁甲龟", "icon": "🐢🛡️", "cost": 50, "size": [1,1], "damage": 20, "range": 80, "atkSpeed": 0.8, "foodCost": 40, "manaCost": 0, "attackType": "melee", "trait": "flat_reduce", "flat_amount": 20, "desc": "固定减伤20", "damageType": "physical", "hp": 600, "crit_rate": 0.0, "crit_dmg": 1.5 },
-		"cow": { "name": "奶牛", "icon": "🐄", "cost": 45, "size": [1,1], "damage": 0, "range": 0, "atkSpeed": 1.0, "foodCost": 50, "manaCost": 0, "attackType": "none", "skill": "milk_aura", "desc": "每5秒治疗核心50", "hp": 300, "crit_rate": 0.0, "crit_dmg": 1.5 },
-		"mosquito": { "name": "蚊子", "icon": "🦟", "cost": 25, "size": [1,1], "damage": 20, "range": 200, "atkSpeed": 1.5, "foodCost": 10, "manaCost": 0, "attackType": "ranged", "proj": "dot", "trait": "lifesteal", "lifesteal_percent": 1.0, "desc": "造成伤害治疗核心", "damageType": "physical", "hp": 50, "crit_rate": 0.1, "crit_dmg": 1.5 },
-		"snowman": { "name": "雪人", "icon": "☃️", "cost": 60, "size": [1,1], "damage": 40, "range": 250, "atkSpeed": 1.0, "foodCost": 40, "manaCost": 20, "attackType": "ranged", "proj": "snowball", "trait": "freeze", "desc": "攻击冻结敌人", "damageType": "magic", "hp": 200, "crit_rate": 0.1, "crit_dmg": 1.5 },
-		"rabbit": { "name": "兔子", "icon": "🐇", "cost": 35, "size": [1,1], "damage": 80, "range": 80, "atkSpeed": 1.2, "foodCost": 20, "manaCost": 0, "attackType": "melee", "trait": "dodge_counter", "dodge_rate": 0.3, "desc": "30%闪避并反击", "damageType": "physical", "hp": 150, "crit_rate": 0.2, "crit_dmg": 1.5 },
-		"viper": { "name": "毒蛇", "icon": "🐍", "cost": 30, "size": [1,1], "damage": 40, "range": 80, "atkSpeed": 1.2, "foodCost": 20, "manaCost": 0, "attackType": "melee", "trait": "poison_touch", "desc": "攻击概率生成毒液陷阱", "damageType": "poison", "hp": 150, "crit_rate": 0.1, "crit_dmg": 1.5 },
-		"spider": { "name": "蜘蛛", "icon": "🕷️", "cost": 40, "size": [1,1], "damage": 30, "range": 250, "atkSpeed": 1.0, "foodCost": 30, "manaCost": 0, "attackType": "ranged", "proj": "web", "trait": "slow", "desc": "攻击概率生成蜘蛛网陷阱", "damageType": "physical", "hp": 180, "crit_rate": 0.1, "crit_dmg": 1.5 }
-	},
-	"TRAITS": [
-		{ "id": "vamp", "name": "吸血", "desc": "造成伤害回复生命", "icon": "🩸" },
-		{ "id": "crit", "name": "暴击", "desc": "20%几率造成双倍伤害", "icon": "💥" },
-		{ "id": "exec", "name": "处决", "desc": "对生命低于30%的敌人伤害翻倍", "icon": "💀" },
-		{ "id": "giant", "name": "巨化", "desc": "体型变大，范围增加", "icon": "🏔️" },
-		{ "id": "swift", "name": "神速", "desc": "攻速 +30%", "icon": "👟" }
-	],
-	"ENEMY_VARIANTS": {
-		"slime": { "name": "史莱姆", "icon": "💧", "color": "#00cec9", "radius": 10, "hpMod": 0.8, "spdMod": 0.7, "attackType": "melee", "range": 30, "dmg": 50, "atkSpeed": 1.0, "drop": "mucus", "dropRate": 0.5 },
-		"poison":{ "name": "毒怪", "icon": "🤢", "color": "#2ecc71", "radius": 12, "hpMod": 1.2, "spdMod": 0.8, "attackType": "melee", "range": 30, "dmg": 80, "atkSpeed": 1.0, "drop": "poison", "dropRate": 0.4 },
-		"wolf":  { "name": "狼群", "icon": "🐺", "color": "#e74c3c", "radius": 14, "hpMod": 1.0, "spdMod": 1.5, "attackType": "melee", "range": 30, "dmg": 120, "atkSpeed": 0.8, "drop": "fang", "dropRate": 0.3 },
-		"treant":{ "name": "树人", "icon": "🌳", "color": "#d35400", "radius": 18, "hpMod": 2.5, "spdMod": 0.5, "attackType": "melee", "range": 30, "dmg": 200, "atkSpeed": 2.0, "drop": "wood", "dropRate": 0.6 },
-		"yeti":  { "name": "雪怪", "icon": "❄️", "color": "#74b9ff", "radius": 20, "hpMod": 3.0, "spdMod": 0.6, "attackType": "melee", "range": 40, "dmg": 250, "atkSpeed": 2.0, "drop": "snow", "dropRate": 0.5 },
-		"golem": { "name": "石头人", "icon": "🗿", "color": "#95a5a6", "radius": 22, "hpMod": 4.0, "spdMod": 0.4, "attackType": "melee", "range": 40, "dmg": 300, "atkSpeed": 2.5, "drop": "stone", "dropRate": 0.5 },
-		"shooter":{ "name": "投矛手", "icon": "🏹", "color": "#16a085", "radius": 14, "hpMod": 0.8, "spdMod": 0.8, "attackType": "ranged", "range": 200, "dmg": 80, "atkSpeed": 2.0, "projectileSpeed": 150, "drop": "wood", "dropRate": 0.3 },
-		"boss":   { "name": "虚空领主", "icon": "👹", "color": "#2c3e50", "radius": 32, "hpMod": 15.0, "spdMod": 0.4, "attackType": "melee", "range": 50, "dmg": 500, "atkSpeed": 3.0, "drop": "stone", "dropRate": 1.0 }
-	}
+    "CORE_TYPES": {
+        "cornucopia": {
+            "name": "丰饶之角",
+            "icon": "🌽",
+            "desc": "基础食物产出 +100%。\n平稳发育，适合新手。",
+            "bonus": {
+                "foodRate": 50
+            }
+        },
+        "thunder": {
+            "name": "雷霆尖塔",
+            "icon": "⚡",
+            "desc": "核心每秒发射闪电攻击最近敌人。\n伤害: 200 (随波次成长)",
+            "ability": "attack",
+            "damage": 200
+        },
+        "alchemy": {
+            "name": "炼金熔炉",
+            "icon": "⚗️",
+            "desc": "每秒产出 +20 法力。\n每波结束获得 10% 现有金币利息。",
+            "bonus": {
+                "manaRate": 20
+            }
+        },
+        "war": {
+            "name": "战争图腾",
+            "icon": "⚔️",
+            "desc": "食物产出减半。\n所有友军单位伤害 +50%。",
+            "bonus": {
+                "foodRate": -25,
+                "globalDmg": 0.5
+            }
+        }
+    },
+    "BARRICADE_TYPES": {
+        "mucus": {
+            "hp": 500,
+            "type": "slow",
+            "strength": 0.3,
+            "color": "#00cec9",
+            "width": 8,
+            "name": "粘液网",
+            "is_solid": false,
+            "icon": "🕸️"
+        },
+        "poison": {
+            "hp": 10,
+            "type": "poison",
+            "strength": 200,
+            "color": "#2ecc71",
+            "width": 20,
+            "name": "毒雾",
+            "immune": true,
+            "is_solid": false,
+            "icon": "☠️"
+        },
+        "fang": {
+            "hp": 800,
+            "type": "reflect",
+            "strength": 100,
+            "color": "#e74c3c",
+            "width": 6,
+            "name": "荆棘",
+            "is_solid": false,
+            "icon": "🦷"
+        }
+    },
+    "UNIT_TYPES": {
+        "scorpion": {
+            "name": "蝎子",
+            "icon": "🦂",
+            "size": [
+                1,
+                1
+            ],
+            "range": 200,
+            "atkSpeed": 1.0,
+            "attackType": "ranged",
+            "proj": "stinger",
+            "levels": {
+                "1": {
+                    "damage": 30,
+                    "hp": 0,
+                    "cost": 40,
+                    "desc": "Lv1: 攻击概率生成尖牙陷阱",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 45,
+                    "hp": 0,
+                    "cost": 80,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 67,
+                    "hp": 0,
+                    "cost": 160,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "squirrel": {
+            "name": "松鼠",
+            "icon": "🐿️",
+            "size": [
+                1,
+                1
+            ],
+            "range": 250,
+            "atkSpeed": 0.15,
+            "foodCost": 15,
+            "manaCost": 0,
+            "attackType": "ranged",
+            "proj": "pinecone",
+            "damageType": "physical",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 30,
+                    "hp": 100,
+                    "cost": 15,
+                    "desc": "Lv1: 快速投掷松果",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 45,
+                    "hp": 150,
+                    "cost": 30,
+                    "desc": "Lv2: 伤害提升，暴击率增加",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 67,
+                    "hp": 225,
+                    "cost": 60,
+                    "desc": "Lv3: 松果加特林，概率连射",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2,
+                        "multi_shot_chance": 0.3
+                    }
+                }
+            }
+        },
+        "octopus": {
+            "name": "八爪鱼",
+            "icon": "🐙",
+            "size": [
+                1,
+                1
+            ],
+            "range": 180,
+            "atkSpeed": 1.5,
+            "foodCost": 30,
+            "manaCost": 0,
+            "attackType": "ranged",
+            "proj": "ink",
+            "projCount": 5,
+            "spread": 0.5,
+            "damageType": "physical",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 120,
+                    "hp": 150,
+                    "cost": 60,
+                    "desc": "Lv1: 散射: 同时喷射多道墨汁",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 180,
+                    "hp": 225,
+                    "cost": 120,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 270,
+                    "hp": 337,
+                    "cost": 240,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "bee": {
+            "name": "蜜蜂",
+            "icon": "🐝",
+            "size": [
+                1,
+                1
+            ],
+            "range": 250,
+            "atkSpeed": 0.8,
+            "foodCost": 40,
+            "manaCost": 0,
+            "attackType": "ranged",
+            "proj": "stinger",
+            "pierce": 3,
+            "damageType": "physical",
+            "crit_rate": 0.2,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 250,
+                    "hp": 180,
+                    "cost": 80,
+                    "desc": "Lv1: 穿透: 尖锐的蜂刺穿透敌人",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 375,
+                    "hp": 270,
+                    "cost": 160,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 562,
+                    "hp": 405,
+                    "cost": 320,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "eel": {
+            "name": "电鳗",
+            "icon": "⚡",
+            "size": [
+                1,
+                1
+            ],
+            "range": 200,
+            "atkSpeed": 1.2,
+            "foodCost": 50,
+            "manaCost": 50,
+            "attackType": "ranged",
+            "proj": "lightning",
+            "chain": 4,
+            "damageType": "lightning",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 350,
+                    "hp": 200,
+                    "cost": 70,
+                    "desc": "Lv1: 连锁: 释放电流攻击多个敌人",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 525,
+                    "hp": 300,
+                    "cost": 140,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 787,
+                    "hp": 450,
+                    "cost": 280,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "lion": {
+            "name": "狮子",
+            "icon": "🦁",
+            "size": [
+                1,
+                1
+            ],
+            "range": 200,
+            "atkSpeed": 2.0,
+            "foodCost": 80,
+            "manaCost": 0,
+            "attackType": "ranged",
+            "proj": "roar",
+            "damageType": "poison",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 400,
+                    "hp": 200,
+                    "cost": 90,
+                    "desc": "Lv1: 声波: 狮吼造成范围伤害",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 600,
+                    "hp": 300,
+                    "cost": 180,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 900,
+                    "hp": 450,
+                    "cost": 360,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "dragon": {
+            "name": "龙",
+            "icon": "🐉",
+            "size": [
+                1,
+                1
+            ],
+            "range": 300,
+            "atkSpeed": 3.0,
+            "foodCost": 150,
+            "manaCost": 200,
+            "attackType": "ranged",
+            "proj": "dragon_breath",
+            "damageType": "magic",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 50,
+                    "hp": 250,
+                    "cost": 200,
+                    "desc": "Lv1: 龙息: 持续燃烧并吸引敌人的区域",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 75,
+                    "hp": 375,
+                    "cost": 400,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 112,
+                    "hp": 562,
+                    "cost": 800,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "dog": {
+            "name": "恶霸犬",
+            "icon": "🐕",
+            "size": [
+                1,
+                1
+            ],
+            "range": 100,
+            "atkSpeed": 0.8,
+            "foodCost": 40,
+            "manaCost": 0,
+            "attackType": "melee",
+            "splash": 60,
+            "skill": "rage",
+            "skillCd": 10,
+            "damageType": "physical",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 200,
+                    "hp": 300,
+                    "cost": 30,
+                    "desc": "Lv1: 近战: 凶猛撕咬 (范围伤害)",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 300,
+                    "hp": 450,
+                    "cost": 60,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 450,
+                    "hp": 675,
+                    "cost": 120,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "bear": {
+            "name": "暴怒熊",
+            "icon": "🐻",
+            "size": [
+                1,
+                1
+            ],
+            "range": 80,
+            "atkSpeed": 1.2,
+            "foodCost": 50,
+            "manaCost": 0,
+            "attackType": "melee",
+            "skill": "stun",
+            "skillCd": 15,
+            "damageType": "physical",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 350,
+                    "hp": 400,
+                    "cost": 65,
+                    "desc": "Lv1: 近战:重击晕眩\n技能:震慑(300💧)",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 525,
+                    "hp": 600,
+                    "cost": 130,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 787,
+                    "hp": 900,
+                    "cost": 260,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "butterfly": {
+            "name": "蝴蝶",
+            "icon": "🦋",
+            "size": [
+                1,
+                1
+            ],
+            "range": 350,
+            "atkSpeed": 1.2,
+            "foodCost": 10,
+            "manaCost": 50,
+            "attackType": "ranged",
+            "proj": "pollen",
+            "splash": 30,
+            "skill": "nova",
+            "skillCd": 12,
+            "damageType": "magic",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 600,
+                    "hp": 150,
+                    "cost": 50,
+                    "desc": "Lv1: 魔法: 消耗法力释放强力花粉",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 900,
+                    "hp": 225,
+                    "cost": 100,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 1350,
+                    "hp": 337,
+                    "cost": 200,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "phoenix": {
+            "name": "凤凰",
+            "icon": "🦅",
+            "size": [
+                1,
+                1
+            ],
+            "range": 300,
+            "atkSpeed": 0.6,
+            "foodCost": 100,
+            "manaCost": 0,
+            "attackType": "ranged",
+            "proj": "fire",
+            "splash": 40,
+            "skill": "firestorm",
+            "skillCd": 20,
+            "damageType": "fire",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 250,
+                    "hp": 250,
+                    "cost": 150,
+                    "desc": "Lv1: 远程:AOE轰炸\n技能:火雨(300💧)",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 375,
+                    "hp": 375,
+                    "cost": 300,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 562,
+                    "hp": 562,
+                    "cost": 600,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "plant": {
+            "name": "向日葵",
+            "icon": "🌻",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 1.0,
+            "foodCost": -60,
+            "manaCost": 0,
+            "attackType": "none",
+            "produce": "food",
+            "produceAmt": 60,
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 0,
+                    "hp": 50,
+                    "cost": 20,
+                    "desc": "Lv1: 产出:食物+60/s",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 0,
+                    "hp": 75,
+                    "cost": 40,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 0,
+                    "hp": 112,
+                    "cost": 80,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "torch": {
+            "name": "红莲火炬",
+            "icon": "🔥",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 0,
+            "foodCost": 0,
+            "manaCost": 0,
+            "attackType": "none",
+            "buffProvider": "fire",
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 0,
+                    "hp": 100,
+                    "cost": 35,
+                    "desc": "Lv1: 邻接:赋予燃烧",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 0,
+                    "hp": 150,
+                    "cost": 70,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 0,
+                    "hp": 225,
+                    "cost": 140,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "cauldron": {
+            "name": "剧毒大锅",
+            "icon": "🧪",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 0,
+            "foodCost": 0,
+            "manaCost": 0,
+            "attackType": "none",
+            "buffProvider": "poison",
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 0,
+                    "hp": 100,
+                    "cost": 35,
+                    "desc": "Lv1: 邻接:赋予中毒",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 0,
+                    "hp": 150,
+                    "cost": 70,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 0,
+                    "hp": 225,
+                    "cost": 140,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "drum": {
+            "name": "战鼓",
+            "icon": "🥁",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 0,
+            "foodCost": 0,
+            "manaCost": 0,
+            "attackType": "none",
+            "buffProvider": "speed",
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 0,
+                    "hp": 100,
+                    "cost": 40,
+                    "desc": "Lv1: 邻接:攻速+20%",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 0,
+                    "hp": 150,
+                    "cost": 80,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 0,
+                    "hp": 225,
+                    "cost": 160,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "mirror": {
+            "name": "反射魔镜",
+            "icon": "🪞",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 0,
+            "foodCost": 0,
+            "manaCost": 0,
+            "attackType": "none",
+            "buffProvider": "bounce",
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 0,
+                    "hp": 100,
+                    "cost": 50,
+                    "desc": "Lv1: 邻接:子弹弹射+1",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 0,
+                    "hp": 150,
+                    "cost": 100,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 0,
+                    "hp": 225,
+                    "cost": 200,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "splitter": {
+            "name": "多重棱镜",
+            "icon": "💠",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 0,
+            "foodCost": 0,
+            "manaCost": 0,
+            "attackType": "none",
+            "buffProvider": "split",
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 0,
+                    "hp": 100,
+                    "cost": 55,
+                    "desc": "Lv1: 邻接:子弹分裂+1",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 0,
+                    "hp": 150,
+                    "cost": 110,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 0,
+                    "hp": 225,
+                    "cost": 220,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "meat": {
+            "name": "五花肉",
+            "icon": "🥓",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 0,
+            "foodCost": 0,
+            "manaCost": 0,
+            "isFood": true,
+            "xp": 50,
+            "attackType": "none",
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 0,
+                    "hp": 10,
+                    "cost": 10,
+                    "desc": "Lv1: 喂食获得大量Buff",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 0,
+                    "hp": 15,
+                    "cost": 20,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 0,
+                    "hp": 22,
+                    "cost": 40,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "hedgehog": {
+            "name": "刺猬",
+            "icon": "🦔",
+            "size": [
+                1,
+                1
+            ],
+            "range": 80,
+            "atkSpeed": 1.0,
+            "foodCost": 30,
+            "manaCost": 0,
+            "attackType": "melee",
+            "trait": "reflect",
+            "reflect_percent": 0.3,
+            "damageType": "physical",
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 50,
+                    "hp": 400,
+                    "cost": 40,
+                    "desc": "Lv1: 反伤30%",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 75,
+                    "hp": 600,
+                    "cost": 80,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 112,
+                    "hp": 900,
+                    "cost": 160,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "iron_turtle": {
+            "name": "铁甲龟",
+            "icon": "🐢🛡️",
+            "size": [
+                1,
+                1
+            ],
+            "range": 80,
+            "atkSpeed": 0.8,
+            "foodCost": 40,
+            "manaCost": 0,
+            "attackType": "melee",
+            "trait": "flat_reduce",
+            "flat_amount": 20,
+            "damageType": "physical",
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 20,
+                    "hp": 600,
+                    "cost": 50,
+                    "desc": "Lv1: 固定减伤20",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 30,
+                    "hp": 900,
+                    "cost": 100,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 45,
+                    "hp": 1350,
+                    "cost": 200,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "cow": {
+            "name": "奶牛",
+            "icon": "🐄",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 1.0,
+            "foodCost": 50,
+            "manaCost": 0,
+            "attackType": "none",
+            "skill": "milk_aura",
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 0,
+                    "hp": 300,
+                    "cost": 45,
+                    "desc": "Lv1: 每5秒治疗核心50",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 0,
+                    "hp": 450,
+                    "cost": 90,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 0,
+                    "hp": 675,
+                    "cost": 180,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "mosquito": {
+            "name": "蚊子",
+            "icon": "🦟",
+            "size": [
+                1,
+                1
+            ],
+            "range": 200,
+            "atkSpeed": 1.5,
+            "foodCost": 10,
+            "manaCost": 0,
+            "attackType": "ranged",
+            "proj": "dot",
+            "trait": "lifesteal",
+            "lifesteal_percent": 1.0,
+            "damageType": "physical",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 20,
+                    "hp": 50,
+                    "cost": 25,
+                    "desc": "Lv1: 造成伤害治疗核心",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 30,
+                    "hp": 75,
+                    "cost": 50,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 45,
+                    "hp": 112,
+                    "cost": 100,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "snowman": {
+            "name": "雪人",
+            "icon": "☃️",
+            "size": [
+                1,
+                1
+            ],
+            "range": 250,
+            "atkSpeed": 1.0,
+            "foodCost": 40,
+            "manaCost": 20,
+            "attackType": "ranged",
+            "proj": "snowball",
+            "trait": "freeze",
+            "damageType": "magic",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 40,
+                    "hp": 200,
+                    "cost": 60,
+                    "desc": "Lv1: 攻击冻结敌人",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 60,
+                    "hp": 300,
+                    "cost": 120,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 90,
+                    "hp": 450,
+                    "cost": 240,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "rabbit": {
+            "name": "兔子",
+            "icon": "🐇",
+            "size": [
+                1,
+                1
+            ],
+            "range": 80,
+            "atkSpeed": 1.2,
+            "foodCost": 20,
+            "manaCost": 0,
+            "attackType": "melee",
+            "trait": "dodge_counter",
+            "dodge_rate": 0.3,
+            "damageType": "physical",
+            "crit_rate": 0.2,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 80,
+                    "hp": 150,
+                    "cost": 35,
+                    "desc": "Lv1: 30%闪避并反击",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 120,
+                    "hp": 225,
+                    "cost": 70,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 180,
+                    "hp": 337,
+                    "cost": 140,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "viper": {
+            "name": "毒蛇",
+            "icon": "🐍",
+            "size": [
+                1,
+                1
+            ],
+            "range": 80,
+            "atkSpeed": 1.2,
+            "foodCost": 20,
+            "manaCost": 0,
+            "attackType": "melee",
+            "trait": "poison_touch",
+            "damageType": "poison",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 40,
+                    "hp": 150,
+                    "cost": 30,
+                    "desc": "Lv1: 攻击概率生成毒液陷阱",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 60,
+                    "hp": 225,
+                    "cost": 60,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 90,
+                    "hp": 337,
+                    "cost": 120,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        },
+        "spider": {
+            "name": "蜘蛛",
+            "icon": "🕷️",
+            "size": [
+                1,
+                1
+            ],
+            "range": 250,
+            "atkSpeed": 1.0,
+            "foodCost": 30,
+            "manaCost": 0,
+            "attackType": "ranged",
+            "proj": "web",
+            "trait": "slow",
+            "damageType": "physical",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 30,
+                    "hp": 180,
+                    "cost": 40,
+                    "desc": "Lv1: 攻击概率生成蜘蛛网陷阱",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 45,
+                    "hp": 270,
+                    "cost": 80,
+                    "desc": "Lv2: 属性提升",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 67,
+                    "hp": 405,
+                    "cost": 160,
+                    "desc": "Lv3: 终极形态",
+                    "mechanics": {}
+                }
+            }
+        }
+    },
+    "TRAITS": [
+        {
+            "id": "vamp",
+            "name": "吸血",
+            "desc": "造成伤害回复生命",
+            "icon": "🩸"
+        },
+        {
+            "id": "crit",
+            "name": "暴击",
+            "desc": "20%几率造成双倍伤害",
+            "icon": "💥"
+        },
+        {
+            "id": "exec",
+            "name": "处决",
+            "desc": "对生命低于30%的敌人伤害翻倍",
+            "icon": "💀"
+        },
+        {
+            "id": "giant",
+            "name": "巨化",
+            "desc": "体型变大，范围增加",
+            "icon": "🏔️"
+        },
+        {
+            "id": "swift",
+            "name": "神速",
+            "desc": "攻速 +30%",
+            "icon": "👟"
+        }
+    ],
+    "ENEMY_VARIANTS": {
+        "slime": {
+            "name": "史莱姆",
+            "icon": "💧",
+            "color": "#00cec9",
+            "radius": 10,
+            "hpMod": 0.8,
+            "spdMod": 0.7,
+            "attackType": "melee",
+            "range": 30,
+            "dmg": 50,
+            "atkSpeed": 1.0,
+            "drop": "mucus",
+            "dropRate": 0.5
+        },
+        "poison": {
+            "name": "毒怪",
+            "icon": "🤢",
+            "color": "#2ecc71",
+            "radius": 12,
+            "hpMod": 1.2,
+            "spdMod": 0.8,
+            "attackType": "melee",
+            "range": 30,
+            "dmg": 80,
+            "atkSpeed": 1.0,
+            "drop": "poison",
+            "dropRate": 0.4
+        },
+        "wolf": {
+            "name": "狼群",
+            "icon": "🐺",
+            "color": "#e74c3c",
+            "radius": 14,
+            "hpMod": 1.0,
+            "spdMod": 1.5,
+            "attackType": "melee",
+            "range": 30,
+            "dmg": 120,
+            "atkSpeed": 0.8,
+            "drop": "fang",
+            "dropRate": 0.3
+        },
+        "treant": {
+            "name": "树人",
+            "icon": "🌳",
+            "color": "#d35400",
+            "radius": 18,
+            "hpMod": 2.5,
+            "spdMod": 0.5,
+            "attackType": "melee",
+            "range": 30,
+            "dmg": 200,
+            "atkSpeed": 2.0,
+            "drop": "wood",
+            "dropRate": 0.6
+        },
+        "yeti": {
+            "name": "雪怪",
+            "icon": "❄️",
+            "color": "#74b9ff",
+            "radius": 20,
+            "hpMod": 3.0,
+            "spdMod": 0.6,
+            "attackType": "melee",
+            "range": 40,
+            "dmg": 250,
+            "atkSpeed": 2.0,
+            "drop": "snow",
+            "dropRate": 0.5
+        },
+        "golem": {
+            "name": "石头人",
+            "icon": "🗿",
+            "color": "#95a5a6",
+            "radius": 22,
+            "hpMod": 4.0,
+            "spdMod": 0.4,
+            "attackType": "melee",
+            "range": 40,
+            "dmg": 300,
+            "atkSpeed": 2.5,
+            "drop": "stone",
+            "dropRate": 0.5
+        },
+        "shooter": {
+            "name": "投矛手",
+            "icon": "🏹",
+            "color": "#16a085",
+            "radius": 14,
+            "hpMod": 0.8,
+            "spdMod": 0.8,
+            "attackType": "ranged",
+            "range": 200,
+            "dmg": 80,
+            "atkSpeed": 2.0,
+            "projectileSpeed": 150,
+            "drop": "wood",
+            "dropRate": 0.3
+        },
+        "boss": {
+            "name": "虚空领主",
+            "icon": "👹",
+            "color": "#2c3e50",
+            "radius": 32,
+            "hpMod": 15.0,
+            "spdMod": 0.4,
+            "attackType": "melee",
+            "range": 50,
+            "dmg": 500,
+            "atkSpeed": 3.0,
+            "drop": "stone",
+            "dropRate": 1.0
+        }
+    }
 }

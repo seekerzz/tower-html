@@ -46,6 +46,7 @@ var focus_target: Node2D = null
 var focus_stacks: int = 0
 
 const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
+const MAX_LEVEL = 3
 
 signal unit_clicked(unit)
 
@@ -77,7 +78,7 @@ func setup(key: String):
 	_ensure_visual_hierarchy()
 	type_key = key
 	unit_data = Constants.UNIT_TYPES[key].duplicate()
-	max_hp = unit_data.get("hp", 0)
+	level = 1
 	reset_stats()
 	update_visuals()
 
@@ -124,7 +125,13 @@ func take_damage(amount: float, source_enemy = null):
 
 
 func reset_stats():
-	damage = unit_data.damage
+	var level_data = unit_data.levels[str(level)]
+
+	damage = level_data.damage
+	max_hp = level_data.hp
+	if level_data.has("desc"):
+		unit_data["desc"] = level_data.desc
+
 	range_val = unit_data.range
 	atk_speed = unit_data.atk_speed if "atk_speed" in unit_data else unit_data.get("atkSpeed", 1.0)
 	crit_rate = unit_data.get("crit_rate", 0.1)
@@ -137,13 +144,18 @@ func reset_stats():
 	attack_cost_mana = unit_data.get("manaCost", 0.0)
 	skill_mana_cost = unit_data.get("skillCost", 30.0)
 
+	# Apply mechanics
+	if level_data.has("mechanics"):
+		var mechs = level_data.mechanics
+		if mechs.has("crit_rate_bonus"):
+			crit_rate += mechs.crit_rate_bonus
+		# Add more mechanics handlers as needed
+
 	# Artifact Effects
 	if GameManager.reward_manager and "focus_fire" in GameManager.reward_manager.acquired_artifacts:
 		range_val *= 1.2
 
 	update_visuals()
-	if level > 1:
-		damage *= pow(1.5, level - 1)
 
 func calculate_damage_against(target_node: Node2D) -> float:
 	var final_damage = damage
@@ -371,14 +383,32 @@ func play_attack_anim(attack_type: String, target_pos: Vector2):
 
 	tween.finished.connect(func(): start_breathe_anim())
 
+func can_merge_with(other_unit) -> bool:
+	if other_unit == null: return false
+	if other_unit.type_key != type_key: return false
+	if other_unit.level != level: return false
+	if level >= MAX_LEVEL: return false
+	return true
+
 func merge_with(other_unit):
+	if !can_merge_with(other_unit): return
 	level += 1
-	update_visuals()
+	reset_stats()
+
+	# FX
+	GameManager.spawn_floating_text(global_position, "UPGRADE!", Color.GOLD)
+	if visual_holder:
+		var tween = create_tween()
+		tween.tween_property(visual_holder, "scale", Vector2(1.5, 1.5), 0.2).set_trans(Tween.TRANS_ELASTIC)
+		tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.2)
 
 func devour(food_unit):
-	level += 1
-	damage += 5
-	stats_multiplier += 0.2
+	if level < MAX_LEVEL:
+		level += 1
+		reset_stats()
+	else:
+		damage += 5
+		stats_multiplier += 0.2
 	update_visuals()
 
 func _on_area_2d_input_event(viewport, event, shape_idx):
