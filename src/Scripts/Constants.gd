@@ -3,8 +3,8 @@ extends Node
 const TILE_SIZE = 60
 const BENCH_SIZE = 8
 
-const MAP_WIDTH = 11
-const MAP_HEIGHT = 11
+const MAP_WIDTH = 9
+const MAP_HEIGHT = 9
 const CORE_ZONE_RADIUS = 2
 
 const BASE_CORE_HP = 500
