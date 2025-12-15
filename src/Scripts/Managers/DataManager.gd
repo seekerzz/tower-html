@@ -39,6 +39,14 @@ func _parse_unit_types(data: Dictionary):
 		if entry.has("size"):
 			var s = entry["size"]
 			entry["size"] = Vector2i(s[0], s[1])
+
+		# Compatibility: Copy Level 1 stats to root
+		if entry.has("levels") and entry["levels"].has("1"):
+			var lv1 = entry["levels"]["1"]
+			for k in lv1:
+				if k != "mechanics":
+					entry[k] = lv1[k]
+
 		Constants.UNIT_TYPES[key] = entry
 
 func _parse_traits(data: Array):
