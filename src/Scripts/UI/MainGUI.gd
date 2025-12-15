@@ -17,6 +17,7 @@ signal sacrifice_requested
 @onready var stats_header = $DamageStats/Header
 @onready var stats_toggle_btn = $DamageStats/ToggleButton
 @onready var left_sidebar = $LeftSidebar
+@onready var top_left_panel = $TopLeftPanel
 
 @onready var game_over_panel = $GameOverPanel
 @onready var retry_button = $GameOverPanel/RetryWaveButton
@@ -194,6 +195,32 @@ func _on_hide_tooltip():
 func _process(delta):
 	if last_sort_time > 0:
 		last_sort_time -= delta
+
+	_update_cutin_layout()
+
+func _update_cutin_layout():
+	if !cutin_manager or !top_left_panel or !left_sidebar: return
+
+	# Calculate space between TopLeftPanel (Artifacts) and LeftSidebar (Skills)
+	# TopLeftPanel grows downwards. Its global rect is relative to canvas usually, or MainGUI.
+	# MainGUI is full rect.
+
+	var top_panel_bottom = top_left_panel.position.y + top_left_panel.size.y
+
+	# LeftSidebar is anchored bottom-left.
+	# We want its top edge.
+	var left_sidebar_top = left_sidebar.position.y
+
+	# We want a rect that starts at (10, top_panel_bottom) and ends at (width, left_sidebar_top)
+	# Width is typically matched to sidebar width (260-280)
+	var x_pos = top_left_panel.position.x # 10
+	var width = 270.0 # Standard width from request
+
+	var available_height = left_sidebar_top - top_panel_bottom
+
+	# Pass to manager
+	var new_rect = Rect2(x_pos, top_panel_bottom, width, available_height)
+	cutin_manager.update_area(new_rect)
 
 func _input(event):
 	if event.is_action_pressed("ui_focus_next"):

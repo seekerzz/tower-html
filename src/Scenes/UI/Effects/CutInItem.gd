@@ -48,6 +48,15 @@ func setup(unit):
 	if portrait and icon_tex:
 		portrait.texture = icon_tex
 
+	if flash:
+		flash.color = Color.WHITE
+		# Flash is a Control using CutInBackground script, so changing color redraws it.
+		# We need to use modulate or own alpha property for fading if we don't want to change RGB.
+		# CutInBackground uses draw_colored_polygon(..., color).
+		# So flash.color controls the draw color. We want it White but fading.
+		# So we set flash.color = White with Alpha.
+		flash.color = Color(1, 1, 1, 0) # Start transparent
+
 	# Start animation
 	animate_entry()
 
@@ -55,7 +64,6 @@ func animate_entry():
 	# Initial state
 	position.x = -400
 	modulate.a = 1.0
-	if flash: flash.color.a = 0.0
 
 	var tween = create_tween()
 	tween.set_parallel(true)
@@ -64,8 +72,9 @@ func animate_entry():
 
 	# Flash effect
 	if flash:
-		flash.color.a = 0.8
-		tween.tween_property(flash, "color:a", 0.0, 0.5)
+		# Flash is using CutInBackground.gd where color property triggers redraw.
+		flash.color = Color(1, 1, 1, 0.8)
+		tween.tween_property(flash, "color", Color(1, 1, 1, 0.0), 0.5)
 
 	# Auto exit
 	get_tree().create_timer(2.5).timeout.connect(animate_exit)
