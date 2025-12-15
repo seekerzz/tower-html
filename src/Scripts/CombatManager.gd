@@ -22,7 +22,15 @@ func _process(delta):
 				process_unit_combat(tile.unit, tile, delta)
 
 func _on_wave_started():
+	_reset_unit_cooldowns()
 	start_wave_logic()
+
+func _reset_unit_cooldowns():
+	if GameManager.grid_manager:
+		for key in GameManager.grid_manager.tiles:
+			var tile = GameManager.grid_manager.tiles[key]
+			if tile.unit:
+				tile.unit.skill_cooldown = 0.0
 
 func get_wave_type(n: int) -> String:
 	var types = ['slime', 'wolf', 'poison', 'treant', 'yeti', 'golem']
