@@ -18,6 +18,11 @@ var default_zoom: Vector2 = Vector2(0.8, 0.8)
 var default_position: Vector2 = Vector2(640, 400)
 var min_allowed_zoom: Vector2 = Vector2(0.5, 0.5)
 
+# Targeting System
+var targeting_mode: bool = false
+var targeting_unit: Node2D = null
+var target_indicator: ColorRect = null
+
 func _ready():
 	# Initialize bench array with nulls based on constant
 	bench.resize(Constants.BENCH_SIZE)
@@ -28,6 +33,7 @@ func _ready():
 
 	GameManager.wave_started.connect(_on_wave_started)
 	GameManager.wave_ended.connect(_on_wave_ended)
+	GameManager.request_targeting.connect(enter_targeting_mode)
 
 	# Camera Setup
 	# Calculate min allowed zoom (maximum field of view)
@@ -112,6 +118,17 @@ func calculate_min_allowed_zoom():
 	# print("Calculated Min Allowed Zoom: ", min_allowed_zoom)
 
 func _unhandled_input(event):
+	if targeting_mode:
+		_handle_targeting_input(event)
+		# Consume input so we don't zoom/pan accidentally?
+		# Actually we might want to allow panning with right click drag if we distinguish it from cancel.
+		# But the requirement says "Right click: exit targeting mode".
+		# So panning with right click is disabled during targeting.
+		# We should probably return if we handled something.
+		if event is InputEventMouseButton and event.pressed:
+			get_viewport().set_input_as_handled()
+		return
+
 	if event is InputEventMouseMotion:
 		if event.button_mask == MOUSE_BUTTON_MASK_RIGHT:
 			camera.position -= event.relative / camera.zoom
@@ -121,6 +138,90 @@ func _unhandled_input(event):
 			_adjust_zoom(0.1)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
 			_adjust_zoom(-0.1)
+
+func enter_targeting_mode(unit):
+	targeting_mode = true
+	targeting_unit = unit
+
+	if target_indicator:
+		target_indicator.queue_free()
+
+	target_indicator = ColorRect.new()
+	target_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	if unit.unit_data.skill == "firestorm": # Phoenix
+		target_indicator.size = Vector2(240, 240)
+		target_indicator.color = Color(1.0, 0.0, 0.0, 0.3)
+	else:
+		target_indicator.size = Vector2(60, 60)
+		target_indicator.color = Color(0.0, 1.0, 0.0, 0.3)
+
+	# Add to grid manager to be part of the world space or add to self
+	# GridManager is at (0,0) usually.
+	grid_manager.add_child(target_indicator)
+
+	# Initial position update
+	_update_target_indicator()
+
+func exit_targeting_mode():
+	targeting_mode = false
+	targeting_unit = null
+	if target_indicator:
+		target_indicator.queue_free()
+		target_indicator = null
+
+func _handle_targeting_input(event):
+	if event is InputEventMouseMotion:
+		_update_target_indicator()
+
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			if targeting_unit and is_instance_valid(targeting_unit):
+				var mouse_pos = grid_manager.get_global_mouse_position()
+				# Snap to grid logic is handled in cast_target_skill usually or here.
+				# We need to get the top-left corner of the area.
+
+				var tile_size = Constants.TILE_SIZE
+				var gx = int(round(mouse_pos.x / tile_size))
+				var gy = int(round(mouse_pos.y / tile_size))
+
+				# For 4x4 area (240x240), if we center it on mouse, we need to adjust logic.
+				# Prompt says: "Adhere to grid".
+				# If 4x4, we probably want the center to be aligned or top-left.
+				# Let's align center of indicator to mouse then snap top-left of indicator to grid.
+
+				var ind_pos = _get_snapped_indicator_pos(mouse_pos, target_indicator.size)
+
+				# Convert back to grid coords relative to GridManager
+				# ind_pos is local to GridManager (which is at global pos if MainGame is at 0,0)
+				# Actually GridManager is a child of MainGame.
+
+				var target_grid_x = int(round(ind_pos.x / tile_size))
+				var target_grid_y = int(round(ind_pos.y / tile_size))
+
+				targeting_unit.cast_target_skill(Vector2i(target_grid_x, target_grid_y))
+
+			exit_targeting_mode()
+
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			exit_targeting_mode()
+
+func _update_target_indicator():
+	if !target_indicator: return
+	var mouse_pos = grid_manager.get_global_mouse_position()
+	target_indicator.position = _get_snapped_indicator_pos(mouse_pos, target_indicator.size)
+
+func _get_snapped_indicator_pos(mouse_pos: Vector2, size: Vector2) -> Vector2:
+	var tile_size = Constants.TILE_SIZE
+
+	# Center the rect on mouse roughly
+	var top_left = mouse_pos - size / 2
+
+	# Snap top_left to grid
+	var gx = round(top_left.x / tile_size)
+	var gy = round(top_left.y / tile_size)
+
+	return Vector2(gx * tile_size, gy * tile_size)
 
 func _adjust_zoom(amount: float):
 	zoom_target += Vector2(amount, amount)

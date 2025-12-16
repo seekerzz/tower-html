@@ -7,6 +7,7 @@ signal wave_reset
 signal game_over
 signal unit_purchased(unit_data)
 signal unit_sold(amount)
+signal request_targeting(unit)
 signal skill_activated(unit)
 signal damage_dealt(unit, amount)
 signal ftext_spawn_requested(pos, value, color)

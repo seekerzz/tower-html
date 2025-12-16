@@ -212,6 +212,11 @@ func activate_skill():
 	if skill_cooldown > 0:
 		return
 
+	# Check for target type "ground"
+	if unit_data.get("targetType") == "ground":
+		GameManager.request_targeting.emit(self)
+		return
+
 	if GameManager.consume_resource("mana", skill_mana_cost):
 		is_no_mana = false
 		skill_cooldown = unit_data.get("skillCd", 10.0)
@@ -226,6 +231,51 @@ func activate_skill():
 			tween.tween_property(visual_holder, "scale", Vector2(1.2, 1.2), 0.1)
 			tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.1)
 
+	else:
+		is_no_mana = true
+		GameManager.spawn_floating_text(global_position, "No Mana!", Color.BLUE)
+
+func cast_target_skill(grid_pos: Vector2i):
+	if GameManager.consume_resource("mana", skill_mana_cost):
+		is_no_mana = false
+		skill_cooldown = unit_data.get("skillCd", 10.0)
+
+		var skill_name = unit_data.skill
+		GameManager.spawn_floating_text(global_position, skill_name.capitalize() + "!", Color.CYAN)
+		GameManager.skill_activated.emit(self)
+
+		# Convert grid pos to world pos (top-left of the clicked tile area usually, or we can align center)
+		# grid_pos from MainGame is snapped to top-left of the indicator.
+		var world_pos = Vector2(grid_pos.x * 60, grid_pos.y * 60)
+
+		if skill_name == "firestorm":
+			# Phoenix
+			var firestorm_script = load("res://src/Scripts/Effects/Firestorm.gd")
+			var firestorm = Node2D.new()
+			firestorm.set_script(firestorm_script)
+			# Center of 4x4 area (240x240)
+			# world_pos is top-left. Center is +120, +120
+			firestorm.position = world_pos + Vector2(120, 120)
+			firestorm.setup(self, Vector2(240, 240))
+			if GameManager.grid_manager:
+				GameManager.grid_manager.add_child(firestorm)
+			else:
+				get_parent().add_child(firestorm)
+
+		elif skill_name == "trap_poison" or skill_name == "trap_fang":
+			# Viper / Scorpion
+			# Assume 1x1 area
+			# world_pos is top-left. Center is +30, +30
+			var center_pos = world_pos + Vector2(30, 30)
+
+			var trap_type = "poison" if skill_name == "trap_poison" else "fang"
+			if GameManager.grid_manager:
+				GameManager.grid_manager.try_spawn_trap(center_pos, trap_type)
+
+		if visual_holder:
+			var tween = create_tween()
+			tween.tween_property(visual_holder, "scale", Vector2(1.2, 1.2), 0.1)
+			tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.1)
 	else:
 		is_no_mana = true
 		GameManager.spawn_floating_text(global_position, "No Mana!", Color.BLUE)

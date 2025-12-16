@@ -23,7 +23,13 @@ const COLORS = {
 }
 
 var CORE_TYPES = {}
-var BARRICADE_TYPES = {}
-var UNIT_TYPES = {}
+var BARRICADE_TYPES = {
+	"poison": { "name": "Poison Trap", "color": Color.GREEN, "is_solid": false },
+	"fang": { "name": "Fang Trap", "color": Color.RED, "is_solid": false }
+}
+var UNIT_TYPES = {
+	"phoenix": { "targetType": "ground", "damage": 50, "skill": "firestorm", "skillCd": 10.0, "skillCost": 30.0, "size": Vector2i(1, 1), "icon": "Phoenix" },
+	"viper": { "targetType": "ground", "damage": 30, "skill": "trap_poison", "skillCd": 5.0, "skillCost": 20.0, "size": Vector2i(1, 1), "icon": "Viper" }
+}
 var TRAITS = []
 var ENEMY_VARIANTS = {}

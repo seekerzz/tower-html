@@ -85,6 +85,8 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 		_setup_simple_visual(Color.YELLOW, "triangle")
 	elif type == "pollen":
 		_setup_simple_visual(Color.PINK, "star")
+	elif type == "fire":
+		_setup_simple_visual(Color.ORANGE, "blob")
 	elif type == "lightning":
 		# Keep lightning if it was handled elsewhere or add simple visual
 		_setup_simple_visual(Color.CYAN, "line")
