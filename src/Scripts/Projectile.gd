@@ -78,7 +78,7 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 	elif type == "dragon_breath":
 		_setup_dragon_breath()
 	elif type == "meteor":
-		_setup_simple_visual(Color("FF4500"), "circle") # Orange-Red circle
+		_setup_meteor()
 	elif type == "pinecone":
 		_setup_simple_visual(Color("8B4513"), "circle") # Brown circle
 	elif type == "ink":
@@ -107,7 +107,37 @@ func fade_out():
 		# Slight expansion for explosion effect
 		tween.tween_property(self, "scale", scale * 1.5, 0.2)
 
+	if type == "meteor":
+		# Spawn explosion
+		_spawn_meteor_explosion()
+
 	tween.chain().tween_callback(queue_free)
+
+func _spawn_meteor_explosion():
+	# Simple explosion visual
+	var explosion = Node2D.new()
+	explosion.position = global_position
+
+	# Expanding ring
+	var ring = Line2D.new()
+	var points = []
+	for i in range(17):
+		var angle = (i * TAU) / 16
+		points.append(Vector2(cos(angle), sin(angle)) * 5.0)
+	ring.points = PackedVector2Array(points)
+	ring.width = 3.0
+	ring.closed = true
+	ring.default_color = Color(1.0, 0.5, 0.0) # Orange
+	explosion.add_child(ring)
+
+	# Tween ring
+	var tween = explosion.create_tween()
+	tween.tween_property(ring, "scale", Vector2(4, 4), 0.3).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(ring, "modulate:a", 0.0, 0.3)
+	tween.chain().tween_callback(explosion.queue_free)
+
+	# Add to parent scene so it persists
+	get_parent().add_child(explosion)
 
 func _process(delta):
 	if is_fading: return
@@ -496,3 +526,50 @@ func _setup_dragon_breath():
 	poly.polygon = PackedVector2Array(pts)
 	poly.color = Color(1.0, 0.4, 0.0, 0.7) # Orange
 	add_child(poly)
+
+func _setup_meteor():
+	if visual_node: visual_node.hide()
+
+	# Head: Fiery circle
+	var head = Polygon2D.new()
+	var points = PackedVector2Array()
+	var radius = 10.0
+	for i in range(12):
+		var angle = (i * TAU) / 12
+		points.append(Vector2(cos(angle), sin(angle)) * radius)
+	head.polygon = points
+	head.color = Color(1.0, 0.3, 0.0) # Red-Orange
+	add_child(head)
+
+	# Core: Yellow center
+	var core = Polygon2D.new()
+	points = PackedVector2Array()
+	radius = 6.0
+	for i in range(12):
+		var angle = (i * TAU) / 12
+		points.append(Vector2(cos(angle), sin(angle)) * radius)
+	core.polygon = points
+	core.color = Color(1.0, 1.0, 0.0) # Yellow
+	add_child(core)
+
+	# Trail: Line2D
+	var trail = Line2D.new()
+	trail.width = 12.0
+	# Trail points backwards
+	trail.points = PackedVector2Array([Vector2.ZERO, Vector2(-40, 0)])
+
+	var gradient = Gradient.new()
+	gradient.set_color(0, Color(1.0, 0.5, 0.0, 1.0)) # Orange
+	gradient.add_point(1.0, Color(1.0, 0.0, 0.0, 0.0)) # Red Transparent
+	trail.gradient = gradient
+
+	# Move trail behind head
+	trail.show_behind_parent = true
+	# Actually Line2D is drawn in order. Add it first to be behind.
+	# But we already added head. So move head to top or just set z_index.
+	# Or re-add in order.
+	remove_child(head)
+	remove_child(core)
+	add_child(trail)
+	add_child(head)
+	add_child(core)
