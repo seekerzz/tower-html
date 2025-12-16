@@ -16,6 +16,7 @@ var spawn_tiles: Array = [] # List of tiles (Vector2i) used as spawn points
 var active_territory_tiles: Array = [] # List of Tile instances that are unlocked or core
 
 var astar_grid: AStarGrid2D
+var skill_indicator: ColorRect = null
 
 signal grid_updated
 
@@ -26,6 +27,83 @@ func _ready():
 	_init_astar()
 	create_initial_grid()
 	# _generate_random_obstacles()
+
+func show_skill_indicator(size: Vector2i):
+	if skill_indicator == null:
+		skill_indicator = ColorRect.new()
+		skill_indicator.color = Color(0, 1, 0, 0.3)
+		skill_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(skill_indicator)
+		skill_indicator.z_index = 100 # On top of everything
+
+	skill_indicator.size = Vector2(size.x * TILE_SIZE, size.y * TILE_SIZE)
+	skill_indicator.pivot_offset = skill_indicator.size / 2
+	skill_indicator.show()
+
+	# Initial update to current mouse position
+	var mouse_pos = get_global_mouse_position()
+	var gx = int(round(mouse_pos.x / TILE_SIZE))
+	var gy = int(round(mouse_pos.y / TILE_SIZE))
+	update_skill_indicator(Vector2i(gx, gy))
+
+func update_skill_indicator(grid_pos: Vector2i):
+	if !skill_indicator or !skill_indicator.visible: return
+
+	# Center on the grid position
+	# Grid position corresponds to the center of the tile.
+	# Indicator size is typically 4x4 or 1x1.
+	# If size is odd (1x1), center is grid_pos.
+	# If size is even (4x4), grid_pos is closest integer coordinate, which might be a corner or center of a tile.
+	# TILE_SIZE = 60. Tiles are at x*60, y*60.
+	# The indicator should probably snap to tiles.
+
+	var world_pos = Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE)
+
+	# Adjust for size if needed.
+	# If 1x1, size is 60x60. Centered at world_pos.
+	# skill_indicator.pivot_offset handles centering if we place it at world_pos.
+
+	skill_indicator.position = world_pos - skill_indicator.pivot_offset
+
+	# Validation Color Logic
+	# For now, just check bounds or basic validity?
+	# The prompt says: "If valid (green), invalid (red)".
+	# Validity depends on skill. For traps, it needs empty tile. For Firestorm, it can be anywhere (maybe?).
+	# Since GameManager knows the unit, maybe we should ask GameManager or just do basic checks here?
+	# Or just check map bounds.
+
+	var is_valid = true
+	# Example check: is inside map bounds?
+	# Map width is Constants.MAP_WIDTH
+	var half_w = Constants.MAP_WIDTH / 2
+	var half_h = Constants.MAP_HEIGHT / 2
+
+	# Check if center is roughly in bounds
+	if abs(grid_pos.x) > half_w or abs(grid_pos.y) > half_h:
+		is_valid = false
+
+	# For traps (size 1x1), usually need to check if tile is empty.
+	# But Firestorm (4x4) can target anywhere.
+	# Let's check GameManager.targeting_unit to decide validation logic if we want to be strict.
+	if GameManager.targeting_unit:
+		var unit_data = GameManager.targeting_unit.unit_data
+		if unit_data.has("skill") and (unit_data.skill == "place_poison" or unit_data.skill == "place_fang"):
+			# Trap logic: strict check on single tile
+			var key = get_tile_key(grid_pos.x, grid_pos.y)
+			if !tiles.has(key): is_valid = false
+			else:
+				var tile = tiles[key]
+				if tile.unit != null or tile.occupied_by != Vector2i.ZERO or tile.type == "core" or obstacles.has(grid_pos):
+					is_valid = false
+
+	if is_valid:
+		skill_indicator.color = Color(0, 1, 0, 0.3)
+	else:
+		skill_indicator.color = Color(1, 0, 0, 0.3)
+
+func hide_skill_indicator():
+	if skill_indicator:
+		skill_indicator.hide()
 
 func try_spawn_trap(world_pos: Vector2, type_key: String):
 	var gx = int(round(world_pos.x / TILE_SIZE))

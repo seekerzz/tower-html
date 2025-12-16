@@ -47,6 +47,11 @@ var data_manager: Node = null
 
 var permanent_health_bonus: float = 0.0
 
+# Targeting System
+var is_targeting: bool = false
+var targeting_unit: Node = null
+var targeting_area_size: Vector2i = Vector2i(1, 1)
+
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
@@ -73,6 +78,60 @@ func update_resources(delta):
 	if mana < max_mana:
 		mana = min(max_mana, mana + base_mana_rate * delta)
 	resource_changed.emit()
+
+func start_skill_targeting(unit):
+	is_targeting = true
+	targeting_unit = unit
+
+	if unit.unit_data.has("targetArea"):
+		var area = unit.unit_data["targetArea"]
+		targeting_area_size = Vector2i(area[0], area[1])
+	else:
+		targeting_area_size = Vector2i(1, 1)
+
+	if grid_manager:
+		grid_manager.show_skill_indicator(targeting_area_size)
+
+func cancel_targeting():
+	is_targeting = false
+	targeting_unit = null
+	if grid_manager:
+		grid_manager.hide_skill_indicator()
+
+func _unhandled_input(event):
+	if not is_targeting:
+		return
+
+	if event is InputEventMouseMotion:
+		if grid_manager:
+			var grid_pos = _get_grid_pos_from_mouse()
+			grid_manager.update_skill_indicator(grid_pos)
+
+	elif event is InputEventMouseButton:
+		if event.pressed:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				var grid_pos = _get_grid_pos_from_mouse()
+				if targeting_unit and is_instance_valid(targeting_unit):
+					targeting_unit.execute_skill(grid_pos)
+				cancel_targeting()
+				get_viewport().set_input_as_handled()
+
+			elif event.button_index == MOUSE_BUTTON_RIGHT:
+				cancel_targeting()
+				get_viewport().set_input_as_handled()
+
+	elif event.is_action_pressed("ui_cancel"):
+		cancel_targeting()
+		get_viewport().set_input_as_handled()
+
+func _get_grid_pos_from_mouse() -> Vector2i:
+	if grid_manager and is_instance_valid(grid_manager):
+		var world_pos = grid_manager.get_global_mouse_position()
+		var tile_size = 60 # Default fallback
+		if Constants and "TILE_SIZE" in Constants:
+			tile_size = Constants.TILE_SIZE
+		return Vector2i(round(world_pos.x / tile_size), round(world_pos.y / tile_size))
+	return Vector2i.ZERO
 
 func start_wave():
 	if is_wave_active: return

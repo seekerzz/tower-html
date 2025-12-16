@@ -263,9 +263,12 @@ func activate_skill():
 	if skill_cooldown > 0:
 		return
 
-	# Check cost but proceed only if successful.
-	# Note: Cow regeneration logic is powerful, verify cost.
+	# Targeted Skills Logic
+	if unit_data.has("targetType") and unit_data.targetType == "ground":
+		GameManager.start_skill_targeting(self)
+		return
 
+	# Immediate Skills Logic
 	if GameManager.consume_resource("mana", skill_mana_cost):
 		is_no_mana = false
 		skill_cooldown = unit_data.get("skillCd", 10.0)
@@ -306,6 +309,44 @@ func activate_skill():
 	else:
 		is_no_mana = true
 		GameManager.spawn_floating_text(global_position, "No Mana!", Color.BLUE)
+
+func execute_skill(target_grid_pos: Vector2i):
+	# Security check for Mana
+	if not GameManager.consume_resource("mana", skill_mana_cost):
+		is_no_mana = true
+		GameManager.spawn_floating_text(global_position, "No Mana!", Color.BLUE)
+		return
+
+	is_no_mana = false
+	skill_cooldown = unit_data.get("skillCd", 10.0)
+
+	var skill_name = unit_data.skill
+	GameManager.spawn_floating_text(global_position, skill_name.capitalize() + "!", Color.CYAN)
+	GameManager.skill_activated.emit(self)
+
+	# Calculate World Pos
+	var world_pos = Vector2(target_grid_pos.x * 60, target_grid_pos.y * 60)
+
+	match type_key:
+		"phoenix":
+			# Firestorm
+			var effect_script = load("res://src/Scripts/Effects/FirestormEffect.gd")
+			if effect_script:
+				var effect = effect_script.new()
+				if GameManager.grid_manager:
+					GameManager.grid_manager.add_child(effect)
+					effect.position = world_pos
+					effect.init(damage) # Pass damage or other stats if needed
+			else:
+				print("Error: FirestormEffect.gd not found")
+
+		"viper":
+			if GameManager.grid_manager:
+				GameManager.grid_manager.try_spawn_trap(world_pos, "poison")
+
+		"scorpion":
+			if GameManager.grid_manager:
+				GameManager.grid_manager.try_spawn_trap(world_pos, "fang")
 
 func update_visuals():
 	_ensure_visual_hierarchy()
