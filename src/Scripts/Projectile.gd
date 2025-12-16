@@ -88,6 +88,10 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 	elif type == "lightning":
 		# Keep lightning if it was handled elsewhere or add simple visual
 		_setup_simple_visual(Color.CYAN, "line")
+	elif type == "meteor":
+		_setup_simple_visual(Color.ORANGE_RED, "circle")
+		if visual_node:
+			visual_node.scale = Vector2(1.5, 1.5) # Make meteor bigger
 
 func fade_out():
 	if is_fading: return
