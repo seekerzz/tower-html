@@ -96,12 +96,7 @@ func _ensure_visual_hierarchy():
 		highlight.size = target_size
 		highlight.position = -(target_size / 2)
 
-func set_highlight(active: bool, color: Color = Color.WHITE):
-	if !visual_holder: return
-	var highlight = visual_holder.get_node_or_null("HighlightBorder")
-	if highlight:
-		highlight.visible = active
-		highlight.border_color = color
+
 
 func setup(key: String):
 	_ensure_visual_hierarchy()
