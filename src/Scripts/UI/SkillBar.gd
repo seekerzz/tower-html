@@ -209,4 +209,5 @@ func _unhandled_input(event):
 			_on_skill_btn_pressed(skill_units[index])
 
 func _on_skill_btn_pressed(unit):
+	if !GameManager.is_wave_active: return
 	unit.activate_skill()

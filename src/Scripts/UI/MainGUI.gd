@@ -65,6 +65,15 @@ func _ready():
 
 	if debug_button:
 		debug_button.pressed.connect(_on_debug_button_pressed)
+
+		# Add Reset CD Button next to debug button
+		var reset_cd_btn = Button.new()
+		reset_cd_btn.text = "Reset CDs"
+		reset_cd_btn.position = debug_button.position + Vector2(debug_button.size.x + 10, 0) # Place it right of debug button
+		reset_cd_btn.size = debug_button.size
+		reset_cd_btn.pressed.connect(_on_reset_cd_pressed)
+		debug_button.get_parent().add_child(reset_cd_btn)
+
 	if skip_button:
 		skip_button.pressed.connect(_on_skip_button_pressed)
 
@@ -353,6 +362,13 @@ func _on_wave_ended_stats():
 
 func _on_debug_button_pressed():
 	GameManager.activate_cheat()
+
+func _on_reset_cd_pressed():
+	if GameManager.grid_manager:
+		for key in GameManager.grid_manager.tiles:
+			var tile = GameManager.grid_manager.tiles[key]
+			if tile.unit:
+				tile.unit.skill_cooldown = 0.0
 
 func _on_skip_button_pressed():
 	if not GameManager.is_wave_active:

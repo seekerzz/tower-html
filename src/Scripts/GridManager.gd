@@ -89,6 +89,10 @@ func _init_astar():
 	if GameManager.has_signal("wave_started"):
 		GameManager.wave_started.connect(func():
 			expansion_mode = false
+			# Update visibility of grid lines
+			for key in tiles:
+				if tiles[key].has_method("set_grid_visible"):
+					tiles[key].set_grid_visible(expansion_mode)
 			clear_ghosts()
 		)
 

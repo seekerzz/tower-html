@@ -233,7 +233,21 @@ func activate_skill():
 func update_visuals():
 	_ensure_visual_hierarchy()
 	var label = visual_holder.get_node_or_null("Label")
-	var star_label = visual_holder.get_node_or_null("StarLabel")
+
+	# Remove old star label if it exists
+	var old_star_label = visual_holder.get_node_or_null("StarLabel")
+	if old_star_label:
+		old_star_label.queue_free()
+
+	# Create or get star container
+	var star_container = visual_holder.get_node_or_null("StarContainer")
+	if !star_container:
+		star_container = HBoxContainer.new()
+		star_container.name = "StarContainer"
+		star_container.alignment = BoxContainer.ALIGNMENT_CENTER
+		star_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		star_container.add_theme_constant_override("separation", -5) # Tighter packing
+		visual_holder.add_child(star_container)
 
 	# Try to load icon image
 	var icon_texture = AssetLoader.get_unit_icon(type_key)
@@ -274,13 +288,25 @@ func update_visuals():
 		label.position = target_pos
 		label.pivot_offset = label.size / 2
 
+	# Update Star Container Position and Content
+	star_container.size = Vector2(target_size.x, 30)
+	star_container.position = Vector2(target_pos.x, target_pos.y - 15) # Above unit
+
+	# Clear old stars
+	for child in star_container.get_children():
+		child.queue_free()
+
 	if level > 1:
-		if star_label:
-			star_label.text = "⭐%d" % level
-			star_label.show()
+		star_container.show()
+		for i in range(level):
+			var star_icon = Label.new()
+			star_icon.text = "⭐"
+			star_icon.add_theme_font_size_override("font_size", 24) # Larger stars as requested
+			star_icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			star_icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			star_container.add_child(star_icon)
 	else:
-		if star_label:
-			star_label.hide()
+		star_container.hide()
 
 	_update_buff_icons()
 
