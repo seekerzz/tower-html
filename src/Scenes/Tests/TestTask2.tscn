@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://testtask2instantskills"]
+
+[ext_resource type="Script" path="res://src/Scripts/Tests/TestTask2_InstantSkills.gd" id="1_script"]
+
+[node name="TestNode" type="Node"]
+script = ExtResource("1_script")
