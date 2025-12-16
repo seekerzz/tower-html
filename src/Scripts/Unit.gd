@@ -45,6 +45,12 @@ var is_hovered: bool = false
 var focus_target: Node2D = null
 var focus_stacks: int = 0
 
+# Skill Logic
+var skill_active_timer: float = 0.0
+var original_atk_speed: float = 0.0
+var _is_skill_highlight_active: bool = false
+var _highlight_color: Color = Color.WHITE
+
 const MAX_LEVEL = 3
 const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 
@@ -86,9 +92,13 @@ func setup(key: String):
 	if unit_data.has("produce"):
 		production_timer = 1.0
 
-	# Cow Healing logic setup
+	# Cow Healing logic setup - Removed implicit setup here, handled in _process or logic
 	if unit_data.has("skill") and unit_data.skill == "milk_aura":
-		production_timer = 5.0 # Reuse production_timer for periodic skill
+		production_timer = 5.0 # Keep this for PASSIVE healing if any, or just skill logic?
+		# Original Unit.gd had a passive milk_aura logic: "Cow Milk Aura Logic" block in _process
+		# The new requirements say: "If Cow and skill active: ... extra call GameManager.damage_core(-200 * delta)"
+		# It seems the passive "milk_aura" (every 5s heal 50) is still there unless I remove it?
+		# The prompt didn't say to remove the passive.
 
 	start_breathe_anim()
 
@@ -206,11 +216,37 @@ func apply_buff(buff_type: String):
 		"split":
 			split_count += 1
 
+func set_highlight(active: bool, color: Color = Color.WHITE):
+	_is_skill_highlight_active = active
+	_highlight_color = color
+
+	if active:
+		if visual_holder:
+			# Use modulate on visual_holder or simple drawing?
+			# Drawing a border is better but Unit needs _draw() logic for that.
+			# Let's use modulate or just add a color rect/border.
+			# Or simpler: use self.modulate but mix with original color.
+			# But self.modulate affects everything.
+			# The requirement says "Unit appears green/red outline (stroke)".
+			# Godot _draw is easiest for stroke.
+			queue_redraw()
+	else:
+		queue_redraw()
+
+func _on_skill_ended():
+	set_highlight(false)
+
+	if type_key == "dog":
+		atk_speed = original_atk_speed
+
 func activate_skill():
 	if !unit_data.has("skill"): return
 
 	if skill_cooldown > 0:
 		return
+
+	# Check cost but proceed only if successful.
+	# Note: Cow regeneration logic is powerful, verify cost.
 
 	if GameManager.consume_resource("mana", skill_mana_cost):
 		is_no_mana = false
@@ -225,6 +261,29 @@ func activate_skill():
 			var tween = create_tween()
 			tween.tween_property(visual_holder, "scale", Vector2(1.2, 1.2), 0.1)
 			tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.1)
+
+		# --- New Logic ---
+		match type_key:
+			"cow":
+				skill_active_timer = 5.0
+				set_highlight(true, Color.GREEN)
+
+			"dog":
+				skill_active_timer = 5.0
+				set_highlight(true, Color.RED)
+				original_atk_speed = atk_speed
+				atk_speed *= 0.3 # Accelerate (smaller interval = faster)
+
+			"bear":
+				var enemies = get_tree().get_nodes_in_group("enemies")
+				for enemy in enemies:
+					if global_position.distance_to(enemy.global_position) <= range_val:
+						if enemy.has_method("apply_stun"):
+							enemy.apply_stun(2.0)
+
+			"butterfly":
+				# Do nothing or print
+				print("Butterfly skill activated (No effect implemented)")
 
 	else:
 		is_no_mana = true
@@ -342,7 +401,7 @@ func _process(delta):
 
 			production_timer = 1.0
 
-	# Cow Milk Aura Logic
+	# Cow Passive Logic (Existing)
 	if unit_data.has("skill") and unit_data.skill == "milk_aura":
 		production_timer -= delta
 		if production_timer <= 0:
@@ -351,12 +410,24 @@ func _process(delta):
 			GameManager.spawn_floating_text(global_position, "+50", Color.GREEN)
 			production_timer = 5.0
 
+	# Active Skill Timer Logic
+	if skill_active_timer > 0:
+		skill_active_timer -= delta
+
+		# Cow Active Regeneration
+		if type_key == "cow":
+			GameManager.damage_core(-200 * delta)
+
+		if skill_active_timer <= 0:
+			_on_skill_ended()
+
 	if cooldown > 0:
 		cooldown -= delta
 
 	if skill_cooldown > 0:
 		skill_cooldown -= delta
 
+	# Visual State
 	if is_starving:
 		modulate = Color(0.5, 0.5, 0.5, 1.0)
 	elif is_no_mana and unit_data.has("skill"):
@@ -462,6 +533,16 @@ func _draw():
 
 		draw_circle(Vector2.ZERO, draw_radius, Color(1, 1, 1, 0.1))
 		draw_arc(Vector2.ZERO, draw_radius, 0, TAU, 64, Color(1, 1, 1, 0.3), 1.0)
+
+	if _is_skill_highlight_active:
+		# Draw a thick outline
+		var size = Vector2(60, 60)
+		if unit_data and unit_data.has("size"):
+			size = Vector2(unit_data.size.x * 60, unit_data.size.y * 60)
+
+		# Assuming pivot is center
+		var rect = Rect2(-size / 2, size)
+		draw_rect(rect, _highlight_color, false, 4.0)
 
 func _input(event):
 	if is_dragging:
