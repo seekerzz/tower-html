@@ -18,7 +18,19 @@ var default_zoom: Vector2 = Vector2(0.8, 0.8)
 var default_position: Vector2 = Vector2(640, 400)
 var min_allowed_zoom: Vector2 = Vector2(0.5, 0.5)
 
+# Targeting System
+var is_targeting: bool = false
+var targeting_source_unit = null
+var target_indicator: ColorRect
+
 func _ready():
+	# Targeting Indicator
+	target_indicator = ColorRect.new()
+	target_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	target_indicator.color = Color(1.0, 0.0, 0.0, 0.3) # Red semi-transparent
+	target_indicator.visible = false
+	add_child(target_indicator)
+
 	# Initialize bench array with nulls based on constant
 	bench.resize(Constants.BENCH_SIZE)
 	bench.fill(null)
@@ -112,6 +124,14 @@ func calculate_min_allowed_zoom():
 	# print("Calculated Min Allowed Zoom: ", min_allowed_zoom)
 
 func _unhandled_input(event):
+	if is_targeting:
+		_handle_targeting_input(event)
+		# Consume input if targeting? Or allow camera movement?
+		# Usually targeting consumes clicks.
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			get_viewport().set_input_as_handled()
+		return
+
 	if event is InputEventMouseMotion:
 		if event.button_mask == MOUSE_BUTTON_MASK_RIGHT:
 			camera.position -= event.relative / camera.zoom
@@ -121,6 +141,61 @@ func _unhandled_input(event):
 			_adjust_zoom(0.1)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
 			_adjust_zoom(-0.1)
+
+func _on_unit_request_targeting(unit):
+	is_targeting = true
+	targeting_source_unit = unit
+	target_indicator.visible = true
+
+	_update_target_indicator(get_global_mouse_position())
+
+func _handle_targeting_input(event):
+	if event is InputEventMouseMotion:
+		var mouse_pos = get_global_mouse_position()
+		_update_target_indicator(mouse_pos)
+
+	elif event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			_confirm_targeting()
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			_cancel_targeting()
+
+func _update_target_indicator(world_pos: Vector2):
+	var gx = int(round(world_pos.x / 60.0))
+	var gy = int(round(world_pos.y / 60.0))
+
+	var snapped_pos = Vector2(gx * 60, gy * 60)
+
+	var size_tiles = Vector2i(1, 1)
+	if targeting_source_unit:
+		if targeting_source_unit.unit_data.has("targetArea"):
+			# Logic for reading targetArea can be expanded here
+			pass
+
+		# Specific size for firestorm
+		if targeting_source_unit.unit_data.skill == "firestorm":
+			size_tiles = Vector2i(4, 4)
+
+	target_indicator.size = Vector2(size_tiles.x * 60, size_tiles.y * 60)
+	target_indicator.position = snapped_pos - target_indicator.size / 2
+
+func _confirm_targeting():
+	if !targeting_source_unit:
+		_cancel_targeting()
+		return
+
+	var center_pos = target_indicator.position + target_indicator.size / 2
+	var gx = int(round(center_pos.x / 60.0))
+	var gy = int(round(center_pos.y / 60.0))
+	var grid_pos = Vector2i(gx, gy)
+
+	targeting_source_unit.cast_target_skill(grid_pos)
+	_cancel_targeting()
+
+func _cancel_targeting():
+	is_targeting = false
+	targeting_source_unit = null
+	target_indicator.visible = false
 
 func _adjust_zoom(amount: float):
 	zoom_target += Vector2(amount, amount)

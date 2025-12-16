@@ -55,12 +55,18 @@ const MAX_LEVEL = 3
 const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 
 signal unit_clicked(unit)
+signal request_targeting(unit)
 
 func _ready():
 	_ensure_visual_hierarchy()
 	# If unit_data is already populated (e.g. from scene or prior setup), update visuals
 	if !unit_data.is_empty():
 		update_visuals()
+
+	# Connect targeting signal to MainGame if available
+	if GameManager.main_game and GameManager.main_game.has_method("_on_unit_request_targeting"):
+		if !request_targeting.is_connected(GameManager.main_game._on_unit_request_targeting):
+			request_targeting.connect(GameManager.main_game._on_unit_request_targeting)
 
 func _ensure_visual_hierarchy():
 	if visual_holder and is_instance_valid(visual_holder):
@@ -95,13 +101,6 @@ func _ensure_visual_hierarchy():
 		var target_size = Vector2(size_val.x * 60 - 4, size_val.y * 60 - 4)
 		highlight.size = target_size
 		highlight.position = -(target_size / 2)
-
-func set_highlight(active: bool, color: Color = Color.WHITE):
-	if !visual_holder: return
-	var highlight = visual_holder.get_node_or_null("HighlightBorder")
-	if highlight:
-		highlight.visible = active
-		highlight.border_color = color
 
 func setup(key: String):
 	_ensure_visual_hierarchy()
@@ -268,49 +267,77 @@ func activate_skill():
 	if skill_cooldown > 0:
 		return
 
+	if unit_data.get("targetType") == "ground":
+		request_targeting.emit(self)
+		return
+
 	# Check cost but proceed only if successful.
 	# Note: Cow regeneration logic is powerful, verify cost.
 
 	if GameManager.consume_resource("mana", skill_mana_cost):
-		is_no_mana = false
-		skill_cooldown = unit_data.get("skillCd", 10.0)
+		_perform_skill_activation()
+	else:
+		is_no_mana = true
+		GameManager.spawn_floating_text(global_position, "No Mana!", Color.BLUE)
 
-		var skill_name = unit_data.skill
-		GameManager.spawn_floating_text(global_position, skill_name.capitalize() + "!", Color.CYAN)
-		GameManager.skill_activated.emit(self)
+func cast_target_skill(grid_pos: Vector2i):
+	if GameManager.consume_resource("mana", skill_mana_cost):
+		_perform_skill_activation()
 
-		# Use visual_holder for scale effect
-		if visual_holder:
-			var tween = create_tween()
-			tween.tween_property(visual_holder, "scale", Vector2(1.2, 1.2), 0.1)
-			tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.1)
+		# Specific Target Logic
+		match unit_data.skill:
+			"firestorm":
+				var controller = load("res://src/Scripts/Skills/FirestormController.gd").new()
+				get_parent().add_child(controller)
+				controller.global_position = Vector2(grid_pos.x * 60, grid_pos.y * 60) # Assuming TILE_SIZE 60
 
-		# --- New Logic ---
-		match type_key:
-			"cow":
-				skill_active_timer = 5.0
-				set_highlight(true, Color.GREEN)
-
-			"dog":
-				skill_active_timer = 5.0
-				set_highlight(true, Color.RED)
-				original_atk_speed = atk_speed
-				atk_speed *= 0.3 # Accelerate (smaller interval = faster)
-
-			"bear":
-				var enemies = get_tree().get_nodes_in_group("enemies")
-				for enemy in enemies:
-					if global_position.distance_to(enemy.global_position) <= range_val:
-						if enemy.has_method("apply_stun"):
-							enemy.apply_stun(2.0)
-
-			"butterfly":
-				# Do nothing or print
-				print("Butterfly skill activated (No effect implemented)")
+			"place_poison":
+				if GameManager.grid_manager:
+					GameManager.grid_manager.try_spawn_trap(grid_pos, "poison")
+			"place_fang":
+				if GameManager.grid_manager:
+					GameManager.grid_manager.try_spawn_trap(grid_pos, "fang")
 
 	else:
 		is_no_mana = true
 		GameManager.spawn_floating_text(global_position, "No Mana!", Color.BLUE)
+
+func _perform_skill_activation():
+	is_no_mana = false
+	skill_cooldown = unit_data.get("skillCd", 10.0)
+
+	var skill_name = unit_data.skill
+	GameManager.spawn_floating_text(global_position, skill_name.capitalize() + "!", Color.CYAN)
+	GameManager.skill_activated.emit(self)
+
+	# Use visual_holder for scale effect
+	if visual_holder:
+		var tween = create_tween()
+		tween.tween_property(visual_holder, "scale", Vector2(1.2, 1.2), 0.1)
+		tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.1)
+
+	# --- New Logic ---
+	match type_key:
+		"cow":
+			skill_active_timer = 5.0
+			set_highlight(true, Color.GREEN)
+
+		"dog":
+			skill_active_timer = 5.0
+			set_highlight(true, Color.RED)
+			original_atk_speed = atk_speed
+			atk_speed *= 0.3 # Accelerate (smaller interval = faster)
+
+		"bear":
+			var enemies = get_tree().get_nodes_in_group("enemies")
+			for enemy in enemies:
+				if global_position.distance_to(enemy.global_position) <= range_val:
+					if enemy.has_method("apply_stun"):
+						enemy.apply_stun(2.0)
+
+		"butterfly":
+			# Do nothing or print
+			print("Butterfly skill activated (No effect implemented)")
 
 func update_visuals():
 	_ensure_visual_hierarchy()

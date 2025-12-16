@@ -27,22 +27,29 @@ func _ready():
 	create_initial_grid()
 	# _generate_random_obstacles()
 
-func try_spawn_trap(world_pos: Vector2, type_key: String):
-	var gx = int(round(world_pos.x / TILE_SIZE))
-	var gy = int(round(world_pos.y / TILE_SIZE))
-	var grid_pos = Vector2i(gx, gy)
-	var key = get_tile_key(gx, gy)
+func try_spawn_trap(arg, type_key: String):
+	var grid_pos: Vector2i
+	if arg is Vector2:
+		var gx = int(round(arg.x / TILE_SIZE))
+		var gy = int(round(arg.y / TILE_SIZE))
+		grid_pos = Vector2i(gx, gy)
+	elif arg is Vector2i:
+		grid_pos = arg
+	else:
+		return false
+
+	var key = get_tile_key(grid_pos.x, grid_pos.y)
 
 	if not tiles.has(key):
-		return
+		return false
 
 	var tile = tiles[key]
 
 	# Check requirements: No unit, No core, No obstacle
-	if tile.unit != null: return
-	if tile.occupied_by != Vector2i.ZERO: return
-	if tile.type == "core": return
-	if obstacles.has(grid_pos): return
+	if tile.unit != null: return false
+	if tile.occupied_by != Vector2i.ZERO: return false
+	if tile.type == "core": return false
+	if obstacles.has(grid_pos): return false
 
 	# _spawn_barricade(tile, type_key)
 
@@ -64,6 +71,10 @@ func try_spawn_trap(world_pos: Vector2, type_key: String):
 			visual.color = Color.DARK_SLATE_GRAY
 		obstacle.add_child(visual)
 
+		# Specific colors for poison/fang as per requirements
+		if type_key == "poison": visual.color = Color.GREEN
+		elif type_key == "fang": visual.color = Color.GRAY
+
 	add_child(obstacle)
 	obstacle.position = tile.position
 
@@ -71,6 +82,7 @@ func try_spawn_trap(world_pos: Vector2, type_key: String):
 		obstacle.init(Vector2i(tile.x, tile.y), type_key)
 
 	register_obstacle(Vector2i(tile.x, tile.y), obstacle)
+	return true
 
 func _init_astar():
 	astar_grid = AStarGrid2D.new()
