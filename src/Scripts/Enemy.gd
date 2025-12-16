@@ -7,6 +7,7 @@ var speed: float
 var enemy_data: Dictionary
 var slow_timer: float = 0.0
 var freeze_timer: float = 0.0
+var stun_timer: float = 0.0
 var effects = { "burn": 0.0, "poison": 0.0 }
 var heat_accumulation: float = 0.0
 
@@ -117,6 +118,14 @@ func _process(delta):
 	if has_node("PoisonParticles"):
 		$PoisonParticles.emitting = (effects.poison > 0)
 
+	# Stun Logic
+	if stun_timer > 0:
+		stun_timer -= delta
+		if stun_timer <= 0:
+			# Stun ended
+			pass
+		return # Stop all logic (movement, attack) if stunned
+
 	# Handle Heat Accumulation
 	if effects.burn <= 0:
 		var nearby_burn = false
@@ -207,6 +216,10 @@ func _process(delta):
 			nav_timer = 0.5
 
 		move_along_path(delta)
+
+func apply_stun(duration: float):
+	stun_timer = duration
+	GameManager.spawn_floating_text(global_position, "Stunned!", Color.GRAY)
 
 func check_traps(delta):
 	var bodies = get_overlapping_bodies()
