@@ -80,6 +80,29 @@ func _ensure_visual_hierarchy():
 				remove_child(child)
 				visual_holder.add_child(child)
 
+	var highlight = visual_holder.get_node_or_null("HighlightBorder")
+	if !highlight:
+		highlight = ReferenceRect.new()
+		highlight.name = "HighlightBorder"
+		highlight.border_width = 4.0
+		highlight.editor_only = false
+		highlight.visible = false
+		highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		visual_holder.add_child(highlight)
+
+	if unit_data and unit_data.has("size"):
+		var size_val = unit_data["size"]
+		var target_size = Vector2(size_val.x * 60 - 4, size_val.y * 60 - 4)
+		highlight.size = target_size
+		highlight.position = -(target_size / 2)
+
+func set_highlight(active: bool, color: Color = Color.WHITE):
+	if !visual_holder: return
+	var highlight = visual_holder.get_node_or_null("HighlightBorder")
+	if highlight:
+		highlight.visible = active
+		highlight.border_color = color
+
 func setup(key: String):
 	_ensure_visual_hierarchy()
 	type_key = key
@@ -319,7 +342,7 @@ func update_visuals():
 			label.show()
 	
 	# Size update based on unit_data
-	var size = unit_data.size
+	var size = unit_data["size"]
 	var target_size = Vector2(size.x * 60 - 4, size.y * 60 - 4)
 	var target_pos = -(target_size / 2) # Center inside parent (Unit node)
 
@@ -353,7 +376,7 @@ func _update_buff_icons():
 		# Calculate size based on unit data since ColorRect is gone
 		var size = Vector2(60, 60) # Default
 		if unit_data and unit_data.has("size"):
-			size = Vector2(unit_data.size.x * 60, unit_data.size.y * 60)
+			size = Vector2(unit_data["size"].x * 60, unit_data["size"].y * 60)
 
 		buff_container.position = Vector2(-size.x/2, size.y/2 - 20) # Just an approximation
 		buff_container.size = Vector2(size.x, 15)
