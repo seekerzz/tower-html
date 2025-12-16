@@ -319,8 +319,8 @@ func _on_skill_activated(unit):
 func _on_ftext_spawn_requested(pos, value, color):
 	var ftext = FLOATING_TEXT_SCENE.instantiate()
 
-	# Random Offset
-	var offset = Vector2(randf_range(-20, 20), randf_range(-30, -10))
+	# Random Offset - mainly handled by physics now, but a small initial jitter helps
+	var offset = Vector2(randf_range(-10, 10), randf_range(-10, 10))
 	var world_pos = pos + offset
 
 	# Convert world position to canvas (UI) position if needed.
@@ -329,12 +329,19 @@ func _on_ftext_spawn_requested(pos, value, color):
 	ftext.position = screen_pos
 	add_child(ftext)
 
-	# Ensure value is integer formatted if it looks like a number
-	var display_value = value
-	if value.is_valid_float():
-		display_value = str(int(float(value)))
+	# Parse value for logic
+	var value_num: float = 0.0
+	var display_value = str(value)
 
-	ftext.setup(display_value, color)
+	if display_value.is_valid_float():
+		value_num = float(display_value)
+		display_value = str(int(value_num))
+
+	# Determine if crit based on color (Gold-ish)
+	# Gold is typically (1, 0.84, 0)
+	var is_crit = color.r > 0.9 and color.g > 0.8 and color.b < 0.4
+
+	ftext.setup(display_value, color, is_crit, value_num)
 
 func _on_stats_toggle_pressed():
 	is_stats_collapsed = !is_stats_collapsed
