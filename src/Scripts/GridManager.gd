@@ -27,50 +27,54 @@ func _ready():
 	create_initial_grid()
 	# _generate_random_obstacles()
 
-func try_spawn_trap(world_pos: Vector2, type_key: String):
-	var gx = int(round(world_pos.x / TILE_SIZE))
-	var gy = int(round(world_pos.y / TILE_SIZE))
-	var grid_pos = Vector2i(gx, gy)
-	var key = get_tile_key(gx, gy)
+func try_spawn_trap(grid_pos: Vector2i, trap_type: String) -> bool:
+	# Check if grid_pos is in map range
+	if not astar_grid.is_in_boundsv(grid_pos):
+		return false
 
+	var key = get_tile_key(grid_pos.x, grid_pos.y)
+	# Check if tile exists
 	if not tiles.has(key):
-		return
+		return false
 
 	var tile = tiles[key]
 
-	# Check requirements: No unit, No core, No obstacle
-	if tile.unit != null: return
-	if tile.occupied_by != Vector2i.ZERO: return
-	if tile.type == "core": return
-	if obstacles.has(grid_pos): return
+	# Check grid content (unit, occupied, or obstacle)
+	if tile.unit != null: return false
+	if tile.occupied_by != Vector2i.ZERO: return false
+	if tile.type == "core": return false
+	if obstacles.has(grid_pos): return false
 
-	# _spawn_barricade(tile, type_key)
-
-	# Inline spawning logic to ensure explicit implementation as requested and avoid confusion
-	var data = Constants.BARRICADE_TYPES[type_key]
-	var obstacle
-
+	# Instantiate Barricade
+	var barricade
 	if BARRICADE_SCENE:
-		obstacle = BARRICADE_SCENE.instantiate()
+		barricade = BARRICADE_SCENE.instantiate()
 	else:
-		obstacle = Node2D.new()
-		obstacle.name = "Obstacle_" + type_key
+		barricade = Node2D.new()
+		barricade.name = "Trap_" + trap_type
 		var visual = ColorRect.new()
 		visual.size = Vector2(40, 40)
 		visual.position = Vector2(-20, -20)
-		if "color" in data:
-			visual.color = data["color"]
-		else:
-			visual.color = Color.DARK_SLATE_GRAY
-		obstacle.add_child(visual)
+		visual.color = Color.WHITE
+		barricade.add_child(visual)
 
-	add_child(obstacle)
-	obstacle.position = tile.position
+	add_child(barricade)
+	barricade.position = tile.position
 
-	if obstacle.has_method("init"):
-		obstacle.init(Vector2i(tile.x, tile.y), type_key)
+	# Update grid data
+	register_obstacle(grid_pos, barricade)
 
-	register_obstacle(Vector2i(tile.x, tile.y), obstacle)
+	# Modify visual color based on trap_type
+	if trap_type == "poison":
+		barricade.modulate = Color.GREEN
+	elif trap_type == "fang":
+		barricade.modulate = Color.GRAY
+
+	# Initialize barricade logic
+	if barricade.has_method("init"):
+		barricade.init(grid_pos, trap_type)
+
+	return true
 
 func _init_astar():
 	astar_grid = AStarGrid2D.new()

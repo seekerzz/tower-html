@@ -262,6 +262,16 @@ func _on_skill_ended():
 	if type_key == "dog":
 		atk_speed = original_atk_speed
 
+func cast_trap_skill(target_grid_pos: Vector2i):
+	var trap_type = ""
+	if type_key == "viper":
+		trap_type = "poison"
+	elif type_key == "scorpion":
+		trap_type = "fang"
+
+	if trap_type != "":
+		GameManager.grid_manager.try_spawn_trap(target_grid_pos, trap_type)
+
 func activate_skill():
 	if !unit_data.has("skill"): return
 

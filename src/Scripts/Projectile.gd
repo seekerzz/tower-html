@@ -244,7 +244,15 @@ func _on_area_2d_area_entered(area):
 
 			if trap_type != "":
 				if GameManager.grid_manager and GameManager.grid_manager.has_method("try_spawn_trap"):
-					GameManager.grid_manager.try_spawn_trap(area.global_position, trap_type)
+					# Convert to grid pos
+					# Use TILE_SIZE from GridManager if available, else default to 60
+					var tile_size = 60.0
+					if "TILE_SIZE" in GameManager.grid_manager:
+						tile_size = float(GameManager.grid_manager.TILE_SIZE)
+
+					var gx = int(round(area.global_position.x / tile_size))
+					var gy = int(round(area.global_position.y / tile_size))
+					GameManager.grid_manager.try_spawn_trap(Vector2i(gx, gy), trap_type)
 
 		hit_list.append(area)
 
