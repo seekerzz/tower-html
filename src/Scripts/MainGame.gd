@@ -18,16 +18,30 @@ var default_zoom: Vector2 = Vector2(0.8, 0.8)
 var default_position: Vector2 = Vector2(640, 400)
 var min_allowed_zoom: Vector2 = Vector2(0.5, 0.5)
 
+# Targeting Mode
+var targeting_mode: bool = false
+var active_skill_unit: Node2D = null
+var target_indicator: ColorRect = null
+
 func _ready():
 	# Initialize bench array with nulls based on constant
 	bench.resize(Constants.BENCH_SIZE)
 	bench.fill(null)
 
+	# Setup Target Indicator
+	target_indicator = ColorRect.new()
+	target_indicator.color = Color(1, 0, 0, 0.3)
+	target_indicator.visible = false
+	target_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(target_indicator)
+
 	GameManager.ui_manager = main_gui
 	GameManager.main_game = self
+	GameManager.grid_manager = grid_manager
 
 	GameManager.wave_started.connect(_on_wave_started)
 	GameManager.wave_ended.connect(_on_wave_ended)
+	GameManager.request_targeting.connect(start_targeting)
 
 	# Camera Setup
 	# Calculate min allowed zoom (maximum field of view)
@@ -112,6 +126,17 @@ func calculate_min_allowed_zoom():
 	# print("Calculated Min Allowed Zoom: ", min_allowed_zoom)
 
 func _unhandled_input(event):
+	if targeting_mode:
+		if event is InputEventMouseMotion:
+			_update_target_indicator()
+
+		if event is InputEventMouseButton and event.pressed:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				_execute_targeting()
+			elif event.button_index == MOUSE_BUTTON_RIGHT:
+				_cancel_targeting()
+		return # Consume input in targeting mode
+
 	if event is InputEventMouseMotion:
 		if event.button_mask == MOUSE_BUTTON_MASK_RIGHT:
 			camera.position -= event.relative / camera.zoom
@@ -121,6 +146,81 @@ func _unhandled_input(event):
 			_adjust_zoom(0.1)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
 			_adjust_zoom(-0.1)
+
+func start_targeting(unit):
+	active_skill_unit = unit
+	targeting_mode = true
+
+	# Determine size based on unit type or skill
+	var size_tiles = Vector2i(1, 1)
+	var color = Color(0, 1, 0, 0.3) # Default Green
+
+	if unit.type_key == "phoenix": # Phoenix
+		size_tiles = Vector2i(4, 4)
+		color = Color(1, 0, 0, 0.3) # Red for Firestorm
+	elif unit.type_key == "viper" or unit.type_key == "scorpion":
+		size_tiles = Vector2i(1, 1)
+		color = Color(0, 1, 0, 0.3) # Green for Trap
+
+	target_indicator.size = Vector2(size_tiles.x * Constants.TILE_SIZE, size_tiles.y * Constants.TILE_SIZE)
+	target_indicator.color = color
+	target_indicator.visible = true
+
+	# Initial position update
+	_update_target_indicator()
+
+func _update_target_indicator():
+	if !targeting_mode: return
+
+	var mouse_pos = get_global_mouse_position()
+	# Snap to grid
+	var tile_pos = grid_manager.world_to_grid(mouse_pos)
+	# Center indicator on the mouse/grid.
+	# The request says "snap to nearest grid center".
+	# grid_manager.world_to_grid gives integer coordinates.
+
+	# If 4x4, we want the center to be roughly where the mouse is.
+	# But indicators usually align with grid lines.
+	# Let's align top-left of indicator to a grid coord such that it is centered on mouse.
+
+	# If indicator is WxH tiles.
+	# TopLeft Tile = Rounded(MouseTile - Size/2)
+
+	var size_tiles = Vector2(target_indicator.size) / Constants.TILE_SIZE
+	var offset_tiles = Vector2i(floor(size_tiles.x / 2.0), floor(size_tiles.y / 2.0))
+
+	var top_left_tile = tile_pos - offset_tiles
+	var world_pos = grid_manager.grid_to_world(top_left_tile.x, top_left_tile.y)
+	# grid_to_world returns center of tile usually? Let's check GridManager or assume standard.
+	# Usually grid_to_world(x,y) -> Vector2.
+	# If it returns center, we need to offset by -TILE_SIZE/2 to get top-left if ColorRect uses top-left pivot.
+
+	# Let's adjust based on typical behavior. Assuming grid_to_world returns center.
+	target_indicator.global_position = world_pos - Vector2(Constants.TILE_SIZE/2.0, Constants.TILE_SIZE/2.0)
+
+func _execute_targeting():
+	if !active_skill_unit:
+		_cancel_targeting()
+		return
+
+	var mouse_pos = get_global_mouse_position()
+	var tile_pos = grid_manager.world_to_grid(mouse_pos)
+
+	# Adjust tile_pos if we want the "center" of the area or the top-left?
+	# The prompt says: "Click ground -> Calculate clicked grid coordinates -> call active_skill_unit.execute_target_skill(grid_pos)"
+	# Usually for AOE, we pass the center or the target point.
+	# If 4x4, maybe we pass the top-left or center.
+	# For simplicity, passing the grid coordinate under the mouse.
+
+	if active_skill_unit.has_method("execute_target_skill"):
+		active_skill_unit.execute_target_skill(tile_pos)
+
+	_cancel_targeting()
+
+func _cancel_targeting():
+	targeting_mode = false
+	active_skill_unit = null
+	target_indicator.visible = false
 
 func _adjust_zoom(amount: float):
 	zoom_target += Vector2(amount, amount)

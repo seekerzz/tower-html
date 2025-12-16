@@ -268,9 +268,16 @@ func activate_skill():
 	if skill_cooldown > 0:
 		return
 
-	# Check cost but proceed only if successful.
-	# Note: Cow regeneration logic is powerful, verify cost.
+	# Targeted Skills check
+	if type_key == "phoenix" or type_key == "viper" or type_key == "scorpion":
+		if GameManager.check_resource("mana", skill_mana_cost):
+			GameManager.request_targeting.emit(self)
+		else:
+			is_no_mana = true
+			GameManager.spawn_floating_text(global_position, "No Mana!", Color.BLUE)
+		return
 
+	# Instant Skills
 	if GameManager.consume_resource("mana", skill_mana_cost):
 		is_no_mana = false
 		skill_cooldown = unit_data.get("skillCd", 10.0)
@@ -311,6 +318,86 @@ func activate_skill():
 	else:
 		is_no_mana = true
 		GameManager.spawn_floating_text(global_position, "No Mana!", Color.BLUE)
+
+func execute_target_skill(grid_pos: Vector2i):
+	if !GameManager.consume_resource("mana", skill_mana_cost):
+		return # Should not happen if checked before, but double check
+
+	is_no_mana = false
+	skill_cooldown = unit_data.get("skillCd", 10.0)
+
+	GameManager.spawn_floating_text(global_position, unit_data.skill.capitalize() + "!", Color.CYAN)
+	GameManager.skill_activated.emit(self)
+
+	if type_key == "phoenix":
+		# Load Firestorm
+		var fs_script = load("res://src/Scripts/Skills/FirestormController.gd")
+		if fs_script:
+			# Instantiate script as node? Or scene?
+			# If it's a script extending Node2D, we can just new() it or if it's not a scene, we create a Node2D and attach script.
+			# Prompt says "Instantiate FirestormController (load ... scene or script)".
+			# Since I created it as a script extending Node2D, I can do:
+			var firestorm = Node2D.new()
+			firestorm.set_script(fs_script)
+
+			# Position
+			# Grid pos to world. Need reference to GridManager or calculate.
+			# But MainGame passed grid_pos. Unit has access to GameManager -> GridManager?
+			if GameManager.grid_manager:
+				var center_pos = GameManager.grid_manager.grid_to_world(grid_pos.x, grid_pos.y)
+				# If 4x4, MainGame aligns indicator top-left to grid such that it's centered on mouse.
+				# But the grid_pos passed is the tile under the mouse.
+				# MainGame logic: top_left_tile = tile_pos - offset_tiles (where offset is size/2 floor)
+				# Center of indicator = grid_to_world(top_left) + size/2
+				# Wait, grid_to_world returns center of tile.
+				# So grid_to_world(top_left) is center of top-left tile.
+				# Top Left of area (in world) = grid_to_world(top_left) - TILE_SIZE/2
+				# Center of area = Top Left of area + Size/2
+
+				# Let's replicate MainGame calculation to be sure
+				var size_tiles = Vector2i(4, 4)
+				var offset_tiles = Vector2i(size_tiles.x / 2, size_tiles.y / 2)
+				var top_left_tile = grid_pos - offset_tiles
+				var top_left_center = GameManager.grid_manager.grid_to_world(top_left_tile.x, top_left_tile.y)
+
+				# Assuming TILE_SIZE is 64 (based on Unit.gd size calc * 60) or from Constants
+				# Using Constants.TILE_SIZE if available, else infer. MainGame uses Constants.TILE_SIZE.
+				# Unit.gd doesn't seem to import Constants globally but uses Constants.UNIT_TYPES.
+				# Constants is a script class name or autoload? MainGame uses `Constants`.
+
+				var tile_size = Constants.TILE_SIZE
+				var world_top_left = top_left_center - Vector2(tile_size/2.0, tile_size/2.0)
+				var world_center = world_top_left + Vector2(size_tiles.x * tile_size, size_tiles.y * tile_size) / 2.0
+
+				firestorm.global_position = world_center
+
+			# Add to scene (MainGame)
+			if GameManager.main_game:
+				GameManager.main_game.add_child(firestorm)
+			else:
+				get_tree().root.add_child(firestorm)
+
+	elif type_key == "viper" or type_key == "scorpion":
+		cast_trap_skill(grid_pos)
+
+func cast_trap_skill(grid_pos: Vector2i):
+	# Placeholder
+	# Visual feedback
+	if GameManager.grid_manager:
+		var pos = GameManager.grid_manager.grid_to_world(grid_pos.x, grid_pos.y)
+		var color = Color.GREEN if type_key == "viper" else Color.PURPLE
+		var barricade = ColorRect.new()
+		barricade.size = Vector2(40, 40)
+		barricade.color = color
+		barricade.position = pos - Vector2(20, 20)
+
+		if GameManager.main_game:
+			GameManager.main_game.add_child(barricade)
+
+		# Fade out
+		var tween = create_tween()
+		tween.tween_property(barricade, "modulate:a", 0.0, 3.0)
+		tween.tween_callback(barricade.queue_free)
 
 func update_visuals():
 	_ensure_visual_hierarchy()
