@@ -90,6 +90,10 @@ func _init_astar():
 		GameManager.wave_started.connect(func():
 			expansion_mode = false
 			clear_ghosts()
+			# Also turn off grid lines
+			for key in tiles:
+				if tiles[key].has_method("set_grid_visible"):
+					tiles[key].set_grid_visible(false)
 		)
 
 func create_initial_grid():

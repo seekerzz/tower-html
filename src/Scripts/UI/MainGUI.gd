@@ -67,6 +67,8 @@ func _ready():
 		debug_button.pressed.connect(_on_debug_button_pressed)
 	if skip_button:
 		skip_button.pressed.connect(_on_skip_button_pressed)
+		# Create Refresh Button
+		_create_refresh_button()
 
 	if retry_button:
 		retry_button.pressed.connect(_on_retry_wave_pressed)
@@ -353,6 +355,43 @@ func _on_wave_ended_stats():
 
 func _on_debug_button_pressed():
 	GameManager.activate_cheat()
+
+func _create_refresh_button():
+	var refresh_btn = Button.new()
+	refresh_btn.text = "Refresh Skills"
+	refresh_btn.name = "RefreshButton"
+	refresh_btn.pressed.connect(_on_refresh_button_pressed)
+
+	# Add to skip button's parent or next to it
+	if skip_button and skip_button.get_parent():
+		skip_button.get_parent().add_child(refresh_btn)
+		# Position it next to skip button if parent is not a container
+		if skip_button.get_parent() is not Container:
+			refresh_btn.position = skip_button.position + Vector2(skip_button.size.x + 10, 0)
+			refresh_btn.size = skip_button.size
+		else:
+			# If it is a container, move it to be after skip_button
+			skip_button.get_parent().move_child(refresh_btn, skip_button.get_index() + 1)
+
+func _on_refresh_button_pressed():
+	if GameManager.is_wave_active:
+		GameManager.spawn_floating_text(get_global_mouse_position(), "Combat Active!", Color.RED)
+		return
+
+	# Reset cooldowns
+	if GameManager.grid_manager:
+		for key in GameManager.grid_manager.tiles:
+			var tile = GameManager.grid_manager.tiles[key]
+			if tile.unit:
+				tile.unit.skill_cooldown = 0
+
+		# Refresh UI
+		if left_sidebar and left_sidebar.has_node("SkillBar"): # Assuming SkillBar is in LeftSidebar or find it
+			var skill_bar = find_child("SkillBar", true, false)
+			if skill_bar and skill_bar.has_method("refresh_skills"):
+				skill_bar.refresh_skills()
+
+	GameManager.spawn_floating_text(get_global_mouse_position(), "Skills Refreshed!", Color.GREEN)
 
 func _on_skip_button_pressed():
 	if not GameManager.is_wave_active:

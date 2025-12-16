@@ -209,4 +209,7 @@ func _unhandled_input(event):
 			_on_skill_btn_pressed(skill_units[index])
 
 func _on_skill_btn_pressed(unit):
+	if !GameManager.is_wave_active:
+		GameManager.spawn_floating_text(get_global_mouse_position(), "Not in Combat!", Color.RED)
+		return
 	unit.activate_skill()

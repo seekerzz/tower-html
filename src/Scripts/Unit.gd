@@ -274,15 +274,51 @@ func update_visuals():
 		label.position = target_pos
 		label.pivot_offset = label.size / 2
 
-	if level > 1:
-		if star_label:
-			star_label.text = "⭐%d" % level
-			star_label.show()
-	else:
-		if star_label:
-			star_label.hide()
+	_update_star_visuals()
 
 	_update_buff_icons()
+
+func _update_star_visuals():
+	# Handle Star Visuals (Vertical on right)
+	var star_container = visual_holder.get_node_or_null("StarContainer")
+	if !star_container:
+		star_container = VBoxContainer.new()
+		star_container.name = "StarContainer"
+		star_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		star_container.alignment = BoxContainer.ALIGNMENT_CENTER
+		# Position to the right.
+		# If unit size is 60x60, right edge is +30.
+		var size = Vector2(60, 60)
+		if unit_data and unit_data.has("size"):
+			size = Vector2(unit_data.size.x * 60, unit_data.size.y * 60)
+
+		star_container.position = Vector2(size.x / 2 - 10, -size.y / 2) # Start from top-right area
+		star_container.size = Vector2(20, size.y)
+
+		visual_holder.add_child(star_container)
+
+	# Clear existing stars
+	for child in star_container.get_children():
+		child.queue_free()
+
+	# Hide legacy star label if exists
+	var star_label = visual_holder.get_node_or_null("StarLabel")
+	if star_label: star_label.hide()
+
+	if level > 1:
+		for i in range(level):
+			var s_icon = TextureRect.new()
+			# Ideally load a star texture. If not available, we can use a small colored rect or label.
+			# Using Label with emoji as fallback or requested style if no asset.
+			# But request says "two star icons". I will assume emoji icon is acceptable if no asset,
+			# OR create a small yellow rect rotated 45 deg?
+			# Let's try to use AssetLoader if it has one, otherwise Label.
+
+			var lbl = Label.new()
+			lbl.text = "⭐"
+			lbl.add_theme_font_size_override("font_size", 12)
+			lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			star_container.add_child(lbl)
 
 func _update_buff_icons():
 	var buff_container = get_node_or_null("BuffContainer")

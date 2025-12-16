@@ -43,21 +43,41 @@ func _get_drag_data(at_position):
 	if !unit_ref: return null
 	if !GameManager.is_wave_active and unit_ref.grid_pos != null:
 		var preview = Control.new()
-		var rect = ColorRect.new()
-		rect.size = size
-		rect.color = Color(1, 1, 1, 0.5)
-		preview.add_child(rect)
 
-		# Add label?
-		var lbl = Label.new()
-		if unit_ref.unit_data:
-			lbl.text = unit_ref.unit_data.get("icon", "?")
-		lbl.size = size
-		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		preview.add_child(lbl)
+		# Try to use image texture
+		var icon_tex = AssetLoader.get_unit_icon(unit_ref.type_key)
+		if icon_tex:
+			var tex_rect = TextureRect.new()
+			tex_rect.texture = icon_tex
+			tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tex_rect.size = size
+			# Slight transparency
+			tex_rect.modulate.a = 0.8
+			preview.add_child(tex_rect)
+		else:
+			# Fallback to ColorRect + Label
+			var rect = ColorRect.new()
+			rect.size = size
+			rect.color = Color(1, 1, 1, 0.5)
+			preview.add_child(rect)
 
-		set_drag_preview(preview)
+			var lbl = Label.new()
+			if unit_ref.unit_data:
+				lbl.text = unit_ref.unit_data.get("icon", "?")
+			lbl.size = size
+			lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			preview.add_child(lbl)
+
+		# Center the preview on mouse
+		# preview.position = -size/2 # This doesn't work directly on drag preview control, needs to be handled by Godot's internals or offset
+		# Godot centers the control at mouse by default if we don't change anything, or top-left.
+		# Usually we set the control center.
+		var c = Control.new()
+		c.add_child(preview)
+		preview.position = -size / 2
+		set_drag_preview(c)
 
 		return {
 			"source": "grid",
