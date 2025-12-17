@@ -303,9 +303,51 @@ func activate_skill():
 				# Do nothing or print
 				print("Butterfly skill activated (No effect implemented)")
 
+			_:
+				if unit_data.get("skillType") == "point":
+					# Point skills handle cost deduction upon execution, refund here
+					GameManager.add_resource("mana", skill_mana_cost)
+					is_no_mana = false # Not a failure state
+					skill_cooldown = 0.0 # Reset CD
+
+					# Enter targeting mode
+					if GameManager.grid_manager and GameManager.grid_manager.has_method("enter_skill_targeting"):
+						GameManager.grid_manager.enter_skill_targeting(self)
+						return
+
 	else:
 		is_no_mana = true
 		GameManager.spawn_floating_text(global_position, "No Mana!", Color.BLUE)
+
+func execute_skill_at(target_grid_pos: Vector2i):
+	if !GameManager.consume_resource("mana", skill_mana_cost):
+		GameManager.spawn_floating_text(global_position, "No Mana!", Color.BLUE)
+		return
+
+	skill_cooldown = unit_data.get("skillCd", 10.0)
+	var skill_id = unit_data.get("skillId", "")
+
+	if skill_id == "firestorm":
+		var fs_scene = load("res://src/Scenes/Game/FireStorm.tscn")
+		if fs_scene:
+			var fs = fs_scene.instantiate()
+			get_parent().add_child(fs) # Add to Game/World
+			var target_world_pos = Vector2(target_grid_pos.x * 60, target_grid_pos.y * 60)
+
+			var area = unit_data.get("targetArea", [3, 3])
+			var size_vec = Vector2i(area[0], area[1])
+
+			fs.setup(target_world_pos, size_vec, damage * 0.5, self)
+
+	elif skill_id == "place_poison":
+		if GameManager.grid_manager:
+			GameManager.grid_manager.try_spawn_trap(Vector2(target_grid_pos.x * 60, target_grid_pos.y * 60), "poison")
+
+	elif skill_id == "place_fang":
+		if GameManager.grid_manager:
+			GameManager.grid_manager.try_spawn_trap(Vector2(target_grid_pos.x * 60, target_grid_pos.y * 60), "fang")
+
+	GameManager.spawn_floating_text(global_position, "Skill!", Color.CYAN)
 
 func update_visuals():
 	_ensure_visual_hierarchy()

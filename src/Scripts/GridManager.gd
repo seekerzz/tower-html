@@ -17,6 +17,11 @@ var active_territory_tiles: Array = [] # List of Tile instances that are unlocke
 
 var astar_grid: AStarGrid2D
 
+# Skill Cursor Logic
+var targeting_cursor: Node2D = null
+var targeting_unit = null
+var is_targeting_mode: bool = false
+
 signal grid_updated
 
 func _ready():
@@ -26,6 +31,119 @@ func _ready():
 	_init_astar()
 	create_initial_grid()
 	# _generate_random_obstacles()
+
+func _process(delta):
+	if is_targeting_mode and targeting_unit and is_instance_valid(targeting_unit):
+		_update_targeting_cursor()
+
+func _unhandled_input(event):
+	if is_targeting_mode:
+		if event is InputEventMouseButton and event.pressed:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				_handle_targeting_click()
+				get_viewport().set_input_as_handled()
+			elif event.button_index == MOUSE_BUTTON_RIGHT:
+				_cancel_targeting()
+				get_viewport().set_input_as_handled()
+
+func enter_skill_targeting(unit):
+	targeting_unit = unit
+	is_targeting_mode = true
+
+	if targeting_cursor == null:
+		targeting_cursor = Node2D.new()
+		var rect = ColorRect.new()
+		rect.name = "Visual"
+		rect.color = Color(0, 1, 0, 0.4)
+		targeting_cursor.add_child(rect)
+		add_child(targeting_cursor)
+		targeting_cursor.z_index = 100 # Top
+
+	targeting_cursor.show()
+
+	# Set cursor size based on unit target area
+	var area = unit.unit_data.get("targetArea", [1, 1])
+	var w = area[0] * TILE_SIZE
+	var h = area[1] * TILE_SIZE
+	var visual = targeting_cursor.get_node("Visual")
+	visual.size = Vector2(w, h)
+	visual.position = Vector2(-w/2, -h/2) # Center pivot
+
+func _cancel_targeting():
+	is_targeting_mode = false
+	targeting_unit = null
+	if targeting_cursor:
+		targeting_cursor.hide()
+
+func _update_targeting_cursor():
+	var mouse_pos = get_global_mouse_position()
+	# Snap to grid
+	var gx = int(round(mouse_pos.x / TILE_SIZE))
+	var gy = int(round(mouse_pos.y / TILE_SIZE))
+
+	targeting_cursor.global_position = Vector2(gx * TILE_SIZE, gy * TILE_SIZE)
+
+	var valid = is_valid_skill_pos(Vector2i(gx, gy), targeting_unit)
+	var visual = targeting_cursor.get_node("Visual")
+	if valid:
+		visual.color = Color(0, 1, 0, 0.4)
+	else:
+		visual.color = Color(1, 0, 0, 0.4)
+
+func _handle_targeting_click():
+	if !targeting_unit: return
+
+	var mouse_pos = get_global_mouse_position()
+	var gx = int(round(mouse_pos.x / TILE_SIZE))
+	var gy = int(round(mouse_pos.y / TILE_SIZE))
+	var grid_pos = Vector2i(gx, gy)
+
+	if is_valid_skill_pos(grid_pos, targeting_unit):
+		targeting_unit.execute_skill_at(grid_pos)
+		_cancel_targeting()
+	else:
+		# Maybe play error sound?
+		pass
+
+func is_valid_skill_pos(grid_pos: Vector2i, unit) -> bool:
+	if !tiles.has(get_tile_key(grid_pos.x, grid_pos.y)):
+		return false
+
+	var skill_id = unit.unit_data.get("skillId", "")
+
+	# Phoenix: Anywhere in map bounds (already checked by tiles.has)
+	if skill_id == "firestorm":
+		return true
+
+	# Viper/Scorpion (Traps)
+	# Rules:
+	# 1. Not active territory (unlocked)
+	# 2. Not spawn tiles
+	# 3. Not core/core_zone
+	# 4. No obstacles
+	if skill_id == "place_poison" or skill_id == "place_fang":
+		var tile = tiles[get_tile_key(grid_pos.x, grid_pos.y)]
+
+		# Rule 1: Not active territory (unlocked)
+		if tile.state == "unlocked":
+			return false
+
+		# Rule 2: Not spawn tiles
+		if tile.state == "spawn" or spawn_tiles.has(grid_pos):
+			return false
+
+		# Rule 3: Not core
+		if tile.type == "core" or tile.type == "core_zone":
+			return false
+
+		# Rule 4: No obstacles
+		if obstacles.has(grid_pos):
+			return false
+
+		# Must be wilderness/locked
+		return true
+
+	return false
 
 func try_spawn_trap(world_pos: Vector2, type_key: String):
 	var gx = int(round(world_pos.x / TILE_SIZE))
@@ -39,10 +157,15 @@ func try_spawn_trap(world_pos: Vector2, type_key: String):
 	var tile = tiles[key]
 
 	# Check requirements: No unit, No core, No obstacle
+	# Note: For skill based traps, we might have stricter or different rules,
+	# but for now we reuse this or rely on is_valid_skill_pos check before calling this.
 	if tile.unit != null: return
 	if tile.occupied_by != Vector2i.ZERO: return
-	if tile.type == "core": return
+	if tile.type == "core" or tile.type == "core_zone": return
 	if obstacles.has(grid_pos): return
+
+	# Explicitly allow trap spawning in locked tiles if it comes from skill (which calls this)
+	# But ensure we don't spawn on top of existing things.
 
 	# _spawn_barricade(tile, type_key)
 
