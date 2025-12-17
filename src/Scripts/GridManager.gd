@@ -76,12 +76,14 @@ func _cancel_targeting():
 		targeting_cursor.hide()
 
 func _update_targeting_cursor():
-	var mouse_pos = get_global_mouse_position()
-	# Snap to grid
-	var gx = int(round(mouse_pos.x / TILE_SIZE))
-	var gy = int(round(mouse_pos.y / TILE_SIZE))
+	# Use local position relative to GridManager to correctly map to tiles
+	var local_pos = to_local(get_global_mouse_position())
 
-	targeting_cursor.global_position = Vector2(gx * TILE_SIZE, gy * TILE_SIZE)
+	# Snap to grid
+	var gx = int(round(local_pos.x / TILE_SIZE))
+	var gy = int(round(local_pos.y / TILE_SIZE))
+
+	targeting_cursor.position = Vector2(gx * TILE_SIZE, gy * TILE_SIZE)
 
 	var valid = is_valid_skill_pos(Vector2i(gx, gy), targeting_unit)
 	var visual = targeting_cursor.get_node("Visual")
@@ -93,9 +95,9 @@ func _update_targeting_cursor():
 func _handle_targeting_click():
 	if !targeting_unit: return
 
-	var mouse_pos = get_global_mouse_position()
-	var gx = int(round(mouse_pos.x / TILE_SIZE))
-	var gy = int(round(mouse_pos.y / TILE_SIZE))
+	var local_pos = to_local(get_global_mouse_position())
+	var gx = int(round(local_pos.x / TILE_SIZE))
+	var gy = int(round(local_pos.y / TILE_SIZE))
 	var grid_pos = Vector2i(gx, gy)
 
 	if is_valid_skill_pos(grid_pos, targeting_unit):
