@@ -71,6 +71,15 @@ func _unhandled_input(event):
 				exit_skill_targeting()
 				get_viewport().set_input_as_handled()
 
+func handle_tile_click_for_skill(tile):
+	if !is_targeting_mode: return
+
+	var grid_pos = Vector2i(tile.x, tile.y)
+	if is_valid_skill_pos(grid_pos, targeting_unit):
+		if targeting_unit.has_method("execute_skill_at"):
+			targeting_unit.execute_skill_at(grid_pos)
+		exit_skill_targeting()
+
 func enter_skill_targeting(unit):
 	if is_targeting_mode:
 		exit_skill_targeting()
@@ -116,13 +125,12 @@ func is_valid_skill_pos(grid_pos: Vector2i, unit) -> bool:
 
 	if unit.type_key == "viper" or unit.type_key == "scorpion":
 		# Traps rules:
-		# 1. Not in active territory (unlocked or core)
-		if active_territory_tiles.has(tile): return false
-		# 2. Not on spawn tiles
+		# Allowed: Core (locked/unlocked), Wilderness.
+		# Disallowed: Spawn tiles, Existing Obstacles.
+
+		# 1. Not on spawn tiles
 		if spawn_tiles.has(grid_pos): return false
-		# 3. Not in core/core_zone (already covered by active_territory usually, but double check)
-		if is_in_core_zone(grid_pos): return false
-		# 4. No obstacles
+		# 2. No obstacles
 		if obstacles.has(grid_pos): return false
 
 		return true

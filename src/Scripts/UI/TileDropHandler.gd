@@ -26,3 +26,11 @@ func _drop_data(at_position, data):
 	elif data.source == "grid":
 		# Call GridManager to move unit
 		GameManager.grid_manager.handle_grid_move_at(tile_ref, data)
+
+func _gui_input(event):
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			# If GridManager is in targeting mode, the Control (this) consumes the event
+			# preventing _unhandled_input from firing. We must manually trigger it.
+			if GameManager.grid_manager and GameManager.grid_manager.is_targeting_mode:
+				GameManager.grid_manager.handle_tile_click_for_skill(tile_ref)
