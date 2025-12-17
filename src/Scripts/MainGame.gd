@@ -245,3 +245,31 @@ func try_add_to_bench_from_grid(unit) -> bool:
 func update_bench_ui():
 	if bench_ui:
 		bench_ui.update_bench_ui(bench)
+
+var shake_intensity: float = 0.0
+var shake_duration: float = 0.0
+var current_shake_time: float = 0.0
+var initial_camera_offset: Vector2 = Vector2.ZERO
+
+func _process(delta):
+	if shake_duration > 0:
+		current_shake_time += delta
+		if current_shake_time < shake_duration:
+			var damp = 1.0 - (current_shake_time / shake_duration)
+			var intensity = shake_intensity * damp
+			var offset_x = randf_range(-intensity, intensity)
+			var offset_y = randf_range(-intensity, intensity)
+			# Assuming initial offset is always ZERO or we need to capture it once.
+			# Given we don't control when camera.offset is changed by others,
+			# we should add to a base. But camera.offset is usually for effects.
+			camera.offset = Vector2(offset_x, offset_y)
+		else:
+			shake_duration = 0
+			camera.offset = Vector2.ZERO
+
+func shake_camera(intensity: float = 5.0, duration: float = 0.5):
+	if intensity <= 0 or duration <= 0: return
+	# Overwrite or add? Let's overwrite for simplicity and "high impact"
+	shake_intensity = intensity
+	shake_duration = duration
+	current_shake_time = 0.0
