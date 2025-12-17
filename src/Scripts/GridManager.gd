@@ -126,6 +126,7 @@ func is_valid_skill_pos(grid_pos: Vector2i, unit) -> bool:
 		if tile.occupied_by != Vector2i.ZERO: return false
 
 		# 4. Restriction: Cannot place on Core or Unlocked Core Area
+		# Viper and Scorpion traps cannot be placed on Core or the unlocked initial area around it.
 		if is_in_core_zone(grid_pos) and tile.state == "unlocked": return false
 
 		# Allowed in Locked Core, Wilderness
@@ -474,10 +475,7 @@ func _clear_tiles_occupied(x: int, y: int, w: int, h: int):
 				t.occupied_by = Vector2i.ZERO
 
 func is_in_core_zone(pos: Vector2i) -> bool:
-	var key = get_tile_key(pos.x, pos.y)
-	if tiles.has(key):
-		return tiles[key].type == "core" or tiles[key].type == "core_zone"
-	return false
+	return abs(pos.x) <= Constants.CORE_ZONE_RADIUS and abs(pos.y) <= Constants.CORE_ZONE_RADIUS
 
 func can_place_unit(x: int, y: int, w: int, h: int, exclude_unit = null) -> bool:
 	for dx in range(w):
