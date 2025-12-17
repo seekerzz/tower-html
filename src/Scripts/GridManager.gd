@@ -52,7 +52,7 @@ func _process(_delta):
 			else:
 				visual.color = Color(1, 0, 0, 0.4) # Red
 
-func _unhandled_input(event):
+func _input(event):
 	if is_targeting_mode:
 		if event is InputEventMouseButton and event.pressed:
 			if event.button_index == MOUSE_BUTTON_LEFT:
