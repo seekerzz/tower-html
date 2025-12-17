@@ -60,6 +60,8 @@ func _deal_damage():
 	# Let's assume default checks all, or we manually check 'enemies' group.
 
 	var bodies = area.get_overlapping_areas()
+	bodies.append_array(area.get_overlapping_bodies())
+
 	for body in bodies:
 		# Check if parent is enemy
 		var enemy = body.get_parent()

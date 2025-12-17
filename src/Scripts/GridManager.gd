@@ -34,7 +34,7 @@ func _ready():
 
 func _process(_delta):
 	if is_targeting_mode and targeting_cursor:
-		var mouse_pos = get_global_mouse_position()
+		var mouse_pos = get_local_mouse_position()
 		var gx = int(round(mouse_pos.x / TILE_SIZE))
 		var gy = int(round(mouse_pos.y / TILE_SIZE))
 
@@ -55,7 +55,7 @@ func _unhandled_input(event):
 	if is_targeting_mode:
 		if event is InputEventMouseButton and event.pressed:
 			if event.button_index == MOUSE_BUTTON_LEFT:
-				var mouse_pos = get_global_mouse_position()
+				var mouse_pos = get_local_mouse_position()
 				var gx = int(round(mouse_pos.x / TILE_SIZE))
 				var gy = int(round(mouse_pos.y / TILE_SIZE))
 				var grid_pos = Vector2i(gx, gy)
