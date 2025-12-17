@@ -92,7 +92,7 @@ func _ensure_visual_hierarchy():
 
 	if unit_data and unit_data.has("size"):
 		var size_val = unit_data["size"]
-		var target_size = Vector2(size_val.x * 60 - 4, size_val.y * 60 - 4)
+		var target_size = Vector2(size_val.x * Constants.TILE_SIZE - 4, size_val.y * Constants.TILE_SIZE - 4)
 		highlight.size = target_size
 		highlight.position = -(target_size / 2)
 
@@ -266,7 +266,7 @@ func execute_skill_at(grid_pos: Vector2i):
 			var firestorm_scene = load("res://src/Scenes/Game/FireStorm.tscn")
 			if firestorm_scene:
 				var storm = firestorm_scene.instantiate()
-				storm.position = Vector2(grid_pos.x * 60, grid_pos.y * 60)
+				storm.position = Vector2(grid_pos.x * Constants.TILE_SIZE, grid_pos.y * Constants.TILE_SIZE)
 				storm.init(damage * 0.5)
 				get_parent().add_child(storm)
 
@@ -373,7 +373,7 @@ func update_visuals():
 	
 	# Size update based on unit_data
 	var size = unit_data["size"]
-	var target_size = Vector2(size.x * 60 - 4, size.y * 60 - 4)
+	var target_size = Vector2(size.x * Constants.TILE_SIZE - 4, size.y * Constants.TILE_SIZE - 4)
 	var target_pos = -(target_size / 2) # Center inside parent (Unit node)
 
 	if tex_rect:
@@ -404,9 +404,9 @@ func _update_buff_icons():
 		buff_container.alignment = BoxContainer.ALIGNMENT_CENTER
 
 		# Calculate size based on unit data since ColorRect is gone
-		var size = Vector2(60, 60) # Default
+		var size = Vector2(Constants.TILE_SIZE, Constants.TILE_SIZE) # Default
 		if unit_data and unit_data.has("size"):
-			size = Vector2(unit_data["size"].x * 60, unit_data["size"].y * 60)
+			size = Vector2(unit_data["size"].x * Constants.TILE_SIZE, unit_data["size"].y * Constants.TILE_SIZE)
 
 		buff_container.position = Vector2(-size.x/2, size.y/2 - 20) # Just an approximation
 		buff_container.size = Vector2(size.x, 15)
@@ -589,9 +589,9 @@ func _draw():
 
 	if _is_skill_highlight_active:
 		# Draw a thick outline
-		var size = Vector2(60, 60)
+		var size = Vector2(Constants.TILE_SIZE, Constants.TILE_SIZE)
 		if unit_data and unit_data.has("size"):
-			size = Vector2(unit_data.size.x * 60, unit_data.size.y * 60)
+			size = Vector2(unit_data.size.x * Constants.TILE_SIZE, unit_data.size.y * Constants.TILE_SIZE)
 
 		# Assuming pivot is center
 		var rect = Rect2(-size / 2, size)
