@@ -15,6 +15,11 @@ var expansion_cost: int = 50 # Base cost
 var spawn_tiles: Array = [] # List of tiles (Vector2i) used as spawn points
 var active_territory_tiles: Array = [] # List of Tile instances that are unlocked or core
 
+# Skill Targeting
+var targeting_cursor: Node2D = null
+var targeting_unit = null
+var is_targeting_mode: bool = false
+
 var astar_grid: AStarGrid2D
 
 signal grid_updated
@@ -26,6 +31,111 @@ func _ready():
 	_init_astar()
 	create_initial_grid()
 	# _generate_random_obstacles()
+
+func _process(_delta):
+	if is_targeting_mode and targeting_cursor:
+		var mouse_pos = get_global_mouse_position()
+		var gx = int(round(mouse_pos.x / TILE_SIZE))
+		var gy = int(round(mouse_pos.y / TILE_SIZE))
+
+		# Snap to grid
+		targeting_cursor.position = Vector2(gx * TILE_SIZE, gy * TILE_SIZE)
+
+		var grid_pos = Vector2i(gx, gy)
+		var is_valid = is_valid_skill_pos(grid_pos, targeting_unit)
+
+		var visual = targeting_cursor.get_node_or_null("Visual")
+		if visual:
+			if is_valid:
+				visual.color = Color(0, 1, 0, 0.4) # Green
+			else:
+				visual.color = Color(1, 0, 0, 0.4) # Red
+
+func _unhandled_input(event):
+	if is_targeting_mode:
+		if event is InputEventMouseButton and event.pressed:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				var mouse_pos = get_global_mouse_position()
+				var gx = int(round(mouse_pos.x / TILE_SIZE))
+				var gy = int(round(mouse_pos.y / TILE_SIZE))
+				var grid_pos = Vector2i(gx, gy)
+
+				if is_valid_skill_pos(grid_pos, targeting_unit):
+					# Call unit execution
+					if targeting_unit.has_method("execute_skill_at"):
+						targeting_unit.execute_skill_at(grid_pos)
+					exit_skill_targeting()
+					get_viewport().set_input_as_handled()
+
+			elif event.button_index == MOUSE_BUTTON_RIGHT:
+				exit_skill_targeting()
+				get_viewport().set_input_as_handled()
+
+func enter_skill_targeting(unit):
+	if is_targeting_mode:
+		exit_skill_targeting()
+
+	targeting_unit = unit
+	is_targeting_mode = true
+
+	targeting_cursor = Node2D.new()
+	var visual = ColorRect.new()
+	visual.name = "Visual"
+
+	var size_x = 1
+	var size_y = 1
+	if unit.unit_data.has("targetArea"):
+		size_x = unit.unit_data.targetArea[0]
+		size_y = unit.unit_data.targetArea[1]
+
+	visual.size = Vector2(size_x * TILE_SIZE, size_y * TILE_SIZE)
+	visual.position = -visual.size / 2 # Center
+	visual.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	targeting_cursor.add_child(visual)
+
+	add_child(targeting_cursor)
+
+func exit_skill_targeting():
+	is_targeting_mode = false
+	targeting_unit = null
+	if targeting_cursor:
+		targeting_cursor.queue_free()
+		targeting_cursor = null
+
+func is_valid_skill_pos(grid_pos: Vector2i, unit) -> bool:
+	if !unit: return false
+
+	# Basic map bounds check
+	var key = get_tile_key(grid_pos.x, grid_pos.y)
+	if !tiles.has(key): return false
+
+	var tile = tiles[key]
+
+	if unit.type_key == "phoenix":
+		return true
+
+	if unit.type_key == "viper" or unit.type_key == "scorpion":
+		# Traps rules:
+		# 1. Not in active territory (unlocked or core)
+		if active_territory_tiles.has(tile): return false
+		# 2. Not on spawn tiles
+		if spawn_tiles.has(grid_pos): return false
+		# 3. Not in core/core_zone (already covered by active_territory usually, but double check)
+		if is_in_core_zone(grid_pos): return false
+		# 4. No obstacles
+		if obstacles.has(grid_pos): return false
+
+		return true
+
+	return false
+
+func spawn_trap_custom(grid_pos: Vector2i, type_key: String):
+	var key = get_tile_key(grid_pos.x, grid_pos.y)
+	if !tiles.has(key): return
+	var tile = tiles[key]
+
+	# We assume checks are done.
+	_spawn_barricade(tile, type_key)
 
 func try_spawn_trap(world_pos: Vector2, type_key: String):
 	var gx = int(round(world_pos.x / TILE_SIZE))

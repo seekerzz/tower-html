@@ -81,7 +81,10 @@
             "skill": "place_fang",
             "skillCd": 15,
             "targetType": "ground",
-            "targetArea": [1, 1],
+            "targetArea": [
+                1,
+                1
+            ],
             "levels": {
                 "1": {
                     "damage": 30,
@@ -107,7 +110,9 @@
                     }
                 }
             },
-            "type_key": "scorpion"
+            "type_key": "scorpion",
+            "skillType": "point",
+            "skillId": "place_fang"
         },
         "squirrel": {
             "name": "松鼠",
@@ -547,7 +552,10 @@
             "skill": "firestorm",
             "skillCd": 20,
             "targetType": "ground",
-            "targetArea": [4, 4],
+            "targetArea": [
+                3,
+                3
+            ],
             "damageType": "fire",
             "crit_rate": 0.1,
             "crit_dmg": 1.5,
@@ -579,7 +587,9 @@
                     }
                 }
             },
-            "type_key": "phoenix"
+            "type_key": "phoenix",
+            "skillType": "point",
+            "skillId": "firestorm"
         },
         "plant": {
             "name": "向日葵",
@@ -1186,7 +1196,10 @@
             "skill": "place_poison",
             "skillCd": 15,
             "targetType": "ground",
-            "targetArea": [1, 1],
+            "targetArea": [
+                1,
+                1
+            ],
             "crit_rate": 0.1,
             "crit_dmg": 1.5,
             "levels": {
@@ -1216,7 +1229,9 @@
                     }
                 }
             },
-            "type_key": "viper"
+            "type_key": "viper",
+            "skillType": "point",
+            "skillId": "place_poison"
         },
         "spider": {
             "name": "蜘蛛",
