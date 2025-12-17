@@ -251,6 +251,35 @@ func set_highlight(active: bool, color: Color = Color.WHITE):
 	else:
 		queue_redraw()
 
+func execute_skill_at(grid_pos: Vector2i):
+	if skill_cooldown > 0: return
+
+	if GameManager.consume_resource("mana", skill_mana_cost):
+		is_no_mana = false
+		skill_cooldown = unit_data.get("skillCd", 10.0)
+
+		var skill_name = unit_data.skill
+		GameManager.spawn_floating_text(global_position, skill_name.capitalize() + "!", Color.CYAN)
+		GameManager.skill_activated.emit(self)
+
+		if type_key == "phoenix":
+			var firestorm_scene = load("res://src/Scenes/Game/FireStorm.tscn")
+			if firestorm_scene:
+				var storm = firestorm_scene.instantiate()
+				storm.position = Vector2(grid_pos.x * 60, grid_pos.y * 60)
+				storm.init(damage * 0.5)
+				get_parent().add_child(storm)
+
+		elif type_key == "viper":
+			GameManager.grid_manager.spawn_trap_custom(grid_pos, "poison")
+
+		elif type_key == "scorpion":
+			GameManager.grid_manager.spawn_trap_custom(grid_pos, "fang")
+
+	else:
+		is_no_mana = true
+		GameManager.spawn_floating_text(global_position, "No Mana!", Color.BLUE)
+
 func _on_skill_ended():
 	set_highlight(false)
 
@@ -261,6 +290,12 @@ func activate_skill():
 	if !unit_data.has("skill"): return
 
 	if skill_cooldown > 0:
+		return
+
+	# Point Skill Handling
+	if unit_data.get("skillType") == "point":
+		if GameManager.grid_manager:
+			GameManager.grid_manager.enter_skill_targeting(self)
 		return
 
 	# Check cost but proceed only if successful.
