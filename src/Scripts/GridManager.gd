@@ -125,7 +125,10 @@ func is_valid_skill_pos(grid_pos: Vector2i, unit) -> bool:
 		if tile.unit != null: return false
 		if tile.occupied_by != Vector2i.ZERO: return false
 
-		# Allowed in Unlocked Core, Locked Core, Wilderness
+		# 4. Restriction: Cannot place on Core or Unlocked Core Area
+		if is_in_core_zone(grid_pos) and tile.state == "unlocked": return false
+
+		# Allowed in Locked Core, Wilderness
 		return true
 
 	return false
