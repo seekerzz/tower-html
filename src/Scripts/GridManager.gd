@@ -1,6 +1,6 @@
 extends Node2D
 
-const TILE_SCENE = preload("res://src/Scenes/Game/Tile.tscn")
+var TILE_SCENE = null
 const UNIT_SCENE = preload("res://src/Scenes/Game/Unit.tscn")
 var BARRICADE_SCENE = null
 const GHOST_TILE_SCRIPT = preload("res://src/Scripts/UI/GhostTile.gd")
@@ -26,6 +26,7 @@ signal grid_updated
 
 func _ready():
 	GameManager.grid_manager = self
+	TILE_SCENE = load("res://src/Scenes/Game/Tile.tscn")
 	if ResourceLoader.exists("res://src/Scenes/Game/Barricade.tscn"):
 		BARRICADE_SCENE = load("res://src/Scenes/Game/Barricade.tscn")
 	_init_astar()
@@ -116,15 +117,15 @@ func is_valid_skill_pos(grid_pos: Vector2i, unit) -> bool:
 
 	if unit.type_key == "viper" or unit.type_key == "scorpion":
 		# Traps rules:
-		# 1. Not in active territory (unlocked or core)
-		if active_territory_tiles.has(tile): return false
-		# 2. Not on spawn tiles
+		# 1. Not on spawn tiles
 		if spawn_tiles.has(grid_pos): return false
-		# 3. Not in core/core_zone (already covered by active_territory usually, but double check)
-		if is_in_core_zone(grid_pos): return false
-		# 4. No obstacles
+		# 2. No obstacles
 		if obstacles.has(grid_pos): return false
+		# 3. No units
+		if tile.unit != null: return false
+		if tile.occupied_by != Vector2i.ZERO: return false
 
+		# Allowed in Unlocked Core, Locked Core, Wilderness
 		return true
 
 	return false
