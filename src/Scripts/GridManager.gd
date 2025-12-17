@@ -15,9 +15,19 @@ var expansion_cost: int = 50 # Base cost
 var spawn_tiles: Array = [] # List of tiles (Vector2i) used as spawn points
 var active_territory_tiles: Array = [] # List of Tile instances that are unlocked or core
 
+# Targeting
+var is_targeting: bool = false
+var targeting_unit: Node2D = null
+
 var astar_grid: AStarGrid2D
 
 signal grid_updated
+
+func _unhandled_input(event):
+	if is_targeting:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+			exit_skill_targeting()
+			get_viewport().set_input_as_handled()
 
 func _ready():
 	GameManager.grid_manager = self
@@ -27,22 +37,22 @@ func _ready():
 	create_initial_grid()
 	# _generate_random_obstacles()
 
-func try_spawn_trap(world_pos: Vector2, type_key: String):
+func try_spawn_trap(world_pos: Vector2, type_key: String) -> bool:
 	var gx = int(round(world_pos.x / TILE_SIZE))
 	var gy = int(round(world_pos.y / TILE_SIZE))
 	var grid_pos = Vector2i(gx, gy)
 	var key = get_tile_key(gx, gy)
 
 	if not tiles.has(key):
-		return
+		return false
 
 	var tile = tiles[key]
 
 	# Check requirements: No unit, No core, No obstacle
-	if tile.unit != null: return
-	if tile.occupied_by != Vector2i.ZERO: return
-	if tile.type == "core": return
-	if obstacles.has(grid_pos): return
+	if tile.unit != null: return false
+	if tile.occupied_by != Vector2i.ZERO: return false
+	if tile.type == "core": return false
+	if obstacles.has(grid_pos): return false
 
 	# _spawn_barricade(tile, type_key)
 
@@ -71,6 +81,15 @@ func try_spawn_trap(world_pos: Vector2, type_key: String):
 		obstacle.init(Vector2i(tile.x, tile.y), type_key)
 
 	register_obstacle(Vector2i(tile.x, tile.y), obstacle)
+
+	# Check if blocking path
+	if not is_path_clear_from_spawns_to_core():
+		# Revert
+		remove_obstacle(obstacle)
+		obstacle.queue_free()
+		return false
+
+	return true
 
 func _init_astar():
 	astar_grid = AStarGrid2D.new()
@@ -621,6 +640,8 @@ func _apply_buff_to_neighbors(provider_unit, buff_type):
 				target_unit.apply_buff(buff_type)
 
 func toggle_expansion_mode():
+	if is_targeting: return # Cannot expand while targeting
+
 	expansion_mode = !expansion_mode
 
 	# Toggle grid lines on all tiles
@@ -632,6 +653,52 @@ func toggle_expansion_mode():
 		spawn_expansion_ghosts()
 	else:
 		clear_ghosts()
+
+func enter_skill_targeting(unit):
+	is_targeting = true
+	targeting_unit = unit
+	clear_ghosts()
+
+	# Generate ghosts based on unit type
+	if unit.type_key == "phoenix":
+		# Phoenix: All tiles
+		for key in tiles:
+			var tile = tiles[key]
+			_create_ghost_at(tile.x, tile.y, Color.RED)
+	else:
+		# Traps (Viper, Scorpion): Active territory only
+		for tile in active_territory_tiles:
+			if !is_instance_valid(tile): continue
+			var pos = Vector2i(tile.x, tile.y)
+
+			# Filter: Enemies spawn points
+			if pos in spawn_tiles: continue
+
+			# Filter: Core (implied by Core check but explicit here if needed)
+			if tile.type == "core": continue
+
+			# Filter: Existing units or obstacles
+			if tile.unit != null: continue
+			if tile.occupied_by != Vector2i.ZERO: continue
+			if obstacles.has(pos): continue
+
+			_create_ghost_at(tile.x, tile.y, Color.GREEN)
+
+func exit_skill_targeting():
+	is_targeting = false
+	targeting_unit = null
+	clear_ghosts()
+
+func _create_ghost_at(x, y, color = Color.WHITE):
+	var ghost = GHOST_TILE_SCRIPT.new()
+	add_child(ghost)
+	ghost.setup(x, y)
+	# Assuming GhostTile handles sizing, we adjust pos
+	# Note: default GhostTile might need modification to support color or we modulate
+	ghost.position = Vector2(x * TILE_SIZE, y * TILE_SIZE) - (ghost.custom_minimum_size / 2)
+	ghost.modulate = color
+	ghost.modulate.a = 0.5
+	ghost_tiles.append(ghost)
 
 func spawn_expansion_ghosts():
 	clear_ghosts()
@@ -664,12 +731,7 @@ func spawn_expansion_ghosts():
 						break
 
 			if can_expand:
-				var ghost = GHOST_TILE_SCRIPT.new()
-				add_child(ghost)
-				ghost.setup(tile.x, tile.y)
-				ghost.position = tile.position - (ghost.custom_minimum_size / 2)
-				# ghost.clicked.connect(on_ghost_clicked) # GhostTile calls grid_manager.on_ghost_clicked directly
-				ghost_tiles.append(ghost)
+				_create_ghost_at(tile.x, tile.y)
 
 func clear_ghosts():
 	for ghost in ghost_tiles:
@@ -677,6 +739,12 @@ func clear_ghosts():
 	ghost_tiles.clear()
 
 func on_ghost_clicked(x, y):
+	if is_targeting:
+		if targeting_unit and is_instance_valid(targeting_unit):
+			targeting_unit.execute_skill_at(Vector2i(x, y))
+		exit_skill_targeting()
+		return
+
 	var cost = expansion_cost
 	if GameManager.reward_manager and "rapid_expansion" in GameManager.reward_manager.acquired_artifacts:
 		cost = int(cost * 0.7)

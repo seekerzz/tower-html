@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3 uid="uid://firestorm_scene"]
+
+[ext_resource type="Script" path="res://src/Scripts/Game/FireStorm.gd" id="1_script"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
+size = Vector2(180, 180)
+
+[node name="FireStorm" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="Area2D" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D"]
+shape = SubResource("RectangleShape2D_1")

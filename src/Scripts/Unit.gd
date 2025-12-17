@@ -263,6 +263,12 @@ func activate_skill():
 	if skill_cooldown > 0:
 		return
 
+	# New Point Skill Logic
+	if unit_data.get("skillType") == "point":
+		if GameManager.grid_manager:
+			GameManager.grid_manager.enter_skill_targeting(self)
+		return
+
 	# Check cost but proceed only if successful.
 	# Note: Cow regeneration logic is powerful, verify cost.
 
@@ -306,6 +312,58 @@ func activate_skill():
 	else:
 		is_no_mana = true
 		GameManager.spawn_floating_text(global_position, "No Mana!", Color.BLUE)
+
+func execute_skill_at(target_grid_pos: Vector2i):
+	var skill_id = unit_data.get("skillId", "")
+	# Cost check again? The prompt implies cost is deducted AFTER success.
+	# "Success after: deduct mana, reset CD"
+
+	# Verify cost
+	if GameManager.mana < skill_mana_cost:
+		GameManager.spawn_floating_text(global_position, "No Mana!", Color.BLUE)
+		return
+
+	var success = false
+	var TILE_SIZE = 60 # Should import from Constants or GridManager but using hardcoded or accessing GridManager
+	if GameManager.grid_manager:
+		TILE_SIZE = GameManager.grid_manager.TILE_SIZE
+
+	var target_world_pos = Vector2(target_grid_pos.x * TILE_SIZE, target_grid_pos.y * TILE_SIZE)
+	var visual_pos = target_world_pos + Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
+
+	if type_key == "phoenix":
+		# FireStorm
+		if skill_id == "firestorm":
+			var fs_scene = load("res://src/Scenes/Game/FireStorm.tscn")
+			if fs_scene:
+				var fs = fs_scene.instantiate()
+				fs.position = visual_pos
+				# fs.damage = damage * 2 # Example scaling? Prompt didn't specify damage scaling, but Unit has damage.
+				# Let's use unit damage
+				fs.damage = damage
+				GameManager.grid_manager.add_child(fs)
+				success = true
+
+	elif type_key == "viper":
+		if skill_id == "place_poison":
+			if GameManager.grid_manager.try_spawn_trap(target_world_pos, "poison"):
+				success = true
+			else:
+				GameManager.spawn_floating_text(global_position, "Invalid Position", Color.RED)
+
+	elif type_key == "scorpion":
+		if skill_id == "place_fang":
+			if GameManager.grid_manager.try_spawn_trap(target_world_pos, "fang"):
+				success = true
+			else:
+				GameManager.spawn_floating_text(global_position, "Invalid Position", Color.RED)
+
+	if success:
+		if GameManager.consume_resource("mana", skill_mana_cost):
+			skill_cooldown = unit_data.get("skillCd", 10.0)
+			is_no_mana = false
+			GameManager.spawn_floating_text(global_position, "Skill Used!", Color.CYAN)
+			GameManager.skill_activated.emit(self)
 
 func update_visuals():
 	_ensure_visual_hierarchy()
