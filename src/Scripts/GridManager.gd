@@ -24,6 +24,12 @@ var astar_grid: AStarGrid2D
 
 signal grid_updated
 
+# --- Directional Buff Selection State ---
+var is_selecting_buff_target: bool = false
+var selection_source_unit: Node2D = null
+var selection_candidates: Array = []
+var buff_selection_queue: Array = []
+
 func _ready():
 	GameManager.grid_manager = self
 	TILE_SCENE = load("res://src/Scenes/Game/Tile.tscn")
@@ -53,6 +59,31 @@ func _process(_delta):
 				visual.color = Color(1, 0, 0, 0.4) # Red
 
 func _input(event):
+	if is_selecting_buff_target:
+		if event is InputEventMouseButton and event.pressed:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				var mouse_pos = get_local_mouse_position()
+				var gx = int(round(mouse_pos.x / TILE_SIZE))
+				var gy = int(round(mouse_pos.y / TILE_SIZE))
+				var key = get_tile_key(gx, gy)
+
+				if tiles.has(key):
+					var tile = tiles[key]
+					var clicked_unit = tile.unit
+					if clicked_unit == null and tile.occupied_by != Vector2i.ZERO:
+						var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
+						if tiles.has(origin_key):
+							clicked_unit = tiles[origin_key].unit
+
+					if clicked_unit and clicked_unit in selection_candidates:
+						selection_source_unit.set_buff_target(clicked_unit)
+						end_buff_selection()
+						get_viewport().set_input_as_handled()
+						return
+
+			get_viewport().set_input_as_handled()
+		return
+
 	if is_targeting_mode:
 		if event is InputEventMouseButton and event.pressed:
 			if event.button_index == MOUSE_BUTTON_LEFT:
@@ -697,31 +728,146 @@ func recalculate_buffs():
 	grid_updated.emit()
 
 func _apply_buff_to_neighbors(provider_unit, buff_type):
-	var cx = provider_unit.grid_pos.x
-	var cy = provider_unit.grid_pos.y
-	var w = provider_unit.unit_data.size.x
-	var h = provider_unit.unit_data.size.y
+	# Check for Directional Buff Logic (Lv.2+)
+	if provider_unit.level >= 2 and provider_unit.type_key in ["viper", "octopus", "bee"]:
+		_handle_directional_buff(provider_unit, buff_type)
+		return
+
+	var neighbors = get_all_neighbors(provider_unit)
+	for target_unit in neighbors:
+		target_unit.apply_buff(buff_type)
+
+func _handle_directional_buff(unit, buff_type):
+	var current_target = unit.buff_target
+	var valid = false
+
+	# Verify current target
+	if is_instance_valid(current_target):
+		var neighbors = get_all_neighbors(unit)
+		if current_target in neighbors:
+			var is_geom_valid = true
+			if unit.type_key == "viper": # Outer
+				is_geom_valid = current_target.global_position.length_squared() > unit.global_position.length_squared()
+			elif unit.type_key == "octopus": # Inner
+				is_geom_valid = current_target.global_position.length_squared() < unit.global_position.length_squared()
+
+			if is_geom_valid:
+				valid = true
+				_apply_buff_custom(current_target, unit)
+
+	if valid: return
+
+	# Target invalid/missing, search candidates
+	var candidates = []
+	if unit.type_key == "viper":
+		candidates = get_outer_neighbors(unit)
+	elif unit.type_key == "octopus":
+		candidates = get_inner_neighbors(unit)
+	elif unit.type_key == "bee":
+		candidates = get_all_neighbors(unit)
+
+	if candidates.size() == 0:
+		unit.set_buff_target(null)
+	elif candidates.size() == 1:
+		unit.set_buff_target(candidates[0])
+		_apply_buff_custom(candidates[0], unit)
+	else:
+		# Multiple candidates
+		unit.set_buff_target(null)
+		if not is_selecting_buff_target:
+			start_buff_selection(unit, candidates)
+		else:
+			buff_selection_queue.append({"source": unit, "candidates": candidates})
+
+func _apply_buff_custom(target, provider):
+	if provider.type_key == "viper":
+		target.apply_buff("poison_imbue")
+	elif provider.type_key == "octopus":
+		target.apply_buff("shotgun_imbue")
+	elif provider.type_key == "bee":
+		target.apply_buff("assist_buff")
+
+func start_buff_selection(source_unit, candidates):
+	is_selecting_buff_target = true
+	selection_source_unit = source_unit
+	selection_candidates = candidates
+
+	source_unit.is_selection_source = true
+	source_unit.queue_redraw()
+
+	for candidate in candidates:
+		candidate.is_candidate = true
+		candidate.queue_redraw()
+
+	GameManager.spawn_floating_text(source_unit.global_position, "Select Target!", Color.YELLOW)
+
+func end_buff_selection():
+	if is_instance_valid(selection_source_unit):
+		selection_source_unit.is_selection_source = false
+		selection_source_unit.queue_redraw()
+
+	for candidate in selection_candidates:
+		if is_instance_valid(candidate):
+			candidate.is_candidate = false
+			candidate.queue_redraw()
+
+	is_selecting_buff_target = false
+	selection_source_unit = null
+	selection_candidates = []
+
+	if not buff_selection_queue.is_empty():
+		var next = buff_selection_queue.pop_front()
+		start_buff_selection(next.source, next.candidates)
+	else:
+		recalculate_buffs()
+
+func get_all_neighbors(unit: Node2D) -> Array:
 	var neighbors = []
+	var cx = unit.grid_pos.x
+	var cy = unit.grid_pos.y
+	var w = unit.unit_data.size.x
+	var h = unit.unit_data.size.y
 
 	for dx in range(w):
-		neighbors.append(Vector2i(cx + dx, cy - 1))
-		neighbors.append(Vector2i(cx + dx, cy + h))
+		_check_add_neighbor(cx + dx, cy - 1, unit, neighbors)
+		_check_add_neighbor(cx + dx, cy + h, unit, neighbors)
 
 	for dy in range(h):
-		neighbors.append(Vector2i(cx - 1, cy + dy))
-		neighbors.append(Vector2i(cx + w, cy + dy))
+		_check_add_neighbor(cx - 1, cy + dy, unit, neighbors)
+		_check_add_neighbor(cx + w, cy + dy, unit, neighbors)
 
-	for n_pos in neighbors:
-		var n_key = get_tile_key(n_pos.x, n_pos.y)
-		if tiles.has(n_key):
-			var tile = tiles[n_key]
-			var target_unit = tile.unit
-			if target_unit == null and tile.occupied_by != Vector2i.ZERO:
-				var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
-				if tiles.has(origin_key):
-					target_unit = tiles[origin_key].unit
-			if target_unit and target_unit != provider_unit:
-				target_unit.apply_buff(buff_type)
+	return neighbors
+
+func _check_add_neighbor(x, y, source_unit, list):
+	var key = get_tile_key(x, y)
+	if tiles.has(key):
+		var tile = tiles[key]
+		var target = tile.unit
+		if target == null and tile.occupied_by != Vector2i.ZERO:
+			var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
+			if tiles.has(origin_key):
+				target = tiles[origin_key].unit
+
+		if target and target != source_unit and not (target in list):
+			list.append(target)
+
+func get_inner_neighbors(unit: Node2D) -> Array:
+	var neighbors = get_all_neighbors(unit)
+	var inner = []
+	var unit_dist = unit.global_position.length_squared()
+	for n in neighbors:
+		if n.global_position.length_squared() < unit_dist:
+			inner.append(n)
+	return inner
+
+func get_outer_neighbors(unit: Node2D) -> Array:
+	var neighbors = get_all_neighbors(unit)
+	var outer = []
+	var unit_dist = unit.global_position.length_squared()
+	for n in neighbors:
+		if n.global_position.length_squared() > unit_dist:
+			outer.append(n)
+	return outer
 
 func toggle_expansion_mode():
 	expansion_mode = !expansion_mode
