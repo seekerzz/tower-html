@@ -20,6 +20,11 @@ var targeting_cursor: Node2D = null
 var targeting_unit = null
 var is_targeting_mode: bool = false
 
+# Buff Selection
+var is_selecting_buff_target: bool = false
+var selection_source_unit = null
+var selection_candidates: Array = []
+
 var astar_grid: AStarGrid2D
 
 signal grid_updated
@@ -53,6 +58,29 @@ func _process(_delta):
 				visual.color = Color(1, 0, 0, 0.4) # Red
 
 func _input(event):
+	if is_selecting_buff_target:
+		if event is InputEventMouseButton and event.pressed:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				var mouse_pos = get_local_mouse_position()
+				var gx = int(round(mouse_pos.x / TILE_SIZE))
+				var gy = int(round(mouse_pos.y / TILE_SIZE))
+				var key = get_tile_key(gx, gy)
+
+				if tiles.has(key):
+					var clicked_unit = tiles[key].unit
+					if clicked_unit and clicked_unit in selection_candidates:
+						confirm_buff_selection(clicked_unit)
+						get_viewport().set_input_as_handled()
+						return
+
+				# Consume click
+				get_viewport().set_input_as_handled()
+
+			elif event.button_index == MOUSE_BUTTON_RIGHT:
+				cancel_buff_selection()
+				get_viewport().set_input_as_handled()
+		return
+
 	if is_targeting_mode:
 		if event is InputEventMouseButton and event.pressed:
 			if event.button_index == MOUSE_BUTTON_LEFT:
@@ -678,23 +706,163 @@ func _perform_swap(unit_a, unit_b):
 
 	recalculate_buffs()
 
+func get_neighbors_of(unit) -> Array:
+	var cx = unit.grid_pos.x
+	var cy = unit.grid_pos.y
+	var w = unit.unit_data.size.x
+	var h = unit.unit_data.size.y
+	var neighbors = []
+	var neighbor_units = []
+
+	for dx in range(w):
+		neighbors.append(Vector2i(cx + dx, cy - 1))
+		neighbors.append(Vector2i(cx + dx, cy + h))
+
+	for dy in range(h):
+		neighbors.append(Vector2i(cx - 1, cy + dy))
+		neighbors.append(Vector2i(cx + w, cy + dy))
+
+	for n_pos in neighbors:
+		var n_key = get_tile_key(n_pos.x, n_pos.y)
+		if tiles.has(n_key):
+			var tile = tiles[n_key]
+			var target_unit = tile.unit
+			if target_unit == null and tile.occupied_by != Vector2i.ZERO:
+				var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
+				if tiles.has(origin_key):
+					target_unit = tiles[origin_key].unit
+
+			if target_unit and target_unit != unit and not (target_unit in neighbor_units):
+				neighbor_units.append(target_unit)
+
+	return neighbor_units
+
+func get_inner_neighbors(unit) -> Array:
+	var all = get_neighbors_of(unit)
+	var inner = []
+	var u_dist = unit.global_position.distance_squared_to(Vector2.ZERO)
+	for n in all:
+		if n.global_position.distance_squared_to(Vector2.ZERO) < u_dist:
+			inner.append(n)
+	return inner
+
+func get_outer_neighbors(unit) -> Array:
+	var all = get_neighbors_of(unit)
+	var outer = []
+	var u_dist = unit.global_position.distance_squared_to(Vector2.ZERO)
+	for n in all:
+		if n.global_position.distance_squared_to(Vector2.ZERO) > u_dist:
+			outer.append(n)
+	return outer
+
+func get_all_neighbors(unit) -> Array:
+	return get_neighbors_of(unit)
+
+func start_buff_selection(source_unit, candidates):
+	if is_selecting_buff_target: return
+
+	is_selecting_buff_target = true
+	selection_source_unit = source_unit
+	selection_candidates = candidates
+
+	source_unit.is_selecting = true
+	source_unit.queue_redraw()
+
+	for c in candidates:
+		c.is_candidate = true
+		c.queue_redraw()
+
+	GameManager.spawn_floating_text(source_unit.global_position, "Select Target!", Color.YELLOW)
+
+func confirm_buff_selection(target_unit):
+	if selection_source_unit and is_instance_valid(selection_source_unit):
+		selection_source_unit.set_buff_target(target_unit)
+
+	cancel_buff_selection()
+	recalculate_buffs()
+
+func cancel_buff_selection():
+	if selection_source_unit and is_instance_valid(selection_source_unit):
+		selection_source_unit.is_selecting = false
+		selection_source_unit.queue_redraw()
+
+	for c in selection_candidates:
+		if is_instance_valid(c):
+			c.is_candidate = false
+			c.queue_redraw()
+
+	is_selecting_buff_target = false
+	selection_source_unit = null
+	selection_candidates = []
+
 func recalculate_buffs():
 	var processed_units = []
+	# 1. Reset Stats
 	for key in tiles:
 		var tile = tiles[key]
 		if tile.unit and not (tile.unit in processed_units):
 			tile.unit.reset_stats()
 			processed_units.append(tile.unit)
 
+	var selection_queue = []
+
+	# 2. Apply Buffs
 	for unit in processed_units:
+		# Standard Area Buffs
 		if "buffProvider" in unit.unit_data:
 			var buff_type = unit.unit_data["buffProvider"]
 			_apply_buff_to_neighbors(unit, buff_type)
 
+		# Lv.2 Directional Buffs
+		if unit.level >= 2:
+			var needed_candidates = []
+			var buff_type = ""
+
+			if unit.type_key == "viper":
+				needed_candidates = get_outer_neighbors(unit)
+				buff_type = "poison_imbue"
+			elif unit.type_key == "octopus":
+				needed_candidates = get_inner_neighbors(unit)
+				buff_type = "shotgun_imbue"
+			elif unit.type_key == "bee":
+				needed_candidates = get_all_neighbors(unit)
+				buff_type = "assist_buff"
+
+			if buff_type != "":
+				var current_target = unit.buff_target
+
+				# Check validity
+				var is_valid_target = false
+				if current_target and is_instance_valid(current_target):
+					# Check if still in candidates
+					if current_target in needed_candidates:
+						is_valid_target = true
+
+				if is_valid_target:
+					# Apply buff
+					current_target.apply_buff(buff_type)
+				else:
+					# Target invalid or lost
+					unit.set_buff_target(null)
+
+					if needed_candidates.size() == 1:
+						# Auto lock
+						unit.set_buff_target(needed_candidates[0])
+						needed_candidates[0].apply_buff(buff_type)
+					elif needed_candidates.size() > 1:
+						# Queue selection
+						selection_queue.append({ "source": unit, "candidates": needed_candidates })
+
+	# 3. Update Visuals
 	for unit in processed_units:
 		unit.update_visuals()
 
 	grid_updated.emit()
+
+	# 4. Handle Selection Queue (Pick one)
+	if not selection_queue.is_empty() and not is_selecting_buff_target:
+		var item = selection_queue[0]
+		start_buff_selection(item.source, item.candidates)
 
 func _apply_buff_to_neighbors(provider_unit, buff_type):
 	var cx = provider_unit.grid_pos.x

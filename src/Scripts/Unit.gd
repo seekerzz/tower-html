@@ -33,6 +33,11 @@ var crit_dmg: float = 1.5
 var bounce_count: int = 0
 var split_count: int = 0
 
+# Buff System
+var buff_target: Node2D = null
+var is_candidate: bool = false
+var is_selecting: bool = false
+
 # Grid
 var grid_pos: Vector2i = Vector2i.ZERO
 var start_position: Vector2 = Vector2.ZERO
@@ -204,6 +209,10 @@ func reset_stats():
 
 	update_visuals()
 
+func set_buff_target(target: Node2D):
+	buff_target = target
+	queue_redraw()
+
 func calculate_damage_against(target_node: Node2D) -> float:
 	var final_damage = damage
 
@@ -226,13 +235,16 @@ func apply_buff(buff_type: String):
 		"range":
 			range_val *= 1.25
 		"speed":
-			atk_speed *= 1.2
+			atk_speed /= 1.2 # Reduce interval = faster
+		"assist_buff":
+			atk_speed /= 1.2 # Reduce interval = faster
 		"crit":
 			crit_rate += 0.25
 		"bounce":
 			bounce_count += 1
 		"split":
 			split_count += 1
+		# poison_imbue and shotgun_imbue are handled in CombatManager
 
 func set_highlight(active: bool, color: Color = Color.WHITE):
 	_is_skill_highlight_active = active
@@ -576,6 +588,32 @@ func _on_area_2d_mouse_exited():
 	GameManager.hide_tooltip.emit()
 
 func _draw():
+	if buff_target and is_instance_valid(buff_target):
+		var color = Color.WHITE
+		match type_key:
+			"viper": color = Color.GREEN
+			"octopus": color = Color.PURPLE
+			"bee": color = Color.YELLOW
+
+		# Draw line from center to target center
+		# Target is global, so convert to local
+		var local_target = to_local(buff_target.global_position)
+		draw_line(Vector2.ZERO, local_target, color, 3.0)
+		# Draw a small circle at target
+		draw_circle(local_target, 5.0, color)
+
+	if is_selecting:
+		# Draw selection indicator
+		draw_circle(Vector2(0, -30), 10.0, Color.YELLOW)
+
+	if is_candidate:
+		# Green highlight border
+		var size = Vector2(Constants.TILE_SIZE, Constants.TILE_SIZE)
+		if unit_data and unit_data.has("size"):
+			size = Vector2(unit_data.size.x * Constants.TILE_SIZE, unit_data.size.y * Constants.TILE_SIZE)
+		var rect = Rect2(-size / 2, size)
+		draw_rect(rect, Color.GREEN, false, 4.0)
+
 	if is_hovered:
 		var draw_radius = range_val
 		if unit_data.get("attackType") == "melee":

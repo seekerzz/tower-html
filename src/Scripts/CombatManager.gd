@@ -224,8 +224,14 @@ func process_unit_combat(unit, tile, delta):
 		else:
 			# Check for Multi-shot (projCount)
 			var proj_count = unit.unit_data.get("projCount", 1)
+			var spread = unit.unit_data.get("spread", 0.5)
+
+			if "shotgun_imbue" in unit.active_buffs:
+				proj_count = max(proj_count, 1) * 2
+				spread = 1.0 # Wider spread
+
 			if proj_count > 1:
-				spawn_multishot_projectile(unit, tile.global_position, target, proj_count, unit.unit_data.get("spread", 0.5))
+				spawn_multishot_projectile(unit, tile.global_position, target, proj_count, spread)
 			else:
 				spawn_projectile(unit, tile.global_position, target)
 
@@ -322,6 +328,7 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 			if buff == "split": stats["split"] += 1
 			if buff == "fire": effects["burn"] = 3.0
 			if buff == "poison": effects["poison"] = 5.0
+			if buff == "poison_imbue": effects["poison"] = 5.0
 
 	# Check native unit traits/attributes if they have intrinsic effects (Optional, based on task)
 	# But Task says "fire" buff or attribute.
