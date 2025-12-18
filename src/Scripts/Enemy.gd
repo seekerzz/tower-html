@@ -31,6 +31,13 @@ var base_attack_timer: float = 0.0
 var is_playing_attack_anim: bool = false
 var anim_tween: Tween
 
+# New properties for Boss/Skill system
+var stationary_timer: float = 0.0
+var skill_cooldown_timer: float = 0.0
+var boss_skill: String = ""
+var is_stationary: bool = false
+var is_suicide: bool = false
+
 func _ready():
 	add_to_group("enemies")
 	# We also need to monitor layer 2 (traps) for overlaps
@@ -45,6 +52,22 @@ func setup(key: String, wave: int):
 	max_hp = hp
 
 	speed = (40 + (wave * 2)) * enemy_data.spdMod
+
+	# Load new properties
+	if enemy_data.has("stationary_time"):
+		stationary_timer = enemy_data.stationary_time
+		if stationary_timer > 0:
+			is_stationary = true
+
+	if enemy_data.has("boss_skill"):
+		boss_skill = enemy_data.boss_skill
+		skill_cooldown_timer = enemy_data.get("skill_cd", 3.0)
+
+	if enemy_data.has("is_suicide"):
+		is_suicide = enemy_data.is_suicide
+		# Suicide units should check collisions in process
+		monitorable = true
+		monitoring = true
 
 	update_visuals()
 
@@ -200,6 +223,23 @@ func _process(delta):
 	check_traps(delta)
 	check_unit_interactions(delta)
 
+	# Suicide Logic
+	if is_suicide:
+		check_suicide_collision()
+
+	# Stationary / Boss Phase Logic
+	if is_stationary:
+		stationary_timer -= delta
+		if stationary_timer <= 0:
+			is_stationary = false # End stationary phase, start moving
+		else:
+			# Execute Skill if CD ready
+			skill_cooldown_timer -= delta
+			if skill_cooldown_timer <= 0:
+				perform_boss_skill()
+				skill_cooldown_timer = enemy_data.get("skill_cd", 3.0)
+			return # Skip movement logic while stationary
+
 	if is_attacking_base:
 		attack_base_logic(delta)
 	elif attacking_wall and is_instance_valid(attacking_wall):
@@ -216,6 +256,55 @@ func _process(delta):
 			nav_timer = 0.5
 
 		move_along_path(delta)
+
+func perform_boss_skill():
+	if boss_skill == "summon":
+		# Summon Minion
+		# Find a random position nearby
+		var offset = Vector2(randf_range(-40, 40), randf_range(-40, 40))
+		var spawn_pos = global_position + offset
+		GameManager.combat_manager._spawn_enemy_at_pos(spawn_pos, "minion")
+		GameManager.spawn_floating_text(global_position, "Summon!", Color.PURPLE)
+
+	elif boss_skill == "shoot_enemy":
+		# Spawn Bullet Entity
+		var bullet_key = "bullet_entity"
+		var bullet = GameManager.combat_manager.ENEMY_SCENE.instantiate()
+		bullet.setup(bullet_key, GameManager.wave)
+		bullet.global_position = global_position
+		get_parent().add_child(bullet)
+		GameManager.spawn_floating_text(global_position, "Launch!", Color.ORANGE)
+
+func check_suicide_collision():
+	if !GameManager.grid_manager: return
+
+	# Check distance to core
+	var dist_to_core = global_position.distance_to(GameManager.grid_manager.global_position)
+	if dist_to_core < 40.0:
+		# Explode on Core
+		GameManager.damage_core(enemy_data.dmg)
+		suicide_explode()
+		return
+
+	# Check collision with walls (Layer 1)
+	var bodies = get_overlapping_bodies()
+	for b in bodies:
+		if b == self: continue
+		if b.get("type") and Constants.BARRICADE_TYPES.has(b.type):
+			var b_type = Constants.BARRICADE_TYPES[b.type].type
+			# Solid walls or Core triggers explosion
+			if b_type == "block" or b_type == "freeze":
+				# Damage wall
+				if b.has_method("take_damage"):
+					b.take_damage(enemy_data.dmg, self)
+				suicide_explode()
+				return
+
+func suicide_explode():
+	# Visual effect
+	spawn_slash_effect(global_position) # Reuse slash effect or create explosion
+	GameManager.spawn_floating_text(global_position, "BOOM!", Color.RED)
+	queue_free()
 
 func apply_stun(duration: float):
 	stun_timer = duration

@@ -36,6 +36,14 @@ func get_wave_type(n: int) -> String:
 func start_wave_logic():
 	var wave = GameManager.wave
 
+	if wave == 5:
+		# Wave 5 Special: Only 2 bosses
+		total_enemies_for_wave = 2
+		enemies_to_spawn = 2
+		# Run as 1 batch of 2 enemies (but handled specially in _run_batch_sequence via spawn_boss_wave)
+		_run_batch_sequence(1, 2)
+		return
+
 	# Calculate total enemies (Increased difficulty logic from ref.html)
 	# const baseCount = 20 + Math.floor(game.wave * 6);
 	total_enemies_for_wave = 20 + floor(wave * 6)
@@ -61,6 +69,11 @@ func _run_batch_sequence(batches_left: int, enemies_per_batch: int):
 	# ref.html logic: if 'normal' (which is default for non-boss/tank/fast), pick random variant.
 	# But get_wave_type returns specific types like 'slime', 'wolf'.
 	# We will respect get_wave_type unless it is 'event'.
+
+	# Wave 5 Special: Dual Boss
+	if GameManager.wave == 5:
+		await spawn_boss_wave()
+		return # Skip standard batch logic for wave 5
 
 	if wave_type == 'boss':
 		type_key = 'boss'
@@ -129,6 +142,42 @@ func _spawn_batch(type_key: String, count: int):
 
 		# Fast spawn (0.1s)
 		await get_tree().create_timer(0.1).timeout
+
+func spawn_boss_wave():
+	# Randomly pick 2 unique bosses
+	var boss_pool = ["summoner", "ranger", "tank"]
+	boss_pool.shuffle()
+	var boss1 = boss_pool[0]
+	var boss2 = boss_pool[1]
+
+	# Get spawn points (assuming we have at least 2)
+	# If GridManager handles spawn points, we can get Left and Right ones ideally.
+	# For simplicity, if we have multiple spawn points, we pick index 0 and index last.
+
+	var points = []
+	if GameManager.grid_manager:
+		points = GameManager.grid_manager.get_spawn_points()
+
+	if points.size() < 2:
+		points.append(Vector2(-200, 0)) # Fallback Left
+		points.append(Vector2(200, 0))  # Fallback Right
+
+	# Sort points by X to distinguish Left/Right roughly
+	points.sort_custom(func(a, b): return a.x < b.x)
+
+	var left_point = points[0]
+	var right_point = points[points.size() - 1]
+
+	# Spawn Boss 1 Left
+	_spawn_enemy_at_pos(left_point, boss1)
+
+	# Spawn Boss 2 Right
+	_spawn_enemy_at_pos(right_point, boss2)
+
+	enemies_to_spawn -= 2 # Decrement count
+
+	GameManager.spawn_floating_text(Vector2(0, -200), "BOSS WAVE!", Color.RED)
+
 
 func _spawn_enemy_at_pos(pos: Vector2, type_key: String):
 	var enemy = ENEMY_SCENE.instantiate()
