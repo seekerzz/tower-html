@@ -31,6 +31,13 @@ var base_attack_timer: float = 0.0
 var is_playing_attack_anim: bool = false
 var anim_tween: Tween
 
+# Boss / Special Properties
+var stationary_timer: float = 0.0
+var boss_skill: String = ""
+var skill_cd_timer: float = 0.0
+var is_suicide: bool = false
+var is_stationary: bool = false
+
 func _ready():
 	add_to_group("enemies")
 	# We also need to monitor layer 2 (traps) for overlaps
@@ -45,6 +52,14 @@ func setup(key: String, wave: int):
 	max_hp = hp
 
 	speed = (40 + (wave * 2)) * enemy_data.spdMod
+
+	# Initialize special properties
+	stationary_timer = enemy_data.get("stationary_time", 0.0)
+	boss_skill = enemy_data.get("boss_skill", "")
+	is_suicide = enemy_data.get("is_suicide", false)
+
+	if stationary_timer > 0.0:
+		is_stationary = true
 
 	update_visuals()
 
@@ -200,6 +215,24 @@ func _process(delta):
 	check_traps(delta)
 	check_unit_interactions(delta)
 
+	# Suicide Logic
+	if is_suicide:
+		check_suicide_collision()
+
+	# Stationary / Boss Skill Logic
+	if is_stationary:
+		stationary_timer -= delta
+		skill_cd_timer -= delta
+		if stationary_timer <= 0:
+			is_stationary = false # Transition to moving phase
+		else:
+			# Stationary Phase: Execute Skills
+			if boss_skill != "" and skill_cd_timer <= 0:
+				perform_boss_skill(boss_skill)
+				skill_cd_timer = 2.0 # Internal CD for skill usage
+
+			return # Skip movement logic while stationary
+
 	if is_attacking_base:
 		attack_base_logic(delta)
 	elif attacking_wall and is_instance_valid(attacking_wall):
@@ -216,6 +249,58 @@ func _process(delta):
 			nav_timer = 0.5
 
 		move_along_path(delta)
+
+func check_suicide_collision():
+	# Check for overlapping bodies (walls) or distance to core
+	var bodies = get_overlapping_bodies()
+	for b in bodies:
+		if is_blocking_wall(b):
+			explode_suicide(b)
+			return
+
+	if GameManager.grid_manager:
+		var core_dist = global_position.distance_to(GameManager.grid_manager.global_position)
+		if core_dist < 40.0:
+			explode_suicide(null) # Null target means core (or we deal damage directly)
+
+func explode_suicide(target_wall):
+	# Deal damage to target and die
+	if target_wall and is_instance_valid(target_wall):
+		if target_wall.has_method("take_damage"):
+			target_wall.take_damage(enemy_data.dmg, self)
+	else:
+		# Assume core
+		GameManager.damage_core(enemy_data.dmg)
+
+	# Visual effect
+	GameManager.spawn_floating_text(global_position, "BOOM!", Color.RED)
+	# Use SlashEffect as Explosion for now
+	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
+	get_parent().add_child(effect)
+	effect.global_position = global_position
+	effect.configure("cross", Color.ORANGE)
+	effect.scale = Vector2(2, 2)
+	effect.play()
+
+	queue_free()
+
+func perform_boss_skill(skill_name: String):
+	if skill_name == "summon":
+		# Summon Minions
+		GameManager.spawn_floating_text(global_position, "Summon!", Color.PURPLE)
+		for i in range(3):
+			var offset = Vector2(randf_range(-40, 40), randf_range(-40, 40))
+			# We need to access CombatManager to spawn enemies ideally, but we can do it via MainGame or signal.
+			# But here we are in Enemy.gd. CombatManager has `_spawn_enemy_at_pos` but it is private-ish.
+			# However, CombatManager is global via GameManager.combat_manager
+			if GameManager.combat_manager:
+				GameManager.combat_manager._spawn_enemy_at_pos(global_position + offset, "minion")
+
+	elif skill_name == "shoot_enemy":
+		# Shoot Bullet Entity
+		GameManager.spawn_floating_text(global_position, "Fire!", Color.ORANGE)
+		if GameManager.combat_manager:
+			GameManager.combat_manager._spawn_enemy_at_pos(global_position, "bullet_entity")
 
 func apply_stun(duration: float):
 	stun_timer = duration
