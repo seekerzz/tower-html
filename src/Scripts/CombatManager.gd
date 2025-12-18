@@ -36,6 +36,10 @@ func get_wave_type(n: int) -> String:
 func start_wave_logic():
 	var wave = GameManager.wave
 
+	if wave == 5:
+		spawn_boss_wave()
+		return
+
 	# Calculate total enemies (Increased difficulty logic from ref.html)
 	# const baseCount = 20 + Math.floor(game.wave * 6);
 	total_enemies_for_wave = 20 + floor(wave * 6)
@@ -47,6 +51,44 @@ func start_wave_logic():
 	var enemies_per_batch = ceil(float(total_enemies_for_wave) / batch_count)
 
 	_run_batch_sequence(batch_count, int(enemies_per_batch))
+
+func spawn_boss_wave():
+	# Hardcoded Wave 5 Event
+	# Pick 2 different bosses from [summoner, ranger, tank]
+	var boss_options = ["summoner", "ranger", "tank"]
+	boss_options.shuffle()
+
+	var boss1 = boss_options[0]
+	var boss2 = boss_options[1]
+
+	total_enemies_for_wave = 2
+	enemies_to_spawn = 2
+
+	GameManager.spawn_floating_text(Vector2(0, -200), "DOUBLE BOSS WAVE!", Color.RED)
+
+	# Spawn Boss 1 on Left, Boss 2 on Right (Assuming standard spawn points)
+	# We need to find valid spawn points.
+	var spawn_points = []
+	if GameManager.grid_manager:
+		spawn_points = GameManager.grid_manager.get_spawn_points()
+
+	if spawn_points.is_empty():
+		spawn_points.append(Vector2(-300, 0))
+		spawn_points.append(Vector2(300, 0))
+
+	# Try to find left-most and right-most points
+	spawn_points.sort_custom(func(a, b): return a.x < b.x)
+
+	var left_point = spawn_points[0]
+	var right_point = spawn_points[spawn_points.size() - 1]
+
+	_spawn_enemy_at_pos(left_point, boss1)
+	enemies_to_spawn -= 1
+	await get_tree().create_timer(1.0).timeout
+	_spawn_enemy_at_pos(right_point, boss2)
+	enemies_to_spawn -= 1
+
+	start_win_check_loop()
 
 func _run_batch_sequence(batches_left: int, enemies_per_batch: int):
 	if !GameManager.is_wave_active or batches_left <= 0:
