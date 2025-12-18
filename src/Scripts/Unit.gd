@@ -8,6 +8,7 @@ var skill_cooldown: float = 0.0
 var active_buffs: Array = []
 var traits: Array = []
 var unit_data: Dictionary
+var base_unit_data: Dictionary
 
 # Stats
 var damage: float
@@ -62,6 +63,10 @@ func _ready():
 	if !unit_data.is_empty():
 		update_visuals()
 
+	# Verification for poison_imbue
+	apply_buff("poison_imbue")
+	print("Traits: ", traits)
+
 func _ensure_visual_hierarchy():
 	if visual_holder and is_instance_valid(visual_holder):
 		return
@@ -101,7 +106,8 @@ func _ensure_visual_hierarchy():
 func setup(key: String):
 	_ensure_visual_hierarchy()
 	type_key = key
-	unit_data = Constants.UNIT_TYPES[key].duplicate()
+	base_unit_data = Constants.UNIT_TYPES[key].duplicate()
+	unit_data = base_unit_data.duplicate()
 	# reset_stats will handle reading stats from levels
 	reset_stats()
 	update_visuals()
@@ -153,6 +159,12 @@ func take_damage(amount: float, source_enemy = null):
 
 
 func reset_stats():
+	# Reset unit_data to base to prevent compounding modifications from buffs
+	if not base_unit_data.is_empty():
+		unit_data = base_unit_data.duplicate()
+		# Restore level if needed? Level is stored in 'level' variable, not unit_data usually.
+		# But 'levels' dict is inside unit_data. base_unit_data has it too.
+
 	# Retrieve stats from levels dict if available
 	var stats = {}
 	if unit_data.has("levels") and unit_data["levels"].has(str(level)):
@@ -196,7 +208,14 @@ func reset_stats():
 
 	bounce_count = 0
 	split_count = 0
+	traits.clear() # Reset traits to ensure we don't duplicate or keep old ones
+
+	# Preserve active buffs during recalculation
+	var old_buffs = active_buffs.duplicate()
 	active_buffs.clear()
+	# Re-apply buffs after base stats reset
+	for buff in old_buffs:
+		apply_buff(buff)
 
 	# Artifact Effects
 	if GameManager.reward_manager and "focus_fire" in GameManager.reward_manager.acquired_artifacts:
@@ -233,6 +252,21 @@ func apply_buff(buff_type: String):
 			bounce_count += 1
 		"split":
 			split_count += 1
+		"poison_imbue":
+			if not "poison_touch" in traits:
+				traits.append("poison_touch")
+			# Ensure Combat logic can read this trait (CombatManager checks unit_data["trait"])
+			unit_data["trait"] = "poison_touch"
+		"shotgun_imbue":
+			if !unit_data.has("projCount"):
+				unit_data["projCount"] = 1
+			unit_data["projCount"] *= 2
+
+			if !unit_data.has("spread"):
+				unit_data["spread"] = 0.0
+			unit_data["spread"] += 0.5 # Increase spread
+		"assist_buff":
+			atk_speed *= 1.2
 
 func set_highlight(active: bool, color: Color = Color.WHITE):
 	_is_skill_highlight_active = active
