@@ -1079,8 +1079,7 @@
                     "cost": 100,
                     "desc": "造成伤害治疗核心",
                     "mechanics": {
-                        "crit_rate_bonus": 0.2,
-                        "multi_shot_chance": 0.3
+                        "crit_rate_bonus": 0.2
                     }
                 }
             },
@@ -1126,8 +1125,7 @@
                     "cost": 240,
                     "desc": "攻击冻结敌人",
                     "mechanics": {
-                        "crit_rate_bonus": 0.2,
-                        "multi_shot_chance": 0.3
+                        "crit_rate_bonus": 0.2
                     }
                 }
             },
@@ -1202,6 +1200,8 @@
             ],
             "crit_rate": 0.1,
             "crit_dmg": 1.5,
+            "has_interaction": true,
+            "buff_id": "poison",
             "levels": {
                 "1": {
                     "damage": 40,

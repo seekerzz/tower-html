@@ -37,6 +37,9 @@ var split_count: int = 0
 var grid_pos: Vector2i = Vector2i.ZERO
 var start_position: Vector2 = Vector2.ZERO
 
+# Interaction
+var interaction_target_pos = null # Vector2i or null
+
 # Missing variables required for the old drag logic at the bottom to compile
 var is_dragging: bool = false
 var drag_offset: Vector2 = Vector2.ZERO
@@ -105,6 +108,12 @@ func setup(key: String):
 	# reset_stats will handle reading stats from levels
 	reset_stats()
 	update_visuals()
+
+	# Preserve interaction target if reloading/upgrading?
+	# Actually setup is called on creation.
+	# If we upgrade (merge), we might need to copy it, but merge creates new unit or modifies existing?
+	# Merge in GridManager: target_unit.merge_with(temp_unit). Unit instance persists.
+	# So interaction_target_pos is preserved in target_unit.
 
 	# --- Merged Logic Start ---
 	if unit_data.has("produce"):
@@ -489,6 +498,13 @@ func _process(delta):
 		modulate = Color.WHITE
 
 var breathe_tween: Tween = null
+
+func get_interaction_info() -> Dictionary:
+	var info = { "has_interaction": false, "buff_id": "" }
+	if unit_data.has("has_interaction") and unit_data.has_interaction:
+		info.has_interaction = true
+		info.buff_id = unit_data.get("buff_id", "")
+	return info
 
 func start_breathe_anim():
 	if !visual_holder: return

@@ -15,10 +15,18 @@ var expansion_cost: int = 50 # Base cost
 var spawn_tiles: Array = [] # List of tiles (Vector2i) used as spawn points
 var active_territory_tiles: Array = [] # List of Tile instances that are unlocked or core
 
-# Skill Targeting
+# Interaction / Skill Targeting
 var targeting_cursor: Node2D = null
 var targeting_unit = null
 var is_targeting_mode: bool = false
+
+# Interaction System (Neighbor Buff Selection)
+const STATE_IDLE = 0
+const STATE_SELECTING_INTERACTION_TARGET = 1
+var interaction_state: int = STATE_IDLE
+var interaction_source_unit = null
+var valid_interaction_targets: Array = [] # Array[Vector2i]
+var interaction_highlights: Array = [] # Array[Node2D] (Visuals)
 
 var astar_grid: AStarGrid2D
 
@@ -53,6 +61,36 @@ func _process(_delta):
 				visual.color = Color(1, 0, 0, 0.4) # Red
 
 func _input(event):
+	if interaction_state == STATE_SELECTING_INTERACTION_TARGET:
+		if event is InputEventMouseButton and event.pressed:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				var mouse_pos = get_local_mouse_position()
+				var gx = int(round(mouse_pos.x / TILE_SIZE))
+				var gy = int(round(mouse_pos.y / TILE_SIZE))
+				var grid_pos = Vector2i(gx, gy)
+
+				if grid_pos in valid_interaction_targets:
+					if interaction_source_unit and is_instance_valid(interaction_source_unit):
+						interaction_source_unit.interaction_target_pos = grid_pos
+						recalculate_buffs()
+					end_interaction_selection()
+					get_viewport().set_input_as_handled()
+				else:
+					# Clicked outside valid target?
+					# Option: Do nothing, or cancel?
+					# Requirement: "Flow interruption test: Right click to cancel or click invalid tile -> confirm UI restores"
+					# Let's treat invalid click as ignore for now, wait for valid input or Right Click to cancel.
+					pass
+
+			elif event.button_index == MOUSE_BUTTON_RIGHT:
+				# Cancel interaction?
+				# If we cancel, the unit is already placed. What happens?
+				# "Place -> Pause -> Select". If cancelled, unit remains but no target selected.
+				# Buff won't be applied.
+				end_interaction_selection()
+				get_viewport().set_input_as_handled()
+		return # Block other inputs
+
 	if is_targeting_mode:
 		if event is InputEventMouseButton and event.pressed:
 			if event.button_index == MOUSE_BUTTON_LEFT:
@@ -452,6 +490,12 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 
 	recalculate_buffs()
 	GameManager.recalculate_max_health()
+
+	# Check for Interaction
+	var info = unit.get_interaction_info()
+	if info.has_interaction:
+		start_interaction_selection(unit)
+
 	return true
 
 func _set_tiles_occupied(x: int, y: int, w: int, h: int, unit):
@@ -476,6 +520,97 @@ func _clear_tiles_occupied(x: int, y: int, w: int, h: int):
 
 func is_in_core_zone(pos: Vector2i) -> bool:
 	return abs(pos.x) <= Constants.CORE_ZONE_RADIUS and abs(pos.y) <= Constants.CORE_ZONE_RADIUS
+
+# --- Interaction System Implementation ---
+
+func is_neighbor(unit, target_pos: Vector2i) -> bool:
+	var cx = unit.grid_pos.x
+	var cy = unit.grid_pos.y
+	var w = unit.unit_data.size.x
+	var h = unit.unit_data.size.y
+
+	# Check if target_pos is adjacent to the rectangle defined by (cx, cy, w, h)
+	if target_pos.x >= cx - 1 and target_pos.x < cx + w + 1:
+		if target_pos.y >= cy - 1 and target_pos.y < cy + h + 1:
+			# It is in the expanded box. Now check if it is NOT inside the unit.
+			if target_pos.x >= cx and target_pos.x < cx + w and target_pos.y >= cy and target_pos.y < cy + h:
+				return false # Inside
+			return true
+	return false
+
+func start_interaction_selection(unit):
+	interaction_state = STATE_SELECTING_INTERACTION_TARGET
+	interaction_source_unit = unit
+	valid_interaction_targets.clear()
+
+	# Calculate neighbors (8 directions)
+	var cx = unit.grid_pos.x
+	var cy = unit.grid_pos.y
+	# Assuming 1x1 for simplicity, or handle size logic if needed.
+	# For now, stick to simple 8 neighbors of the top-left coordinate or surrounding the unit rect.
+	# The requirement implies surrounding neighbors.
+
+	var neighbors = []
+	var w = unit.unit_data.size.x
+	var h = unit.unit_data.size.y
+
+	# Top and Bottom rows
+	for dx in range(-1, w + 1):
+		neighbors.append(Vector2i(cx + dx, cy - 1))
+		neighbors.append(Vector2i(cx + dx, cy + h))
+
+	# Left and Right columns (excluding corners already added)
+	for dy in range(0, h):
+		neighbors.append(Vector2i(cx - 1, cy + dy))
+		neighbors.append(Vector2i(cx + w, cy + dy))
+
+	for pos in neighbors:
+		if is_valid_interaction_target(unit, pos):
+			valid_interaction_targets.append(pos)
+			_spawn_interaction_highlight(pos)
+
+	# Pause game or just block input?
+	# "Place -> Pause -> Select Neighbor -> Effect"
+	# Ideally we set time scale to 0 or block other inputs.
+	# For this task, visual feedback + state lock is sufficient unless explicit pause requested.
+	# Assuming realtime continues but input is hijacked.
+
+func is_valid_interaction_target(origin_unit, target_pos: Vector2i) -> bool:
+	var key = get_tile_key(target_pos.x, target_pos.y)
+	if !tiles.has(key): return false
+	var tile = tiles[key]
+
+	# Rule: Neighbor + In Core Zone + Unlocked
+	if !is_in_core_zone(target_pos): return false
+	if tile.state != "unlocked" and tile.type != "core": return false # Core is unlocked by definition usually
+
+	return true
+
+func end_interaction_selection():
+	interaction_state = STATE_IDLE
+	interaction_source_unit = null
+	valid_interaction_targets.clear()
+	for node in interaction_highlights:
+		node.queue_free()
+	interaction_highlights.clear()
+
+func _spawn_interaction_highlight(grid_pos: Vector2i):
+	var highlight = ColorRect.new()
+	highlight.size = Vector2(TILE_SIZE, TILE_SIZE)
+	highlight.color = Color(1, 0.84, 0, 0.4) # Gold/Yellow
+
+	# Get buff color if possible
+	if interaction_source_unit:
+		var info = interaction_source_unit.get_interaction_info()
+		if info.buff_id == "poison":
+			highlight.color = Color(0, 1, 0, 0.4)
+		elif info.buff_id == "burn":
+			highlight.color = Color(1, 0.5, 0, 0.4)
+
+	highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(highlight)
+	highlight.position = Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE)
+	interaction_highlights.append(highlight)
 
 func can_place_unit(x: int, y: int, w: int, h: int, exclude_unit = null) -> bool:
 	for dx in range(w):
@@ -691,10 +826,30 @@ func recalculate_buffs():
 			var buff_type = unit.unit_data["buffProvider"]
 			_apply_buff_to_neighbors(unit, buff_type)
 
+		# Interaction Buffs
+		var info = unit.get_interaction_info()
+		if info.has_interaction and unit.interaction_target_pos != null:
+			if is_neighbor(unit, unit.interaction_target_pos):
+				_apply_buff_to_specific_pos(unit.interaction_target_pos, info.buff_id)
+
 	for unit in processed_units:
 		unit.update_visuals()
 
 	grid_updated.emit()
+
+func _apply_buff_to_specific_pos(target_pos: Vector2i, buff_id: String):
+	var key = get_tile_key(target_pos.x, target_pos.y)
+	if tiles.has(key):
+		var tile = tiles[key]
+		var target_unit = tile.unit
+		# Handle occupied_by if needed (though usually we buff the main unit)
+		if target_unit == null and tile.occupied_by != Vector2i.ZERO:
+			var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
+			if tiles.has(origin_key):
+				target_unit = tiles[origin_key].unit
+
+		if target_unit:
+			target_unit.apply_buff(buff_id)
 
 func _apply_buff_to_neighbors(provider_unit, buff_type):
 	var cx = provider_unit.grid_pos.x
