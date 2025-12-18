@@ -20,6 +20,11 @@ var targeting_cursor: Node2D = null
 var targeting_unit = null
 var is_targeting_mode: bool = false
 
+# Buff Selection
+var is_selecting_buff: bool = false
+var selection_source: Node2D = null
+var selection_candidates: Array = []
+
 var astar_grid: AStarGrid2D
 
 signal grid_updated
@@ -71,6 +76,83 @@ func _input(event):
 			elif event.button_index == MOUSE_BUTTON_RIGHT:
 				exit_skill_targeting()
 				get_viewport().set_input_as_handled()
+
+	# Temporary verification for Buff Selection
+	if event is InputEventKey and event.pressed and event.keycode == KEY_T:
+		print("Triggering Buff Selection Test Mode")
+		# Fake data
+		var source = null
+		var candidates = []
+
+		# Try to find a unit to be source and others to be candidates
+		var units = []
+		for key in tiles:
+			if tiles[key].unit:
+				units.append(tiles[key].unit)
+
+		if units.size() > 0:
+			source = units[0]
+			for i in range(1, units.size()):
+				candidates.append(units[i])
+
+			# If only one unit, add a fake candidate or just use self (though logic might filter it)
+			if candidates.is_empty():
+				candidates.append(source) # Just to have something
+
+			start_buff_selection(source, candidates)
+		else:
+			print("No units on grid to test selection.")
+
+func _unhandled_input(event):
+	if is_selecting_buff:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			var mouse_pos = get_local_mouse_position()
+			var gx = int(round(mouse_pos.x / TILE_SIZE))
+			var gy = int(round(mouse_pos.y / TILE_SIZE))
+			var key = get_tile_key(gx, gy)
+
+			if tiles.has(key):
+				var tile = tiles[key]
+				var clicked_unit = tile.unit
+
+				# Handle large units (check occupied_by if unit is null)
+				if clicked_unit == null and tile.occupied_by != Vector2i.ZERO:
+					var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
+					if tiles.has(origin_key):
+						clicked_unit = tiles[origin_key].unit
+
+				if clicked_unit and clicked_unit in selection_candidates:
+					if selection_source:
+						if selection_source.has_method("set_buff_target"):
+							selection_source.set_buff_target(clicked_unit)
+						else:
+							selection_source.call("set_buff_target", clicked_unit)
+
+					print("Target Selected")
+					end_buff_selection()
+					get_viewport().set_input_as_handled()
+
+func start_buff_selection(source_unit, candidates_array):
+	is_selecting_buff = true
+	selection_source = source_unit
+	selection_candidates = candidates_array
+
+	if source_unit:
+		GameManager.spawn_floating_text(source_unit.global_position, "Select Target!", Color.YELLOW)
+
+	for unit in selection_candidates:
+		if unit.has_method("set_highlight"):
+			unit.set_highlight(true, Color.GREEN)
+
+func end_buff_selection():
+	for unit in selection_candidates:
+		if is_instance_valid(unit) and unit.has_method("set_highlight"):
+			unit.set_highlight(false)
+
+	is_selecting_buff = false
+	selection_source = null
+	selection_candidates.clear()
+	grid_updated.emit()
 
 func enter_skill_targeting(unit):
 	if is_targeting_mode:
