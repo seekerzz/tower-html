@@ -831,3 +831,73 @@ func get_closest_unlocked_tile(world_pos: Vector2) -> Node2D:
 			closest_tile = tile
 
 	return closest_tile
+
+func get_all_neighbors_units(unit_grid_pos: Vector2i) -> Array:
+	var key = get_tile_key(unit_grid_pos.x, unit_grid_pos.y)
+	if not tiles.has(key):
+		return []
+
+	var tile = tiles[key]
+	var unit = tile.unit
+	if unit == null and tile.occupied_by != Vector2i.ZERO:
+		var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
+		if tiles.has(origin_key):
+			unit = tiles[origin_key].unit
+
+	if unit == null:
+		return []
+
+	var w = unit.unit_data.size.x
+	var h = unit.unit_data.size.y
+	var cx = unit.grid_pos.x
+	var cy = unit.grid_pos.y
+
+	var neighbor_coords = []
+	# Top and Bottom
+	for dx in range(w):
+		neighbor_coords.append(Vector2i(cx + dx, cy - 1))
+		neighbor_coords.append(Vector2i(cx + dx, cy + h))
+
+	# Left and Right
+	for dy in range(h):
+		neighbor_coords.append(Vector2i(cx - 1, cy + dy))
+		neighbor_coords.append(Vector2i(cx + w, cy + dy))
+
+	var neighbor_units = []
+	for n_pos in neighbor_coords:
+		var n_key = get_tile_key(n_pos.x, n_pos.y)
+		if tiles.has(n_key):
+			var n_tile = tiles[n_key]
+			var n_unit = n_tile.unit
+
+			if n_unit == null and n_tile.occupied_by != Vector2i.ZERO:
+				var origin_key = get_tile_key(n_tile.occupied_by.x, n_tile.occupied_by.y)
+				if tiles.has(origin_key):
+					n_unit = tiles[origin_key].unit
+
+			if n_unit != null and n_unit != unit and not neighbor_units.has(n_unit):
+				neighbor_units.append(n_unit)
+
+	return neighbor_units
+
+func get_inner_neighbors(unit_grid_pos: Vector2i) -> Array:
+	var neighbors = get_all_neighbors_units(unit_grid_pos)
+	var inner_neighbors = []
+	var current_dist_sq = Vector2(unit_grid_pos).distance_squared_to(Vector2.ZERO)
+
+	for neighbor in neighbors:
+		var neighbor_dist_sq = Vector2(neighbor.grid_pos).distance_squared_to(Vector2.ZERO)
+		if neighbor_dist_sq < current_dist_sq:
+			inner_neighbors.append(neighbor)
+	return inner_neighbors
+
+func get_outer_neighbors(unit_grid_pos: Vector2i) -> Array:
+	var neighbors = get_all_neighbors_units(unit_grid_pos)
+	var outer_neighbors = []
+	var current_dist_sq = Vector2(unit_grid_pos).distance_squared_to(Vector2.ZERO)
+
+	for neighbor in neighbors:
+		var neighbor_dist_sq = Vector2(neighbor.grid_pos).distance_squared_to(Vector2.ZERO)
+		if neighbor_dist_sq > current_dist_sq:
+			outer_neighbors.append(neighbor)
+	return outer_neighbors
