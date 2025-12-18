@@ -9,6 +9,10 @@ var active_buffs: Array = []
 var traits: Array = []
 var unit_data: Dictionary
 
+var buff_target: Node2D = null
+var buff_candidates: Array = []
+var is_awaiting_selection: bool = false
+
 # Stats
 var damage: float
 var range_val: float
@@ -61,6 +65,14 @@ func _ready():
 	# If unit_data is already populated (e.g. from scene or prior setup), update visuals
 	if !unit_data.is_empty():
 		update_visuals()
+
+	# Verification: Create a dummy target to test visual line
+	# var dummy = Node2D.new()
+	# dummy.name = "DummyBuffTarget"
+	# add_child(dummy)
+	# dummy.position = Vector2(50, 50)
+	# set_buff_target(dummy)
+	# is_awaiting_selection = true
 
 func _ensure_visual_hierarchy():
 	if visual_holder and is_instance_valid(visual_holder):
@@ -436,7 +448,14 @@ func _update_buff_icons():
 		lbl.text = icon
 		buff_container.add_child(lbl)
 
+func set_buff_target(target_unit):
+	buff_target = target_unit
+	queue_redraw()
+
 func _process(delta):
+	if is_awaiting_selection:
+		queue_redraw()
+
 	if !GameManager.is_wave_active: return
 
 	# Production Logic
@@ -586,6 +605,36 @@ func _draw():
 
 		draw_circle(Vector2.ZERO, draw_radius, Color(1, 1, 1, 0.1))
 		draw_arc(Vector2.ZERO, draw_radius, 0, TAU, 64, Color(1, 1, 1, 0.3), 1.0)
+
+	if is_instance_valid(buff_target):
+		var target_pos = to_local(buff_target.global_position)
+		var line_color = Color.WHITE
+		match type_key:
+			"viper": line_color = Color.GREEN
+			"octopus": line_color = Color.PURPLE
+			"bee": line_color = Color.YELLOW
+
+		draw_line(Vector2.ZERO, target_pos, line_color, 3.0)
+
+	if not buff_candidates.is_empty():
+		var size = Vector2(Constants.TILE_SIZE, Constants.TILE_SIZE)
+		if unit_data and unit_data.has("size"):
+			size = Vector2(unit_data.size.x * Constants.TILE_SIZE, unit_data.size.y * Constants.TILE_SIZE)
+		var rect = Rect2(-size / 2, size)
+		draw_rect(rect, Color.GREEN, false, 2.0)
+
+	if is_awaiting_selection:
+		var alpha = (sin(Time.get_ticks_msec() * 0.01) + 1.0) / 2.0
+		var color = Color(1, 1, 0, alpha)
+		var font_to_use = null
+		if visual_holder and visual_holder.has_node("Label"):
+			font_to_use = visual_holder.get_node("Label").get_theme_font("font")
+
+		if font_to_use:
+			draw_string(font_to_use, Vector2(-8, -40), "?", HORIZONTAL_ALIGNMENT_CENTER, -1, 32, color)
+		else:
+			# Fallback if no font found (e.g. draw a circle)
+			draw_circle(Vector2(0, -40), 5, color)
 
 	if _is_skill_highlight_active:
 		# Draw a thick outline
