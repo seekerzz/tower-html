@@ -609,7 +609,7 @@ func _spawn_interaction_highlight(grid_pos: Vector2i):
 
 	highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(highlight)
-	highlight.position = Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE)
+	highlight.position = Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE) - Vector2(TILE_SIZE, TILE_SIZE) / 2
 	interaction_highlights.append(highlight)
 
 func can_place_unit(x: int, y: int, w: int, h: int, exclude_unit = null) -> bool:
@@ -754,7 +754,16 @@ func _move_unit_internal(unit, new_x, new_y):
 	var tile = tiles[get_tile_key(new_x, new_y)]
 	unit.position = tile.position + Vector2((w-1) * TILE_SIZE * 0.5, (h-1) * TILE_SIZE * 0.5)
 	unit.start_position = unit.position
+
+	# Clear old interaction target when moved
+	unit.interaction_target_pos = null
+
 	recalculate_buffs()
+
+	# Trigger new selection if needed
+	var info = unit.get_interaction_info()
+	if info.has_interaction:
+		start_interaction_selection(unit)
 
 func can_devour(eater, food) -> bool:
 	if food.unit_data.has("isFood") and food.unit_data.isFood:
