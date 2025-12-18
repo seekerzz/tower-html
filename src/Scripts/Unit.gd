@@ -33,6 +33,14 @@ var crit_dmg: float = 1.5
 var bounce_count: int = 0
 var split_count: int = 0
 
+# Buff System (Lv.2+)
+var buff_target: Node2D = null
+var buff_candidates: Array = []
+var is_selection_source: bool = false
+var is_candidate: bool = false
+var has_poison_imbue: bool = false
+var has_shotgun_imbue: bool = false
+
 # Grid
 var grid_pos: Vector2i = Vector2i.ZERO
 var start_position: Vector2 = Vector2.ZERO
@@ -196,6 +204,8 @@ func reset_stats():
 
 	bounce_count = 0
 	split_count = 0
+	has_poison_imbue = false
+	has_shotgun_imbue = false
 	active_buffs.clear()
 
 	# Artifact Effects
@@ -232,6 +242,13 @@ func apply_buff(buff_type: String):
 		"bounce":
 			bounce_count += 1
 		"split":
+			split_count += 1
+		"assist_buff":
+			atk_speed *= 1.2
+		"poison_imbue":
+			has_poison_imbue = true
+		"shotgun_imbue":
+			has_shotgun_imbue = true
 			split_count += 1
 
 func set_highlight(active: bool, color: Color = Color.WHITE):
@@ -552,6 +569,10 @@ func devour(food_unit):
 	stats_multiplier += 0.2
 	update_visuals()
 
+func set_buff_target(target: Node2D):
+	buff_target = target
+	queue_redraw()
+
 func _on_area_2d_input_event(viewport, event, shape_idx):
 	if !GameManager.is_wave_active:
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
@@ -596,6 +617,36 @@ func _draw():
 		# Assuming pivot is center
 		var rect = Rect2(-size / 2, size)
 		draw_rect(rect, _highlight_color, false, 4.0)
+
+	# Buff Connection Line
+	if is_instance_valid(buff_target):
+		var line_color = Color.WHITE
+		match type_key:
+			"viper": line_color = Color.GREEN
+			"octopus": line_color = Color.PURPLE
+			"bee": line_color = Color.YELLOW
+
+		var target_local_pos = to_local(buff_target.global_position)
+		draw_line(Vector2.ZERO, target_local_pos, line_color, 2.0)
+		# Draw a small circle at the end
+		draw_circle(target_local_pos, 4.0, line_color)
+
+	# Selection Source Indicator
+	if is_selection_source:
+		# Draw a bouncing question mark
+		var time = Time.get_ticks_msec() / 200.0
+		var offset_y = -40 + sin(time) * 5
+		var font = ThemeDB.fallback_font
+		var font_size = 24
+		draw_string(font, Vector2(-8, offset_y), "?", HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.YELLOW)
+
+	# Candidate Highlight
+	if is_candidate:
+		var size = Vector2(Constants.TILE_SIZE, Constants.TILE_SIZE)
+		if unit_data and unit_data.has("size"):
+			size = Vector2(unit_data.size.x * Constants.TILE_SIZE, unit_data.size.y * Constants.TILE_SIZE)
+		var rect = Rect2(-size / 2, size)
+		draw_rect(rect, Color.GREEN, false, 3.0)
 
 func _input(event):
 	if is_dragging:

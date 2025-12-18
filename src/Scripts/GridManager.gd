@@ -15,6 +15,12 @@ var expansion_cost: int = 50 # Base cost
 var spawn_tiles: Array = [] # List of tiles (Vector2i) used as spawn points
 var active_territory_tiles: Array = [] # List of Tile instances that are unlocked or core
 
+# Buff Selection State
+var is_selecting_buff_target: bool = false
+var selection_source_unit = null
+var selection_candidates: Array = []
+var buff_selection_queue: Array = []
+
 # Skill Targeting
 var targeting_cursor: Node2D = null
 var targeting_unit = null
@@ -53,6 +59,20 @@ func _process(_delta):
 				visual.color = Color(1, 0, 0, 0.4) # Red
 
 func _input(event):
+	if is_selecting_buff_target:
+		if event is InputEventMouseButton and event.pressed:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				var click_pos = get_global_mouse_position()
+				for cand in selection_candidates:
+					if is_instance_valid(cand) and cand.global_position.distance_to(click_pos) < (TILE_SIZE * 0.5):
+						_confirm_buff_target(cand)
+						get_viewport().set_input_as_handled()
+						return
+		# Block other interactions
+		if event is InputEventMouseButton and event.pressed:
+			get_viewport().set_input_as_handled()
+		return
+
 	if is_targeting_mode:
 		if event is InputEventMouseButton and event.pressed:
 			if event.button_index == MOUSE_BUTTON_LEFT:
@@ -423,6 +443,8 @@ func get_tile_key(x: int, y: int) -> String:
 # --- Unit Logic ---
 
 func place_unit(unit_key: String, x: int, y: int) -> bool:
+	if is_selecting_buff_target: return false # Block during selection
+
 	var key = get_tile_key(x, y)
 	if !tiles.has(key): return false
 
@@ -495,6 +517,7 @@ func can_place_unit(x: int, y: int, w: int, h: int, exclude_unit = null) -> bool
 	return true
 
 func _on_tile_clicked(tile):
+	if is_selecting_buff_target: return
 	if GameManager.is_wave_active: return
 	# print("Clicked tile: ", tile.x, ",", tile.y)
 
@@ -513,6 +536,8 @@ func remove_unit_from_grid(unit):
 
 # Drag and Drop Implementation
 func handle_bench_drop_at(target_tile, data):
+	if is_selecting_buff_target: return
+
 	var unit_key = data.key
 	var bench_index = data.index
 
@@ -560,6 +585,8 @@ func handle_bench_drop_at(target_tile, data):
 		temp_unit.queue_free()
 
 func handle_grid_move_at(target_tile, data):
+	if is_selecting_buff_target: return
+
 	var unit = data.unit
 	if !unit: return
 
@@ -679,6 +706,10 @@ func _perform_swap(unit_a, unit_b):
 	recalculate_buffs()
 
 func recalculate_buffs():
+	if is_selecting_buff_target: return
+
+	buff_selection_queue.clear()
+
 	var processed_units = []
 	for key in tiles:
 		var tile = tiles[key]
@@ -688,30 +719,129 @@ func recalculate_buffs():
 
 	for unit in processed_units:
 		if "buffProvider" in unit.unit_data:
-			var buff_type = unit.unit_data["buffProvider"]
-			_apply_buff_to_neighbors(unit, buff_type)
+			_process_buff_provider(unit)
 
 	for unit in processed_units:
 		unit.update_visuals()
 
 	grid_updated.emit()
 
-func _apply_buff_to_neighbors(provider_unit, buff_type):
-	var cx = provider_unit.grid_pos.x
-	var cy = provider_unit.grid_pos.y
-	var w = provider_unit.unit_data.size.x
-	var h = provider_unit.unit_data.size.y
+	if not is_selecting_buff_target and not buff_selection_queue.is_empty():
+		var next = buff_selection_queue.pop_front()
+		call_deferred("start_buff_selection", next.source, next.candidates)
+
+func _process_buff_provider(unit):
+	var type = unit.type_key
+	var level = unit.level
+	var buff_type = unit.unit_data.get("buffProvider", "")
+
+	if not buff_type: return
+
+	# Standard behavior for Lv.1 or non-directional units
+	var is_directional = false
+
+	if level >= 2:
+		if type == "viper": # Outer
+			is_directional = true
+			buff_type = "poison_imbue"
+		elif type == "octopus": # Inner
+			is_directional = true
+			buff_type = "shotgun_imbue"
+		elif type == "bee": # Any
+			is_directional = true
+			buff_type = "assist_buff"
+
+	if not is_directional:
+		var neighbors = get_all_neighbors(unit)
+		for n in neighbors:
+			n.apply_buff(buff_type)
+		return
+
+	# Directional Logic
+	var current_target = unit.buff_target
+	var is_valid = false
+
+	if is_instance_valid(current_target):
+		var candidates = []
+		if type == "viper": candidates = get_outer_neighbors(unit)
+		elif type == "octopus": candidates = get_inner_neighbors(unit)
+		elif type == "bee": candidates = get_all_neighbors(unit)
+
+		if current_target in candidates:
+			is_valid = true
+
+	if is_valid:
+		current_target.apply_buff(buff_type)
+		return
+
+	unit.buff_target = null
+
+	var candidates = []
+	if type == "viper": candidates = get_outer_neighbors(unit)
+	elif type == "octopus": candidates = get_inner_neighbors(unit)
+	elif type == "bee": candidates = get_all_neighbors(unit)
+
+	if candidates.size() == 0:
+		pass
+	elif candidates.size() == 1:
+		unit.set_buff_target(candidates[0])
+		candidates[0].apply_buff(buff_type)
+	else:
+		buff_selection_queue.append({"source": unit, "candidates": candidates})
+
+func start_buff_selection(source_unit, candidates):
+	if is_selecting_buff_target: return
+
+	is_selecting_buff_target = true
+	selection_source_unit = source_unit
+	selection_candidates = candidates
+
+	source_unit.is_selection_source = true
+	source_unit.queue_redraw()
+
+	for cand in candidates:
+		cand.is_candidate = true
+		cand.queue_redraw()
+
+	GameManager.spawn_floating_text(source_unit.global_position + Vector2(0, -60), "Select Target!", Color.YELLOW)
+
+func _confirm_buff_target(target):
+	if !selection_source_unit: return
+
+	selection_source_unit.set_buff_target(target)
+	_end_buff_selection()
+	recalculate_buffs()
+
+func _end_buff_selection():
+	if selection_source_unit:
+		selection_source_unit.is_selection_source = false
+		selection_source_unit.queue_redraw()
+
+	for cand in selection_candidates:
+		cand.is_candidate = false
+		cand.queue_redraw()
+
+	is_selecting_buff_target = false
+	selection_source_unit = null
+	selection_candidates = []
+
+func get_all_neighbors(unit: Node2D) -> Array:
 	var neighbors = []
+	var cx = unit.grid_pos.x
+	var cy = unit.grid_pos.y
+	var w = unit.unit_data.size.x
+	var h = unit.unit_data.size.y
+	var neighbor_coords = []
 
 	for dx in range(w):
-		neighbors.append(Vector2i(cx + dx, cy - 1))
-		neighbors.append(Vector2i(cx + dx, cy + h))
+		neighbor_coords.append(Vector2i(cx + dx, cy - 1))
+		neighbor_coords.append(Vector2i(cx + dx, cy + h))
 
 	for dy in range(h):
-		neighbors.append(Vector2i(cx - 1, cy + dy))
-		neighbors.append(Vector2i(cx + w, cy + dy))
+		neighbor_coords.append(Vector2i(cx - 1, cy + dy))
+		neighbor_coords.append(Vector2i(cx + w, cy + dy))
 
-	for n_pos in neighbors:
+	for n_pos in neighbor_coords:
 		var n_key = get_tile_key(n_pos.x, n_pos.y)
 		if tiles.has(n_key):
 			var tile = tiles[n_key]
@@ -720,8 +850,28 @@ func _apply_buff_to_neighbors(provider_unit, buff_type):
 				var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
 				if tiles.has(origin_key):
 					target_unit = tiles[origin_key].unit
-			if target_unit and target_unit != provider_unit:
-				target_unit.apply_buff(buff_type)
+
+			if target_unit and target_unit != unit and not (target_unit in neighbors):
+				neighbors.append(target_unit)
+	return neighbors
+
+func get_inner_neighbors(unit: Node2D) -> Array:
+	var all = get_all_neighbors(unit)
+	var inner = []
+	var my_dist = unit.global_position.distance_squared_to(Vector2.ZERO)
+	for n in all:
+		if n.global_position.distance_squared_to(Vector2.ZERO) < my_dist:
+			inner.append(n)
+	return inner
+
+func get_outer_neighbors(unit: Node2D) -> Array:
+	var all = get_all_neighbors(unit)
+	var outer = []
+	var my_dist = unit.global_position.distance_squared_to(Vector2.ZERO)
+	for n in all:
+		if n.global_position.distance_squared_to(Vector2.ZERO) > my_dist:
+			outer.append(n)
+	return outer
 
 func toggle_expansion_mode():
 	expansion_mode = !expansion_mode
