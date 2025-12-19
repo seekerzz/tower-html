@@ -43,6 +43,11 @@ func _ready():
 	# We also need to monitor layer 2 (traps) for overlaps
 	collision_mask = 3 # Layer 1 (Walls) + Layer 2 (Traps)
 
+	# Fix for occlusion issue: Ensure all UI components ignore mouse
+	for child in get_children():
+		if child is Control:
+			child.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
 func setup(key: String, wave: int):
 	type_key = key
 	enemy_data = Constants.ENEMY_VARIANTS[key]
@@ -89,6 +94,7 @@ func update_visuals():
 
 		if has_node("Label"):
 			$Label.show()
+			$Label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			$Label.text = enemy_data.icon
 			# Ensure label is centered and pivot is set for correct scaling
 			$Label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

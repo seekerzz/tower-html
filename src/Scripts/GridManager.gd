@@ -42,7 +42,11 @@ func _ready():
 
 func _process(_delta):
 	if placement_preview_cursor and placement_preview_cursor.visible:
-		if Engine.get_process_frames() - last_preview_frame > 1:
+		var dist = get_global_mouse_position().distance_to(placement_preview_cursor.global_position)
+		var frame_diff = Engine.get_process_frames() - last_preview_frame
+
+		if dist > 50.0 and frame_diff > 10:
+			print("[Debug] Hiding preview cursor. Dist: ", dist, " Frames: ", frame_diff)
 			placement_preview_cursor.visible = false
 
 func _input(event):
