@@ -37,8 +37,11 @@ func _init_slots():
 	for child in slots_container.get_children():
 		child.queue_free()
 
+	var drag_handler_script = preload("res://src/Scripts/UI/ItemDragHandler.gd")
+
 	for i in range(SLOT_COUNT):
 		var slot = Control.new()
+		slot.set_script(drag_handler_script)
 		slot.custom_minimum_size = Vector2(60, 60)
 		slot.name = "Slot_%d" % i
 
@@ -70,6 +73,11 @@ func update_inventory(data: Array):
 
 		if i < data.size() and data[i] != null:
 			var item = data[i]
+
+			if slot.get_script() == preload("res://src/Scripts/UI/ItemDragHandler.gd"):
+				slot.slot_index = i
+				slot.item_data = item
+
 			var item_id = item.get("item_id", "unknown")
 			
 			# 尝试加载图标
@@ -112,3 +120,8 @@ func update_inventory(data: Array):
 				count_lbl.offset_right = -4
 				count_lbl.offset_bottom = 0
 				slot.add_child(count_lbl)
+		else:
+			# Slot is empty, clear data
+			if slot.get_script() == preload("res://src/Scripts/UI/ItemDragHandler.gd"):
+				slot.slot_index = -1
+				slot.item_data = {}
