@@ -16,7 +16,7 @@ const SHOP_SIZE = 4
 # @onready var global_preview = $Panel/MainContainer/Zone3/GlobalPreview # REMOVED
 # @onready var current_details = $Panel/MainContainer/Zone3/CurrentDetails # REMOVED
 @onready var gold_label = $Panel/MainContainer/LeftZone/GoldLabel
-@onready var toggle_handle = $Panel/ToggleHandle
+# @onready var toggle_handle = $Panel/ToggleHandle # REMOVED
 
 var sell_zone = null
 var is_collapsed: bool = false
@@ -38,29 +38,34 @@ func _ready():
 	expand_btn.pressed.connect(_on_expand_button_pressed)
 
 	_create_sell_zone()
-	call_deferred("_setup_collapse_handle")
+	# call_deferred("_setup_collapse_handle") # REMOVED
 
 	# Apply styles
 	_apply_styles()
 
-func _setup_collapse_handle():
-	panel_initial_y = $Panel.position.y
+# func _setup_collapse_handle(): # REMOVED
+# 	panel_initial_y = $Panel.position.y
+#
+# 	# ToggleHandle is now in Tscn, just connect signal
+# 	if toggle_handle:
+# 		if not toggle_handle.pressed.is_connected(_on_toggle_handle_pressed):
+# 			toggle_handle.pressed.connect(_on_toggle_handle_pressed)
 
-	# ToggleHandle is now in Tscn, just connect signal
-	if toggle_handle:
-		if not toggle_handle.pressed.is_connected(_on_toggle_handle_pressed):
-			toggle_handle.pressed.connect(_on_toggle_handle_pressed)
-
-func _on_toggle_handle_pressed():
-	if is_collapsed:
-		expand_shop()
-	else:
-		collapse_shop()
+# func _on_toggle_handle_pressed(): # REMOVED
+# 	if is_collapsed:
+# 		expand_shop()
+# 	else:
+# 		collapse_shop()
 
 func collapse_shop():
 	if is_collapsed: return
 	is_collapsed = true
-	if toggle_handle: toggle_handle.text = "▲"
+	# if toggle_handle: toggle_handle.text = "▲" # REMOVED
+
+	# Need to ensure panel_initial_y is set somewhere if _setup_collapse_handle is removed.
+	# It was set there. Let's set it here or in ready if 0.
+	if panel_initial_y == 0.0:
+		panel_initial_y = $Panel.position.y
 
 	var tween = create_tween()
 	# Move panel down so only handle is visible at bottom
@@ -71,7 +76,7 @@ func collapse_shop():
 func expand_shop():
 	if !is_collapsed: return
 	is_collapsed = false
-	if toggle_handle: toggle_handle.text = "▼"
+	# if toggle_handle: toggle_handle.text = "▼" # REMOVED
 
 	var tween = create_tween()
 	tween.tween_property($Panel, "position:y", panel_initial_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -204,7 +209,7 @@ func buy_unit(index, unit_key, card_ref):
 		if GameManager.inventory_manager:
 			if GameManager.gold >= proto.cost:
 				if !GameManager.inventory_manager.is_full():
-					if GameManager.inventory_manager.add_item({ "id": "meat", "count": 1 }):
+					if GameManager.inventory_manager.add_item({ "item_id": "meat", "count": 1 }):
 						GameManager.spend_gold(proto.cost)
 						# Meat doesn't deplete shop stock usually? Or does it?
 						# Assuming shop items are one-time purchase per refresh as per card logic:

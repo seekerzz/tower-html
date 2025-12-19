@@ -104,6 +104,19 @@ func _update_sidebar_position():
 	# So changing offset_bottom moves the whole container up/down relative to bottom anchor.
 	sidebar_tween.tween_property(left_sidebar, "offset_bottom", float(target_offset_bottom), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
+	# Animate Right Sidebar (InventoryPanel and PassiveSkillBar container)
+	# Assuming there is a container on the right similar to LeftSidebar, or we find the parent of InventoryPanel.
+	# Based on typical layout, InventoryPanel is likely child of MainGUI or a container.
+	# Let's find "RightSidebar" or the parent of InventoryPanel.
+	var inventory_panel = find_child("InventoryPanel", true, false)
+	if inventory_panel:
+		var right_container = inventory_panel.get_parent()
+		# Check if it's a specific container we want to move.
+		if right_container and right_container != self:
+			# Apply same logic: move it up/down
+			# If anchored Bottom Right, offset_bottom works similarly.
+			sidebar_tween.parallel().tween_property(right_container, "offset_bottom", float(target_offset_bottom), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
 func _setup_ui_styles():
 	var radius = 6
 

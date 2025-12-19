@@ -38,7 +38,8 @@ func refresh_skills():
 	for key in GameManager.grid_manager.tiles:
 		var tile = GameManager.grid_manager.tiles[key]
 		if tile.unit and tile.unit.unit_data.has("skill"):
-			units_with_skills.append(tile.unit)
+			if tile.unit.type_key != "viper" and tile.unit.type_key != "scorpion":
+				units_with_skills.append(tile.unit)
 
 	# Create Cards
 	var hotkeys = ["Q", "W", "E", "R", "D", "F"]
