@@ -5,6 +5,9 @@ extends MarginContainer
 @onready var label = $HBoxContainer/ProgressBar/Label
 @onready var wave_info_label = $HBoxContainer/WaveInfoLabel
 
+func _ready():
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
 func _process(delta):
 	if GameManager.is_wave_active:
 		visible = true
