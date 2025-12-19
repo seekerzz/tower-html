@@ -44,6 +44,7 @@ var ui_manager = null
 var main_game = null
 var reward_manager: Node = null
 var data_manager: Node = null
+var inventory_manager: Node = null
 
 var permanent_health_bonus: float = 0.0
 

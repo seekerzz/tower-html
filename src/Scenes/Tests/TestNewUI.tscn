@@ -1,0 +1,34 @@
+[gd_scene load_steps=4 format=3 uid="uid://test_new_ui_uid"]
+
+[ext_resource type="Script" path="res://src/Scenes/Tests/TestNewUI.gd" id="1_test"]
+[ext_resource type="PackedScene" uid="uid://inventory_panel_uid" path="res://src/Scenes/UI/InventoryPanel.tscn" id="2_inv"]
+[ext_resource type="PackedScene" uid="uid://passive_skill_bar_uid" path="res://src/Scenes/UI/PassiveSkillBar.tscn" id="3_passive"]
+
+[node name="TestNewUI" type="Node2D"]
+script = ExtResource("1_test")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+offset_right = 1152.0
+offset_bottom = 648.0
+color = Color(0, 0, 0, 1)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+offset_left = 50.0
+offset_top = 50.0
+offset_right = 350.0
+offset_bottom = 500.0
+theme_override_constants/separation = 50
+
+[node name="Label1" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Inventory Panel"
+
+[node name="InventoryPanel" parent="VBoxContainer" instance=ExtResource("2_inv")]
+layout_mode = 2
+
+[node name="Label2" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Passive Skill Bar"
+
+[node name="PassiveSkillBar" parent="VBoxContainer" instance=ExtResource("3_passive")]
+layout_mode = 2
