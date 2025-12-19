@@ -1,7 +1,9 @@
-[gd_scene load_steps=2 format=3 uid="uid://shop123"]
+[gd_scene load_steps=4 format=3 uid="uid://shop123"]
 
 [ext_resource type="Script" path="res://src/Scripts/UI/Shop.gd" id="1_shop"]
-[ext_resource type="PackedScene" uid="uid://benchui00001" path="res://src/Scenes/UI/Bench.tscn" id="2_bench"]
+[ext_resource type="PackedScene" uid="uid://inventorypanel01" path="res://src/Scenes/UI/InventoryPanel.tscn" id="2_inventory"]
+[ext_resource type="PackedScene" uid="uid://passiveskillbar01" path="res://src/Scenes/UI/PassiveSkillBar.tscn" id="3_passive"]
+[ext_resource type="PackedScene" uid="uid://benchui00001" path="res://src/Scenes/UI/Bench.tscn" id="4_bench"]
 
 [node name="Shop" type="Control"]
 layout_mode = 3
@@ -14,15 +16,39 @@ grow_horizontal = 2
 grow_vertical = 0
 script = ExtResource("1_shop")
 
-[node name="Panel" type="Panel" parent="."]
+[node name="SidebarContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
-anchors_preset = 15
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+offset_left = -40.0
+offset_top = -40.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_constants/separation = 0
+alignment = 2
 
-[node name="MainContainer" type="HBoxContainer" parent="Panel"]
+[node name="ToggleHandle" type="Button" parent="SidebarContainer"]
+layout_mode = 2
+size_flags_horizontal = 8
+text = "▼"
+
+[node name="InventoryPanel" parent="SidebarContainer" instance=ExtResource("2_inventory")]
+layout_mode = 2
+size_flags_horizontal = 8
+
+[node name="PassiveSkillBar" parent="SidebarContainer" instance=ExtResource("3_passive")]
+layout_mode = 2
+size_flags_horizontal = 8
+
+[node name="Panel" type="Panel" parent="SidebarContainer"]
+custom_minimum_size = Vector2(0, 160)
+layout_mode = 2
+size_flags_horizontal = 8
+
+[node name="MainContainer" type="HBoxContainer" parent="SidebarContainer/Panel"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -32,76 +58,64 @@ grow_vertical = 2
 theme_override_constants/separation = 10
 alignment = 1
 
-[node name="LeftZone" type="VBoxContainer" parent="Panel/MainContainer"]
+[node name="LeftZone" type="VBoxContainer" parent="SidebarContainer/Panel/MainContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 alignment = 1
 
-[node name="GoldLabel" type="Label" parent="Panel/MainContainer/LeftZone"]
+[node name="GoldLabel" type="Label" parent="SidebarContainer/Panel/MainContainer/LeftZone"]
 layout_mode = 2
 text = "💰 0"
 horizontal_alignment = 1
 
-[node name="ShopContainer" type="HBoxContainer" parent="Panel/MainContainer/LeftZone"]
+[node name="ShopContainer" type="HBoxContainer" parent="SidebarContainer/Panel/MainContainer/LeftZone"]
 layout_mode = 2
 size_flags_vertical = 3
 alignment = 1
 
-[node name="MiddleZone" type="VBoxContainer" parent="Panel/MainContainer"]
+[node name="MiddleZone" type="VBoxContainer" parent="SidebarContainer/Panel/MainContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 alignment = 1
 
-[node name="BenchContainer" type="CenterContainer" parent="Panel/MainContainer/MiddleZone"]
+[node name="BenchContainer" type="CenterContainer" parent="SidebarContainer/Panel/MainContainer/MiddleZone"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="Bench" parent="Panel/MainContainer/MiddleZone/BenchContainer" instance=ExtResource("2_bench")]
+[node name="Bench" parent="SidebarContainer/Panel/MainContainer/MiddleZone/BenchContainer" instance=ExtResource("4_bench")]
 layout_mode = 2
 custom_minimum_size = Vector2(300, 130)
 
-[node name="RightZone" type="HBoxContainer" parent="Panel/MainContainer"]
+[node name="RightZone" type="HBoxContainer" parent="SidebarContainer/Panel/MainContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 5
 
-[node name="SellZoneContainer" type="Control" parent="Panel/MainContainer/RightZone"]
+[node name="SellZoneContainer" type="Control" parent="SidebarContainer/Panel/MainContainer/RightZone"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 2.0
 
-[node name="RefreshButton" type="Button" parent="Panel/MainContainer/RightZone"]
+[node name="RefreshButton" type="Button" parent="SidebarContainer/Panel/MainContainer/RightZone"]
 custom_minimum_size = Vector2(40, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 1.0
 text = "🔄"
 
-[node name="ExpandButton" type="Button" parent="Panel/MainContainer/RightZone"]
+[node name="ExpandButton" type="Button" parent="SidebarContainer/Panel/MainContainer/RightZone"]
 custom_minimum_size = Vector2(40, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 1.0
 text = "🏗️"
 
-[node name="StartWaveButton" type="Button" parent="Panel/MainContainer/RightZone"]
+[node name="StartWaveButton" type="Button" parent="SidebarContainer/Panel/MainContainer/RightZone"]
 custom_minimum_size = Vector2(40, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 1.0
 text = "⚔️"
 
-[node name="ToggleHandle" type="Button" parent="Panel"]
-visible = false
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -80.0
-offset_top = -24.0
-offset_right = 0.0
-grow_horizontal = 0
-text = "▼"
-
-[connection signal="pressed" from="Panel/MainContainer/RightZone/StartWaveButton" to="." method="_on_start_wave_button_pressed"]
-[connection signal="pressed" from="Panel/MainContainer/RightZone/RefreshButton" to="." method="_on_refresh_button_pressed"]
+[connection signal="pressed" from="SidebarContainer/Panel/MainContainer/RightZone/StartWaveButton" to="." method="_on_start_wave_button_pressed"]
+[connection signal="pressed" from="SidebarContainer/Panel/MainContainer/RightZone/RefreshButton" to="." method="_on_refresh_button_pressed"]

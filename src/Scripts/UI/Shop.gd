@@ -6,21 +6,22 @@ var shop_locked: Array = [false, false, false, false]
 const SHOP_SIZE = 4
 
 # Node References
-# Updated references based on new layout
-@onready var shop_container = $Panel/MainContainer/LeftZone/ShopContainer
-@onready var refresh_btn = $Panel/MainContainer/RightZone/RefreshButton
-@onready var expand_btn = $Panel/MainContainer/RightZone/ExpandButton
-@onready var start_wave_btn = $Panel/MainContainer/RightZone/StartWaveButton
-@onready var sell_zone_container = $Panel/MainContainer/RightZone/SellZoneContainer
-# These are removed from scene, checking if we can just remove them or if we need to keep vars as null safe
-# @onready var global_preview = $Panel/MainContainer/Zone3/GlobalPreview # REMOVED
-# @onready var current_details = $Panel/MainContainer/Zone3/CurrentDetails # REMOVED
-@onready var gold_label = $Panel/MainContainer/LeftZone/GoldLabel
-@onready var toggle_handle = $Panel/ToggleHandle
+# Updated references based on new layout (SidebarContainer)
+@onready var sidebar_container = $SidebarContainer
+@onready var toggle_handle = $SidebarContainer/ToggleHandle
+@onready var inventory_panel = $SidebarContainer/InventoryPanel
+@onready var passive_skill_bar = $SidebarContainer/PassiveSkillBar
+
+@onready var shop_container = $SidebarContainer/Panel/MainContainer/LeftZone/ShopContainer
+@onready var refresh_btn = $SidebarContainer/Panel/MainContainer/RightZone/RefreshButton
+@onready var expand_btn = $SidebarContainer/Panel/MainContainer/RightZone/ExpandButton
+@onready var start_wave_btn = $SidebarContainer/Panel/MainContainer/RightZone/StartWaveButton
+@onready var sell_zone_container = $SidebarContainer/Panel/MainContainer/RightZone/SellZoneContainer
+@onready var gold_label = $SidebarContainer/Panel/MainContainer/LeftZone/GoldLabel
 
 var sell_zone = null
 var is_collapsed: bool = false
-var panel_initial_y: float = 0.0
+var sidebar_initial_y: float = 0.0
 
 signal unit_bought(unit_key)
 
@@ -33,7 +34,6 @@ func _ready():
 
 	refresh_shop(true)
 	update_ui()
-	# update_wave_info() # Removed functionality
 
 	expand_btn.pressed.connect(_on_expand_button_pressed)
 
@@ -44,9 +44,8 @@ func _ready():
 	_apply_styles()
 
 func _setup_collapse_handle():
-	panel_initial_y = $Panel.position.y
+	sidebar_initial_y = sidebar_container.position.y
 
-	# ToggleHandle is now in Tscn, just connect signal
 	if toggle_handle:
 		if not toggle_handle.pressed.is_connected(_on_toggle_handle_pressed):
 			toggle_handle.pressed.connect(_on_toggle_handle_pressed)
@@ -62,11 +61,27 @@ func collapse_shop():
 	is_collapsed = true
 	if toggle_handle: toggle_handle.text = "▲"
 
+	# Move sidebar down so only the ToggleHandle (at top) is visible at bottom of screen.
+	# We assume ToggleHandle is the first child of SidebarContainer.
+	# The height of ToggleHandle is toggle_handle.size.y
+	# We want ToggleHandle's top to be at (ScreenHeight - HandleHeight)?
+	# No, SidebarContainer moves relative to its parent.
+	# SidebarContainer is anchored Bottom Right.
+	# Its bottom is at 0 offset (or close).
+	# Its 'position.y' corresponds to its top edge relative to parent's top left? No, relative to parent origin.
+	# If parent is Control, and anchored, the position updates.
+
+	# Let's use relative movement.
+	# We want to move down by (Height - HandleHeight).
+	# This leaves HandleHeight visible at the bottom.
+
+	var height = sidebar_container.size.y
+	var handle_height = toggle_handle.size.y
+	var move_amount = height - handle_height
+	var target_y = sidebar_initial_y + move_amount
+
 	var tween = create_tween()
-	# Move panel down so only handle is visible at bottom
-	# Since handle is hidden/invisible, we might not see anything. But logic is preserved as requested.
-	var target_y = panel_initial_y + $Panel.size.y
-	tween.tween_property($Panel, "position:y", target_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(sidebar_container, "position:y", target_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func expand_shop():
 	if !is_collapsed: return
@@ -74,17 +89,18 @@ func expand_shop():
 	if toggle_handle: toggle_handle.text = "▼"
 
 	var tween = create_tween()
-	tween.tween_property($Panel, "position:y", panel_initial_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(sidebar_container, "position:y", sidebar_initial_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func _apply_styles():
 	# Style Panel
-	var panel = $Panel
+	var panel = $SidebarContainer/Panel
 	var panel_style = StyleBoxTexture.new()
-	panel_style.texture = load("res://assets/images/UI/bg_shop.png")
-	# Ensure it stretches or tiles properly if needed, but for now default.
-	# Fallback or overlay for borders
-	# panel_style.border_width_top = 2 # StyleBoxTexture doesn't support border directly in same way
-	# panel_style.border_color = Color("#ffffff")
+	if ResourceLoader.exists("res://assets/images/UI/bg_shop.png"):
+		panel_style.texture = load("res://assets/images/UI/bg_shop.png")
+	else:
+		var fallback = StyleBoxFlat.new()
+		fallback.bg_color = Color(0.1, 0.1, 0.1, 0.9)
+		panel.add_theme_stylebox_override("panel", fallback)
 	panel.add_theme_stylebox_override("panel", panel_style)
 
 	# Style Buttons
@@ -148,9 +164,6 @@ func _create_sell_zone():
 func update_ui():
 	if gold_label:
 		gold_label.text = "💰 %d" % GameManager.gold
-	# update_wave_info() # REMOVED
-
-# Removed update_wave_info, get_wave_type, get_wave_icon as they were used for GlobalPreview/CurrentDetails
 
 func refresh_shop(force: bool = false):
 	if !force and GameManager.gold < 10: return
@@ -177,7 +190,7 @@ func refresh_shop(force: bool = false):
 func create_shop_card(index, unit_key):
 	var card = ShopCard.new()
 	card.setup(unit_key)
-	card.custom_minimum_size = Vector2(80, 80) # Adjusted size for smaller shop
+	card.custom_minimum_size = Vector2(80, 80)
 	card.size_flags_horizontal = SIZE_EXPAND_FILL
 
 	card.card_clicked.connect(func(key): buy_unit(index, key, card))
@@ -200,14 +213,12 @@ func buy_unit(index, unit_key, card_ref):
 	var proto = Constants.UNIT_TYPES[unit_key]
 
 	if unit_key == "meat":
-		# Meat special logic: Add to Inventory instead of Bench
+		# Meat special logic
 		if GameManager.inventory_manager:
 			if GameManager.gold >= proto.cost:
 				if !GameManager.inventory_manager.is_full():
 					if GameManager.inventory_manager.add_item({ "id": "meat", "count": 1 }):
 						GameManager.spend_gold(proto.cost)
-						# Meat doesn't deplete shop stock usually? Or does it?
-						# Assuming shop items are one-time purchase per refresh as per card logic:
 						unit_bought.emit(unit_key)
 						card_ref.modulate = Color(0.5, 0.5, 0.5)
 						card_ref.mouse_filter = MOUSE_FILTER_IGNORE

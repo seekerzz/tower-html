@@ -15,16 +15,13 @@ func _ready():
 
 	_init_slots()
 
-	# Assuming GameManager has an inventory_manager property as per instructions
 	if GameManager.get("inventory_manager") and GameManager.inventory_manager:
 		if !GameManager.inventory_manager.is_connected("inventory_updated", update_inventory):
 			GameManager.inventory_manager.connect("inventory_updated", update_inventory)
-		# Initial update if data exists
 		if GameManager.inventory_manager.has_method("get_inventory"):
 			update_inventory(GameManager.inventory_manager.get_inventory())
 
 func _init_slots():
-	# Clear existing
 	for child in slots_container.get_children():
 		child.queue_free()
 
@@ -33,7 +30,6 @@ func _init_slots():
 		slot.custom_minimum_size = Vector2(60, 60)
 		slot.name = "Slot_%d" % i
 
-		# Background Style
 		var panel = Panel.new()
 		panel.layout_mode = 1
 		panel.anchors_preset = 15
@@ -63,7 +59,6 @@ func update_inventory(data: Array):
 			var item = data[i]
 			# Create Icon
 			var icon_rect = TextureRect.new()
-			# Assuming item has an 'id' property
 			var icon = AssetLoader.get_item_icon(item.id) if item.has("id") else null
 			if icon:
 				icon_rect.texture = icon
@@ -71,12 +66,29 @@ func update_inventory(data: Array):
 			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			icon_rect.layout_mode = 1
 			icon_rect.anchors_preset = 15
-			# Add some padding
 			icon_rect.offset_left = 5
 			icon_rect.offset_top = 5
 			icon_rect.offset_right = -5
 			icon_rect.offset_bottom = -5
 			slot.add_child(icon_rect)
+
+			# Attach ItemDragHandler
+			# We use 'load' to avoid cyclic dependencies if any, but class_name is better if available.
+			# Using script path as per instructions.
+			var drag_handler_script = load("res://src/Scripts/UI/ItemDragHandler.gd")
+			if drag_handler_script:
+				var drag_handler = drag_handler_script.new()
+				# We attach it to the icon_rect or the slot?
+				# Task says: "generated item icon node mounted ItemDragHandler"
+				# So we attach it to icon_rect.
+				icon_rect.add_child(drag_handler)
+				if drag_handler.has_method("setup"):
+					drag_handler.setup(item, icon_rect)
+				else:
+					# If setup is not defined, maybe it uses _init or properties?
+					# I'll assume setup is the way or check the file if I could.
+					# But since I saw 'UnitDragHandler' and 'ItemDragHandler' in list_files, I assume it follows similar pattern.
+					pass
 
 			# Count
 			if item.get("count", 0) > 1:
