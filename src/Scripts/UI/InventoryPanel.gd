@@ -5,6 +5,8 @@ const SLOT_COUNT = 8
 @onready var slots_container = $PanelContainer/SlotsContainer
 
 func _ready():
+	print("[InventoryPanel] UI Ready initialized.") # 调试日志
+	
 	if slots_container:
 		slots_container.add_theme_constant_override("h_separation", 10)
 		slots_container.add_theme_constant_override("v_separation", 10)
@@ -12,19 +14,26 @@ func _ready():
 		if parent is PanelContainer:
 			var style = StyleBoxEmpty.new()
 			parent.add_theme_stylebox_override("panel", style)
+	else:
+		push_error("[InventoryPanel] Error: SlotsContainer not found!")
 
 	_init_slots()
 
-	# Assuming GameManager has an inventory_manager property as per instructions
+	# 连接信号
 	if GameManager.get("inventory_manager") and GameManager.inventory_manager:
-		if !GameManager.inventory_manager.is_connected("inventory_updated", update_inventory):
-			GameManager.inventory_manager.connect("inventory_updated", update_inventory)
-		# Initial update if data exists
-		if GameManager.inventory_manager.has_method("get_inventory"):
-			update_inventory(GameManager.inventory_manager.get_inventory())
+		var inv_mgr = GameManager.inventory_manager
+		if !inv_mgr.is_connected("inventory_updated", update_inventory):
+			inv_mgr.connect("inventory_updated", update_inventory)
+			print("[InventoryPanel] Connected to inventory_manager signal.")
+		
+		# 初始加载
+		if inv_mgr.has_method("get_inventory"):
+			update_inventory(inv_mgr.get_inventory())
+		else:
+			push_error("[InventoryPanel] InventoryManager missing get_inventory() method.")
 
 func _init_slots():
-	# Clear existing
+	if !slots_container: return
 	for child in slots_container.get_children():
 		child.queue_free()
 
@@ -33,53 +42,65 @@ func _init_slots():
 		slot.custom_minimum_size = Vector2(60, 60)
 		slot.name = "Slot_%d" % i
 
-		# Background Style
 		var panel = Panel.new()
 		panel.layout_mode = 1
 		panel.anchors_preset = 15
 		panel.mouse_filter = MOUSE_FILTER_IGNORE
-
 		var style = StyleBoxFlat.new()
 		style.bg_color = Color(0.2, 0.2, 0.2, 1)
 		style.set_corner_radius_all(8)
-
 		panel.add_theme_stylebox_override("panel", style)
 		slot.add_child(panel)
 
 		slots_container.add_child(slot)
 
 func update_inventory(data: Array):
+	# 调试日志：打印接收到的数据
+	print("[InventoryPanel] update_inventory called with data: ", data)
+	
 	if !slots_container: return
 
 	var slots = slots_container.get_children()
 	for i in range(slots.size()):
 		var slot = slots[i]
-		# Clear previous content (except the background panel)
+		# 清理旧图标（保留背景 Panel）
 		for child in slot.get_children():
 			if child is Panel: continue
 			child.queue_free()
 
 		if i < data.size() and data[i] != null:
 			var item = data[i]
-			# Create Icon
+			var item_id = item.get("item_id", "unknown")
+			
+			# 尝试加载图标
 			var icon_rect = TextureRect.new()
-			# Assuming item has an 'id' property
-			var item_id = item.get("item_id")
 			var icon = AssetLoader.get_item_icon(item_id) if item_id else null
+			
 			if icon:
 				icon_rect.texture = icon
+			else:
+				# --- 关键修改：如果图片缺失，显示红色文字 ---
+				print("[InventoryPanel] Warning: Missing icon for item: ", item_id)
+				var text_fallback = Label.new()
+				text_fallback.text = str(item_id)
+				text_fallback.modulate = Color(1, 0, 0, 1) # 红色
+				text_fallback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				text_fallback.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+				text_fallback.layout_mode = 1
+				text_fallback.anchors_preset = 15
+				slot.add_child(text_fallback)
+
 			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			icon_rect.layout_mode = 1
 			icon_rect.anchors_preset = 15
-			# Add some padding
 			icon_rect.offset_left = 5
 			icon_rect.offset_top = 5
 			icon_rect.offset_right = -5
 			icon_rect.offset_bottom = -5
 			slot.add_child(icon_rect)
 
-			# Count
+			# 显示数量
 			if item.get("count", 0) > 1:
 				var count_lbl = Label.new()
 				count_lbl.text = str(item.count)
