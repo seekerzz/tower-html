@@ -61,7 +61,15 @@ func update_inventory(data: Array):
 
 		if i < data.size() and data[i] != null:
 			var item = data[i]
-			# Create Icon
+
+			# Attach Drag Handler
+			var drag_layer = Control.new()
+			drag_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+			drag_layer.set_script(load("res://src/Scripts/UI/ItemDragHandler.gd"))
+			drag_layer.setup(i, item)
+			slot.add_child(drag_layer)
+
+			# Create Icon (child of drag_layer so it's visible but input is handled by drag_layer)
 			var icon_rect = TextureRect.new()
 			# Assuming item has an 'id' property
 			var item_id = item.get("item_id")
@@ -77,7 +85,13 @@ func update_inventory(data: Array):
 			icon_rect.offset_top = 5
 			icon_rect.offset_right = -5
 			icon_rect.offset_bottom = -5
-			slot.add_child(icon_rect)
+
+			# Add icon to drag_layer so it is part of the control that handles drag?
+			# No, drag_layer is transparent control on top. Icon should be below or child with mouse_filter ignore.
+			# If drag_layer is on top (added last), it catches input.
+			# But we want the icon to be visible.
+
+			drag_layer.add_child(icon_rect)
 
 			# Count
 			if item.get("count", 0) > 1:
@@ -90,4 +104,4 @@ func update_inventory(data: Array):
 				count_lbl.anchors_preset = 15
 				count_lbl.offset_right = -4
 				count_lbl.offset_bottom = 0
-				slot.add_child(count_lbl)
+				drag_layer.add_child(count_lbl)
