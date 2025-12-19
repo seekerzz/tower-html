@@ -52,3 +52,9 @@ func get_item_count(index: int) -> int:
 	if item:
 		return item.count
 	return 0
+
+func is_full() -> bool:
+	for item in items:
+		if item == null:
+			return false
+	return true
