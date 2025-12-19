@@ -54,12 +54,3 @@ func _handle_inventory_drop(data):
 
 			GameManager.grid_manager.spawn_trap_custom(Vector2i(tile_ref.x, tile_ref.y), trap_type)
 			GameManager.inventory_manager.remove_item(data.slot_index)
-
-	# Meat Logic
-	elif item_id == "meat":
-		if tile_ref.unit != null:
-			# Devour
-			# Unit.devour expects a food_unit, but logic says it ignores it, so passing null.
-			# However, strict typing might complain if Unit.gd had type hint. It doesn't.
-			tile_ref.unit.devour(null)
-			GameManager.inventory_manager.remove_item(data.slot_index)

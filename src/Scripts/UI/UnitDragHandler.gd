@@ -68,11 +68,21 @@ func _get_drag_data(at_position):
 
 func _can_drop_data(_at_position, data):
 	if data is Dictionary and data.has("source"):
+		if data.source == "inventory":
+			return data.has("item") and data.item.get("item_id") == "meat"
 		return data.source == "bench" or data.source == "grid"
 	return false
 
 func _drop_data(_at_position, data):
 	if !unit_ref: return
+
+	if data.source == "inventory":
+		if data.has("item") and data.item.get("item_id") == "meat":
+			unit_ref.devour(null)
+			if GameManager.inventory_manager:
+				GameManager.inventory_manager.remove_item(data.slot_index)
+		return
+
 	if !GameManager.grid_manager: return
 
 	var grid_pos = unit_ref.grid_pos
