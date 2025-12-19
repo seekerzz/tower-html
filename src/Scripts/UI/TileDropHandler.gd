@@ -13,6 +13,13 @@ func _can_drop_data(at_position, data):
 	if !data or !data.has("source"): return false
 
 	if data.source == "inventory":
+		if data.item:
+			var item_id = data.item.get("item_id", "")
+			if "trap" in item_id or item_id in ["poison_trap", "fang_trap"]:
+				var grid_pos = Vector2i(tile_ref.x, tile_ref.y)
+				GameManager.grid_manager.update_placement_preview(grid_pos, item_id)
+				return GameManager.grid_manager.can_place_item_at(grid_pos, item_id)
+
 		# Allow dropping inventory items during wave
 		return true
 

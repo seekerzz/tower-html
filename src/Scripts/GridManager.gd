@@ -16,9 +16,8 @@ var spawn_tiles: Array = [] # List of tiles (Vector2i) used as spawn points
 var active_territory_tiles: Array = [] # List of Tile instances that are unlocked or core
 
 # Interaction / Skill Targeting
-var targeting_cursor: Node2D = null
-var targeting_unit = null
-var is_targeting_mode: bool = false
+var placement_preview_cursor: Node2D = null
+var last_preview_frame: int = 0
 
 # Interaction System (Neighbor Buff Selection)
 const STATE_IDLE = 0
@@ -42,23 +41,9 @@ func _ready():
 	# _generate_random_obstacles()
 
 func _process(_delta):
-	if is_targeting_mode and targeting_cursor:
-		var mouse_pos = get_local_mouse_position()
-		var gx = int(round(mouse_pos.x / TILE_SIZE))
-		var gy = int(round(mouse_pos.y / TILE_SIZE))
-
-		# Snap to grid
-		targeting_cursor.position = Vector2(gx * TILE_SIZE, gy * TILE_SIZE)
-
-		var grid_pos = Vector2i(gx, gy)
-		var is_valid = is_valid_skill_pos(grid_pos, targeting_unit)
-
-		var visual = targeting_cursor.get_node_or_null("Visual")
-		if visual:
-			if is_valid:
-				visual.color = Color(0, 1, 0, 0.4) # Green
-			else:
-				visual.color = Color(1, 0, 0, 0.4) # Red
+	if placement_preview_cursor and placement_preview_cursor.visible:
+		if Engine.get_process_frames() - last_preview_frame > 1:
+			placement_preview_cursor.visible = false
 
 func _input(event):
 	if interaction_state == STATE_SELECTING_INTERACTION_TARGET:
@@ -91,70 +76,37 @@ func _input(event):
 				get_viewport().set_input_as_handled()
 		return # Block other inputs
 
-	if is_targeting_mode:
-		if event is InputEventMouseButton and event.pressed:
-			if event.button_index == MOUSE_BUTTON_LEFT:
-				var mouse_pos = get_local_mouse_position()
-				var gx = int(round(mouse_pos.x / TILE_SIZE))
-				var gy = int(round(mouse_pos.y / TILE_SIZE))
-				var grid_pos = Vector2i(gx, gy)
+func update_placement_preview(grid_pos: Vector2i, item_id: String):
+	if not placement_preview_cursor:
+		placement_preview_cursor = Node2D.new()
+		placement_preview_cursor.name = "PlacementPreviewCursor"
+		var visual = ColorRect.new()
+		visual.name = "Visual"
+		visual.size = Vector2(TILE_SIZE, TILE_SIZE)
+		visual.position = -visual.size / 2
+		visual.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		placement_preview_cursor.add_child(visual)
+		add_child(placement_preview_cursor)
 
-				if is_valid_skill_pos(grid_pos, targeting_unit):
-					# Call unit execution
-					if targeting_unit.has_method("execute_skill_at"):
-						targeting_unit.execute_skill_at(grid_pos)
-					exit_skill_targeting()
-					get_viewport().set_input_as_handled()
+	placement_preview_cursor.position = Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE)
+	placement_preview_cursor.visible = true
 
-			elif event.button_index == MOUSE_BUTTON_RIGHT:
-				exit_skill_targeting()
-				get_viewport().set_input_as_handled()
+	var is_valid = can_place_item_at(grid_pos, item_id)
+	var visual = placement_preview_cursor.get_node("Visual")
+	if is_valid:
+		visual.color = Color(0, 1, 0, 0.4)
+	else:
+		visual.color = Color(1, 0, 0, 0.4)
 
-func enter_skill_targeting(unit):
-	if is_targeting_mode:
-		exit_skill_targeting()
+	last_preview_frame = Engine.get_process_frames()
 
-	targeting_unit = unit
-	is_targeting_mode = true
-
-	targeting_cursor = Node2D.new()
-	var visual = ColorRect.new()
-	visual.name = "Visual"
-
-	var size_x = 1
-	var size_y = 1
-	if unit.unit_data.has("targetArea"):
-		size_x = unit.unit_data.targetArea[0]
-		size_y = unit.unit_data.targetArea[1]
-
-	visual.size = Vector2(size_x * TILE_SIZE, size_y * TILE_SIZE)
-	visual.position = -visual.size / 2 # Center
-	visual.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	targeting_cursor.add_child(visual)
-
-	add_child(targeting_cursor)
-
-func exit_skill_targeting():
-	is_targeting_mode = false
-	targeting_unit = null
-	if targeting_cursor:
-		targeting_cursor.queue_free()
-		targeting_cursor = null
-
-func is_valid_skill_pos(grid_pos: Vector2i, unit) -> bool:
-	if !unit: return false
-
-	# Basic map bounds check
+func can_place_item_at(grid_pos: Vector2i, item_id: String) -> bool:
 	var key = get_tile_key(grid_pos.x, grid_pos.y)
 	if !tiles.has(key): return false
 
 	var tile = tiles[key]
 
-	if unit.type_key == "phoenix":
-		return true
-
-	if unit.type_key == "viper" or unit.type_key == "scorpion":
-		# Traps rules:
+	if "trap" in item_id or item_id == "poison_trap" or item_id == "fang_trap":
 		# 1. Not on spawn tiles
 		if spawn_tiles.has(grid_pos): return false
 		# 2. No obstacles
@@ -164,10 +116,8 @@ func is_valid_skill_pos(grid_pos: Vector2i, unit) -> bool:
 		if tile.occupied_by != Vector2i.ZERO: return false
 
 		# 4. Restriction: Cannot place on Core or Unlocked Core Area
-		# Viper and Scorpion traps cannot be placed on Core or the unlocked initial area around it.
 		if is_in_core_zone(grid_pos) and tile.state == "unlocked": return false
 
-		# Allowed in Locked Core, Wilderness
 		return true
 
 	return false
