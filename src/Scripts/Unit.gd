@@ -460,7 +460,7 @@ func _process(delta):
 			var item_id = "poison_trap" if type_key == "viper" else "fang_trap"
 			# Construct item data. Assuming item structure.
 			# Using a simple dictionary for now as per instructions.
-			var item_data = { "id": item_id, "count": 1 }
+			var item_data = { "item_id": item_id, "count": 1 }
 
 			if GameManager.inventory_manager:
 				# Check if added successfully

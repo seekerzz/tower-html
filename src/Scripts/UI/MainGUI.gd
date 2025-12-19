@@ -17,6 +17,7 @@ signal sacrifice_requested
 @onready var stats_header = $DamageStats/Header
 @onready var stats_toggle_btn = $DamageStats/ToggleButton
 @onready var left_sidebar = $LeftSidebar
+@onready var right_sidebar = $RightSidebar
 @onready var top_left_panel = $TopLeftPanel
 
 @onready var game_over_panel = $GameOverPanel
@@ -102,7 +103,10 @@ func _update_sidebar_position():
 	# We are animating offset_bottom.
 	# Note: LeftSidebar is anchored Bottom Left with Vertical Grow Up.
 	# So changing offset_bottom moves the whole container up/down relative to bottom anchor.
+	sidebar_tween.set_parallel(true)
 	sidebar_tween.tween_property(left_sidebar, "offset_bottom", float(target_offset_bottom), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	if right_sidebar:
+		sidebar_tween.tween_property(right_sidebar, "offset_bottom", float(target_offset_bottom), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func _setup_ui_styles():
 	var radius = 6
