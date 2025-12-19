@@ -46,6 +46,7 @@ var reward_manager: Node = null
 var data_manager: Node = null
 
 var permanent_health_bonus: float = 0.0
+var inventory_manager = null
 
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -55,6 +56,11 @@ func _ready():
 	data_manager = DataManagerScript.new()
 	add_child(data_manager)
 	data_manager.load_data()
+
+	# Initialize InventoryManager
+	var InvMgrScript = load("res://src/Scripts/Managers/InventoryManager.gd")
+	inventory_manager = InvMgrScript.new()
+	add_child(inventory_manager)
 
 	if reward_manager == null:
 		var rm_scene = load("res://src/Scripts/Managers/RewardManager.gd")
@@ -275,3 +281,31 @@ func spawn_floating_text(pos: Vector2, value: String, type_or_color: Variant):
 			_: color = Color.WHITE
 
 	ftext_spawn_requested.emit(pos, value, color)
+
+func execute_skill_effect(source_key: String, target_pos: Vector2i) -> bool:
+	if !grid_manager: return false
+
+	match source_key:
+		"viper":
+			grid_manager.spawn_trap_custom(target_pos, "poison")
+			return true
+		"scorpion":
+			grid_manager.spawn_trap_custom(target_pos, "fang")
+			return true
+		"phoenix":
+			var firestorm_scene = load("res://src/Scenes/Game/FireStorm.tscn")
+			if firestorm_scene:
+				var storm = firestorm_scene.instantiate()
+				storm.position = Vector2(target_pos.x * Constants.TILE_SIZE, target_pos.y * Constants.TILE_SIZE)
+
+				# Default damage calculation or fixed value
+				var dmg = 10.0
+				if Constants.UNIT_TYPES.has("phoenix"):
+					dmg = Constants.UNIT_TYPES["phoenix"].get("damage", 20.0) * 0.5
+
+				if storm.has_method("init"):
+					storm.init(dmg)
+
+				grid_manager.add_child(storm)
+				return true
+	return false
