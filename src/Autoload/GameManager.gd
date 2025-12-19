@@ -39,6 +39,7 @@ var upgrade_selection_scene = preload("res://src/Scenes/UI/UpgradeSelection.tscn
 
 # Global references
 var grid_manager = null
+var inventory_manager = null
 var combat_manager = null
 var ui_manager = null
 var main_game = null

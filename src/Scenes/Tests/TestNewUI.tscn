@@ -1,0 +1,40 @@
+[gd_scene load_steps=4 format=3 uid="uid://testnewui001"]
+
+[ext_resource type="Script" path="res://src/Scripts/Tests/TestNewUI.gd" id="1_testui"]
+[ext_resource type="PackedScene" uid="uid://inventorypanel01" path="res://src/Scenes/UI/InventoryPanel.tscn" id="2_inv"]
+[ext_resource type="PackedScene" uid="uid://passiveskillbar01" path="res://src/Scenes/UI/PassiveSkillBar.tscn" id="3_passive"]
+
+[node name="TestNewUI" type="Node2D"]
+script = ExtResource("1_testui")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="ColorRect" type="ColorRect" parent="CanvasLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+
+[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -100.0
+offset_right = 200.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 50
+
+[node name="InventoryPanel" parent="CanvasLayer/HBoxContainer" instance=ExtResource("2_inv")]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PassiveSkillBar" parent="CanvasLayer/HBoxContainer" instance=ExtResource("3_passive")]
+layout_mode = 2
+size_flags_horizontal = 3
