@@ -1,6 +1,7 @@
 extends Control
 
 const SLOT_COUNT = 8
+const ITEM_DRAG_HANDLER = preload("res://src/Scripts/UI/ItemDragHandler.gd")
 
 @onready var slots_container = $PanelContainer/SlotsContainer
 
@@ -39,6 +40,7 @@ func _init_slots():
 
 	for i in range(SLOT_COUNT):
 		var slot = Control.new()
+		slot.set_script(ITEM_DRAG_HANDLER)
 		slot.custom_minimum_size = Vector2(60, 60)
 		slot.name = "Slot_%d" % i
 
@@ -67,6 +69,13 @@ func update_inventory(data: Array):
 		for child in slot.get_children():
 			if child is Panel: continue
 			child.queue_free()
+
+		# Update slot data for drag handler
+		if slot.has_method("setup"):
+			if i < data.size() and data[i] != null:
+				slot.setup(i, data[i])
+			else:
+				slot.setup(i, {})
 
 		if i < data.size() and data[i] != null:
 			var item = data[i]
