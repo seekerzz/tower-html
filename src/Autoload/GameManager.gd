@@ -46,11 +46,8 @@ var main_game = null
 var reward_manager: Node = null
 var data_manager: Node = null
 
-# Stub for inventory manager (Mock/Future implementation)
-var inventory_manager = null
 
 var permanent_health_bonus: float = 0.0
-var inventory_manager = null
 
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
