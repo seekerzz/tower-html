@@ -76,6 +76,23 @@ func update_inventory(data: Array):
 			icon_rect.offset_top = 5
 			icon_rect.offset_right = -5
 			icon_rect.offset_bottom = -5
+
+			# Attach Drag Handler
+			var drag_handler = Control.new()
+			drag_handler.set_script(load("res://src/Scripts/UI/ItemDragHandler.gd"))
+			drag_handler.layout_mode = 1
+			drag_handler.anchors_preset = 15
+			drag_handler.mouse_filter = MOUSE_FILTER_STOP
+			drag_handler.setup(i, item, icon_rect.texture)
+			icon_rect.add_child(drag_handler)
+
+			# Ensure icon_rect can receive mouse so children can too?
+			# Actually TextureRect defaults to IGNORE.
+			# If we add drag_handler (Control STOP) as child, drag_handler will catch it if icon_rect is IGNORE?
+			# No, if parent is IGNORE, children still get events if they are inside rect.
+			# But safer to set icon_rect to PASS or IGNORE.
+			# If icon_rect is IGNORE, drag_handler (STOP) works fine.
+
 			slot.add_child(icon_rect)
 
 			# Count

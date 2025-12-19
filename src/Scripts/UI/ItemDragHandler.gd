@@ -5,21 +5,32 @@ var is_dragging: bool = false
 var dragged_item_index: int = -1
 var dragged_item_data: Dictionary = {}
 var ghost_icon: TextureRect = null
-var start_position: Vector2 = Vector2.ZERO
+var icon_texture: Texture = null
+
+func setup(index: int, item_data: Dictionary, texture: Texture):
+	dragged_item_index = index
+	dragged_item_data = item_data
+	icon_texture = texture
+
+func _gui_input(event):
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			start_drag(dragged_item_index, dragged_item_data, icon_texture)
 
 func _process(delta):
 	if is_dragging and ghost_icon:
 		ghost_icon.global_position = get_global_mouse_position() - (ghost_icon.size / 2)
 
-func start_drag(index: int, item_data: Dictionary, icon_texture: Texture):
+func start_drag(index: int, item_data: Dictionary, texture: Texture):
 	if is_dragging: return
 
 	is_dragging = true
+	# Ensure data is consistent if called directly
 	dragged_item_index = index
 	dragged_item_data = item_data
 
 	ghost_icon = TextureRect.new()
-	ghost_icon.texture = icon_texture
+	ghost_icon.texture = texture
 	ghost_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	ghost_icon.size = Vector2(40, 40)
 	ghost_icon.modulate.a = 0.7
@@ -73,7 +84,7 @@ func _handle_drop(mouse_pos: Vector2):
 		# If empty tile -> place unit (GridManager.place_unit)
 		# We need to map item_id to unit_id.
 		# E.g. item_id "meat" might correspond to unit "meat_block" or just use item_id as unit_key if consistent.
-		var unit_key = dragged_item_data.item_id
+		var unit_key = dragged_item_data.get("id", "")
 
 		if tile.unit == null and tile.occupied_by == Vector2i.ZERO:
 			if grid_mgr.place_unit(unit_key, gx, gy):
@@ -93,13 +104,7 @@ func _handle_drop(mouse_pos: Vector2):
 				# I should probably just buff the unit directly or creating a dummy unit is overkill.
 				# But `devour` logic: `level += 1, damage += 5...`. It doesn't use `food_unit` except for existence check?
 				# `Unit.gd`: `func devour(food_unit): level += 1 ...`. It DOES NOT access food_unit properties in the snippet provided!
-				# So passing null might crash if it expects something, but looking at `Unit.gd`:
-				# func devour(food_unit):
-				#     level += 1
-				#     damage += 5
-				#     stats_multiplier += 0.2
-				#     update_visuals()
-				# It ignores the argument. So passing null is fine.
+				# So passing null is fine.
 
 				_consume_item()
 

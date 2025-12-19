@@ -7,20 +7,18 @@ const SHOP_SIZE = 4
 
 # Node References
 # Updated references based on new layout
-@onready var shop_container = $Panel/MainContainer/LeftZone/ShopContainer
-@onready var refresh_btn = $Panel/MainContainer/RightZone/RefreshButton
-@onready var expand_btn = $Panel/MainContainer/RightZone/ExpandButton
-@onready var start_wave_btn = $Panel/MainContainer/RightZone/StartWaveButton
-@onready var sell_zone_container = $Panel/MainContainer/RightZone/SellZoneContainer
-# These are removed from scene, checking if we can just remove them or if we need to keep vars as null safe
-# @onready var global_preview = $Panel/MainContainer/Zone3/GlobalPreview # REMOVED
-# @onready var current_details = $Panel/MainContainer/Zone3/CurrentDetails # REMOVED
-@onready var gold_label = $Panel/MainContainer/LeftZone/GoldLabel
-@onready var toggle_handle = $Panel/ToggleHandle
+@onready var sidebar = $SidebarContainer
+@onready var shop_container = $SidebarContainer/Panel/MainContainer/LeftZone/ShopContainer
+@onready var refresh_btn = $SidebarContainer/Panel/MainContainer/RightZone/RefreshButton
+@onready var expand_btn = $SidebarContainer/Panel/MainContainer/RightZone/ExpandButton
+@onready var start_wave_btn = $SidebarContainer/Panel/MainContainer/RightZone/StartWaveButton
+@onready var sell_zone_container = $SidebarContainer/Panel/MainContainer/RightZone/SellZoneContainer
+@onready var gold_label = $SidebarContainer/Panel/MainContainer/LeftZone/GoldLabel
+@onready var toggle_handle = $SidebarContainer/HeaderContainer/ToggleHandle
 
 var sell_zone = null
 var is_collapsed: bool = false
-var panel_initial_y: float = 0.0
+var sidebar_initial_y: float = 0.0
 
 signal unit_bought(unit_key)
 
@@ -44,7 +42,7 @@ func _ready():
 	_apply_styles()
 
 func _setup_collapse_handle():
-	panel_initial_y = $Panel.position.y
+	sidebar_initial_y = sidebar.position.y
 
 	# ToggleHandle is now in Tscn, just connect signal
 	if toggle_handle:
@@ -63,10 +61,34 @@ func collapse_shop():
 	if toggle_handle: toggle_handle.text = "▲"
 
 	var tween = create_tween()
-	# Move panel down so only handle is visible at bottom
-	# Since handle is hidden/invisible, we might not see anything. But logic is preserved as requested.
-	var target_y = panel_initial_y + $Panel.size.y
-	tween.tween_property($Panel, "position:y", target_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	# Move sidebar down so that only the top HeaderContainer (ToggleHandle) is visible at bottom
+	# ToggleHandle is in HeaderContainer which is at the top of SidebarContainer
+	# To make ToggleHandle visible at bottom, we need to push Sidebar down until its top is at (ScreenBottom - ToggleHandleHeight)
+	# Sidebar is anchored bottom, so its position.y is relative to anchors.
+	# Actually, since Sidebar is anchored, tweening position might be tricky if anchors update.
+	# But since we set anchors, position is offset.
+	# Initial position (Expanded) is roughly offset_top = -height.
+	# If we use position property, we are animating the offset relative to anchors or the position.
+	# In Control with anchors, `position` is top-left corner relative to parent.
+	# If Sidebar is Bottom-Right anchored (1, 1).
+	# sidebar_initial_y is where it sits expanded.
+
+	# Let's calculate target relative to current/initial.
+	# We want the Top of Sidebar to be at Screen Bottom - Header Height.
+	# Current Top is sidebar.position.y
+	# Screen Bottom (relative to parent Shop) is Shop.size.y (since Shop is anchored bottom).
+	# Actually Shop root has height 0 if we don't set it, but it has anchors.
+	# Let's rely on sidebar size.
+	# We want to move down by (Sidebar Height - Header Height).
+
+	var header_height = $SidebarContainer/HeaderContainer.size.y
+	# If Header height is 0 (due to layout), use min size of button approx 24
+	if header_height < 24: header_height = 24
+
+	var shift = sidebar.size.y - header_height
+	var target_y = sidebar_initial_y + shift
+
+	tween.tween_property(sidebar, "position:y", target_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func expand_shop():
 	if !is_collapsed: return
@@ -74,11 +96,11 @@ func expand_shop():
 	if toggle_handle: toggle_handle.text = "▼"
 
 	var tween = create_tween()
-	tween.tween_property($Panel, "position:y", panel_initial_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(sidebar, "position:y", sidebar_initial_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func _apply_styles():
 	# Style Panel
-	var panel = $Panel
+	var panel = $SidebarContainer/Panel
 	var panel_style = StyleBoxTexture.new()
 	panel_style.texture = load("res://assets/images/UI/bg_shop.png")
 	# Ensure it stretches or tiles properly if needed, but for now default.
