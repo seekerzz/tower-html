@@ -19,6 +19,7 @@ var skill_mana_cost: float = 30.0
 
 var max_hp: float = 0.0
 
+var max_production_timer: float = 1.0
 var production_timer: float = 0.0
 
 # Visual Holder for animations and structure
@@ -118,13 +119,16 @@ func setup(key: String):
 	# --- Merged Logic Start ---
 	if unit_data.has("produce"):
 		production_timer = 1.0
+		max_production_timer = 1.0
 
 	if type_key == "viper" or type_key == "scorpion":
 		production_timer = 5.0 # Set production interval (e.g., 5 seconds)
+		max_production_timer = 5.0
 
 	# Cow Healing logic setup - Removed implicit setup here, handled in _process or logic
 	if unit_data.has("skill") and unit_data.skill == "milk_aura":
 		production_timer = 5.0 # Keep this for PASSIVE healing if any, or just skill logic?
+		max_production_timer = 5.0
 		# Original Unit.gd had a passive milk_aura logic: "Cow Milk Aura Logic" block in _process
 		# The new requirements say: "If Cow and skill active: ... extra call GameManager.damage_core(-200 * delta)"
 		# It seems the passive "milk_aura" (every 5s heal 50) is still there unless I remove it?
@@ -466,7 +470,7 @@ func _process(delta):
 				# Check if added successfully
 				if GameManager.inventory_manager.add_item(item_data):
 					GameManager.spawn_floating_text(global_position, "Trap Produced!", Color.GREEN)
-					production_timer = 5.0 # Reset timer
+					production_timer = max_production_timer # Reset timer
 				else:
 					# Inventory full, keep timer at 0 to retry next frame or wait?
 					# Instructions say: "if fail (full), keep Timer as 0 waiting for slot"
@@ -474,7 +478,7 @@ func _process(delta):
 			else:
 				# Fallback if no inventory manager (e.g. testing without mock properly set up, or just logging)
 				print("Attempting to add %s to inventory (No InvManager)" % item_id)
-				production_timer = 5.0 # Reset to avoid spamming log if manager missing
+				production_timer = max_production_timer # Reset to avoid spamming log if manager missing
 
 	# Production Logic (Resources)
 	elif unit_data.has("produce"):
@@ -489,7 +493,7 @@ func _process(delta):
 			var color = Color.YELLOW if p_type == "food" else Color.CYAN
 			GameManager.spawn_floating_text(global_position, "+%d%s" % [p_amt, icon], color)
 
-			production_timer = 1.0
+			production_timer = max_production_timer
 	# Cow Passive Logic (Existing)
 	if unit_data.has("skill") and unit_data.skill == "milk_aura":
 		production_timer -= delta
@@ -497,7 +501,7 @@ func _process(delta):
 			# Heal core
 			GameManager.damage_core(-50)
 			GameManager.spawn_floating_text(global_position, "+50", Color.GREEN)
-			production_timer = 5.0
+			production_timer = max_production_timer
 
 	# Active Skill Timer Logic
 	if skill_active_timer > 0:

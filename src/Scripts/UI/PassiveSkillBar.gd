@@ -124,25 +124,7 @@ func _process(_delta):
 		# Usually it's hardcoded to 1.0 or 5.0 (for cow).
 		# We need to know the max.
 
-		var max_val = 1.0
-		if unit.type_key == "cow" or (unit.unit_data and unit.unit_data.get("skill") == "milk_aura"):
-			max_val = 5.0
-		# If we don't know, we can guess or store previous high.
-
-		# For Vipers/Scorpions (which are requested), they spawn traps?
-		# Wait, the prompt implies "Viper and Scorpion units".
-		# Let's check what Viper and Scorpion do.
-		# In Unit.gd `execute_skill_at`: Viper spawns poison, Scorpion spawns fang.
-		# Those seem to be active skills (skillCd).
-		# BUT the prompt says "Bind unit's production_timer (production countdown) to CD mask value".
-		# Do Viper and Scorpion have `produce`?
-		# If they don't, `production_timer` might be 0.
-
-		# Assuming they WILL have `produce` added or we are tracking `skill_cooldown`.
-		# The prompt says: "Bind unit's production_timer".
-		# I will stick to `production_timer`.
-
-		cd_bar.max_value = max_val
+		cd_bar.max_value = unit.max_production_timer
 		cd_bar.value = unit.production_timer
 
 		# Flash animation
