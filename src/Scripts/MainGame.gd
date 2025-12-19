@@ -245,3 +245,17 @@ func try_add_to_bench_from_grid(unit) -> bool:
 func update_bench_ui():
 	if bench_ui:
 		bench_ui.update_bench_ui(bench)
+
+func skip_wave():
+	if not GameManager.is_wave_active:
+		return
+
+	# Clear all enemies
+	get_tree().call_group("enemies", "queue_free")
+
+	# Stop spawning
+	if combat_manager:
+		combat_manager.enemies_to_spawn = 0
+
+	# End wave
+	GameManager.end_wave()
