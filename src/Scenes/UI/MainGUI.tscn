@@ -5,6 +5,8 @@
 [ext_resource type="PackedScene" uid="uid://enemyprogressbar" path="res://src/Scenes/HUD/EnemyProgressBar.tscn" id="3_enemybar"]
 [ext_resource type="PackedScene" uid="uid://artifactspanel" path="res://src/Scenes/UI/ArtifactsPanel.tscn" id="4_artifacts"]
 [ext_resource type="PackedScene" uid="uid://cutinmanager" path="res://src/Scenes/UI/Effects/CutInManager.tscn" id="5_cutin"]
+[ext_resource type="PackedScene" uid="uid://inventorypanel" path="res://src/Scenes/UI/InventoryPanel.tscn" id="6_inv"]
+[ext_resource type="PackedScene" uid="uid://passiveskillbar" path="res://src/Scenes/UI/PassiveSkillBar.tscn" id="7_pass"]
 
 [node name="MainGUI" type="Control"]
 layout_mode = 3
@@ -110,6 +112,32 @@ mouse_filter = 2
 [node name="EnemyProgressBar" parent="LeftSidebar" instance=ExtResource("3_enemybar")]
 layout_mode = 2
 mouse_filter = 2
+
+[node name="RightSidebar" type="VBoxContainer" parent="."]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -220.0
+offset_top = -260.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+theme_override_constants/separation = 10
+alignment = 2
+
+[node name="InventoryPanel" parent="RightSidebar" instance=ExtResource("6_inv")]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PassiveSkillBar" parent="RightSidebar" instance=ExtResource("7_pass")]
+layout_mode = 2
+size_flags_vertical = 3
 
 [node name="Panel" type="Panel" parent="."]
 layout_mode = 0

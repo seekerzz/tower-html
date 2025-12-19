@@ -18,7 +18,7 @@ func _init():
 func add_item(item_data: Dictionary) -> bool:
 	# Try to stack first
 	for i in range(MAX_SLOTS):
-		if items[i] != null and items[i].item_id == item_data.item_id:
+		if items[i] != null and items[i].get("item_id") == item_data.get("item_id"):
 			items[i].count += item_data.get("count", 1)
 			inventory_updated.emit()
 			return true

@@ -204,7 +204,7 @@ func buy_unit(index, unit_key, card_ref):
 		if GameManager.inventory_manager:
 			if GameManager.gold >= proto.cost:
 				if !GameManager.inventory_manager.is_full():
-					if GameManager.inventory_manager.add_item({ "id": "meat", "count": 1 }):
+					if GameManager.inventory_manager.add_item({ "item_id": "meat", "count": 1 }):
 						GameManager.spend_gold(proto.cost)
 						# Meat doesn't deplete shop stock usually? Or does it?
 						# Assuming shop items are one-time purchase per refresh as per card logic:
