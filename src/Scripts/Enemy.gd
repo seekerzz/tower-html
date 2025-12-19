@@ -43,10 +43,17 @@ func _ready():
 	# We also need to monitor layer 2 (traps) for overlaps
 	collision_mask = 3 # Layer 1 (Walls) + Layer 2 (Traps)
 
-	# Fix for occlusion issue: Ensure all UI components ignore mouse
-	for child in get_children():
+	# Ensure Area2D does not pick up input (only physics collisions)
+	input_pickable = false
+
+	# Fix for occlusion issue: Ensure all UI components ignore mouse (recursively)
+	_set_ignore_mouse_recursive(self)
+
+func _set_ignore_mouse_recursive(node: Node):
+	for child in node.get_children():
 		if child is Control:
 			child.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_set_ignore_mouse_recursive(child)
 
 func setup(key: String, wave: int):
 	type_key = key
