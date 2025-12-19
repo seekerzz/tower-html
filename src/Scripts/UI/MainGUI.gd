@@ -9,8 +9,6 @@ signal sacrifice_requested
 @onready var food_label = $TopLeftPanel/FoodBar/Label
 @onready var mana_label = $TopLeftPanel/ManaBar/Label
 @onready var wave_label = $Panel/WaveLabel
-@onready var debug_button = $DebugButton
-@onready var skip_button = $SkipButton
 @onready var stats_container = $DamageStats/ScrollContainer/VBoxContainer
 @onready var damage_stats_panel = $DamageStats
 @onready var stats_scroll = $DamageStats/ScrollContainer
@@ -63,11 +61,6 @@ func _ready():
 	stats_toggle_btn.pressed.connect(_on_stats_toggle_pressed)
 
 	_setup_ui_styles()
-
-	if debug_button:
-		debug_button.pressed.connect(_on_debug_button_pressed)
-	if skip_button:
-		skip_button.pressed.connect(_on_skip_button_pressed)
 
 	if retry_button:
 		retry_button.pressed.connect(_on_retry_wave_pressed)
@@ -229,8 +222,6 @@ func _update_cutin_layout():
 func _input(event):
 	if event.is_action_pressed("ui_focus_next"):
 		pass
-	if event is InputEventKey and event.pressed and event.keycode == KEY_F1:
-		GameManager.activate_cheat()
 
 func update_ui():
 	_update_hud_visibility()
@@ -361,23 +352,6 @@ func _on_wave_ended_stats():
 	if is_stats_collapsed:
 		is_stats_collapsed = false
 		_animate_stats_panel()
-
-func _on_debug_button_pressed():
-	GameManager.activate_cheat()
-
-func _on_skip_button_pressed():
-	if not GameManager.is_wave_active:
-		return
-
-	# Clear all enemies
-	get_tree().call_group("enemies", "queue_free")
-
-	# Stop spawning
-	if GameManager.combat_manager:
-		GameManager.combat_manager.enemies_to_spawn = 0
-
-	# End wave
-	GameManager.end_wave()
 
 func _on_game_over():
 	if game_over_panel:
