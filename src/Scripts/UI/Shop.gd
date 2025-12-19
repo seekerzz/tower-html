@@ -198,6 +198,29 @@ func create_shop_card(index, unit_key):
 func buy_unit(index, unit_key, card_ref):
 	if GameManager.is_wave_active: return
 	var proto = Constants.UNIT_TYPES[unit_key]
+
+	if unit_key == "meat":
+		# Meat special logic: Add to Inventory instead of Bench
+		if GameManager.inventory_manager:
+			if GameManager.gold >= proto.cost:
+				if !GameManager.inventory_manager.is_full():
+					if GameManager.inventory_manager.add_item({ "id": "meat", "count": 1 }):
+						GameManager.spend_gold(proto.cost)
+						# Meat doesn't deplete shop stock usually? Or does it?
+						# Assuming shop items are one-time purchase per refresh as per card logic:
+						unit_bought.emit(unit_key)
+						card_ref.modulate = Color(0.5, 0.5, 0.5)
+						card_ref.mouse_filter = MOUSE_FILTER_IGNORE
+						print("Bought Meat")
+				else:
+					print("Inventory Full")
+			else:
+				print("Not enough gold")
+		else:
+			print("Inventory Manager missing")
+		return
+
+	# Standard Unit Logic
 	if GameManager.gold >= proto.cost:
 		if GameManager.main_game and GameManager.main_game.add_to_bench(unit_key):
 			GameManager.spend_gold(proto.cost)

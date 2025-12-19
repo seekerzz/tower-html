@@ -119,6 +119,9 @@ func setup(key: String):
 	if unit_data.has("produce"):
 		production_timer = 1.0
 
+	if type_key == "viper" or type_key == "scorpion":
+		production_timer = 5.0 # Set production interval (e.g., 5 seconds)
+
 	# Cow Healing logic setup - Removed implicit setup here, handled in _process or logic
 	if unit_data.has("skill") and unit_data.skill == "milk_aura":
 		production_timer = 5.0 # Keep this for PASSIVE healing if any, or just skill logic?
@@ -263,6 +266,9 @@ func set_highlight(active: bool, color: Color = Color.WHITE):
 func execute_skill_at(grid_pos: Vector2i):
 	if skill_cooldown > 0: return
 
+	# Viper and Scorpion no longer have active skills here.
+	if type_key == "viper" or type_key == "scorpion": return
+
 	if GameManager.consume_resource("mana", skill_mana_cost):
 		is_no_mana = false
 		skill_cooldown = unit_data.get("skillCd", 10.0)
@@ -289,10 +295,14 @@ func activate_skill():
 	if skill_cooldown > 0:
 		return
 
-	# Point Skill Handling
-	if unit_data.get("skillType") == "point":
+	# Point Skill Handling (Phoenix only now)
+	if unit_data.get("skillType") == "point" and type_key == "phoenix":
 		if GameManager.grid_manager:
 			GameManager.grid_manager.enter_skill_targeting(self)
+		return
+
+	# Viper and Scorpion are now passive producers, so they don't have active skill activation here
+	if type_key == "viper" or type_key == "scorpion":
 		return
 
 	# Check cost but proceed only if successful.
@@ -436,8 +446,31 @@ func _update_buff_icons():
 func _process(delta):
 	if !GameManager.is_wave_active: return
 
-	# Production Logic
-	if unit_data.has("produce"):
+	# Viper & Scorpion Production Logic (Priority over generic produce)
+	if type_key == "viper" or type_key == "scorpion":
+		production_timer -= delta
+		if production_timer <= 0:
+			var item_id = "poison_trap" if type_key == "viper" else "fang_trap"
+			# Construct item data. Assuming item structure.
+			# Using a simple dictionary for now as per instructions.
+			var item_data = { "id": item_id, "count": 1 }
+
+			if GameManager.inventory_manager:
+				# Check if added successfully
+				if GameManager.inventory_manager.add_item(item_data):
+					GameManager.spawn_floating_text(global_position, "Trap Produced!", Color.GREEN)
+					production_timer = 5.0 # Reset timer
+				else:
+					# Inventory full, keep timer at 0 to retry next frame or wait?
+					# Instructions say: "if fail (full), keep Timer as 0 waiting for slot"
+					production_timer = 0.0
+			else:
+				# Fallback if no inventory manager (e.g. testing without mock properly set up, or just logging)
+				print("Attempting to add %s to inventory (No InvManager)" % item_id)
+				production_timer = 5.0 # Reset to avoid spamming log if manager missing
+
+	# Production Logic (Resources)
+	elif unit_data.has("produce"):
 		production_timer -= delta
 		if production_timer <= 0:
 			var p_type = unit_data.produce
@@ -450,7 +483,6 @@ func _process(delta):
 			GameManager.spawn_floating_text(global_position, "+%d%s" % [p_amt, icon], color)
 
 			production_timer = 1.0
-
 	# Cow Passive Logic (Existing)
 	if unit_data.has("skill") and unit_data.skill == "milk_aura":
 		production_timer -= delta
