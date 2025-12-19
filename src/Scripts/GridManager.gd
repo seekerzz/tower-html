@@ -76,7 +76,7 @@ func _input(event):
 				get_viewport().set_input_as_handled()
 		return # Block other inputs
 
-func update_placement_preview(grid_pos: Vector2i, item_id: String):
+func update_placement_preview(grid_pos: Vector2i, world_pos: Vector2, item_id: String):
 	if not placement_preview_cursor:
 		placement_preview_cursor = Node2D.new()
 		placement_preview_cursor.name = "PlacementPreviewCursor"
@@ -88,7 +88,7 @@ func update_placement_preview(grid_pos: Vector2i, item_id: String):
 		placement_preview_cursor.add_child(visual)
 		add_child(placement_preview_cursor)
 
-	placement_preview_cursor.position = Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE)
+	placement_preview_cursor.global_position = world_pos
 	placement_preview_cursor.visible = true
 
 	var is_valid = can_place_item_at(grid_pos, item_id)

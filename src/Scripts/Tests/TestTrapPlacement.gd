@@ -71,7 +71,9 @@ func test_preview_update():
 	tile.unit = null
 
 	# Call update
-	grid_manager.update_placement_preview(pos, "poison_trap")
+	# Mock world position
+	var world_pos = Vector2(pos.x * 60, pos.y * 60)
+	grid_manager.update_placement_preview(pos, world_pos, "poison_trap")
 
 	var cursor = grid_manager.placement_preview_cursor
 	_assert(cursor != null, "Cursor should be created")
@@ -85,7 +87,7 @@ func test_preview_update():
 	# Make it invalid (Obstacle) and update
 	var obs = Node2D.new()
 	grid_manager.register_obstacle(pos, obs)
-	grid_manager.update_placement_preview(pos, "poison_trap")
+	grid_manager.update_placement_preview(pos, world_pos, "poison_trap")
 	_assert(visual.color == Color(1, 0, 0, 0.4), "Visual should be red (invalid)")
 	grid_manager.remove_obstacle(obs)
 	obs.free()
