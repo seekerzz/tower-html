@@ -64,7 +64,8 @@ func update_inventory(data: Array):
 			# Create Icon
 			var icon_rect = TextureRect.new()
 			# Assuming item has an 'id' property
-			var icon = AssetLoader.get_item_icon(item.id) if item.has("id") else null
+			var item_id = item.get("item_id")
+			var icon = AssetLoader.get_item_icon(item_id) if item_id else null
 			if icon:
 				icon_rect.texture = icon
 			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
