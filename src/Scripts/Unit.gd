@@ -271,19 +271,7 @@ func execute_skill_at(grid_pos: Vector2i):
 		GameManager.spawn_floating_text(global_position, skill_name.capitalize() + "!", Color.CYAN)
 		GameManager.skill_activated.emit(self)
 
-		if type_key == "phoenix":
-			var firestorm_scene = load("res://src/Scenes/Game/FireStorm.tscn")
-			if firestorm_scene:
-				var storm = firestorm_scene.instantiate()
-				storm.position = Vector2(grid_pos.x * Constants.TILE_SIZE, grid_pos.y * Constants.TILE_SIZE)
-				storm.init(damage * 0.5)
-				get_parent().add_child(storm)
-
-		elif type_key == "viper":
-			GameManager.grid_manager.spawn_trap_custom(grid_pos, "poison")
-
-		elif type_key == "scorpion":
-			GameManager.grid_manager.spawn_trap_custom(grid_pos, "fang")
+		GameManager.execute_skill_effect(type_key, grid_pos)
 
 	else:
 		is_no_mana = true
