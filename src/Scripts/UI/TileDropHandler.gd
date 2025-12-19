@@ -6,7 +6,8 @@ func setup(tile):
 	tile_ref = tile
 	# Size is 60x60
 	size = Vector2(60, 60)
-	position = Vector2(-30, -30) # Centered
+	set_anchors_preset(Control.PRESET_CENTER)
+	position = -size / 2
 	mouse_filter = MOUSE_FILTER_PASS
 
 func _can_drop_data(at_position, data):

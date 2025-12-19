@@ -108,6 +108,36 @@ func test_preview_update():
 	else:
 		print("  Green preview: PASS")
 
+	# Check Position Alignment
+	var key = "%d,%d" % [grid_pos.x, grid_pos.y]
+	var tile = grid_manager.tiles[key]
+	if tile.position != cursor.position:
+		print("FAIL: Position mismatch. Tile: " + str(tile.position) + " Cursor: " + str(cursor.position))
+	else:
+		print("  Position alignment: PASS (Both at " + str(tile.position) + ")")
+
+	# Check Visual Offset
+	# Visual should be centered (-30, -30) relative to cursor
+	if visual.position != Vector2(-30, -30):
+		print("FAIL: Visual offset mismatch. Expected (-30, -30). Got: " + str(visual.position))
+	else:
+		print("  Visual offset: PASS")
+
+	# Check DropHandler Position
+	var drop_handler = null
+	for child in tile.get_children():
+		if child is Control and child.get_script() and "TileDropHandler" in child.get_script().resource_path:
+			drop_handler = child
+			break
+
+	if drop_handler:
+		if drop_handler.position != Vector2(-30, -30):
+			print("FAIL: DropHandler position mismatch. Got: " + str(drop_handler.position))
+		else:
+			print("  DropHandler position: PASS")
+	else:
+		print("FAIL: DropHandler not found on tile")
+
 	# Test Red
 	var core_pos = Vector2i(0,0)
 	grid_manager.update_placement_preview(core_pos, "poison_trap")
