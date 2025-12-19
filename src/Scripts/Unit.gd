@@ -20,6 +20,7 @@ var skill_mana_cost: float = 30.0
 var max_hp: float = 0.0
 
 var production_timer: float = 0.0
+var max_production_timer: float = 1.0
 
 # Visual Holder for animations and structure
 var visual_holder: Node2D = null
@@ -118,13 +119,16 @@ func setup(key: String):
 	# --- Merged Logic Start ---
 	if unit_data.has("produce"):
 		production_timer = 1.0
+		max_production_timer = 1.0
 
 	if type_key == "viper" or type_key == "scorpion":
 		production_timer = 5.0 # Set production interval (e.g., 5 seconds)
+		max_production_timer = 5.0
 
 	# Cow Healing logic setup - Removed implicit setup here, handled in _process or logic
 	if unit_data.has("skill") and unit_data.skill == "milk_aura":
 		production_timer = 5.0 # Keep this for PASSIVE healing if any, or just skill logic?
+		max_production_timer = 5.0
 		# Original Unit.gd had a passive milk_aura logic: "Cow Milk Aura Logic" block in _process
 		# The new requirements say: "If Cow and skill active: ... extra call GameManager.damage_core(-200 * delta)"
 		# It seems the passive "milk_aura" (every 5s heal 50) is still there unless I remove it?
