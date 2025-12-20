@@ -56,6 +56,8 @@ var original_atk_speed: float = 0.0
 var _is_skill_highlight_active: bool = false
 var _highlight_color: Color = Color.WHITE
 
+var connection_overlay: Node2D = null
+
 const MAX_LEVEL = 3
 const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 
@@ -63,6 +65,13 @@ signal unit_clicked(unit)
 
 func _ready():
 	_ensure_visual_hierarchy()
+
+	connection_overlay = Node2D.new()
+	connection_overlay.name = "ConnectionOverlay"
+	connection_overlay.z_index = 100
+	connection_overlay.draw.connect(_on_connection_overlay_draw)
+	add_child(connection_overlay)
+
 	# If unit_data is already populated (e.g. from scene or prior setup), update visuals
 	if !unit_data.is_empty():
 		update_visuals()
@@ -270,6 +279,8 @@ func set_highlight(active: bool, color: Color = Color.WHITE):
 			queue_redraw()
 	else:
 		queue_redraw()
+
+	if connection_overlay: connection_overlay.queue_redraw()
 
 func execute_skill_at(grid_pos: Vector2i):
 	if skill_cooldown > 0: return
@@ -611,6 +622,7 @@ func _on_area_2d_input_event(viewport, event, shape_idx):
 func _on_area_2d_mouse_entered():
 	is_hovered = true
 	queue_redraw()
+	if connection_overlay: connection_overlay.queue_redraw()
 	var current_stats = {
 		"level": level,
 		"damage": damage,
@@ -624,6 +636,7 @@ func _on_area_2d_mouse_entered():
 func _on_area_2d_mouse_exited():
 	is_hovered = false
 	queue_redraw()
+	if connection_overlay: connection_overlay.queue_redraw()
 	GameManager.hide_tooltip.emit()
 
 func _draw():
@@ -638,34 +651,6 @@ func _draw():
 		draw_circle(Vector2.ZERO, draw_radius, Color(1, 1, 1, 0.1))
 		draw_arc(Vector2.ZERO, draw_radius, 0, TAU, 64, Color(1, 1, 1, 0.3), 1.0)
 
-		# --- Receiver View (Trace Back) ---
-		for buff_type in buff_sources:
-			var source = buff_sources[buff_type]
-			if is_instance_valid(source):
-				var start_pos = Vector2.ZERO
-				var end_pos = to_local(source.global_position)
-				_draw_curve_connection(start_pos, end_pos, Color.BLACK)
-
-		# --- Provider View (Trace Forward) ---
-		if unit_data.has("buffProvider") or (unit_data.has("has_interaction") and unit_data.has_interaction):
-			if GameManager.grid_manager:
-				var neighbors = _get_neighbor_units()
-				for neighbor in neighbors:
-					if neighbor == self: continue
-					# Check if neighbor has a buff from me.
-					# Since neighbor.buff_sources stores 'source_unit', we can check that.
-					var is_buffed_by_me = false
-					for b_type in neighbor.buff_sources:
-						if neighbor.buff_sources[b_type] == self:
-							is_buffed_by_me = true
-							break
-
-					if is_buffed_by_me:
-						var start_pos = Vector2.ZERO
-						var end_pos = to_local(neighbor.global_position)
-						_draw_curve_connection(start_pos, end_pos, Color.WHITE)
-
-
 	if _is_skill_highlight_active:
 		# Draw a thick outline
 		var size = Vector2(Constants.TILE_SIZE, Constants.TILE_SIZE)
@@ -675,6 +660,34 @@ func _draw():
 		# Assuming pivot is center
 		var rect = Rect2(-size / 2, size)
 		draw_rect(rect, _highlight_color, false, 4.0)
+
+func _on_connection_overlay_draw():
+	if is_hovered:
+		# --- Receiver View (Trace Back) ---
+		for buff_type in buff_sources:
+			var source = buff_sources[buff_type]
+			if is_instance_valid(source):
+				var start_pos = Vector2.ZERO
+				var end_pos = connection_overlay.to_local(source.global_position)
+				_draw_curve_connection(start_pos, end_pos, Color.BLACK)
+
+		# --- Provider View (Trace Forward) ---
+		if unit_data.has("buffProvider") or (unit_data.has("has_interaction") and unit_data.has_interaction):
+			if GameManager.grid_manager:
+				var neighbors = _get_neighbor_units()
+				for neighbor in neighbors:
+					if neighbor == self: continue
+					# Check if neighbor has a buff from me.
+					var is_buffed_by_me = false
+					for b_type in neighbor.buff_sources:
+						if neighbor.buff_sources[b_type] == self:
+							is_buffed_by_me = true
+							break
+
+					if is_buffed_by_me:
+						var start_pos = Vector2.ZERO
+						var end_pos = connection_overlay.to_local(neighbor.global_position)
+						_draw_curve_connection(start_pos, end_pos, Color.WHITE)
 
 func _get_neighbor_units() -> Array:
 	var list = []
@@ -722,7 +735,7 @@ func _draw_curve_connection(start: Vector2, end: Vector2, color: Color):
 		var p = q0.lerp(q1, t)
 		points.append(p)
 
-	draw_polyline(points, color, 2.0, true)
+	connection_overlay.draw_polyline(points, color, 2.0, true)
 
 func _input(event):
 	if is_dragging:
