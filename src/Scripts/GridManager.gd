@@ -27,12 +27,20 @@ var interaction_source_unit = null
 var valid_interaction_targets: Array = [] # Array[Vector2i]
 var interaction_highlights: Array = [] # Array[Node2D] (Visuals)
 
+var selection_overlay: Node2D = null
 var astar_grid: AStarGrid2D
 
 signal grid_updated
 
 func _ready():
 	GameManager.grid_manager = self
+
+	selection_overlay = Node2D.new()
+	selection_overlay.name = "SelectionOverlay"
+	selection_overlay.z_index = 100
+	selection_overlay.draw.connect(_on_selection_overlay_draw)
+	add_child(selection_overlay)
+
 	TILE_SCENE = load("res://src/Scenes/Game/Tile.tscn")
 	if ResourceLoader.exists("res://src/Scenes/Game/Barricade.tscn"):
 		BARRICADE_SCENE = load("res://src/Scenes/Game/Barricade.tscn")
@@ -50,7 +58,7 @@ func _process(_delta):
 			placement_preview_cursor.visible = false
 
 	if interaction_state == STATE_SELECTING_INTERACTION_TARGET:
-		queue_redraw()
+		selection_overlay.queue_redraw()
 
 func _input(event):
 	if interaction_state == STATE_SELECTING_INTERACTION_TARGET:
@@ -549,7 +557,7 @@ func end_interaction_selection():
 	for node in interaction_highlights:
 		node.queue_free()
 	interaction_highlights.clear()
-	queue_redraw()
+	selection_overlay.queue_redraw()
 
 func _spawn_interaction_highlight(grid_pos: Vector2i, color: Color = Color(1, 0.84, 0, 0.4)):
 	var highlight = ColorRect.new()
@@ -562,47 +570,59 @@ func _spawn_interaction_highlight(grid_pos: Vector2i, color: Color = Color(1, 0.
 	highlight.position = Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE) - Vector2(TILE_SIZE, TILE_SIZE) / 2
 	interaction_highlights.append(highlight)
 
-func _draw():
+func _on_selection_overlay_draw():
 	if interaction_state == STATE_SELECTING_INTERACTION_TARGET and interaction_source_unit and is_instance_valid(interaction_source_unit):
 		var start_pos = interaction_source_unit.global_position
 		var end_pos = get_global_mouse_position()
 
-		# Convert to local coordinates relative to GridManager
-		start_pos = to_local(start_pos)
-		end_pos = to_local(end_pos)
+		# Convert to local coordinates relative to Overlay (which is same as GridManager global effectively if no offset, but Node2D children follow parent transform)
+		start_pos = selection_overlay.to_local(start_pos)
+		end_pos = selection_overlay.to_local(end_pos)
 
 		var control_point = (start_pos + end_pos) / 2
 		control_point.y -= 50
 
-		var curve = Curve2D.new()
-		curve.add_point(start_pos)
-		curve.add_point(end_pos, control_point - start_pos) # In Curve2D, control points are relative? No, add_point uses (pos, in, out).
-		# Wait, Curve2D usage for drawing:
-		# Actually, draw_polyline is easier if we manually sample.
-		# Or use Curve2D.sample_baked.
-
-		# Let's use manual quadratic bezier calculation for simplicity in _draw
-		var points = PackedVector2Array()
 		var segments = 20
+		var curve_points = PackedVector2Array()
 		for i in range(segments + 1):
 			var t = float(i) / segments
 			var q0 = start_pos.lerp(control_point, t)
 			var q1 = control_point.lerp(end_pos, t)
 			var p = q0.lerp(q1, t)
-			points.append(p)
+			curve_points.append(p)
 
-		draw_polyline(points, Color.WHITE, 2.0, true)
+		# Arrow Calculation
+		var arrow_len = 15.0
+		var direction = Vector2.RIGHT
+		if curve_points.size() >= 2:
+			direction = (curve_points[-1] - curve_points[-2]).normalized()
+		else:
+			direction = (end_pos - control_point).normalized()
 
-		# Draw Arrow at end
-		var arrow_len = 10.0
-		var direction = (end_pos - control_point).normalized()
-		if points.size() >= 2:
-			direction = (points[-1] - points[-2]).normalized()
+		# Trim the line so it doesn't overlap the arrow tip area too much
+		var trimmed_points = PackedVector2Array()
+		var arrow_base_center = end_pos - direction * (arrow_len * 0.5)
+		# Or just draw line to end_pos and draw arrow on top.
+		# If user says arrow is "behind", maybe they mean the line goes OVER the arrow?
+		# Drawing order: Line first, then Arrow. The Arrow should cover the line.
+		# Let's ensure Arrow is big enough and centered at end_pos.
 
-		var arrow_p1 = end_pos - direction * arrow_len + direction.orthogonal() * (arrow_len * 0.5)
-		var arrow_p2 = end_pos - direction * arrow_len - direction.orthogonal() * (arrow_len * 0.5)
+		# Arrow Vertices: Tip at end_pos
+		var arrow_tip = end_pos
+		var arrow_back = end_pos - direction * arrow_len
+		var arrow_side1 = arrow_back + direction.orthogonal() * (arrow_len * 0.5)
+		var arrow_side2 = arrow_back - direction.orthogonal() * (arrow_len * 0.5)
 
-		draw_colored_polygon(PackedVector2Array([end_pos, arrow_p1, arrow_p2]), Color.WHITE)
+		# Draw Line
+		# To avoid glitch, we can trim the line to arrow_back
+		var line_end_idx = segments
+		# Simple distance check to find where to cut?
+		# Just modifying the last point to be arrow_back might be enough if segments are small.
+		if curve_points.size() > 1:
+			curve_points[-1] = arrow_back
+
+		selection_overlay.draw_polyline(curve_points, Color.WHITE, 3.0, true)
+		selection_overlay.draw_colored_polygon(PackedVector2Array([arrow_tip, arrow_side1, arrow_side2]), Color.WHITE)
 
 func can_place_unit(x: int, y: int, w: int, h: int, exclude_unit = null) -> bool:
 	for dx in range(w):
