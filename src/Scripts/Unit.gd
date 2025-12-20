@@ -456,18 +456,19 @@ func _update_buff_icons():
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
-		var icon = "?"
-		match buff:
-			"fire": icon = "🔥"
-			"poison": icon = "🧪"
-			"range": icon = "🔭"
-			"speed": icon = "⚡"
-			"crit": icon = "💥"
-			"bounce": icon = "🪞"
-			"split": icon = "💠"
-
-		lbl.text = icon
+		lbl.text = _get_buff_icon(buff)
 		buff_container.add_child(lbl)
+
+func _get_buff_icon(buff_type: String) -> String:
+	match buff_type:
+		"fire": return "🔥"
+		"poison": return "🧪"
+		"range": return "🔭"
+		"speed": return "⚡"
+		"crit": return "💥"
+		"bounce": return "🪞"
+		"split": return "💠"
+	return "?"
 
 func _process(delta):
 	if !GameManager.is_wave_active: return
@@ -670,7 +671,7 @@ func _on_connection_overlay_draw():
 				var self_pos = Vector2.ZERO
 				var source_pos = connection_overlay.to_local(source.global_position)
 				# Draw from Source to Self so arrow points to Self (Receiver)
-				_draw_curve_connection(source_pos, self_pos, Color.BLACK)
+				_draw_curve_connection(source_pos, self_pos, Color.BLACK, buff_type)
 
 		# --- Provider View (Trace Forward) ---
 		if unit_data.has("buffProvider") or (unit_data.has("has_interaction") and unit_data.has_interaction):
@@ -679,16 +680,16 @@ func _on_connection_overlay_draw():
 				for neighbor in neighbors:
 					if neighbor == self: continue
 					# Check if neighbor has a buff from me.
-					var is_buffed_by_me = false
+					var provided_buff = ""
 					for b_type in neighbor.buff_sources:
 						if neighbor.buff_sources[b_type] == self:
-							is_buffed_by_me = true
+							provided_buff = b_type
 							break
 
-					if is_buffed_by_me:
+					if provided_buff != "":
 						var start_pos = Vector2.ZERO
 						var end_pos = connection_overlay.to_local(neighbor.global_position)
-						_draw_curve_connection(start_pos, end_pos, Color.WHITE)
+						_draw_curve_connection(start_pos, end_pos, Color.WHITE, provided_buff)
 
 func _get_neighbor_units() -> Array:
 	var list = []
@@ -723,7 +724,7 @@ func _get_neighbor_units() -> Array:
 				list.append(u)
 	return list
 
-func _draw_curve_connection(start: Vector2, end: Vector2, color: Color):
+func _draw_curve_connection(start: Vector2, end: Vector2, color: Color, buff_type: String = ""):
 	var control_point = (start + end) / 2
 	control_point.y -= 20 # Small arc
 
@@ -755,6 +756,27 @@ func _draw_curve_connection(start: Vector2, end: Vector2, color: Color):
 
 	connection_overlay.draw_polyline(points, color, 2.0, true)
 	connection_overlay.draw_colored_polygon(PackedVector2Array([arrow_tip, arrow_side1, arrow_side2]), color)
+
+	if buff_type != "":
+		# Draw Buff Icon at midpoint
+		var mid_t = 0.5
+		var q0 = start.lerp(control_point, mid_t)
+		var q1 = control_point.lerp(end, mid_t)
+		var mid_pos = q0.lerp(q1, mid_t)
+
+		var icon_text = _get_buff_icon(buff_type)
+
+		# Draw background circle
+		connection_overlay.draw_circle(mid_pos, 10, Color(0, 0, 0, 0.7))
+
+		# Draw text
+		# Note: draw_string uses position as baseline-ish. Need to center.
+		# A default font is usually available via ThemeDB
+		var font = ThemeDB.fallback_font
+		var font_size = 14
+		if font:
+			var text_size = font.get_string_size(icon_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+			connection_overlay.draw_string(font, mid_pos + Vector2(-text_size.x/2, text_size.y/3), icon_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 
 func _input(event):
 	if is_dragging:
