@@ -758,16 +758,16 @@ func _draw_curve_connection(start: Vector2, end: Vector2, color: Color, buff_typ
 	connection_overlay.draw_colored_polygon(PackedVector2Array([arrow_tip, arrow_side1, arrow_side2]), color)
 
 	if buff_type != "":
-		# Draw Buff Icon at midpoint
-		var mid_t = 0.5
-		var q0 = start.lerp(control_point, mid_t)
-		var q1 = control_point.lerp(end, mid_t)
-		var mid_pos = q0.lerp(q1, mid_t)
+		# Draw Buff Icon at source (near start of curve)
+		var icon_t = 0.15
+		var q0 = start.lerp(control_point, icon_t)
+		var q1 = control_point.lerp(end, icon_t)
+		var icon_pos = q0.lerp(q1, icon_t)
 
 		var icon_text = _get_buff_icon(buff_type)
 
 		# Draw background circle
-		connection_overlay.draw_circle(mid_pos, 10, Color(0, 0, 0, 0.7))
+		connection_overlay.draw_circle(icon_pos, 10, Color(0, 0, 0, 0.7))
 
 		# Draw text
 		# Note: draw_string uses position as baseline-ish. Need to center.
@@ -776,7 +776,7 @@ func _draw_curve_connection(start: Vector2, end: Vector2, color: Color, buff_typ
 		var font_size = 14
 		if font:
 			var text_size = font.get_string_size(icon_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-			connection_overlay.draw_string(font, mid_pos + Vector2(-text_size.x/2, text_size.y/3), icon_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+			connection_overlay.draw_string(font, icon_pos + Vector2(-text_size.x/2, text_size.y/3), icon_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 
 func _input(event):
 	if is_dragging:
