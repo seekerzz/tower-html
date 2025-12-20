@@ -6,6 +6,7 @@ var stats_multiplier: float = 1.0
 var cooldown: float = 0.0
 var skill_cooldown: float = 0.0
 var active_buffs: Array = []
+var buff_sources: Dictionary = {} # { "buff_type": source_unit_instance }
 var traits: Array = []
 var unit_data: Dictionary
 
@@ -213,6 +214,7 @@ func reset_stats():
 	bounce_count = 0
 	split_count = 0
 	active_buffs.clear()
+	buff_sources.clear()
 
 	# Artifact Effects
 	if GameManager.reward_manager and "focus_fire" in GameManager.reward_manager.acquired_artifacts:
@@ -234,9 +236,18 @@ func calculate_damage_against(target_node: Node2D) -> float:
 
 	return final_damage
 
-func apply_buff(buff_type: String):
-	if buff_type in active_buffs: return
+func apply_buff(buff_type: String, source_unit: Node2D = null):
+	if buff_type in active_buffs:
+		# If buff exists, we might still want to update source if it changed (though usually buff types are unique per unit type)
+		# For now, if we receive the same buff type, we assume it's refreshed or from same source logic.
+		# Let's update source anyway.
+		if source_unit:
+			buff_sources[buff_type] = source_unit
+		return
+
 	active_buffs.append(buff_type)
+	if source_unit:
+		buff_sources[buff_type] = source_unit
 
 	match buff_type:
 		"range":
@@ -634,6 +645,25 @@ func _draw():
 		draw_circle(Vector2.ZERO, draw_radius, Color(1, 1, 1, 0.1))
 		draw_arc(Vector2.ZERO, draw_radius, 0, TAU, 64, Color(1, 1, 1, 0.3), 1.0)
 
+		# 1. Trace Back (Receiver View): Draw curve to source unit
+		for buff_type in buff_sources:
+			var source = buff_sources[buff_type]
+			if is_instance_valid(source):
+				var start_pos = Vector2.ZERO
+				var end_pos = to_local(source.global_position)
+				var mid_pos = (start_pos + end_pos) / 2
+				mid_pos.y -= 30 # Curve
+
+				var points = _get_quadratic_bezier_points(start_pos, mid_pos, end_pos)
+				draw_polyline(points, Color.BLACK, 2.0, true)
+
+		# 2. Trace Forward (Provider View): Draw curve to receivers
+		# To do this, we need to find who we are buffing.
+		# Option A: GridManager has the logic. We could ask GridManager or replicate logic.
+		# Replicating simple neighbor check is likely easiest and performant enough for _draw.
+		if unit_data.has("buffProvider") or (unit_data.has("has_interaction") and interaction_target_pos != null):
+			_draw_provider_lines()
+
 	if _is_skill_highlight_active:
 		# Draw a thick outline
 		var size = Vector2(Constants.TILE_SIZE, Constants.TILE_SIZE)
@@ -643,6 +673,87 @@ func _draw():
 		# Assuming pivot is center
 		var rect = Rect2(-size / 2, size)
 		draw_rect(rect, _highlight_color, false, 4.0)
+
+func _get_quadratic_bezier_points(p0: Vector2, p1: Vector2, p2: Vector2, segments: int = 20) -> PackedVector2Array:
+	var points = PackedVector2Array()
+	for i in range(segments + 1):
+		var t = float(i) / segments
+		var p = (1 - t) * (1 - t) * p0 + 2 * (1 - t) * t * p1 + t * t * p2
+		points.append(p)
+	return points
+
+func _draw_provider_lines():
+	var targets = []
+
+	# Check Neighbors for passive buff
+	if unit_data.has("buffProvider"):
+		# Get neighbors via GridManager if possible, or calculate locally.
+		# Since we don't store neighbors, and GridManager logic is slightly complex (occupied_by),
+		# we should check active units around us.
+		# Accessing GridManager from Unit.
+		if GameManager.grid_manager:
+			var cx = grid_pos.x
+			var cy = grid_pos.y
+			var w = unit_data.size.x
+			var h = unit_data.size.y
+
+			var neighbor_coords = []
+			for dx in range(w):
+				neighbor_coords.append(Vector2i(cx + dx, cy - 1))
+				neighbor_coords.append(Vector2i(cx + dx, cy + h))
+			for dy in range(h):
+				neighbor_coords.append(Vector2i(cx - 1, cy + dy))
+				neighbor_coords.append(Vector2i(cx + w, cy + dy))
+
+			for nc in neighbor_coords:
+				var key = "%d,%d" % [nc.x, nc.y]
+				if GameManager.grid_manager.tiles.has(key):
+					var tile = GameManager.grid_manager.tiles[key]
+					var target = tile.unit
+					if target == null and tile.occupied_by != Vector2i.ZERO:
+						var origin_key = "%d,%d" % [tile.occupied_by.x, tile.occupied_by.y]
+						if GameManager.grid_manager.tiles.has(origin_key):
+							target = GameManager.grid_manager.tiles[origin_key].unit
+
+					if target and target != self and not (target in targets):
+						targets.append(target)
+
+	# Check Interaction Target
+	if unit_data.has("has_interaction") and interaction_target_pos != null:
+		if GameManager.grid_manager:
+			var key = "%d,%d" % [interaction_target_pos.x, interaction_target_pos.y]
+			if GameManager.grid_manager.tiles.has(key):
+				var tile = GameManager.grid_manager.tiles[key]
+				var target = tile.unit
+				if target == null and tile.occupied_by != Vector2i.ZERO:
+						var origin_key = "%d,%d" % [tile.occupied_by.x, tile.occupied_by.y]
+						if GameManager.grid_manager.tiles.has(origin_key):
+							target = GameManager.grid_manager.tiles[origin_key].unit
+
+				if target and not (target in targets):
+					targets.append(target)
+
+	for target in targets:
+		if is_instance_valid(target):
+			var start_pos = Vector2.ZERO
+			var end_pos = to_local(target.global_position)
+			var mid_pos = (start_pos + end_pos) / 2
+			mid_pos.y -= 30 # Curve
+
+			var points = _get_quadratic_bezier_points(start_pos, mid_pos, end_pos)
+			draw_polyline(points, Color.WHITE, 2.0, true)
+
+			# Arrow for provider
+			var arrow_size = 10.0
+			var p2 = end_pos
+			var direction = Vector2.RIGHT
+			if points.size() >= 2:
+				direction = (points[-1] - points[-2]).normalized()
+
+			var arrow_p1 = p2 - direction * arrow_size + direction.orthogonal() * (arrow_size * 0.5)
+			var arrow_p2 = p2 - direction * arrow_size - direction.orthogonal() * (arrow_size * 0.5)
+
+			draw_colored_polygon([p2, arrow_p1, arrow_p2], Color.WHITE)
 
 func _input(event):
 	if is_dragging:

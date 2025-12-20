@@ -40,7 +40,49 @@ func _ready():
 	create_initial_grid()
 	# _generate_random_obstacles()
 
+func _draw():
+	if interaction_state == STATE_SELECTING_INTERACTION_TARGET and interaction_source_unit and is_instance_valid(interaction_source_unit):
+		var start_pos = interaction_source_unit.global_position
+		var end_pos = get_global_mouse_position()
+
+		# Convert to local coords since drawing is local to Node2D
+		start_pos = to_local(start_pos)
+		end_pos = to_local(end_pos)
+
+		var mid_pos = (start_pos + end_pos) / 2
+		mid_pos.y -= 50 # Curve control point offset
+
+		# Draw Curve
+		var points = PackedVector2Array()
+		var segments = 20
+
+		# Quadratic Bezier: P = (1-t)^2 * P0 + 2(1-t)t * P1 + t^2 * P2
+		var p0 = start_pos
+		var p1 = mid_pos
+		var p2 = end_pos
+
+		for i in range(segments + 1):
+			var t = float(i) / segments
+			var p = (1 - t) * (1 - t) * p0 + 2 * (1 - t) * t * p1 + t * t * p2
+			points.append(p)
+
+		draw_polyline(points, Color.WHITE, 2.0, true)
+
+		# Draw Arrow at end
+		var arrow_size = 10.0
+		var direction = (p2 - p1).normalized() # Direction at end
+		if points.size() >= 2:
+			direction = (points[-1] - points[-2]).normalized()
+
+		var arrow_p1 = p2 - direction * arrow_size + direction.orthogonal() * (arrow_size * 0.5)
+		var arrow_p2 = p2 - direction * arrow_size - direction.orthogonal() * (arrow_size * 0.5)
+
+		draw_colored_polygon([p2, arrow_p1, arrow_p2], Color.WHITE)
+
 func _process(_delta):
+	if interaction_state == STATE_SELECTING_INTERACTION_TARGET:
+		queue_redraw()
+
 	if placement_preview_cursor and placement_preview_cursor.visible:
 		var dist = get_global_mouse_position().distance_to(placement_preview_cursor.global_position)
 		var frame_diff = Engine.get_process_frames() - last_preview_frame
@@ -519,9 +561,12 @@ func start_interaction_selection(unit):
 		neighbors.append(Vector2i(cx + w, cy + dy))
 
 	for pos in neighbors:
-		if is_valid_interaction_target(unit, pos):
+		var is_valid = is_valid_interaction_target(unit, pos)
+		if is_valid:
 			valid_interaction_targets.append(pos)
-			_spawn_interaction_highlight(pos)
+			_spawn_interaction_highlight(pos, Color.GREEN)
+		else:
+			_spawn_interaction_highlight(pos, Color.RED)
 
 	# Pause game or just block input?
 	# "Place -> Pause -> Select Neighbor -> Effect"
@@ -547,19 +592,13 @@ func end_interaction_selection():
 	for node in interaction_highlights:
 		node.queue_free()
 	interaction_highlights.clear()
+	queue_redraw()
 
-func _spawn_interaction_highlight(grid_pos: Vector2i):
+func _spawn_interaction_highlight(grid_pos: Vector2i, color: Color = Color(1, 0.84, 0, 0.4)):
 	var highlight = ColorRect.new()
 	highlight.size = Vector2(TILE_SIZE, TILE_SIZE)
-	highlight.color = Color(1, 0.84, 0, 0.4) # Gold/Yellow
-
-	# Get buff color if possible
-	if interaction_source_unit:
-		var info = interaction_source_unit.get_interaction_info()
-		if info.buff_id == "poison":
-			highlight.color = Color(0, 1, 0, 0.4)
-		elif info.buff_id == "burn":
-			highlight.color = Color(1, 0.5, 0, 0.4)
+	highlight.color = color
+	highlight.color.a = 0.4
 
 	highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(highlight)
@@ -793,14 +832,14 @@ func recalculate_buffs():
 		var info = unit.get_interaction_info()
 		if info.has_interaction and unit.interaction_target_pos != null:
 			if is_neighbor(unit, unit.interaction_target_pos):
-				_apply_buff_to_specific_pos(unit.interaction_target_pos, info.buff_id)
+				_apply_buff_to_specific_pos(unit.interaction_target_pos, info.buff_id, unit)
 
 	for unit in processed_units:
 		unit.update_visuals()
 
 	grid_updated.emit()
 
-func _apply_buff_to_specific_pos(target_pos: Vector2i, buff_id: String):
+func _apply_buff_to_specific_pos(target_pos: Vector2i, buff_id: String, provider_unit: Node2D = null):
 	var key = get_tile_key(target_pos.x, target_pos.y)
 	if tiles.has(key):
 		var tile = tiles[key]
@@ -812,7 +851,7 @@ func _apply_buff_to_specific_pos(target_pos: Vector2i, buff_id: String):
 				target_unit = tiles[origin_key].unit
 
 		if target_unit:
-			target_unit.apply_buff(buff_id)
+			target_unit.apply_buff(buff_id, provider_unit)
 
 func _apply_buff_to_neighbors(provider_unit, buff_type):
 	var cx = provider_unit.grid_pos.x
@@ -839,7 +878,7 @@ func _apply_buff_to_neighbors(provider_unit, buff_type):
 				if tiles.has(origin_key):
 					target_unit = tiles[origin_key].unit
 			if target_unit and target_unit != provider_unit:
-				target_unit.apply_buff(buff_type)
+				target_unit.apply_buff(buff_type, provider_unit)
 
 func toggle_expansion_mode():
 	expansion_mode = !expansion_mode
