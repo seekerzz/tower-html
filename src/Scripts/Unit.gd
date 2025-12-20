@@ -667,9 +667,10 @@ func _on_connection_overlay_draw():
 		for buff_type in buff_sources:
 			var source = buff_sources[buff_type]
 			if is_instance_valid(source):
-				var start_pos = Vector2.ZERO
-				var end_pos = connection_overlay.to_local(source.global_position)
-				_draw_curve_connection(start_pos, end_pos, Color.BLACK)
+				var self_pos = Vector2.ZERO
+				var source_pos = connection_overlay.to_local(source.global_position)
+				# Draw from Source to Self so arrow points to Self (Receiver)
+				_draw_curve_connection(source_pos, self_pos, Color.BLACK)
 
 		# --- Provider View (Trace Forward) ---
 		if unit_data.has("buffProvider") or (unit_data.has("has_interaction") and unit_data.has_interaction):
