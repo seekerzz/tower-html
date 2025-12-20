@@ -236,6 +236,15 @@ func process_unit_combat(unit, tile, delta):
 			if unit.unit_data.get("trait") == "poison_touch":
 				melee_effects["poison"] = 5.0
 
+			# Check active buffs or implicit traits for Burn (e.g. from Fire Spirit or similar)
+			if "active_buffs" in unit:
+				for buff in unit.active_buffs:
+					if buff == "fire": melee_effects["burn"] = 3.0
+					if buff == "poison": melee_effects["poison"] = 5.0
+
+			if unit.unit_data.get("buffProvider") == "fire":
+				melee_effects["burn"] = 3.0
+
 			for enemy in get_tree().get_nodes_in_group("enemies"):
 				if !is_instance_valid(enemy): continue
 
@@ -252,6 +261,9 @@ func process_unit_combat(unit, tile, delta):
 						# Apply Melee Effects
 						if melee_effects.has("poison"):
 							enemy.effects["poison"] = max(enemy.effects.get("poison", 0), melee_effects["poison"])
+						if melee_effects.has("burn"):
+							enemy.effects["burn"] = max(enemy.effects.get("burn", 0), melee_effects["burn"])
+							enemy.burn_source = unit
 
 			var slash = SLASH_EFFECT_SCRIPT.new()
 			add_child(slash)

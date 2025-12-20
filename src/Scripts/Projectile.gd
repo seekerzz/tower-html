@@ -206,6 +206,7 @@ func _on_area_2d_area_entered(area):
 		# Apply Status Effects
 		if effects.get("burn", 0.0) > 0.0:
 			area.effects["burn"] = max(area.effects["burn"], effects["burn"])
+			area.burn_source = source_unit
 		if effects.get("poison", 0.0) > 0.0:
 			area.effects["poison"] = max(area.effects["poison"], effects["poison"])
 		if effects.get("slow", 0.0) > 0.0:

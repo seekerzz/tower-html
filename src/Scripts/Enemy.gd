@@ -9,6 +9,7 @@ var slow_timer: float = 0.0
 var freeze_timer: float = 0.0
 var stun_timer: float = 0.0
 var effects = { "burn": 0.0, "poison": 0.0 }
+var burn_source: Node2D = null
 var heat_accumulation: float = 0.0
 
 var hit_flash_timer: float = 0.0
@@ -178,11 +179,8 @@ func _process(delta):
 
 	# Handle Effects
 	if effects.burn > 0:
-		hp -= 2.0 * delta
 		effects.burn -= delta
-
 		if effects.burn <= 0: effects.burn = 0
-		if hp <= 0: die()
 
 	if effects.poison > 0:
 		hp -= (max_hp * 0.05) * delta
@@ -633,6 +631,10 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 		die()
 
 func die():
+	if effects.get("burn", 0) > 0:
+		effects["burn"] = 0.0 # Consume burn to prevent infinite recursion
+		_trigger_burn_explosion()
+
 	GameManager.add_gold(1)
 
 	# Artifact: Scrap Recycling
@@ -648,3 +650,31 @@ func die():
 	GameManager.food += 2
 
 	queue_free()
+func _trigger_burn_explosion():
+	# Visual
+	GameManager.spawn_floating_text(global_position, "BOOM!", Color.ORANGE)
+	# Reuse SlashEffect for now
+	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
+	get_parent().add_child(effect)
+	effect.global_position = global_position
+	effect.configure("cross", Color.ORANGE)
+	effect.scale = Vector2(3, 3)
+	effect.play()
+
+	# Damage Calculation
+	var damage = 50.0
+	if burn_source and is_instance_valid(burn_source):
+		damage = burn_source.damage * 3.0
+
+	# AOE
+	var radius = 120.0
+	var enemies = get_tree().get_nodes_in_group("enemies")
+	for enemy in enemies:
+		if enemy == self: continue
+		if !is_instance_valid(enemy): continue
+
+		var dist = global_position.distance_to(enemy.global_position)
+		if dist <= radius:
+			enemy.take_damage(damage, burn_source, "fire")
+			enemy.effects["burn"] = 5.0
+			enemy.burn_source = burn_source
