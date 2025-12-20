@@ -49,6 +49,9 @@ func _process(_delta):
 			print("[Debug] Hiding preview cursor. Dist: ", dist, " Frames: ", frame_diff)
 			placement_preview_cursor.visible = false
 
+	if interaction_state == STATE_SELECTING_INTERACTION_TARGET:
+		queue_redraw()
+
 func _input(event):
 	if interaction_state == STATE_SELECTING_INTERACTION_TARGET:
 		if event is InputEventMouseButton and event.pressed:
@@ -500,9 +503,6 @@ func start_interaction_selection(unit):
 	# Calculate neighbors (8 directions)
 	var cx = unit.grid_pos.x
 	var cy = unit.grid_pos.y
-	# Assuming 1x1 for simplicity, or handle size logic if needed.
-	# For now, stick to simple 8 neighbors of the top-left coordinate or surrounding the unit rect.
-	# The requirement implies surrounding neighbors.
 
 	var neighbors = []
 	var w = unit.unit_data.size.x
@@ -521,7 +521,9 @@ func start_interaction_selection(unit):
 	for pos in neighbors:
 		if is_valid_interaction_target(unit, pos):
 			valid_interaction_targets.append(pos)
-			_spawn_interaction_highlight(pos)
+			_spawn_interaction_highlight(pos, Color.GREEN)
+		else:
+			_spawn_interaction_highlight(pos, Color.RED)
 
 	# Pause game or just block input?
 	# "Place -> Pause -> Select Neighbor -> Effect"
@@ -547,24 +549,60 @@ func end_interaction_selection():
 	for node in interaction_highlights:
 		node.queue_free()
 	interaction_highlights.clear()
+	queue_redraw()
 
-func _spawn_interaction_highlight(grid_pos: Vector2i):
+func _spawn_interaction_highlight(grid_pos: Vector2i, color: Color = Color(1, 0.84, 0, 0.4)):
 	var highlight = ColorRect.new()
 	highlight.size = Vector2(TILE_SIZE, TILE_SIZE)
-	highlight.color = Color(1, 0.84, 0, 0.4) # Gold/Yellow
-
-	# Get buff color if possible
-	if interaction_source_unit:
-		var info = interaction_source_unit.get_interaction_info()
-		if info.buff_id == "poison":
-			highlight.color = Color(0, 1, 0, 0.4)
-		elif info.buff_id == "burn":
-			highlight.color = Color(1, 0.5, 0, 0.4)
+	highlight.color = color
+	highlight.color.a = 0.4 # Ensure transparency
 
 	highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(highlight)
 	highlight.position = Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE) - Vector2(TILE_SIZE, TILE_SIZE) / 2
 	interaction_highlights.append(highlight)
+
+func _draw():
+	if interaction_state == STATE_SELECTING_INTERACTION_TARGET and interaction_source_unit and is_instance_valid(interaction_source_unit):
+		var start_pos = interaction_source_unit.global_position
+		var end_pos = get_global_mouse_position()
+
+		# Convert to local coordinates relative to GridManager
+		start_pos = to_local(start_pos)
+		end_pos = to_local(end_pos)
+
+		var control_point = (start_pos + end_pos) / 2
+		control_point.y -= 50
+
+		var curve = Curve2D.new()
+		curve.add_point(start_pos)
+		curve.add_point(end_pos, control_point - start_pos) # In Curve2D, control points are relative? No, add_point uses (pos, in, out).
+		# Wait, Curve2D usage for drawing:
+		# Actually, draw_polyline is easier if we manually sample.
+		# Or use Curve2D.sample_baked.
+
+		# Let's use manual quadratic bezier calculation for simplicity in _draw
+		var points = PackedVector2Array()
+		var segments = 20
+		for i in range(segments + 1):
+			var t = float(i) / segments
+			var q0 = start_pos.lerp(control_point, t)
+			var q1 = control_point.lerp(end_pos, t)
+			var p = q0.lerp(q1, t)
+			points.append(p)
+
+		draw_polyline(points, Color.WHITE, 2.0, true)
+
+		# Draw Arrow at end
+		var arrow_len = 10.0
+		var direction = (end_pos - control_point).normalized()
+		if points.size() >= 2:
+			direction = (points[-1] - points[-2]).normalized()
+
+		var arrow_p1 = end_pos - direction * arrow_len + direction.orthogonal() * (arrow_len * 0.5)
+		var arrow_p2 = end_pos - direction * arrow_len - direction.orthogonal() * (arrow_len * 0.5)
+
+		draw_colored_polygon(PackedVector2Array([end_pos, arrow_p1, arrow_p2]), Color.WHITE)
 
 func can_place_unit(x: int, y: int, w: int, h: int, exclude_unit = null) -> bool:
 	for dx in range(w):
@@ -793,14 +831,14 @@ func recalculate_buffs():
 		var info = unit.get_interaction_info()
 		if info.has_interaction and unit.interaction_target_pos != null:
 			if is_neighbor(unit, unit.interaction_target_pos):
-				_apply_buff_to_specific_pos(unit.interaction_target_pos, info.buff_id)
+				_apply_buff_to_specific_pos(unit.interaction_target_pos, info.buff_id, unit)
 
 	for unit in processed_units:
 		unit.update_visuals()
 
 	grid_updated.emit()
 
-func _apply_buff_to_specific_pos(target_pos: Vector2i, buff_id: String):
+func _apply_buff_to_specific_pos(target_pos: Vector2i, buff_id: String, provider_unit: Node2D = null):
 	var key = get_tile_key(target_pos.x, target_pos.y)
 	if tiles.has(key):
 		var tile = tiles[key]
@@ -812,7 +850,7 @@ func _apply_buff_to_specific_pos(target_pos: Vector2i, buff_id: String):
 				target_unit = tiles[origin_key].unit
 
 		if target_unit:
-			target_unit.apply_buff(buff_id)
+			target_unit.apply_buff(buff_id, provider_unit)
 
 func _apply_buff_to_neighbors(provider_unit, buff_type):
 	var cx = provider_unit.grid_pos.x
@@ -839,7 +877,7 @@ func _apply_buff_to_neighbors(provider_unit, buff_type):
 				if tiles.has(origin_key):
 					target_unit = tiles[origin_key].unit
 			if target_unit and target_unit != provider_unit:
-				target_unit.apply_buff(buff_type)
+				target_unit.apply_buff(buff_type, provider_unit)
 
 func toggle_expansion_mode():
 	expansion_mode = !expansion_mode
