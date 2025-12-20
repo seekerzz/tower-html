@@ -266,8 +266,15 @@ func process_unit_combat(unit, tile, delta):
 		else:
 			# Check for Multi-shot (projCount)
 			var proj_count = unit.unit_data.get("projCount", 1)
+			var spread = unit.unit_data.get("spread", 0.5)
+
+			# Buff: multishot
+			if "active_buffs" in unit and "multishot" in unit.active_buffs:
+				proj_count += 2
+				spread = max(spread, 0.5)
+
 			if proj_count > 1:
-				spawn_multishot_projectile(unit, tile.global_position, target, proj_count, unit.unit_data.get("spread", 0.5))
+				spawn_multishot_projectile(unit, tile.global_position, target, proj_count, spread)
 			else:
 				spawn_projectile(unit, tile.global_position, target)
 
