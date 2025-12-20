@@ -130,6 +130,8 @@
             "damageType": "physical",
             "crit_rate": 0.1,
             "crit_dmg": 1.5,
+            "has_interaction": true,
+            "buff_id": "multishot",
             "levels": {
                 "1": {
                     "damage": 30,
