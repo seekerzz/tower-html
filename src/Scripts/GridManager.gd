@@ -529,7 +529,11 @@ func start_interaction_selection(unit):
 	for pos in neighbors:
 		if is_valid_interaction_target(unit, pos):
 			valid_interaction_targets.append(pos)
-			_spawn_interaction_highlight(pos, Color.GREEN)
+			var highlight_color = Color.GREEN
+			var info = unit.get_interaction_info()
+			if info.get("buff_id") == "multishot":
+				highlight_color = Color(0, 1, 1, 0.4)
+			_spawn_interaction_highlight(pos, highlight_color)
 		else:
 			_spawn_interaction_highlight(pos, Color.RED)
 

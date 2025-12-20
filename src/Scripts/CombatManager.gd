@@ -265,9 +265,15 @@ func process_unit_combat(unit, tile, delta):
 			perform_lightning_attack(unit, tile.global_position, target, unit.unit_data.get("chain", 0))
 		else:
 			# Check for Multi-shot (projCount)
-			var proj_count = unit.unit_data.get("projCount", 1)
-			if proj_count > 1:
-				spawn_multishot_projectile(unit, tile.global_position, target, proj_count, unit.unit_data.get("spread", 0.5))
+			var final_proj_count = unit.unit_data.get("projCount", 1)
+			var final_spread = unit.unit_data.get("spread", 0.5)
+
+			if "multishot" in unit.active_buffs:
+				final_proj_count += 2
+				final_spread = max(final_spread, 0.5)
+
+			if final_proj_count > 1:
+				spawn_multishot_projectile(unit, tile.global_position, target, final_proj_count, final_spread)
 			else:
 				spawn_projectile(unit, tile.global_position, target)
 
