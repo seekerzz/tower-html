@@ -735,7 +735,25 @@ func _draw_curve_connection(start: Vector2, end: Vector2, color: Color):
 		var p = q0.lerp(q1, t)
 		points.append(p)
 
+	# Arrow Calculation
+	var arrow_len = 15.0
+	var direction = Vector2.RIGHT
+	if points.size() >= 2:
+		direction = (points[-1] - points[-2]).normalized()
+	else:
+		direction = (end - control_point).normalized()
+
+	var arrow_tip = end
+	var arrow_back = end - direction * arrow_len
+	var arrow_side1 = arrow_back + direction.orthogonal() * (arrow_len * 0.5)
+	var arrow_side2 = arrow_back - direction.orthogonal() * (arrow_len * 0.5)
+
+	# Trim line to arrow back
+	if points.size() > 1:
+		points[-1] = arrow_back
+
 	connection_overlay.draw_polyline(points, color, 2.0, true)
+	connection_overlay.draw_colored_polygon(PackedVector2Array([arrow_tip, arrow_side1, arrow_side2]), color)
 
 func _input(event):
 	if is_dragging:
