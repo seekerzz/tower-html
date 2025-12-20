@@ -55,6 +55,7 @@ var skill_active_timer: float = 0.0
 var original_atk_speed: float = 0.0
 var _is_skill_highlight_active: bool = false
 var _highlight_color: Color = Color.WHITE
+var hover_overlay: Node2D = null
 
 const MAX_LEVEL = 3
 const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
@@ -62,10 +63,19 @@ const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 signal unit_clicked(unit)
 
 func _ready():
+	_setup_hover_overlay()
 	_ensure_visual_hierarchy()
 	# If unit_data is already populated (e.g. from scene or prior setup), update visuals
 	if !unit_data.is_empty():
 		update_visuals()
+
+func _setup_hover_overlay():
+	var DrawingLayer = load("res://src/Scripts/Utils/DrawingLayer.gd")
+	hover_overlay = DrawingLayer.new()
+	hover_overlay.name = "HoverOverlay"
+	hover_overlay.z_index = 90
+	hover_overlay.draw_callback = Callable(self, "_draw_hover_overlay")
+	add_child(hover_overlay)
 
 func _ensure_visual_hierarchy():
 	if visual_holder and is_instance_valid(visual_holder):
@@ -275,8 +285,10 @@ func set_highlight(active: bool, color: Color = Color.WHITE):
 			# The requirement says "Unit appears green/red outline (stroke)".
 			# Godot _draw is easiest for stroke.
 			queue_redraw()
+			if hover_overlay: hover_overlay.queue_redraw()
 	else:
 		queue_redraw()
+		if hover_overlay: hover_overlay.queue_redraw()
 
 func execute_skill_at(grid_pos: Vector2i):
 	if skill_cooldown > 0: return
@@ -618,6 +630,7 @@ func _on_area_2d_input_event(viewport, event, shape_idx):
 func _on_area_2d_mouse_entered():
 	is_hovered = true
 	queue_redraw()
+	if hover_overlay: hover_overlay.queue_redraw()
 	var current_stats = {
 		"level": level,
 		"damage": damage,
@@ -631,39 +644,10 @@ func _on_area_2d_mouse_entered():
 func _on_area_2d_mouse_exited():
 	is_hovered = false
 	queue_redraw()
+	if hover_overlay: hover_overlay.queue_redraw()
 	GameManager.hide_tooltip.emit()
 
 func _draw():
-	if is_hovered:
-		var draw_radius = range_val
-		if unit_data.get("attackType") == "melee":
-			# For melee, use actual range if it's reasonable, or a fixed visual range if range_val is too small (e.g. < 50)
-			# But prompt suggests "fixed smaller range (e.g. 100) or actual range".
-			# Most melee units have range around 80-100.
-			draw_radius = max(range_val, 100.0)
-
-		draw_circle(Vector2.ZERO, draw_radius, Color(1, 1, 1, 0.1))
-		draw_arc(Vector2.ZERO, draw_radius, 0, TAU, 64, Color(1, 1, 1, 0.3), 1.0)
-
-		# 1. Trace Back (Receiver View): Draw curve to source unit
-		for buff_type in buff_sources:
-			var source = buff_sources[buff_type]
-			if is_instance_valid(source):
-				var start_pos = Vector2.ZERO
-				var end_pos = to_local(source.global_position)
-				var mid_pos = (start_pos + end_pos) / 2
-				mid_pos.y -= 30 # Curve
-
-				var points = _get_quadratic_bezier_points(start_pos, mid_pos, end_pos)
-				draw_polyline(points, Color.BLACK, 2.0, true)
-
-		# 2. Trace Forward (Provider View): Draw curve to receivers
-		# To do this, we need to find who we are buffing.
-		# Option A: GridManager has the logic. We could ask GridManager or replicate logic.
-		# Replicating simple neighbor check is likely easiest and performant enough for _draw.
-		if unit_data.has("buffProvider") or (unit_data.has("has_interaction") and interaction_target_pos != null):
-			_draw_provider_lines()
-
 	if _is_skill_highlight_active:
 		# Draw a thick outline
 		var size = Vector2(Constants.TILE_SIZE, Constants.TILE_SIZE)
@@ -674,6 +658,32 @@ func _draw():
 		var rect = Rect2(-size / 2, size)
 		draw_rect(rect, _highlight_color, false, 4.0)
 
+func _draw_hover_overlay(overlay: Node2D):
+	if !is_hovered: return
+
+	var draw_radius = range_val
+	if unit_data.get("attackType") == "melee":
+		draw_radius = max(range_val, 100.0)
+
+	overlay.draw_circle(Vector2.ZERO, draw_radius, Color(1, 1, 1, 0.1))
+	overlay.draw_arc(Vector2.ZERO, draw_radius, 0, TAU, 64, Color(1, 1, 1, 0.3), 1.0)
+
+	# 1. Trace Back (Receiver View): Draw curve to source unit
+	for buff_type in buff_sources:
+		var source = buff_sources[buff_type]
+		if is_instance_valid(source):
+			var start_pos = Vector2.ZERO
+			var end_pos = overlay.to_local(source.global_position)
+			var mid_pos = (start_pos + end_pos) / 2
+			mid_pos.y -= 30 # Curve
+
+			var points = _get_quadratic_bezier_points(start_pos, mid_pos, end_pos)
+			overlay.draw_polyline(points, Color.BLACK, 2.0, true)
+
+	# 2. Trace Forward (Provider View): Draw curve to receivers
+	if unit_data.has("buffProvider") or (unit_data.has("has_interaction") and interaction_target_pos != null):
+		_draw_provider_lines(overlay)
+
 func _get_quadratic_bezier_points(p0: Vector2, p1: Vector2, p2: Vector2, segments: int = 20) -> PackedVector2Array:
 	var points = PackedVector2Array()
 	for i in range(segments + 1):
@@ -682,7 +692,7 @@ func _get_quadratic_bezier_points(p0: Vector2, p1: Vector2, p2: Vector2, segment
 		points.append(p)
 	return points
 
-func _draw_provider_lines():
+func _draw_provider_lines(overlay: Node2D):
 	var targets = []
 
 	# Check Neighbors for passive buff
@@ -736,24 +746,41 @@ func _draw_provider_lines():
 	for target in targets:
 		if is_instance_valid(target):
 			var start_pos = Vector2.ZERO
-			var end_pos = to_local(target.global_position)
+			var end_pos = overlay.to_local(target.global_position)
 			var mid_pos = (start_pos + end_pos) / 2
 			mid_pos.y -= 30 # Curve
 
-			var points = _get_quadratic_bezier_points(start_pos, mid_pos, end_pos)
-			draw_polyline(points, Color.WHITE, 2.0, true)
+			var arrow_size = 10.0
+			var arrow_tip = end_pos
+
+			# Generate points with custom logic to clip at arrow base
+			# Assuming Bezier logic needs re-calc or manual trim
+			# For simplicity, calculate full curve then trim
+
+			var full_points = _get_quadratic_bezier_points(start_pos, mid_pos, end_pos)
+			var direction = Vector2.RIGHT
+			if full_points.size() >= 2:
+				direction = (full_points[-1] - full_points[-2]).normalized()
+
+			var arrow_base = arrow_tip - direction * arrow_size
+			var points = PackedVector2Array()
+
+			for p in full_points:
+				if p.distance_to(end_pos) < arrow_size:
+					points.append(arrow_base)
+					break
+				points.append(p)
+
+			if points.size() > 0 and points[points.size()-1].distance_to(arrow_base) > 2.0:
+				points.append(arrow_base)
+
+			overlay.draw_polyline(points, Color.WHITE, 2.0, true)
 
 			# Arrow for provider
-			var arrow_size = 10.0
-			var p2 = end_pos
-			var direction = Vector2.RIGHT
-			if points.size() >= 2:
-				direction = (points[-1] - points[-2]).normalized()
+			var arrow_p1 = arrow_tip - direction * arrow_size + direction.orthogonal() * (arrow_size * 0.5)
+			var arrow_p2 = arrow_tip - direction * arrow_size - direction.orthogonal() * (arrow_size * 0.5)
 
-			var arrow_p1 = p2 - direction * arrow_size + direction.orthogonal() * (arrow_size * 0.5)
-			var arrow_p2 = p2 - direction * arrow_size - direction.orthogonal() * (arrow_size * 0.5)
-
-			draw_colored_polygon([p2, arrow_p1, arrow_p2], Color.WHITE)
+			overlay.draw_colored_polygon([arrow_tip, arrow_p1, arrow_p2], Color.WHITE)
 
 func _input(event):
 	if is_dragging:

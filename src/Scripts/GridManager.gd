@@ -17,6 +17,7 @@ var active_territory_tiles: Array = [] # List of Tile instances that are unlocke
 
 # Interaction / Skill Targeting
 var placement_preview_cursor: Node2D = null
+var selection_overlay: Node2D = null
 var last_preview_frame: int = 0
 
 # Interaction System (Neighbor Buff Selection)
@@ -36,52 +37,83 @@ func _ready():
 	TILE_SCENE = load("res://src/Scenes/Game/Tile.tscn")
 	if ResourceLoader.exists("res://src/Scenes/Game/Barricade.tscn"):
 		BARRICADE_SCENE = load("res://src/Scenes/Game/Barricade.tscn")
+
+	_setup_selection_overlay()
+
 	_init_astar()
 	create_initial_grid()
 	# _generate_random_obstacles()
 
-func _draw():
-	if interaction_state == STATE_SELECTING_INTERACTION_TARGET and interaction_source_unit and is_instance_valid(interaction_source_unit):
-		var start_pos = interaction_source_unit.global_position
-		var end_pos = get_global_mouse_position()
+func _setup_selection_overlay():
+	var DrawingLayer = load("res://src/Scripts/Utils/DrawingLayer.gd")
+	selection_overlay = DrawingLayer.new()
+	selection_overlay.name = "SelectionOverlay"
+	selection_overlay.z_index = 100
+	selection_overlay.draw_callback = Callable(self, "_draw_selection_overlay")
+	add_child(selection_overlay)
 
-		# Convert to local coords since drawing is local to Node2D
-		start_pos = to_local(start_pos)
-		end_pos = to_local(end_pos)
+func _draw_selection_overlay(overlay: Node2D):
+	if interaction_state == STATE_SELECTING_INTERACTION_TARGET and interaction_source_unit and is_instance_valid(interaction_source_unit):
+		var start_pos = overlay.to_local(interaction_source_unit.global_position)
+		var end_pos = overlay.get_local_mouse_position()
 
 		var mid_pos = (start_pos + end_pos) / 2
 		mid_pos.y -= 50 # Curve control point offset
 
-		# Draw Curve
-		var points = PackedVector2Array()
-		var segments = 20
-
-		# Quadratic Bezier: P = (1-t)^2 * P0 + 2(1-t)t * P1 + t^2 * P2
+		# Quadratic Bezier
 		var p0 = start_pos
 		var p1 = mid_pos
 		var p2 = end_pos
 
+		# Arrow Calculation
+		var arrow_size = 10.0
+		# Approximate direction at end for arrow placement
+		# Derivative of Quadratic Bezier at t=1 is 2(P2 - P1)
+		var direction = (p2 - p1).normalized()
+
+		var arrow_tip = p2
+		var arrow_base = arrow_tip - direction * arrow_size
+
+		# Generate Points
+		var points = PackedVector2Array()
+		var segments = 20
+
 		for i in range(segments + 1):
 			var t = float(i) / segments
 			var p = (1 - t) * (1 - t) * p0 + 2 * (1 - t) * t * p1 + t * t * p2
+
+			# Check if point is beyond arrow base (simple dot product check or distance)
+			# Only add point if it's "behind" the arrow base relative to direction
+			# Or simpler: clip the line.
+			# Let's iterate and stop if we pass arrow_base projected on the line?
+			# Curved line makes this tricky.
+			# Simplified approach: Since t goes 0 to 1, we find t where curve hits arrow_base.
+			# Easier: Just replace the last few points with arrow_base if they are close,
+			# or just stop adding points once we are close to end_pos within arrow_size.
+
+			if p.distance_to(end_pos) < arrow_size:
+				# We reached the arrow head area. Add arrow_base and break.
+				points.append(arrow_base)
+				break
+
 			points.append(p)
 
-		draw_polyline(points, Color.WHITE, 2.0, true)
+		# Ensure we at least reach close to arrow base
+		if points.size() > 0 and points[points.size()-1].distance_to(arrow_base) > 2.0:
+			points.append(arrow_base)
 
-		# Draw Arrow at end
-		var arrow_size = 10.0
-		var direction = (p2 - p1).normalized() # Direction at end
-		if points.size() >= 2:
-			direction = (points[-1] - points[-2]).normalized()
+		overlay.draw_polyline(points, Color.WHITE, 2.0, true)
 
-		var arrow_p1 = p2 - direction * arrow_size + direction.orthogonal() * (arrow_size * 0.5)
-		var arrow_p2 = p2 - direction * arrow_size - direction.orthogonal() * (arrow_size * 0.5)
+		# Draw Arrow
+		var arrow_p1 = arrow_tip - direction * arrow_size + direction.orthogonal() * (arrow_size * 0.5)
+		var arrow_p2 = arrow_tip - direction * arrow_size - direction.orthogonal() * (arrow_size * 0.5)
 
-		draw_colored_polygon([p2, arrow_p1, arrow_p2], Color.WHITE)
+		overlay.draw_colored_polygon([arrow_tip, arrow_p1, arrow_p2], Color.WHITE)
 
 func _process(_delta):
 	if interaction_state == STATE_SELECTING_INTERACTION_TARGET:
-		queue_redraw()
+		if selection_overlay:
+			selection_overlay.queue_redraw()
 
 	if placement_preview_cursor and placement_preview_cursor.visible:
 		var dist = get_global_mouse_position().distance_to(placement_preview_cursor.global_position)
