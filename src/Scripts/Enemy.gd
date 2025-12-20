@@ -666,15 +666,6 @@ func _trigger_burn_explosion():
 	if burn_source and is_instance_valid(burn_source):
 		damage = burn_source.damage * 3.0
 
-	# AOE
-	var radius = 120.0
-	var enemies = get_tree().get_nodes_in_group("enemies")
-	for enemy in enemies:
-		if enemy == self: continue
-		if !is_instance_valid(enemy): continue
-
-		var dist = global_position.distance_to(enemy.global_position)
-		if dist <= radius:
-			enemy.take_damage(damage, burn_source, "fire")
-			enemy.effects["burn"] = 5.0
-			enemy.burn_source = burn_source
+	# Queue Explosion via Manager to prevent Stack Overflow
+	if GameManager.combat_manager:
+		GameManager.combat_manager.queue_burn_explosion(global_position, damage, burn_source)
