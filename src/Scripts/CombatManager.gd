@@ -340,7 +340,7 @@ func spawn_multishot_projectile(source_unit, pos, target, count, spread):
 
 func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	# FIX: Shotgun logic - force straight flight by removing target
-	if source_unit.unit_data.get("proj") == "ink":
+	if source_unit.unit_data.get("proj") == "ink" or extra_stats.has("angle"):
 		target = null
 
 	var proj = PROJECTILE_SCENE.instantiate()
