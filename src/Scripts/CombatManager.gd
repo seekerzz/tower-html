@@ -9,11 +9,20 @@ var enemies_to_spawn: int = 0
 var total_enemies_for_wave: int = 0
 # spawn_timer removed as we use coroutines now
 
+var explosion_queue: Array = []
+
 func _ready():
 	GameManager.combat_manager = self
 	GameManager.wave_started.connect(_on_wave_started)
 
 func _process(delta):
+	# Process Explosion Queue (Burn Chain Reaction)
+	if explosion_queue.size() > 0:
+		var current_batch = explosion_queue.duplicate()
+		explosion_queue.clear()
+		for expl in current_batch:
+			_process_burn_explosion(expl)
+
 	# Unit Logic (Iterate over grid units)
 	if GameManager.is_wave_active and GameManager.grid_manager:
 		for key in GameManager.grid_manager.tiles:
@@ -236,6 +245,15 @@ func process_unit_combat(unit, tile, delta):
 			if unit.unit_data.get("trait") == "poison_touch":
 				melee_effects["poison"] = 5.0
 
+			# Check active buffs or implicit traits for Burn (e.g. from Fire Spirit or similar)
+			if "active_buffs" in unit:
+				for buff in unit.active_buffs:
+					if buff == "fire": melee_effects["burn"] = 3.0
+					if buff == "poison": melee_effects["poison"] = 5.0
+
+			if unit.unit_data.get("buffProvider") == "fire":
+				melee_effects["burn"] = 3.0
+
 			for enemy in get_tree().get_nodes_in_group("enemies"):
 				if !is_instance_valid(enemy): continue
 
@@ -252,6 +270,9 @@ func process_unit_combat(unit, tile, delta):
 						# Apply Melee Effects
 						if melee_effects.has("poison"):
 							enemy.effects["poison"] = max(enemy.effects.get("poison", 0), melee_effects["poison"])
+						if melee_effects.has("burn"):
+							enemy.effects["burn"] = max(enemy.effects.get("burn", 0), melee_effects["burn"])
+							enemy.burn_source = unit
 
 			var slash = SLASH_EFFECT_SCRIPT.new()
 			add_child(slash)
@@ -395,3 +416,25 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 
 	proj.setup(pos, target, final_damage, 400.0, source_unit.unit_data.proj, stats)
 	add_child(proj)
+
+func queue_burn_explosion(pos: Vector2, damage: float, source: Node2D):
+	explosion_queue.append({ "pos": pos, "damage": damage, "source": source })
+
+func _process_burn_explosion(expl):
+	var pos = expl.pos
+	var damage = expl.damage
+	var source = expl.source
+	var radius = 120.0
+
+	var enemies = get_tree().get_nodes_in_group("enemies")
+	for enemy in enemies:
+		if !is_instance_valid(enemy): continue
+		# Note: We can't check 'enemy == self' easily here as source is the Killer, not the Victim.
+		# The victim is already dead/dying at 'pos'.
+		# However, checking distance > 0 might help avoid some issues, but distance check covers it.
+
+		var dist = pos.distance_to(enemy.global_position)
+		if dist <= radius:
+			enemy.take_damage(damage, source, "fire")
+			enemy.effects["burn"] = 5.0
+			enemy.burn_source = source
