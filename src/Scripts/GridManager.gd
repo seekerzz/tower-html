@@ -560,6 +560,13 @@ func end_interaction_selection():
 	selection_overlay.queue_redraw()
 
 func _spawn_interaction_highlight(grid_pos: Vector2i, color: Color = Color(1, 0.84, 0, 0.4)):
+	# Dynamic color based on interaction type if it's a valid target (Green)
+	if color == Color.GREEN and interaction_source_unit and is_instance_valid(interaction_source_unit):
+		var info = interaction_source_unit.get_interaction_info()
+		if info.buff_id == "multishot":
+			color = Color(0, 1, 1, 0.4) # Cyan
+		# Add other buff colors here if needed
+
 	var highlight = ColorRect.new()
 	highlight.size = Vector2(TILE_SIZE, TILE_SIZE)
 	highlight.color = color
