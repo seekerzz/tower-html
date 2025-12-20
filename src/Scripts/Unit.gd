@@ -725,8 +725,15 @@ func _get_neighbor_units() -> Array:
 	return list
 
 func _draw_curve_connection(start: Vector2, end: Vector2, color: Color, buff_type: String = ""):
+	var diff = end - start
 	var control_point = (start + end) / 2
-	control_point.y -= 20 # Small arc
+
+	if start.distance_squared_to(end) < 1.0:
+		control_point.y -= 40 # Self loop vertical offset
+	else:
+		var normal = Vector2(-diff.y, diff.x).normalized()
+		var offset_amount = 30.0
+		control_point += normal * offset_amount
 
 	var points = PackedVector2Array()
 	var segments = 15
