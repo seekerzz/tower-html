@@ -9,11 +9,20 @@ var enemies_to_spawn: int = 0
 var total_enemies_for_wave: int = 0
 # spawn_timer removed as we use coroutines now
 
+var explosion_queue: Array = []
+
 func _ready():
 	GameManager.combat_manager = self
 	GameManager.wave_started.connect(_on_wave_started)
 
 func _process(delta):
+	# Process Explosion Queue (Iterative handling to prevent stack overflow)
+	var iterations = 0
+	while explosion_queue.size() > 0 and iterations < 1000:
+		var exp_data = explosion_queue.pop_front()
+		_handle_explosion(exp_data)
+		iterations += 1
+
 	# Unit Logic (Iterate over grid units)
 	if GameManager.is_wave_active and GameManager.grid_manager:
 		for key in GameManager.grid_manager.tiles:
@@ -331,6 +340,37 @@ func find_nearest_enemy_excluding(pos: Vector2, range_val: float, exclude_list: 
 			nearest = enemy
 
 	return nearest
+
+func queue_burn_explosion(pos: Vector2, damage: float, source_unit: Node2D):
+	explosion_queue.append({ "pos": pos, "dmg": damage, "src": source_unit })
+
+func _handle_explosion(data):
+	var pos = data.pos
+	var damage = data.dmg
+	var source_unit = data.src
+
+	# Visual
+	GameManager.spawn_floating_text(pos, "BOOM!", Color.ORANGE)
+	var effect = SLASH_EFFECT_SCRIPT.new()
+	add_child(effect)
+	effect.global_position = pos
+	effect.configure("cross", Color.ORANGE)
+	effect.scale = Vector2(3, 3)
+	effect.play()
+
+	# AOE Logic
+	var radius = 120.0
+	var enemies = get_tree().get_nodes_in_group("enemies")
+	for enemy in enemies:
+		if !is_instance_valid(enemy): continue
+
+		var dist = pos.distance_to(enemy.global_position)
+		if dist <= radius:
+			# Check hp > 0 to avoid hitting already dead enemies which might cause logic issues
+			if enemy.hp > 0:
+				enemy.take_damage(damage, source_unit, "fire")
+				enemy.effects["burn"] = 5.0
+				enemy.burn_source = source_unit
 
 func spawn_projectile(source_unit, pos, target):
 	_spawn_single_projectile(source_unit, pos, target, {})
