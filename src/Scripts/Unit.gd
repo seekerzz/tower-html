@@ -6,6 +6,7 @@ var stats_multiplier: float = 1.0
 var cooldown: float = 0.0
 var skill_cooldown: float = 0.0
 var active_buffs: Array = []
+var buff_sources: Dictionary = {} # Key: buff_type, Value: source_unit (Node2D)
 var traits: Array = []
 var unit_data: Dictionary
 
@@ -213,6 +214,7 @@ func reset_stats():
 	bounce_count = 0
 	split_count = 0
 	active_buffs.clear()
+	buff_sources.clear()
 
 	# Artifact Effects
 	if GameManager.reward_manager and "focus_fire" in GameManager.reward_manager.acquired_artifacts:
@@ -234,9 +236,11 @@ func calculate_damage_against(target_node: Node2D) -> float:
 
 	return final_damage
 
-func apply_buff(buff_type: String):
+func apply_buff(buff_type: String, source_unit: Node2D = null):
 	if buff_type in active_buffs: return
 	active_buffs.append(buff_type)
+	if source_unit:
+		buff_sources[buff_type] = source_unit
 
 	match buff_type:
 		"range":
@@ -634,6 +638,34 @@ func _draw():
 		draw_circle(Vector2.ZERO, draw_radius, Color(1, 1, 1, 0.1))
 		draw_arc(Vector2.ZERO, draw_radius, 0, TAU, 64, Color(1, 1, 1, 0.3), 1.0)
 
+		# --- Receiver View (Trace Back) ---
+		for buff_type in buff_sources:
+			var source = buff_sources[buff_type]
+			if is_instance_valid(source):
+				var start_pos = Vector2.ZERO
+				var end_pos = to_local(source.global_position)
+				_draw_curve_connection(start_pos, end_pos, Color.BLACK)
+
+		# --- Provider View (Trace Forward) ---
+		if unit_data.has("buffProvider") or (unit_data.has("has_interaction") and unit_data.has_interaction):
+			if GameManager.grid_manager:
+				var neighbors = _get_neighbor_units()
+				for neighbor in neighbors:
+					if neighbor == self: continue
+					# Check if neighbor has a buff from me.
+					# Since neighbor.buff_sources stores 'source_unit', we can check that.
+					var is_buffed_by_me = false
+					for b_type in neighbor.buff_sources:
+						if neighbor.buff_sources[b_type] == self:
+							is_buffed_by_me = true
+							break
+
+					if is_buffed_by_me:
+						var start_pos = Vector2.ZERO
+						var end_pos = to_local(neighbor.global_position)
+						_draw_curve_connection(start_pos, end_pos, Color.WHITE)
+
+
 	if _is_skill_highlight_active:
 		# Draw a thick outline
 		var size = Vector2(Constants.TILE_SIZE, Constants.TILE_SIZE)
@@ -643,6 +675,54 @@ func _draw():
 		# Assuming pivot is center
 		var rect = Rect2(-size / 2, size)
 		draw_rect(rect, _highlight_color, false, 4.0)
+
+func _get_neighbor_units() -> Array:
+	var list = []
+	if !GameManager.grid_manager: return list
+
+	var cx = grid_pos.x
+	var cy = grid_pos.y
+	var w = unit_data.size.x
+	var h = unit_data.size.y
+
+	var neighbors_pos = []
+	# Top and Bottom
+	for dx in range(-1, w + 1):
+		neighbors_pos.append(Vector2i(cx + dx, cy - 1))
+		neighbors_pos.append(Vector2i(cx + dx, cy + h))
+	# Left and Right
+	for dy in range(0, h):
+		neighbors_pos.append(Vector2i(cx - 1, cy + dy))
+		neighbors_pos.append(Vector2i(cx + w, cy + dy))
+
+	for n_pos in neighbors_pos:
+		var key = GameManager.grid_manager.get_tile_key(n_pos.x, n_pos.y)
+		if GameManager.grid_manager.tiles.has(key):
+			var tile = GameManager.grid_manager.tiles[key]
+			var u = tile.unit
+			if u == null and tile.occupied_by != Vector2i.ZERO:
+				var origin_key = GameManager.grid_manager.get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
+				if GameManager.grid_manager.tiles.has(origin_key):
+					u = GameManager.grid_manager.tiles[origin_key].unit
+
+			if u and is_instance_valid(u) and not (u in list):
+				list.append(u)
+	return list
+
+func _draw_curve_connection(start: Vector2, end: Vector2, color: Color):
+	var control_point = (start + end) / 2
+	control_point.y -= 20 # Small arc
+
+	var points = PackedVector2Array()
+	var segments = 15
+	for i in range(segments + 1):
+		var t = float(i) / segments
+		var q0 = start.lerp(control_point, t)
+		var q1 = control_point.lerp(end, t)
+		var p = q0.lerp(q1, t)
+		points.append(p)
+
+	draw_polyline(points, color, 2.0, true)
 
 func _input(event):
 	if is_dragging:
