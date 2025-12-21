@@ -316,7 +316,7 @@ func execute_skill_at(grid_pos: Vector2i):
 			if firestorm_scene:
 				var storm = firestorm_scene.instantiate()
 				storm.position = Vector2(grid_pos.x * Constants.TILE_SIZE, grid_pos.y * Constants.TILE_SIZE)
-				storm.init(damage * 0.5)
+				storm.init(damage * 0.5, 1)
 				get_parent().add_child(storm)
 
 	else:
