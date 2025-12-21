@@ -79,6 +79,8 @@ func _input(event):
 				var gx = int(round(mouse_pos.x / TILE_SIZE))
 				var gy = int(round(mouse_pos.y / TILE_SIZE))
 
+				print("[DEBUG] GridManager._input: Click at ", mouse_pos, " Grid: ", gx, ",", gy)
+
 				if skill_source_unit and is_instance_valid(skill_source_unit):
 					skill_source_unit.execute_skill_at(Vector2i(gx, gy))
 

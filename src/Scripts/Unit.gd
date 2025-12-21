@@ -310,7 +310,11 @@ func execute_skill_at(grid_pos: Vector2i):
 		GameManager.spawn_floating_text(global_position, skill_name.capitalize() + "!", Color.CYAN)
 		GameManager.skill_activated.emit(self)
 
-		GameManager.execute_skill_effect(type_key, grid_pos)
+		print("[DEBUG] Unit.execute_skill_at: ", grid_pos)
+
+		if type_key != "phoenix":
+			GameManager.execute_skill_effect(type_key, grid_pos)
+
 		if type_key == "phoenix":
 			var firestorm_scene = load("res://src/Scenes/Game/FireStorm.tscn")
 			if firestorm_scene:
