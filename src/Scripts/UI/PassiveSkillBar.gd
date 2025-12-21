@@ -70,12 +70,14 @@ func _create_card(unit):
 	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon_rect.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	icon_rect.custom_minimum_size = Vector2(50, 50)
-	icon_rect.size = Vector2(50, 50)
-	icon_rect.offset_left = -25
-	icon_rect.offset_top = -25
-	icon_rect.offset_right = 25
-	icon_rect.offset_bottom = 25
+
+	# Requirement: Square 1:1, e.g. 60x60
+	icon_rect.custom_minimum_size = Vector2(60, 60)
+	icon_rect.size = Vector2(60, 60)
+	icon_rect.offset_left = -30
+	icon_rect.offset_top = -30
+	icon_rect.offset_right = 30
+	icon_rect.offset_bottom = 30
 	layout.add_child(icon_rect)
 
 	# CD Overlay
@@ -116,22 +118,42 @@ func _process(_delta):
 		var layout = card.get_child(0)
 		var cd_bar = layout.get_node("CD_Overlay")
 
-		# Bind production_timer to CD overlay
-		# production_timer goes from MAX down to 0
-		# If unit has 'produce' logic, production_timer resets to 1.0 or similar.
-		# Default logic in Unit.gd: production_timer -= delta. If <= 0, resets to 1.0.
-		# So value is remaining time. Max value?
-		# Usually it's hardcoded to 1.0 or 5.0 (for cow).
-		# We need to know the max.
+		# Check for cooldown completion flash (from >0 to 0)
+		# We need to track previous state or just check if it just hit 0.
+		# But since this runs every frame, we can check if it is very close to 0 but was > 0.
+		# However, `unit.production_timer` changes elsewhere.
+		# A robust way is to store the last known timer value in metadata.
+
+		var prev_timer = card.get_meta("prev_timer", 0.0)
+		var current_timer = unit.production_timer
+
+		# If it wrapped around (e.g. from 0 -> Max), that's a reset.
+		# If it went from > 0 to <= 0 (or very close), that's a completion.
+		# Unit logic usually resets it immediately after 0.
+		# So we might see it go from 0.1 -> 5.0 (reset). The "completion" happened at the transition.
+		# Or if it sits at 0.
+
+		# Let's assume standard behavior: timer counts down. When it hits 0, it triggers and resets.
+		# So if prev was small positive and current is large positive (reset), it triggered.
+		# OR if current is 0.
+
+		# Let's try detecting the transition to 0.
+		if prev_timer > 0 and current_timer <= 0:
+			_trigger_flash(card)
+		elif prev_timer > 0 and current_timer > prev_timer:
+			# This implies a reset happened (completed loop)
+			_trigger_flash(card)
+
+		card.set_meta("prev_timer", current_timer)
 
 		cd_bar.max_value = unit.max_production_timer
 		cd_bar.value = unit.production_timer
 
-		# Flash animation
-		if unit.production_timer <= 0.1: # Just finished or about to
-			if !card.has_meta("flashing") or !card.get_meta("flashing"):
-				card.set_meta("flashing", true)
-				var tween = create_tween()
-				tween.tween_property(card, "modulate", Color(1.5, 1.5, 1.5), 0.1)
-				tween.tween_property(card, "modulate", Color.WHITE, 0.1)
-				tween.finished.connect(func(): card.set_meta("flashing", false))
+func _trigger_flash(card):
+	if !card.has_meta("flashing") or !card.get_meta("flashing"):
+		card.set_meta("flashing", true)
+		var tween = create_tween()
+		# Flash to bright color then back
+		tween.tween_property(card, "modulate", Color(1.5, 1.5, 1.5), 0.15).set_trans(Tween.TRANS_SINE)
+		tween.tween_property(card, "modulate", Color.WHITE, 0.15).set_trans(Tween.TRANS_SINE)
+		tween.finished.connect(func(): card.set_meta("flashing", false))

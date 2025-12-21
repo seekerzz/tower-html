@@ -1,6 +1,6 @@
 extends Control
 
-const SLOT_COUNT = 8
+const SLOT_COUNT = 9
 
 @onready var slots_container = $PanelContainer/SlotsContainer
 
@@ -10,7 +10,39 @@ func _ready():
 	if slots_container:
 		slots_container.add_theme_constant_override("h_separation", 10)
 		slots_container.add_theme_constant_override("v_separation", 10)
+
+		# Set Columns
+		if slots_container is GridContainer:
+			slots_container.columns = 3
+
 		var parent = slots_container.get_parent()
+
+		# Dynamic ScrollContainer Check
+		if not parent is ScrollContainer:
+			print("[InventoryPanel] Creating dynamic ScrollContainer.")
+			var scroll = ScrollContainer.new()
+			scroll.name = "InvScrollContainer"
+			scroll.layout_mode = 1
+			scroll.anchors_preset = Control.PRESET_FULL_RECT
+			scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+			# Min height for scrolling to be useful
+			scroll.custom_minimum_size.y = 200 # Adjust as needed
+
+			var grandparent = parent.get_parent()
+			# Move slots_container into scroll
+			slots_container.reparent(scroll)
+
+			# Replace parent (likely just a PanelContainer logic wrapper) logic
+			# Actually, the hierarchy is likely: InventoryPanel (Control) -> PanelContainer -> SlotsContainer
+			# We want: InventoryPanel -> PanelContainer -> ScrollContainer -> SlotsContainer
+
+			parent.add_child(scroll)
+
+			# Ensure Scroll fills parent
+			scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+
 		if parent is PanelContainer:
 			var style = StyleBoxEmpty.new()
 			parent.add_theme_stylebox_override("panel", style)
