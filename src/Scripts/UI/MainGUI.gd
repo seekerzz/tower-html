@@ -202,8 +202,8 @@ func _update_sidebar_position():
 	var target_offset_bottom = -10 # Default for combat
 	if not GameManager.is_wave_active:
 		# Shop is open, occupy bottom 200px
-		# Updated: Move up further to avoid overlap with Shop (was -210)
-		target_offset_bottom = -300
+		# Updated: Move up further to avoid overlap with Shop (was -210 -> -300 -> -340)
+		target_offset_bottom = -340
 
 	sidebar_tween.set_parallel(true)
 	sidebar_tween.tween_property(left_sidebar, "offset_bottom", float(target_offset_bottom), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)

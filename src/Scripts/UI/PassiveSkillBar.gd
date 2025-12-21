@@ -54,11 +54,41 @@ func refresh_units():
 	# Create Rows (Chunks of 3)
 	# Requirement: "Add a new row above the existing row".
 	# Logic: Chunk 0 (Oldest) -> Bottom. Chunk N (Newest) -> Top.
-	# Implementation: Create rows in order 0..N, and move each new row to index 0 of the VBox.
-	# This stacks them: Row N, ..., Row 1, Row 0.
 
 	var chunk_size = 3
 	var current_row: HBoxContainer = null
+
+	# To properly handle "Leftmost" for new units (which come last in the array iteration),
+	# we need to consider how units fill the row.
+	# If we just add to HBox, they go Right.
+	# The user wants "New passive skills ... appear in the leftmost slot".
+	# This implies that within a row, the sort order should be Newest -> Oldest (Left -> Right).
+	# OR if we view the grid as filling up, usually it fills Top Left -> Bottom Right.
+	# But here we are stacking Upwards. So Bottom Left -> Top Right?
+	# "New passive skills appear in the leftmost slot".
+	# If I have Row 0 (Oldest). I add a new Unit. It starts Row 1 (Newest). It should be at the Left.
+	# That is default behavior of HBox.
+	# But if I have Row 1 with 1 unit (Left), and I add another unit (Newer), where does it go?
+	# "Leftmost". So it should push the previous one to the right?
+	# If so, the row order is Newest -> Oldest.
+	# YES.
+
+	# So for the current chunk (which contains N units), we want to add them such that the last unit added is at index 0.
+	# Wait, `monitored_units` usually appends new units at the end.
+	# So unit at index `i` is older than `i+1`.
+	# If we iterate `i` from 0 to N.
+	# Chunk 0 has units 0, 1, 2.
+	# If we want 2 to be Leftmost, and 0 to be Rightmost?
+	# No, usually "Leftmost" means the slot position.
+	# If I have [Empty, Empty, Empty].
+	# Add Unit 1 -> [Unit 1, Empty, Empty].
+	# Add Unit 2 -> [Unit 2, Unit 1, Empty] ?? Or [Unit 1, Unit 2, Empty]?
+	# "Appear in the leftmost slot".
+	# If I have [U1, U2] and I add U3. If it appears in Leftmost, it becomes [U3, U1, U2].
+	# This implies a LIFO stack behavior for the visual row.
+
+	# Let's assume standard "Latest on Left" behavior.
+	# So when filling `current_row` with `unit`, we use `move_child(card, 0)`.
 
 	for i in range(monitored_units.size()):
 		if i % chunk_size == 0:
@@ -66,20 +96,42 @@ func refresh_units():
 			current_row = HBoxContainer.new()
 			current_row.name = "Row_%d" % (i / chunk_size)
 			current_row.add_theme_constant_override("separation", 10)
-			current_row.alignment = BoxContainer.ALIGNMENT_CENTER
+			# Center alignment looks best if row is not full, or Begin?
+			# User said "Leftmost". So probably alignment = Begin (Left).
+			# If centered, "Leftmost" is relative to the group.
+			current_row.alignment = BoxContainer.ALIGNMENT_BEGIN
+			# Actually, if we use move_child(0), we are prepending.
+			# So visual order: [Newest ... Oldest]
+			# If Alignment is Center, they cluster in center.
+			# If Alignment is Begin (Left), they cluster on left.
+			# Let's use Center as it usually looks better for UI bars, unless specifically asked to be left-aligned.
+			# "Appear in the leftmost slot".
+			# This usually implies position.
+			# If I have 1 item, it should be on the Left? Or Center?
+			# "Leftmost one".
+			# Let's assume Left Alignment for the row content.
+			current_row.alignment = BoxContainer.ALIGNMENT_BEGIN
 
 			container.add_child(current_row)
-			# Move to top to stack upwards
+			# Move row to top (Newest Row on Top)
 			container.move_child(current_row, 0)
 
 		var unit = monitored_units[i]
 		_create_card(unit, current_row)
+
+		# Enforce Newest on Left within the row
+		# Since we iterate Old -> New, we prepend each new unit to the row.
+		# [U0] -> [U1, U0] -> [U2, U1, U0]
+		# This satisfies "New ... in leftmost".
+		var card = current_row.get_child(current_row.get_child_count() - 1)
+		current_row.move_child(card, 0)
 
 func _create_card(unit, parent_row):
 	var card = PanelContainer.new()
 	# Fixed size for 1:1 look
 	card.custom_minimum_size = Vector2(60, 60)
 	card.name = "PassiveCard_%s" % unit.name
+	card.set_meta("unit", unit)
 
 	# Style matching SkillBar
 	var bg_color = Color("#2c3e50")
@@ -111,6 +163,11 @@ func _create_card(unit, parent_row):
 	icon_rect.offset_top = -offset
 	icon_rect.offset_right = offset
 	icon_rect.offset_bottom = offset
+
+	# Setup for Scale Pulse
+	icon_rect.pivot_offset = Vector2(offset, offset)
+	icon_rect.name = "Icon"
+
 	layout.add_child(icon_rect)
 
 	# CD Overlay
@@ -135,53 +192,45 @@ func _create_card(unit, parent_row):
 	parent_row.add_child(card)
 
 func _process(_delta):
-	# Resize Logic: Ensure this Control reports size matching content
+	# Resize Logic
 	if panel_container and container:
-		# Calculate combined height of rows
 		var target_height = 0.0
 		for child in container.get_children():
 			if child is Container:
 				target_height += child.get_combined_minimum_size().y
 
-		# Add separation
 		var sep = container.get_theme_constant("separation")
 		var visible_children = 0
 		for c in container.get_children(): if c.visible: visible_children += 1
 		if visible_children > 1:
 			target_height += (visible_children - 1) * sep
 
-		# Enforce minimum size on self so VBox parent respects it
 		if custom_minimum_size.y != target_height:
 			custom_minimum_size.y = target_height
 
 	# Update CD overlays and handle flashing
-	# Iterate rows, then cards
 	if !container: return
 
-	var unit_index = 0
-	# Note: Rows are in reverse order visually (Child 0 is Top/Newest).
-	# But we populated them by chunks.
-	# Chunk 0 (Units 0,1,2) is at Index N (Bottom).
-	# Chunk 1 (Units 3,4,5) is at Index N-1.
-	# ...
-	# Chunk M (Newest) is at Index 0.
+	# Reverse Iteration logic for matching units (if needed)
+	# Actually, since we clear and rebuild on refresh, we can just iterate cards.
+	# But we need to link them to units.
+	# Since we sorted visual order, matching by index is tricky.
+	# We should probably store the unit in the card metadata to be safe.
+	# Wait, `_create_card` doesn't store unit reference.
+	# Let's rely on the fact that `monitored_units` is stable during `_process`.
+	# BUT `refresh_units` reorders them visually.
+	# [U0, U1, U2] -> Row 0: [U2, U1, U0].
+	# If we iterate monitored_units i=0..N.
+	# Unit 0 is at Row 0, Child 2.
+	# Unit 2 is at Row 0, Child 0.
+	# This is getting complex.
+	# Better to traverse the Visual Tree and use stored Unit reference.
+	# I will add `card.set_meta("unit", unit)` in `_create_card`.
 
-	# We need to map cards back to monitored_units indices.
-	# It's easier to just iterate the hierarchy and match against monitored_units sequentially?
-	# No, because hierarchy is reversed in terms of chunks.
-	# Chunk 0 has units 0,1,2. It is at the BOTTOM.
-	# So we should iterate rows from Bottom (Last Child) to Top (First Child).
-
-	var rows = container.get_children()
-	# Reverse iteration to match unit order 0..N
-	for r_i in range(rows.size() - 1, -1, -1):
-		var row = rows[r_i]
-		var cards = row.get_children()
-		for card in cards:
-			if unit_index >= monitored_units.size(): break
-
-			var unit = monitored_units[unit_index]
-			unit_index += 1
+	for row in container.get_children():
+		for card in row.get_children():
+			if !card.has_meta("unit"): continue
+			var unit = card.get_meta("unit")
 
 			if !is_instance_valid(unit):
 				continue
@@ -205,8 +254,20 @@ func _process(_delta):
 func _trigger_flash(card):
 	if !card.has_meta("flashing") or !card.get_meta("flashing"):
 		card.set_meta("flashing", true)
+
+		# Find Icon
+		var layout = card.get_child(0)
+		var icon = layout.get_node_or_null("Icon")
+
 		var tween = create_tween()
-		# High intensity white flash
-		tween.tween_property(card, "modulate", Color(3.0, 3.0, 3.0), 0.15).set_trans(Tween.TRANS_SINE)
-		tween.tween_property(card, "modulate", Color.WHITE, 0.15).set_trans(Tween.TRANS_SINE)
+
+		if icon:
+			# Scale Pulse (Scale up and down)
+			tween.tween_property(icon, "scale", Vector2(1.2, 1.2), 0.1).set_trans(Tween.TRANS_SINE)
+			tween.tween_property(icon, "scale", Vector2(1.0, 1.0), 0.1).set_trans(Tween.TRANS_SINE)
+		else:
+			# Fallback
+			tween.tween_property(card, "modulate", Color(2.0, 2.0, 2.0), 0.1).set_trans(Tween.TRANS_SINE)
+			tween.tween_property(card, "modulate", Color.WHITE, 0.1).set_trans(Tween.TRANS_SINE)
+
 		tween.finished.connect(func(): card.set_meta("flashing", false))
