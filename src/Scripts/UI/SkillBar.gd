@@ -216,19 +216,9 @@ func _trigger_flash(card):
 	if !card.has_meta("flashing") or !card.get_meta("flashing"):
 		card.set_meta("flashing", true)
 
-		# Find Icon to pulse
-		var layout = card.get_child(0)
-		var icon = layout.get_node_or_null("Icon")
-
 		var tween = create_tween()
-		if icon:
-			# Scale Pulse
-			tween.tween_property(icon, "scale", Vector2(1.2, 1.2), 0.1).set_trans(Tween.TRANS_SINE)
-			tween.tween_property(icon, "scale", Vector2(1.0, 1.0), 0.1).set_trans(Tween.TRANS_SINE)
-		else:
-			# Fallback for some reason
-			tween.tween_property(card, "modulate", Color(2.0, 2.0, 2.0), 0.1).set_trans(Tween.TRANS_SINE)
-			tween.tween_property(card, "modulate", Color.WHITE, 0.1).set_trans(Tween.TRANS_SINE)
+		tween.tween_property(card, "modulate", Color(2.0, 2.0, 2.0), 0.1).set_trans(Tween.TRANS_SINE)
+		tween.tween_property(card, "modulate", Color.WHITE, 0.1).set_trans(Tween.TRANS_SINE)
 
 		tween.finished.connect(func(): card.set_meta("flashing", false))
 
