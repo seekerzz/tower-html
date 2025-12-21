@@ -9,6 +9,12 @@ var slow_timer: float = 0.0
 var freeze_timer: float = 0.0
 var stun_timer: float = 0.0
 var effects = { "burn": 0.0, "poison": 0.0 }
+
+var poison_stacks: int = 0
+var poison_power: float = 0.0
+var poison_tick_timer: float = 0.0
+var poison_trap_timer: float = 0.0
+
 var burn_source: Node2D = null
 var heat_accumulation: float = 0.0
 
@@ -182,11 +188,24 @@ func _process(delta):
 		effects.burn -= delta
 		if effects.burn <= 0: effects.burn = 0
 
+	# Poison Logic
 	if effects.poison > 0:
-		hp -= (max_hp * 0.05) * delta
 		effects.poison -= delta
-		if effects.poison <= 0: effects.poison = 0
-		if hp <= 0: die()
+		if effects.poison <= 0:
+			effects.poison = 0
+			poison_stacks = 0
+			poison_power = 0.0
+			modulate = Color.WHITE
+
+	if poison_stacks > 0:
+		poison_tick_timer -= delta
+		if poison_tick_timer <= 0:
+			poison_tick_timer = Constants.POISON_TICK_INTERVAL
+			take_damage(poison_power, null, "poison")
+
+		# Visual Feedback
+		var t = clamp(float(poison_stacks) / Constants.POISON_VISUAL_SATURATION_STACKS, 0.0, 1.0)
+		modulate = Color.WHITE.lerp(Color(0.2, 1.0, 0.2), t)
 
 	# Wobble Effect
 	if !is_playing_attack_anim:
@@ -261,6 +280,24 @@ func _process(delta):
 
 		move_along_path(delta)
 
+func apply_poison(source_unit, stacks_added, duration):
+	if poison_stacks == 0:
+		poison_tick_timer = Constants.POISON_TICK_INTERVAL
+
+	effects["poison"] = duration
+
+	if poison_stacks < Constants.POISON_MAX_STACKS:
+		poison_stacks += stacks_added
+		if poison_stacks > Constants.POISON_MAX_STACKS:
+			poison_stacks = Constants.POISON_MAX_STACKS
+
+		var base_dmg = 10.0
+		if source_unit and is_instance_valid(source_unit) and source_unit.get("damage"):
+			base_dmg = source_unit.damage
+
+		var damage_increment = base_dmg * Constants.POISON_DAMAGE_RATIO * stacks_added
+		poison_power += damage_increment
+
 func check_suicide_collision():
 	# Check for overlapping bodies (walls) or distance to core
 	var bodies = get_overlapping_bodies()
@@ -329,7 +366,17 @@ func check_traps(delta):
 			if b_type == "slow":
 				temp_speed_mod = 0.5
 			elif b_type == "poison":
-				effects.poison = 1.0
+				# Poison Trap Logic
+				effects.poison = 1.0 # Refresh duration
+				poison_trap_timer -= delta
+				if poison_trap_timer <= 0:
+					poison_trap_timer = Constants.POISON_TRAP_INTERVAL
+					if poison_stacks > 0:
+						poison_stacks = floor(poison_stacks * Constants.POISON_TRAP_MULTIPLIER)
+						poison_power = poison_power * Constants.POISON_TRAP_MULTIPLIER
+					else:
+						# If not poisoned, apply base poison
+						apply_poison(null, 1, 3.0)
 			elif b_type == "reflect":
 				# Fang trap reflects damage or deals damage
 				take_damage(props.strength * delta)
