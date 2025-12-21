@@ -121,24 +121,17 @@ func _setup_right_sidebar_layout():
 	# Update right_sidebar anchors to fill vertical space
 	right_sidebar.anchor_top = 0
 	right_sidebar.anchor_bottom = 1
-	# We assume anchors for left/right are handled in scene or elsewhere,
-	# but ensure it stretches vertically.
 
-	# Create Unified Container
-	var right_content = VBoxContainer.new()
-	right_content.name = "RightContentBox"
-	right_content.layout_mode = 1
-	right_content.anchors_preset = Control.PRESET_FULL_RECT
-	right_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-
-	# Use separation constant instead of Spacer
-	right_content.add_theme_constant_override("separation", 10)
-
-	# Pack content at bottom so new rows grow upwards (conceptually)
-	right_content.alignment = BoxContainer.ALIGNMENT_END
-
-	right_sidebar.add_child(right_content)
+	# Configure right_sidebar directly (Assuming it is a BoxContainer, e.g. VBoxContainer)
+	if right_sidebar is BoxContainer:
+		right_sidebar.alignment = BoxContainer.ALIGNMENT_END
+		right_sidebar.add_theme_constant_override("separation", 10)
+	else:
+		# If it's not a BoxContainer in the scene, we might need to be careful or warn.
+		# But instructions imply we should treat it as one.
+		# If it's a Control/Panel, these properties won't exist or won't work as expected for children layout.
+		# However, typically sidebar nodes in such setups are VBoxContainers.
+		pass
 
 	# Find PassiveSkillBar and InventoryPanel
 	var passive_bar = right_sidebar.get_node_or_null("PassiveSkillBar")
@@ -154,24 +147,36 @@ func _setup_right_sidebar_layout():
 		inv_panel = find_child("InventoryPanel", true, false)
 
 	if passive_bar:
-		if passive_bar.get_parent() != right_content:
-			passive_bar.reparent(right_content)
+		if passive_bar.get_parent() != right_sidebar:
+			passive_bar.reparent(right_sidebar)
+
+		# Set Flags
 		passive_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		# Don't expand vertical, let it take min size so it packs at bottom
-		# But we want width consistence, so ensure expand fill
 		passive_bar.size_flags_vertical = Control.SIZE_SHRINK_END
 
-		# Ensure order: Passive Top
-		right_content.move_child(passive_bar, 0)
+		# Reset anchors/layout_mode if previously set (important for containers)
+		# layout_mode 2 is typically used for Container children (Control.LAYOUT_MODE_CONTAINER)
+		# But usually Reparenting handles this or just leaving it alone works if it was in a container.
+		# Ensuring no manual anchors are set:
+		# passive_bar.anchor_top = 0 # etc... usually not needed if flags are set.
+
+		# Ensure order: Passive Top (Index 0)
+		right_sidebar.move_child(passive_bar, 0)
 
 	if inv_panel:
-		if inv_panel.get_parent() != right_content:
-			inv_panel.reparent(right_content)
+		if inv_panel.get_parent() != right_sidebar:
+			inv_panel.reparent(right_sidebar)
+
+		# Set Flags
 		inv_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		inv_panel.size_flags_vertical = Control.SIZE_SHRINK_END
-		# Ensure order: Inventory Bottom
-		# If passive is there, this is index 1
-		right_content.move_child(inv_panel, right_content.get_child_count() - 1)
+
+		# Ensure order: Inventory Bottom (Index 1)
+		# Since Passive is 0, we can just move this to 1.
+		if right_sidebar.get_child_count() > 1:
+			right_sidebar.move_child(inv_panel, 1)
+		else:
+			right_sidebar.move_child(inv_panel, 0)
 
 func _setup_stats_panel():
 	# Requirements:
