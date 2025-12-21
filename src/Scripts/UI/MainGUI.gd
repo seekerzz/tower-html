@@ -115,6 +115,9 @@ func _setup_right_sidebar_layout():
 	right_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
+	# Pack content at bottom so new rows grow upwards (conceptually)
+	right_content.alignment = BoxContainer.ALIGNMENT_END
+
 	right_sidebar.add_child(right_content)
 
 	# Find PassiveSkillBar and InventoryPanel
@@ -134,15 +137,26 @@ func _setup_right_sidebar_layout():
 		if passive_bar.get_parent() != right_content:
 			passive_bar.reparent(right_content)
 		passive_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# Don't expand vertical, let it take min size so it packs at bottom
+		passive_bar.size_flags_vertical = Control.SIZE_SHRINK_END
+
 		# Ensure order: Passive Top
 		right_content.move_child(passive_bar, 0)
+
+	# Add Spacer between Passive and Inventory (~1.5 lines = ~40px)
+	var spacer = Control.new()
+	spacer.custom_minimum_size = Vector2(0, 40)
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	right_content.add_child(spacer)
+	right_content.move_child(spacer, 1)
 
 	if inv_panel:
 		if inv_panel.get_parent() != right_content:
 			inv_panel.reparent(right_content)
 		inv_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		inv_panel.size_flags_vertical = Control.SIZE_SHRINK_END
 		# Ensure order: Inventory Bottom
-		right_content.move_child(inv_panel, 1)
+		right_content.move_child(inv_panel, 2)
 
 func _setup_stats_panel():
 	# Requirements:
@@ -187,7 +201,8 @@ func _update_sidebar_position():
 	var target_offset_bottom = -10 # Default for combat
 	if not GameManager.is_wave_active:
 		# Shop is open, occupy bottom 200px
-		target_offset_bottom = -210
+		# Updated: Move up further to avoid overlap with Shop (was -210)
+		target_offset_bottom = -300
 
 	sidebar_tween.set_parallel(true)
 	sidebar_tween.tween_property(left_sidebar, "offset_bottom", float(target_offset_bottom), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
