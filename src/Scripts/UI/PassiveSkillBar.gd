@@ -1,6 +1,7 @@
 extends Control
 
 @onready var container = $PanelContainer/GridContainer
+@onready var panel_container = $PanelContainer
 
 var monitored_units = []
 
@@ -9,17 +10,18 @@ func _ready():
 	if container:
 		container.add_theme_constant_override("h_separation", 10)
 		container.add_theme_constant_override("v_separation", 10)
+
+		# Updated: 3 columns as requested
+		container.columns = 3
+
 		var parent = container.get_parent()
 		if parent is PanelContainer:
 			var style = StyleBoxEmpty.new()
 			parent.add_theme_stylebox_override("panel", style)
 
-	# Use a timer to periodically scan for units instead of frame-by-frame if optimization is needed,
-	# but _process is fine for UI updates.
-
 	refresh_units()
 
-	# Connect to grid updates if possible to refresh list less often
+	# Connect to grid updates
 	if GameManager.grid_manager and GameManager.grid_manager.has_signal("grid_updated"):
 		if !GameManager.grid_manager.is_connected("grid_updated", refresh_units):
 			GameManager.grid_manager.grid_updated.connect(refresh_units)
@@ -47,7 +49,7 @@ func refresh_units():
 func _create_card(unit):
 	var card = PanelContainer.new()
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.custom_minimum_size.y = 80
+	card.custom_minimum_size.y = 60 # Reduced height for smaller icons
 	card.name = "PassiveCard_%s" % unit.name
 
 	# Style matching SkillBar
@@ -71,13 +73,15 @@ func _create_card(unit):
 	icon_rect.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	# Requirement: Square 1:1, e.g. 60x60
-	icon_rect.custom_minimum_size = Vector2(60, 60)
-	icon_rect.size = Vector2(60, 60)
-	icon_rect.offset_left = -30
-	icon_rect.offset_top = -30
-	icon_rect.offset_right = 30
-	icon_rect.offset_bottom = 30
+	# Updated: Smaller Square 45x45
+	var size = 45
+	icon_rect.custom_minimum_size = Vector2(size, size)
+	icon_rect.size = Vector2(size, size)
+	var offset = size / 2.0
+	icon_rect.offset_left = -offset
+	icon_rect.offset_top = -offset
+	icon_rect.offset_right = offset
+	icon_rect.offset_bottom = offset
 	layout.add_child(icon_rect)
 
 	# CD Overlay
@@ -86,7 +90,7 @@ func _create_card(unit):
 	cd_bar.nine_patch_stretch = true
 	cd_bar.fill_mode = TextureProgressBar.FILL_CLOCKWISE
 	cd_bar.value = 0
-	cd_bar.max_value = 1.0 # Will be updated
+	cd_bar.max_value = 1.0
 	cd_bar.step = 0.01
 	cd_bar.tint_progress = Color(0, 0, 0, 0.7)
 	cd_bar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -102,6 +106,12 @@ func _create_card(unit):
 	container.add_child(card)
 
 func _process(_delta):
+	# Resize Logic: Ensure this Control reports size matching content
+	if panel_container:
+		var target = panel_container.get_combined_minimum_size()
+		if custom_minimum_size != target:
+			custom_minimum_size = target
+
 	# Update CD overlays and handle flashing
 	var children = container.get_children()
 	for i in range(children.size()):
@@ -110,7 +120,6 @@ func _process(_delta):
 		var card = children[i]
 		var unit = monitored_units[i]
 
-		# Check if unit is still valid
 		if !is_instance_valid(unit):
 			card.queue_free()
 			continue
@@ -118,30 +127,12 @@ func _process(_delta):
 		var layout = card.get_child(0)
 		var cd_bar = layout.get_node("CD_Overlay")
 
-		# Check for cooldown completion flash (from >0 to 0)
-		# We need to track previous state or just check if it just hit 0.
-		# But since this runs every frame, we can check if it is very close to 0 but was > 0.
-		# However, `unit.production_timer` changes elsewhere.
-		# A robust way is to store the last known timer value in metadata.
-
 		var prev_timer = card.get_meta("prev_timer", 0.0)
 		var current_timer = unit.production_timer
 
-		# If it wrapped around (e.g. from 0 -> Max), that's a reset.
-		# If it went from > 0 to <= 0 (or very close), that's a completion.
-		# Unit logic usually resets it immediately after 0.
-		# So we might see it go from 0.1 -> 5.0 (reset). The "completion" happened at the transition.
-		# Or if it sits at 0.
-
-		# Let's assume standard behavior: timer counts down. When it hits 0, it triggers and resets.
-		# So if prev was small positive and current is large positive (reset), it triggered.
-		# OR if current is 0.
-
-		# Let's try detecting the transition to 0.
 		if prev_timer > 0 and current_timer <= 0:
 			_trigger_flash(card)
 		elif prev_timer > 0 and current_timer > prev_timer:
-			# This implies a reset happened (completed loop)
 			_trigger_flash(card)
 
 		card.set_meta("prev_timer", current_timer)
@@ -153,7 +144,6 @@ func _trigger_flash(card):
 	if !card.has_meta("flashing") or !card.get_meta("flashing"):
 		card.set_meta("flashing", true)
 		var tween = create_tween()
-		# Flash to bright color then back
 		tween.tween_property(card, "modulate", Color(1.5, 1.5, 1.5), 0.15).set_trans(Tween.TRANS_SINE)
 		tween.tween_property(card, "modulate", Color.WHITE, 0.15).set_trans(Tween.TRANS_SINE)
 		tween.finished.connect(func(): card.set_meta("flashing", false))
