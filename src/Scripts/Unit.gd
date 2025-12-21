@@ -131,9 +131,9 @@ func setup(key: String):
 		production_timer = 1.0
 		max_production_timer = 1.0
 
-	if type_key == "viper" or type_key == "scorpion":
-		production_timer = 5.0 # Set production interval (e.g., 5 seconds)
-		max_production_timer = 5.0
+	if unit_data.has("production_type") and unit_data["production_type"] == "item":
+		max_production_timer = unit_data.get("production_interval", 5.0)
+		production_timer = max_production_timer
 
 	# Cow Healing logic setup - Removed implicit setup here, handled in _process or logic
 	if unit_data.has("skill") and unit_data.skill == "milk_aura":
@@ -189,6 +189,18 @@ func reset_stats():
 
 	# Load core stats
 	damage = stats.get("damage", unit_data.get("damage", 0))
+
+	# Update production interval from mechanics if available
+	if unit_data.has("production_type") and unit_data["production_type"] == "item":
+		var base_interval = unit_data.get("production_interval", 5.0)
+		var new_interval = base_interval
+
+		if stats.has("mechanics") and stats["mechanics"].has("production_interval"):
+			new_interval = stats["mechanics"]["production_interval"]
+
+		max_production_timer = new_interval
+		# Do not reset current timer to avoid exploit/punishment on upgrade,
+		# but ensure it's not above new max if we want to be strict.
 
 	# Handle hp: if max_hp changes, should we heal?
 	# For now, just set max_hp. Current HP handling is done by GameManager (Core Health) or Barricades.
@@ -285,8 +297,10 @@ func set_highlight(active: bool, color: Color = Color.WHITE):
 func execute_skill_at(grid_pos: Vector2i):
 	if skill_cooldown > 0: return
 
-	# Viper and Scorpion no longer have active skills here.
-	if type_key == "viper" or type_key == "scorpion": return
+	# Units with item production (generic) usually don't have active skills in this context,
+	# or at least we shouldn't block by name.
+	# If the unit data has no "skill" field or skillType is not point, this won't be called normally.
+	if not unit_data.has("skill"): return
 
 	if GameManager.consume_resource("mana", skill_mana_cost):
 		is_no_mana = false
@@ -325,10 +339,6 @@ func activate_skill():
 	if unit_data.get("skillType") == "point" and type_key == "phoenix":
 		if GameManager.grid_manager:
 			GameManager.grid_manager.enter_skill_targeting(self)
-		return
-
-	# Viper and Scorpion are now passive producers, so they don't have active skill activation here
-	if type_key == "viper" or type_key == "scorpion":
 		return
 
 	# Check cost but proceed only if successful.
@@ -474,28 +484,32 @@ func _get_buff_icon(buff_type: String) -> String:
 func _process(delta):
 	if !GameManager.is_wave_active: return
 
-	# Viper & Scorpion Production Logic (Priority over generic produce)
-	if type_key == "viper" or type_key == "scorpion":
+	# Generic Item Production Logic
+	if unit_data.has("production_type") and unit_data["production_type"] == "item":
 		production_timer -= delta
 		if production_timer <= 0:
-			var item_id = "poison_trap" if type_key == "viper" else "fang_trap"
-			# Construct item data. Assuming item structure.
-			# Using a simple dictionary for now as per instructions.
-			var item_data = { "item_id": item_id, "count": 1 }
+			var item_id = unit_data.get("produce_item_id", "")
+			if item_id != "":
+				var item_data = { "item_id": item_id, "count": 1 }
 
-			if GameManager.inventory_manager:
-				# Check if added successfully
-				if GameManager.inventory_manager.add_item(item_data):
-					GameManager.spawn_floating_text(global_position, "Trap Produced!", Color.GREEN)
-					production_timer = 5.0 # Reset timer
+				var added = false
+				if GameManager.inventory_manager:
+					if GameManager.inventory_manager.add_item(item_data):
+						added = true
 				else:
-					# Inventory full, keep timer at 0 to retry next frame or wait?
-					# Instructions say: "if fail (full), keep Timer as 0 waiting for slot"
+					# Fallback for testing
+					print("Attempting to add %s to inventory (No InvManager)" % item_id)
+					added = true # Assume success in tests without manager
+
+				if added:
+					var trap_name = "Trap"
+					if Constants.BARRICADE_TYPES.has(item_id):
+						trap_name = Constants.BARRICADE_TYPES[item_id].get("icon", "Trap")
+					GameManager.spawn_floating_text(global_position, "%s Produced!" % trap_name, Color.GREEN)
+					production_timer = max_production_timer
+				else:
+					# Inventory full, keep timer at 0 to retry
 					production_timer = 0.0
-			else:
-				# Fallback if no inventory manager (e.g. testing without mock properly set up, or just logging)
-				print("Attempting to add %s to inventory (No InvManager)" % item_id)
-				production_timer = 5.0 # Reset to avoid spamming log if manager missing
 
 	# Production Logic (Resources)
 	elif unit_data.has("produce"):

@@ -64,6 +64,16 @@
 			"name": "荆棘",
 			"is_solid": false,
 			"icon": "🦷"
+		},
+		"snowball_trap": {
+			"hp": 10,
+			"type": "trap_freeze",
+			"color": "#74b9ff",
+			"width": 10,
+			"name": "雪球陷阱",
+			"is_solid": false,
+			"icon": "❄️",
+			"desc": "放置3秒后爆炸，冻结周围3x3范围敌人，无伤害"
 		}
 	},
 	"UNIT_TYPES": {
@@ -78,41 +88,37 @@
 			"atkSpeed": 1.0,
 			"attackType": "ranged",
 			"proj": "stinger",
-			"skill": "place_fang",
-			"skillCd": 15,
-			"targetType": "ground",
-			"targetArea": [
-				1,
-				1
-			],
+			"production_type": "item",
+			"produce_item_id": "fang_trap",
+			"production_interval": 5.0,
 			"levels": {
 				"1": {
 					"damage": 30,
 					"cost": 40,
-					"desc": "攻击概率生成尖牙陷阱",
+					"desc": "每5秒生成尖牙陷阱",
 					"mechanics": {}
 				},
 				"2": {
 					"damage": 45,
 					"cost": 80,
-					"desc": "攻击概率生成尖牙陷阱",
+					"desc": "每4秒生成尖牙陷阱",
 					"mechanics": {
-						"crit_rate_bonus": 0.1
+						"crit_rate_bonus": 0.1,
+						"production_interval": 4.0
 					}
 				},
 				"3": {
 					"damage": 67,
 					"cost": 160,
-					"desc": "攻击概率生成尖牙陷阱",
+					"desc": "每3秒生成尖牙陷阱",
 					"mechanics": {
 						"crit_rate_bonus": 0.2,
-						"multi_shot_chance": 0.3
+						"multi_shot_chance": 0.3,
+						"production_interval": 3.0
 					}
 				}
 			},
-			"type_key": "scorpion",
-			"skillType": "point",
-			"skillId": "place_fang"
+			"type_key": "scorpion"
 		},
 		"squirrel": {
 			"name": "松鼠",
@@ -1094,12 +1100,14 @@
 				1,
 				1
 			],
-			"range": 250,
+			"range": 0,
 			"atkSpeed": 1.0,
 			"foodCost": 40,
 			"manaCost": 20,
-			"attackType": "ranged",
-			"proj": "snowball",
+			"attackType": "none",
+			"production_type": "item",
+			"produce_item_id": "snowball_trap",
+			"production_interval": 5.0,
 			"trait": "freeze",
 			"damageType": "magic",
 			"crit_rate": 0.1,
@@ -1109,25 +1117,27 @@
 					"damage": 40,
 					"hp": 200,
 					"cost": 60,
-					"desc": "攻击冻结敌人",
+					"desc": "每5秒生成雪球陷阱",
 					"mechanics": {}
 				},
 				"2": {
 					"damage": 60,
 					"hp": 300,
 					"cost": 120,
-					"desc": "攻击冻结敌人",
+					"desc": "每4秒生成雪球陷阱",
 					"mechanics": {
-						"crit_rate_bonus": 0.1
+						"crit_rate_bonus": 0.1,
+						"production_interval": 4.0
 					}
 				},
 				"3": {
 					"damage": 90,
 					"hp": 450,
 					"cost": 240,
-					"desc": "攻击冻结敌人",
+					"desc": "每3秒生成雪球陷阱",
 					"mechanics": {
-						"crit_rate_bonus": 0.2
+						"crit_rate_bonus": 0.2,
+						"production_interval": 3.0
 					}
 				}
 			},
@@ -1193,13 +1203,9 @@
 			"attackType": "melee",
 			"trait": "poison_touch",
 			"damageType": "poison",
-			"skill": "place_poison",
-			"skillCd": 15,
-			"targetType": "ground",
-			"targetArea": [
-				1,
-				1
-			],
+			"production_type": "item",
+			"produce_item_id": "poison_trap",
+			"production_interval": 5.0,
 			"crit_rate": 0.1,
 			"crit_dmg": 1.5,
 			"has_interaction": true,
@@ -1209,31 +1215,31 @@
 					"damage": 40,
 					"hp": 150,
 					"cost": 30,
-					"desc": "攻击概率生成毒液陷阱",
+					"desc": "每5秒生成毒液陷阱",
 					"mechanics": {}
 				},
 				"2": {
 					"damage": 60,
 					"hp": 225,
 					"cost": 60,
-					"desc": "攻击概率生成毒液陷阱",
+					"desc": "每4秒生成毒液陷阱",
 					"mechanics": {
-						"crit_rate_bonus": 0.1
+						"crit_rate_bonus": 0.1,
+						"production_interval": 4.0
 					}
 				},
 				"3": {
 					"damage": 90,
 					"hp": 337,
 					"cost": 120,
-					"desc": "攻击概率生成毒液陷阱",
+					"desc": "每3秒生成毒液陷阱",
 					"mechanics": {
-						"crit_rate_bonus": 0.2
+						"crit_rate_bonus": 0.2,
+						"production_interval": 3.0
 					}
 				}
 			},
-			"type_key": "viper",
-			"skillType": "point",
-			"skillId": "place_poison"
+			"type_key": "viper"
 		},
 		"spider": {
 			"name": "蜘蛛",
