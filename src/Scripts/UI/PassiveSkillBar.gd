@@ -8,11 +8,17 @@ var monitored_units = []
 func _ready():
 	# Ensure the container is set up correctly
 	if container:
-		container.add_theme_constant_override("h_separation", 10)
-		container.add_theme_constant_override("v_separation", 10)
+		# We want a VBoxContainer instead of GridContainer for row-based management
+		# But since the node is in the scene tree as GridContainer, we swap it programmatically if needed.
+		if container is GridContainer:
+			var parent = container.get_parent()
+			container.name = "OldGrid"
+			container.queue_free()
 
-		# Updated: 3 columns as requested
-		container.columns = 3
+			container = VBoxContainer.new()
+			container.name = "RowsContainer"
+			container.add_theme_constant_override("separation", 5) # Spacing between rows
+			parent.add_child(container)
 
 		var parent = container.get_parent()
 		if parent is PanelContainer:
@@ -38,19 +44,57 @@ func refresh_units():
 
 	# Assuming GridManager has tiles dict
 	var tiles = GameManager.grid_manager.tiles
+	var found_units = []
 	for key in tiles:
 		var tile = tiles[key]
 		if tile.unit:
 			var u = tile.unit
 			if u.type_key == "viper" or u.type_key == "scorpion":
+				found_units.append(u)
 				monitored_units.append(u)
-				_create_card(u)
 
-func _create_card(unit):
+	# Layout Logic: Rows of 3.
+	# "Add new row above... adding new skills there"
+	# Chunk 0 (indices 0,1,2), Chunk 1 (indices 3,4,5)...
+	# Chunk N (Newest) should be at Top (Index 0 in VBox).
+	# So we reverse the chunks.
+
+	var chunks = []
+	var current_chunk = []
+	for i in range(found_units.size()):
+		current_chunk.append(found_units[i])
+		if current_chunk.size() == 3:
+			chunks.append(current_chunk)
+			current_chunk = []
+
+	if current_chunk.size() > 0:
+		chunks.append(current_chunk)
+
+	# Add rows in reverse order (Newest chunks first)
+	chunks.reverse()
+
+	for chunk in chunks:
+		var row = HBoxContainer.new()
+		# Align Center or consistent with Inventory? Inventory is 3 slots wide.
+		# If we align Center, they stack nicely.
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 10) # Match horizontal separation
+
+		for unit in chunk:
+			_create_card_in_row(unit, row)
+
+		container.add_child(row)
+
+func _create_card_in_row(unit, parent_row):
 	var card = PanelContainer.new()
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.custom_minimum_size.y = 60 # Reduced height for smaller icons
+	# Size Flags: If we want them fixed size, we set custom min size and no expansion.
+	# But Inventory slots are 60x60. Passive are 45x45.
+	card.custom_minimum_size = Vector2(45, 60) # 45 wide, 60 tall (container height) or just square
+	# Using 60 height for consistent row height
 	card.name = "PassiveCard_%s" % unit.name
+
+	# Meta for Logic
+	card.set_meta("unit_ref", unit)
 
 	# Style matching SkillBar
 	var bg_color = Color("#2c3e50")
@@ -103,7 +147,16 @@ func _create_card(unit):
 
 	layout.add_child(cd_bar)
 
-	container.add_child(card)
+	# White Flash Overlay
+	var flash_overlay = ColorRect.new()
+	flash_overlay.name = "FlashOverlay"
+	flash_overlay.color = Color.WHITE
+	flash_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	flash_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flash_overlay.modulate.a = 0.0 # Invisible start
+	layout.add_child(flash_overlay)
+
+	parent_row.add_child(card)
 
 func _process(_delta):
 	# Resize Logic: Ensure this Control reports size matching content
@@ -113,37 +166,38 @@ func _process(_delta):
 			custom_minimum_size = target
 
 	# Update CD overlays and handle flashing
-	var children = container.get_children()
-	for i in range(children.size()):
-		if i >= monitored_units.size(): break
+	# Iterate Rows
+	var rows = container.get_children()
 
-		var card = children[i]
-		var unit = monitored_units[i]
+	for row in rows:
+		if not row is HBoxContainer: continue
+		for card in row.get_children():
+			var unit = card.get_meta("unit_ref", null)
+			if !is_instance_valid(unit):
+				continue
 
-		if !is_instance_valid(unit):
-			card.queue_free()
-			continue
+			var layout = card.get_child(0)
+			var cd_bar = layout.get_node("CD_Overlay")
+			var flash = layout.get_node("FlashOverlay")
 
-		var layout = card.get_child(0)
-		var cd_bar = layout.get_node("CD_Overlay")
+			var prev_timer = card.get_meta("prev_timer", 0.0)
+			var current_timer = unit.production_timer
 
-		var prev_timer = card.get_meta("prev_timer", 0.0)
-		var current_timer = unit.production_timer
+			if prev_timer > 0 and current_timer <= 0:
+				_trigger_flash(flash)
+			elif prev_timer > 0 and current_timer > prev_timer:
+				_trigger_flash(flash)
 
-		if prev_timer > 0 and current_timer <= 0:
-			_trigger_flash(card)
-		elif prev_timer > 0 and current_timer > prev_timer:
-			_trigger_flash(card)
+			card.set_meta("prev_timer", current_timer)
 
-		card.set_meta("prev_timer", current_timer)
+			cd_bar.max_value = unit.max_production_timer
+			cd_bar.value = unit.production_timer
 
-		cd_bar.max_value = unit.max_production_timer
-		cd_bar.value = unit.production_timer
-
-func _trigger_flash(card):
-	if !card.has_meta("flashing") or !card.get_meta("flashing"):
-		card.set_meta("flashing", true)
+func _trigger_flash(overlay):
+	if !overlay.has_meta("flashing") or !overlay.get_meta("flashing"):
+		overlay.set_meta("flashing", true)
 		var tween = create_tween()
-		tween.tween_property(card, "modulate", Color(1.5, 1.5, 1.5), 0.15).set_trans(Tween.TRANS_SINE)
-		tween.tween_property(card, "modulate", Color.WHITE, 0.15).set_trans(Tween.TRANS_SINE)
-		tween.finished.connect(func(): card.set_meta("flashing", false))
+		# Flash White (Alpha 0 -> 0.8 -> 0)
+		tween.tween_property(overlay, "modulate:a", 0.8, 0.1).set_trans(Tween.TRANS_SINE)
+		tween.tween_property(overlay, "modulate:a", 0.0, 0.3).set_trans(Tween.TRANS_SINE)
+		tween.finished.connect(func(): overlay.set_meta("flashing", false))

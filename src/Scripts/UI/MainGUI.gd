@@ -143,9 +143,9 @@ func _setup_right_sidebar_layout():
 		# Ensure order: Passive Top
 		right_content.move_child(passive_bar, 0)
 
-	# Add Spacer between Passive and Inventory (~1.5 lines = ~40px)
+	# Add Spacer between Passive and Inventory (Moved up further ~80px)
 	var spacer = Control.new()
-	spacer.custom_minimum_size = Vector2(0, 40)
+	spacer.custom_minimum_size = Vector2(0, 80)
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right_content.add_child(spacer)
 	right_content.move_child(spacer, 1)
