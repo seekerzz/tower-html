@@ -131,9 +131,9 @@ func setup(key: String):
 		production_timer = 1.0
 		max_production_timer = 1.0
 
-	if type_key == "viper" or type_key == "scorpion":
-		production_timer = 5.0 # Set production interval (e.g., 5 seconds)
-		max_production_timer = 5.0
+	if unit_data.has("production_interval"):
+		production_timer = unit_data["production_interval"]
+		max_production_timer = production_timer
 
 	# Cow Healing logic setup - Removed implicit setup here, handled in _process or logic
 	if unit_data.has("skill") and unit_data.skill == "milk_aura":
@@ -213,6 +213,11 @@ func reset_stats():
 		var mechs = stats["mechanics"]
 		if mechs.has("crit_rate_bonus"):
 			crit_rate += mechs["crit_rate_bonus"]
+		if mechs.has("production_interval"):
+			max_production_timer = mechs["production_interval"]
+			# If current timer is higher than new max, clamp it? Or just let it run.
+			# Better to update max, so next cycle uses it.
+
 		# Add other mechanics here
 		# e.g. multi_shot_chance is handled in combat/projectile logic,
 		# so we might need to store it or apply it to a variable if Unit.gd handles shooting.
@@ -474,30 +479,25 @@ func _get_buff_icon(buff_type: String) -> String:
 func _process(delta):
 	if !GameManager.is_wave_active: return
 
-	# Viper & Scorpion Production Logic (Priority over generic produce)
-	if type_key == "viper" or type_key == "scorpion":
+	# Item Production Logic (Generic)
+	if unit_data.has("produce_item_id"):
 		production_timer -= delta
 		if production_timer <= 0:
-			var item_id = "poison_trap" if type_key == "viper" else "fang_trap"
-			# Construct item data. Assuming item structure.
-			# Using a simple dictionary for now as per instructions.
+			var item_id = unit_data["produce_item_id"]
 			var item_data = { "item_id": item_id, "count": 1 }
 
 			if GameManager.inventory_manager:
-				# Check if added successfully
 				if GameManager.inventory_manager.add_item(item_data):
 					GameManager.spawn_floating_text(global_position, "Trap Produced!", Color.GREEN)
-					production_timer = 5.0 # Reset timer
+					production_timer = max_production_timer
 				else:
-					# Inventory full, keep timer at 0 to retry next frame or wait?
-					# Instructions say: "if fail (full), keep Timer as 0 waiting for slot"
+					# Inventory full, retry next frame
 					production_timer = 0.0
 			else:
-				# Fallback if no inventory manager (e.g. testing without mock properly set up, or just logging)
 				print("Attempting to add %s to inventory (No InvManager)" % item_id)
-				production_timer = 5.0 # Reset to avoid spamming log if manager missing
+				production_timer = max_production_timer
 
-	# Production Logic (Resources)
+	# Resource Production Logic
 	elif unit_data.has("produce"):
 		production_timer -= delta
 		if production_timer <= 0:

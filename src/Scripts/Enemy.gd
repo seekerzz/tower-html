@@ -354,6 +354,10 @@ func apply_stun(duration: float):
 	stun_timer = duration
 	GameManager.spawn_floating_text(global_position, "Stunned!", Color.GRAY)
 
+func apply_freeze(duration: float):
+	freeze_timer = duration
+	GameManager.spawn_floating_text(global_position, "Frozen!", Color.CYAN)
+
 func check_traps(delta):
 	var bodies = get_overlapping_bodies()
 	for b in bodies:

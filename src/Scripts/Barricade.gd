@@ -49,11 +49,50 @@ func init(grid_pos: Vector2i, type_key: String):
 	else:
 		push_error("Invalid barricade type: " + type_key)
 
+	if props and props.type == "trap_freeze":
+		fuse_timer = 3.0
+
+var fuse_timer: float = 0.0
+
 func _process(delta):
 	if props and props.get("duration"):
 		var duration = props.get("duration")
 		var damage_per_sec = max_hp / duration
 		take_damage(damage_per_sec * delta)
+
+	if props and props.type == "trap_freeze":
+		fuse_timer -= delta
+		if fuse_timer <= 0:
+			_explode_snowball()
+
+func _explode_snowball():
+	# Visual Effect
+	GameManager.spawn_floating_text(global_position, "BOOM!", Color.CYAN)
+	# Reuse SlashEffect as generic explosion
+	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
+	get_parent().add_child(effect)
+	effect.global_position = global_position
+	effect.configure("cross", Color.CYAN)
+	effect.scale = Vector2(3, 3)
+	effect.play()
+
+	# Freeze Logic (3x3 area)
+	# Check 8 neighbors + center. But simple distance check is easier.
+	# 3x3 tiles is roughly 1.5 * TILE_SIZE radius, or just distance check.
+	# TILE_SIZE is usually 64 or similar. Let's assume range 100.
+
+	var enemies = get_tree().get_nodes_in_group("enemies")
+	for enemy in enemies:
+		if global_position.distance_to(enemy.global_position) <= 100.0:
+			if enemy.has_method("apply_freeze"):
+				enemy.apply_freeze(3.0) # Freeze for 3 seconds? Or duration?
+			elif enemy.has_method("apply_stun"):
+				enemy.apply_stun(3.0)
+
+	# Destroy self
+	if GameManager.grid_manager:
+		GameManager.grid_manager.remove_obstacle(self)
+	queue_free()
 
 func take_damage(amount: float, source = null):
 	hp -= amount
