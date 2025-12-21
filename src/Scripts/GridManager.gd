@@ -22,8 +22,10 @@ var last_preview_frame: int = 0
 # Interaction System (Neighbor Buff Selection)
 const STATE_IDLE = 0
 const STATE_SELECTING_INTERACTION_TARGET = 1
+const STATE_SKILL_TARGETING = 2
 var interaction_state: int = STATE_IDLE
 var interaction_source_unit = null
+var skill_source_unit: Node2D = null
 var valid_interaction_targets: Array = [] # Array[Vector2i]
 var interaction_highlights: Array = [] # Array[Node2D] (Visuals)
 
@@ -91,6 +93,27 @@ func _input(event):
 				get_viewport().set_input_as_handled()
 		return # Block other inputs
 
+	elif interaction_state == STATE_SKILL_TARGETING:
+		if event is InputEventMouseButton and event.pressed:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				var mouse_pos = get_local_mouse_position()
+				var gx = int(round(mouse_pos.x / TILE_SIZE))
+				var gy = int(round(mouse_pos.y / TILE_SIZE))
+				var grid_pos = Vector2i(gx, gy)
+
+				# Optional: Check if grid_pos is in bounds or specific range logic
+				if abs(gx) <= Constants.MAP_WIDTH/2 and abs(gy) <= Constants.MAP_HEIGHT/2:
+					if skill_source_unit and is_instance_valid(skill_source_unit):
+						skill_source_unit.execute_skill_at(grid_pos)
+					exit_skill_targeting()
+					get_viewport().set_input_as_handled()
+
+			elif event.button_index == MOUSE_BUTTON_RIGHT:
+				exit_skill_targeting()
+				GameManager.spawn_floating_text(get_global_mouse_position(), "Cancelled", Color.GRAY)
+				get_viewport().set_input_as_handled()
+		return
+
 func update_placement_preview(grid_pos: Vector2i, world_pos: Vector2, item_id: String):
 	if not placement_preview_cursor:
 		placement_preview_cursor = Node2D.new()
@@ -114,6 +137,16 @@ func update_placement_preview(grid_pos: Vector2i, world_pos: Vector2, item_id: S
 		visual.color = Color(1, 0, 0, 0.4)
 
 	last_preview_frame = Engine.get_process_frames()
+
+func enter_skill_targeting(unit: Node2D):
+	interaction_state = STATE_SKILL_TARGETING
+	skill_source_unit = unit
+	GameManager.spawn_floating_text(unit.global_position, "Select Target", Color.YELLOW)
+	print("Entered skill targeting mode for unit: ", unit.name)
+
+func exit_skill_targeting():
+	interaction_state = STATE_IDLE
+	skill_source_unit = null
 
 func can_place_item_at(grid_pos: Vector2i, item_id: String) -> bool:
 	var key = get_tile_key(grid_pos.x, grid_pos.y)
