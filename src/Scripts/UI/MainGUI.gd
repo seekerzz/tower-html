@@ -13,7 +13,7 @@ signal sacrifice_requested
 @onready var damage_stats_panel = $DamageStats
 @onready var stats_scroll = $DamageStats/ScrollContainer
 @onready var stats_header = $DamageStats/Header
-@onready var stats_toggle_btn = $DamageStats/ToggleButton
+# Removed stats_toggle_btn as per refactor
 @onready var left_sidebar = $LeftSidebar
 @onready var right_sidebar = $RightSidebar
 @onready var top_left_panel = $TopLeftPanel
@@ -32,9 +32,10 @@ var damage_stats = {} # unit_id -> {name, icon, amount, node}
 var last_sort_time: float = 0.0
 var tooltip_instance = null
 var sort_interval: float = 1.0
-var is_stats_collapsed: bool = true
-var stats_tween: Tween
 var sidebar_tween: Tween
+
+# New Combat Gold Label
+var combat_gold_label: Label
 
 func _ready():
 	GameManager.resource_changed.connect(update_ui)
@@ -42,23 +43,17 @@ func _ready():
 	GameManager.wave_ended.connect(update_ui)
 
 	GameManager.wave_started.connect(_update_hud_visibility)
-	GameManager.wave_started.connect(_force_collapse_stats) # Added for requirement
 	GameManager.wave_ended.connect(_update_hud_visibility)
 
 	# Connect for sidebar movement
 	GameManager.wave_started.connect(_update_sidebar_position)
 	GameManager.wave_ended.connect(_update_sidebar_position)
 
-	# Connect to wave ended for stats auto-popup as requested
-	GameManager.wave_ended.connect(_on_wave_ended_stats)
-
 	GameManager.game_over.connect(_on_game_over)
 
 	GameManager.damage_dealt.connect(_on_damage_dealt)
 	GameManager.skill_activated.connect(_on_skill_activated)
 	GameManager.ftext_spawn_requested.connect(_on_ftext_spawn_requested)
-
-	stats_toggle_btn.pressed.connect(_on_stats_toggle_pressed)
 
 	_setup_ui_styles()
 
@@ -69,18 +64,120 @@ func _ready():
 
 	_setup_tooltip()
 
-	update_ui()
 	_setup_stats_panel()
+	_setup_combat_gold_label()
+	_setup_right_sidebar_layout()
+
+	update_ui()
 
 	# Initial visibility state
 	_update_hud_visibility()
 	_update_sidebar_position()
 
+func _setup_combat_gold_label():
+	combat_gold_label = Label.new()
+	combat_gold_label.name = "CombatGoldLabel"
+	# Icon + Text
+	combat_gold_label.text = "💰 0"
+	combat_gold_label.add_theme_font_size_override("font_size", 20)
+	combat_gold_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	combat_gold_label.add_theme_constant_override("outline_size", 4)
+
+	# Position below TopLeftPanel
+	# Assuming TopLeftPanel is a container or control at top left.
+	# We can add it as a child of TopLeftPanel if it's a VBox, or as a sibling.
+	# To be safe and flexible, we add it to MainGUI and position it relative to TopLeftPanel.
+	# However, simplest is adding to TopLeftPanel if it handles layout.
+	# If TopLeftPanel is just a Panel, we can anchor the label.
+
+	top_left_panel.add_child(combat_gold_label)
+	# Assuming TopLeftPanel is a VBoxContainer or similar vertical layout.
+	# If not, we might need to position it manually.
+	# Given the structure (HPBar, FoodBar etc inside), it's likely a VBoxContainer.
+	# If it's a Panel, we might need to check.
+	# Let's assume VBoxContainer for now as it contains bars.
+	# If it's a normal Panel, the bars are likely positioned manually or with anchors.
+	# Let's check TopLeftPanel type if possible? No.
+	# We'll set it to be at the bottom of the TopLeftPanel if it's not a container.
+	if not top_left_panel is Container:
+		combat_gold_label.layout_mode = 1
+		combat_gold_label.anchors_preset = Control.PRESET_BOTTOM_LEFT
+		combat_gold_label.position.y = top_left_panel.size.y + 10
+
+func _setup_right_sidebar_layout():
+	if not right_sidebar: return
+
+	# Create Unified Container
+	var right_content = VBoxContainer.new()
+	right_content.name = "RightContentBox"
+	right_content.layout_mode = 1
+	right_content.anchors_preset = Control.PRESET_FULL_RECT
+	right_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	right_sidebar.add_child(right_content)
+
+	# Find PassiveSkillBar and InventoryPanel
+	var passive_bar = right_sidebar.get_node_or_null("PassiveSkillBar")
+	if not passive_bar:
+		passive_bar = get_node_or_null("PassiveSkillBar")
+	if not passive_bar:
+		passive_bar = find_child("PassiveSkillBar", true, false)
+
+	var inv_panel = right_sidebar.get_node_or_null("InventoryPanel")
+	if not inv_panel:
+		inv_panel = get_node_or_null("InventoryPanel")
+	if not inv_panel:
+		inv_panel = find_child("InventoryPanel", true, false)
+
+	if passive_bar:
+		if passive_bar.get_parent() != right_content:
+			passive_bar.reparent(right_content)
+		passive_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# Ensure order: Passive Top
+		right_content.move_child(passive_bar, 0)
+
+	if inv_panel:
+		if inv_panel.get_parent() != right_content:
+			inv_panel.reparent(right_content)
+		inv_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# Ensure order: Inventory Bottom
+		right_content.move_child(inv_panel, 1)
+
+func _setup_stats_panel():
+	# Requirements:
+	# 1. Position: Left side (handled by logic/layout, but assumed currently Center Right?)
+	# The prompt says "Ensure DamageStats panel is located on screen left".
+	# Current code: damage_stats_panel.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	# We change this to LEFT.
+	damage_stats_panel.set_anchors_preset(Control.PRESET_CENTER_LEFT)
+	damage_stats_panel.position.x = 0 # Stick to left
+
+	# 2. Click through
+	damage_stats_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if stats_scroll:
+		stats_scroll.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if stats_container:
+		stats_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	# 3. Visibility logic is handled in _update_hud_visibility
+
 func _update_hud_visibility():
-	var active = GameManager.is_wave_active
-	hp_bar.visible = active
-	food_bar.visible = active
-	mana_bar.visible = active
+	var is_combat = GameManager.is_wave_active
+
+	hp_bar.visible = is_combat
+	food_bar.visible = is_combat
+	mana_bar.visible = is_combat
+
+	# Damage Stats: Hidden in Combat, Visible in Shop
+	# "Combat (Combat): auto hide (visible = false)"
+	# "Shop/Preparation (Shop): auto show (visible = true)"
+	if damage_stats_panel:
+		damage_stats_panel.visible = !is_combat
+
+	# Combat Gold Label: Visible in Combat, Hidden in Shop
+	if combat_gold_label:
+		combat_gold_label.visible = is_combat
 
 func _update_sidebar_position():
 	if sidebar_tween and sidebar_tween.is_valid():
@@ -92,10 +189,6 @@ func _update_sidebar_position():
 		# Shop is open, occupy bottom 200px
 		target_offset_bottom = -210
 
-	# Animate LeftSidebar
-	# We are animating offset_bottom.
-	# Note: LeftSidebar is anchored Bottom Left with Vertical Grow Up.
-	# So changing offset_bottom moves the whole container up/down relative to bottom anchor.
 	sidebar_tween.set_parallel(true)
 	sidebar_tween.tween_property(left_sidebar, "offset_bottom", float(target_offset_bottom), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	if right_sidebar:
@@ -138,41 +231,7 @@ func _setup_ui_styles():
 		if label:
 			label.add_theme_constant_override("outline_size", 4)
 			label.add_theme_color_override("font_outline_color", Color.BLACK)
-			label.add_theme_font_size_override("font_size", 18) # Larger font
-
-func _setup_stats_panel():
-	# Anchor to Center Right
-	damage_stats_panel.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
-	# Initial state: Collapsed
-	is_stats_collapsed = true
-	# We need to defer position update because layout happens after ready
-	call_deferred("_update_stats_panel_position")
-
-func _update_stats_panel_position():
-	_animate_stats_panel()
-
-func _animate_stats_panel():
-	if stats_tween and stats_tween.is_valid():
-		stats_tween.kill()
-	stats_tween = create_tween()
-
-	# Ensure panel is on top
-	damage_stats_panel.z_index = 10
-
-	var viewport_width = get_viewport_rect().size.x
-	var panel_width = damage_stats_panel.size.x
-
-	var target_pos_x
-	if is_stats_collapsed:
-		stats_scroll.visible = false
-		damage_stats_panel.custom_minimum_size.y = 30
-		target_pos_x = viewport_width
-	else:
-		stats_scroll.visible = true
-		damage_stats_panel.custom_minimum_size.y = 300
-		target_pos_x = viewport_width - max(panel_width, 200)
-
-	stats_tween.tween_property(damage_stats_panel, "position:x", target_pos_x, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			label.add_theme_font_size_override("font_size", 18)
 
 func _setup_tooltip():
 	tooltip_instance = TOOLTIP_SCENE.instantiate()
@@ -198,33 +257,22 @@ func _process(delta):
 func _update_cutin_layout():
 	if !cutin_manager or !top_left_panel or !left_sidebar: return
 
-	# Calculate space between TopLeftPanel (Artifacts) and LeftSidebar (Skills)
-	# TopLeftPanel grows downwards. Its global rect is relative to canvas usually, or MainGUI.
-	# MainGUI is full rect.
-
 	var top_panel_bottom = top_left_panel.position.y + top_left_panel.size.y
-
-	# LeftSidebar is anchored bottom-left.
-	# We want its top edge.
 	var left_sidebar_top = left_sidebar.position.y
 
-	# We want a rect that starts at (10, top_panel_bottom) and ends at (width, left_sidebar_top)
-	# Width is typically matched to sidebar width (260-280)
-	var x_pos = top_left_panel.position.x # 10
-	var width = 270.0 # Standard width from request
+	var x_pos = top_left_panel.position.x
+	var width = 270.0
 
 	var available_height = left_sidebar_top - top_panel_bottom
 
-	# Pass to manager
 	var new_rect = Rect2(x_pos, top_panel_bottom, width, available_height)
 	cutin_manager.update_area(new_rect)
 
 func _input(event):
-	if event.is_action_pressed("ui_focus_next"):
-		pass
+	pass
 
 func update_ui():
-	_update_hud_visibility()
+	# _update_hud_visibility() # Removed to prevent overriding the phase logic every update
 
 	var target_hp = (GameManager.core_health / GameManager.max_core_health) * 100
 	create_tween().tween_property(hp_bar, "value", target_hp, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -232,26 +280,29 @@ func update_ui():
 	food_bar.value = (GameManager.food / GameManager.max_food) * 100
 	mana_bar.value = (GameManager.mana / GameManager.max_mana) * 100
 
-	# Updated labels with Emojis as requested
 	hp_label.text = "❤️ %d/%d" % [int(GameManager.core_health), int(GameManager.max_core_health)]
 	food_label.text = "🌽 %d/%d" % [int(GameManager.food), int(GameManager.max_food)]
 	mana_label.text = "💧 %d/%d" % [int(GameManager.mana), int(GameManager.max_mana)]
 
 	wave_label.text = "Wave %d" % GameManager.wave
 
+	if combat_gold_label:
+		combat_gold_label.text = "💰 %d" % GameManager.gold
+
 func _on_damage_dealt(unit, amount):
 	if not unit: return
 	var id = unit.get_instance_id()
 
 	if not damage_stats.has(id):
-		# Create UI entry
 		var row = HBoxContainer.new()
+		# Make row ignore mouse
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-		# Icon
 		var icon_rect = TextureRect.new()
 		icon_rect.custom_minimum_size = Vector2(24, 24)
 		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE # Ignore mouse
 
 		if "type_key" in unit:
 			var icon = AssetLoader.get_unit_icon(unit.type_key)
@@ -262,6 +313,10 @@ func _on_damage_dealt(unit, amount):
 
 		var name_lbl = Label.new()
 		var dmg_lbl = Label.new()
+
+		# Ignore mouse on labels
+		name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		dmg_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 		var unit_name = "Unit"
 		if "unit_data" in unit and unit.unit_data:
@@ -290,7 +345,6 @@ func _on_damage_dealt(unit, amount):
 		last_sort_time = sort_interval
 
 func _sort_stats():
-	# Simple bubble sort or reordering of children based on amount
 	var children = stats_container.get_children()
 	children.sort_custom(func(a, b):
 		var amt_a = _get_amount_from_row(a)
@@ -313,18 +367,13 @@ func _on_skill_activated(unit):
 
 func _on_ftext_spawn_requested(pos, value, color):
 	var ftext = FLOATING_TEXT_SCENE.instantiate()
-
-	# Random Offset - mainly handled by physics now, but a small initial jitter helps
 	var offset = Vector2(randf_range(-10, 10), randf_range(-10, 10))
 	var world_pos = pos + offset
-
-	# Convert world position to canvas (UI) position if needed.
 	var screen_pos = get_viewport().canvas_transform * world_pos
 
 	ftext.position = screen_pos
 	add_child(ftext)
 
-	# Parse value for logic
 	var value_num: float = 0.0
 	var display_value = str(value)
 
@@ -332,26 +381,9 @@ func _on_ftext_spawn_requested(pos, value, color):
 		value_num = float(display_value)
 		display_value = str(int(value_num))
 
-	# Determine if crit based on color (Gold-ish)
-	# Gold is typically (1, 0.84, 0)
 	var is_crit = color.r > 0.9 and color.g > 0.8 and color.b < 0.4
 
 	ftext.setup(display_value, color, is_crit, value_num)
-
-func _on_stats_toggle_pressed():
-	is_stats_collapsed = !is_stats_collapsed
-	_animate_stats_panel()
-
-func _force_collapse_stats():
-	if !is_stats_collapsed:
-		is_stats_collapsed = true
-		_animate_stats_panel()
-
-func _on_wave_ended_stats():
-	# Auto pop up stats
-	if is_stats_collapsed:
-		is_stats_collapsed = false
-		_animate_stats_panel()
 
 func _on_game_over():
 	if game_over_panel:
