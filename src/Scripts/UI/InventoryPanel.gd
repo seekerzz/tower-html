@@ -7,6 +7,25 @@ const SLOT_COUNT = 9
 func _ready():
 	print("[InventoryPanel] UI Ready initialized.") # 调试日志
 	
+	# Defer layout setup to allow MainGUI to reparent us first
+	call_deferred("_setup_layout")
+
+	_init_slots()
+
+	# 连接信号
+	if GameManager.get("inventory_manager") and GameManager.inventory_manager:
+		var inv_mgr = GameManager.inventory_manager
+		if !inv_mgr.is_connected("inventory_updated", update_inventory):
+			inv_mgr.connect("inventory_updated", update_inventory)
+			print("[InventoryPanel] Connected to inventory_manager signal.")
+
+		# 初始加载
+		if inv_mgr.has_method("get_inventory"):
+			update_inventory(inv_mgr.get_inventory())
+		else:
+			push_error("[InventoryPanel] InventoryManager missing get_inventory() method.")
+
+func _setup_layout():
 	if slots_container:
 		slots_container.add_theme_constant_override("h_separation", 10)
 		slots_container.add_theme_constant_override("v_separation", 10)
@@ -17,8 +36,18 @@ func _ready():
 
 		var parent = slots_container.get_parent()
 
+		# Check if we are inside the new Unified Sidebar Layout
+		# If so, we should NOT create an internal ScrollContainer, but rather expand.
+		var is_unified_layout = false
+		var p = self.get_parent()
+		while p:
+			if p.name == "RightContentBox" or p.name == "SidebarScroll":
+				is_unified_layout = true
+				break
+			p = p.get_parent()
+
 		# Dynamic ScrollContainer Check
-		if not parent is ScrollContainer:
+		if not parent is ScrollContainer and not is_unified_layout:
 			print("[InventoryPanel] Creating dynamic ScrollContainer.")
 			var scroll = ScrollContainer.new()
 			scroll.name = "InvScrollContainer"
@@ -30,26 +59,23 @@ func _ready():
 			# Min height for scrolling to be useful
 			scroll.custom_minimum_size.y = 200 # Adjust as needed
 
-			var grandparent = parent.get_parent()
 			# Move slots_container into scroll
 			slots_container.reparent(scroll)
-
-			# Replace parent (likely just a PanelContainer logic wrapper) logic
-			# Actually, the hierarchy is likely: InventoryPanel (Control) -> PanelContainer -> SlotsContainer
-			# We want: InventoryPanel -> PanelContainer -> ScrollContainer -> SlotsContainer
-
 			parent.add_child(scroll)
 
 			# Ensure Scroll fills parent
 			scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+
+		# If in unified layout, ensure we don't have a fixed small height limiting us
+		if is_unified_layout:
+			custom_minimum_size.y = 0 # Let content dictate or expand
+			size_flags_vertical = Control.SIZE_EXPAND_FILL # Expand to fill
 
 		if parent is PanelContainer:
 			var style = StyleBoxEmpty.new()
 			parent.add_theme_stylebox_override("panel", style)
 	else:
 		push_error("[InventoryPanel] Error: SlotsContainer not found!")
-
-	_init_slots()
 
 	# 连接信号
 	if GameManager.get("inventory_manager") and GameManager.inventory_manager:

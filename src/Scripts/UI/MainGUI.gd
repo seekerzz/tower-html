@@ -114,18 +114,32 @@ func _setup_combat_gold_label():
 func _setup_right_sidebar_layout():
 	if not right_sidebar: return
 
-	# Create Unified Container
+	# Check if container already exists
+	if right_sidebar.has_node("SidebarScroll"):
+		return
+
+	# Create ScrollContainer
+	var scroll = ScrollContainer.new()
+	scroll.name = "SidebarScroll"
+	scroll.layout_mode = 1
+	scroll.anchors_preset = Control.PRESET_FULL_RECT
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# Hide horizontal scrollbar
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+
+	right_sidebar.add_child(scroll)
+
+	# Create Content Box (VBox)
 	var right_content = VBoxContainer.new()
 	right_content.name = "RightContentBox"
-	right_content.layout_mode = 1
-	right_content.anchors_preset = Control.PRESET_FULL_RECT
 	right_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# Align top (Passive first, then Inventory)
+	right_content.alignment = BoxContainer.ALIGNMENT_BEGIN
+	right_content.add_theme_constant_override("separation", 20)
 
-	# Pack content at bottom so new rows grow upwards (conceptually)
-	right_content.alignment = BoxContainer.ALIGNMENT_END
-
-	right_sidebar.add_child(right_content)
+	scroll.add_child(right_content)
 
 	# Find PassiveSkillBar and InventoryPanel
 	var passive_bar = right_sidebar.get_node_or_null("PassiveSkillBar")
@@ -144,27 +158,21 @@ func _setup_right_sidebar_layout():
 		if passive_bar.get_parent() != right_content:
 			passive_bar.reparent(right_content)
 		passive_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		# Don't expand vertical, let it take min size so it packs at bottom
-		passive_bar.size_flags_vertical = Control.SIZE_SHRINK_END
+		passive_bar.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
 		# Ensure order: Passive Top
 		right_content.move_child(passive_bar, 0)
-
-	# Add Spacer between Passive and Inventory
-	# Increased from 40 to 80 to resolve overlap as requested
-	var spacer = Control.new()
-	spacer.custom_minimum_size = Vector2(0, 80)
-	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	right_content.add_child(spacer)
-	right_content.move_child(spacer, 1)
 
 	if inv_panel:
 		if inv_panel.get_parent() != right_content:
 			inv_panel.reparent(right_content)
 		inv_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		inv_panel.size_flags_vertical = Control.SIZE_SHRINK_END
+		# Expand to fill remaining space
+		inv_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
 		# Ensure order: Inventory Bottom
-		right_content.move_child(inv_panel, 2)
+		if passive_bar:
+			right_content.move_child(inv_panel, 1)
 
 func _setup_stats_panel():
 	# Requirements:
@@ -206,23 +214,25 @@ func _update_sidebar_position():
 		sidebar_tween.kill()
 	sidebar_tween = create_tween()
 
-	var target_offset_bottom = -10 # Default for combat
-	if not GameManager.is_wave_active:
-		# Shop is open
-		var shop_height = 300.0 # Fallback
-		if shop_node and is_instance_valid(shop_node):
-			# Use minimal height logic or actual height
-			if shop_node.visible:
-				shop_height = shop_node.size.y
-				# If Shop uses anchors, size might be reliable if layout happened
-				if shop_height < 100: shop_height = 300.0
-			else:
-				# If hidden, maybe we shouldn't move up?
-				# But is_wave_active = false usually implies Shop Phase.
-				pass
+	var target_offset_bottom = -10.0 # Default for combat
 
-		# Add padding
-		target_offset_bottom = -(shop_height + 40)
+	if not GameManager.is_wave_active:
+		# Shop is open (or Preparation Phase)
+		var shop_height = 0.0
+
+		if shop_node and is_instance_valid(shop_node) and shop_node.visible:
+			# Dynamic height check
+			shop_height = shop_node.size.y
+
+		if shop_height <= 0:
+			# If shop is not visible yet or size 0, try to guess or use safe default if Shop should be there
+			# But if we want purely dynamic, we might rely on it being visible.
+			# If Shop is not found, we don't move sidebars up excessively.
+			shop_height = 0.0
+
+		if shop_height > 0:
+			# Add padding (10 as requested)
+			target_offset_bottom = -(shop_height + 10)
 
 	sidebar_tween.set_parallel(true)
 	sidebar_tween.tween_property(left_sidebar, "offset_bottom", float(target_offset_bottom), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
