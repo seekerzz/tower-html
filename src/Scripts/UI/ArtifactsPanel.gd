@@ -56,12 +56,12 @@ func _create_hud_icon(id, count, rm):
 	var data = rm.REWARDS[id]
 	var icon_container = PanelContainer.new()
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0, 0, 0, 0.5)
-	style.set_corner_radius_all(4)
+	style.bg_color = UIConstants.COLORS.panel_bg
+	style.set_corner_radius_all(UIConstants.CORNER_RADIUS.small)
 	icon_container.add_theme_stylebox_override("panel", style)
 
 	# Container settings
-	icon_container.custom_minimum_size = Vector2(40, 40)
+	icon_container.custom_minimum_size = UIConstants.CARD_SIZE.small
 	icon_container.mouse_filter = Control.MOUSE_FILTER_PASS
 
 	var label = Label.new()

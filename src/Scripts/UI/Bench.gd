@@ -31,7 +31,7 @@ func update_bench_ui(data):
 
 	for i in range(slot_count):
 		var slot = Control.new()
-		slot.custom_minimum_size = Vector2(60, 60)
+		slot.custom_minimum_size = UIConstants.CARD_SIZE.medium
 		slot.set_script(BENCH_SLOT_SCRIPT)
 		slot.slot_index = i
 
@@ -43,9 +43,7 @@ func update_bench_ui(data):
 		panel.anchors_preset = 15 # Full Rect
 		panel.mouse_filter = MOUSE_FILTER_IGNORE # Let the slot handle events
 
-		var style = StyleBoxFlat.new()
-		style.bg_color = Color(0.2, 0.2, 0.2, 1) # Dark gray background
-		style.set_corner_radius_all(8) # Corner Radius: 8
+		var style = StyleMaker.get_slot_style()
 
 		panel.add_theme_stylebox_override("panel", style)
 		slot.add_child(panel)
