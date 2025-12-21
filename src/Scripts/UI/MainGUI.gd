@@ -33,6 +33,7 @@ var last_sort_time: float = 0.0
 var tooltip_instance = null
 var sort_interval: float = 1.0
 var sidebar_tween: Tween
+var shop_node: Control = null
 
 # New Combat Gold Label
 var combat_gold_label: Label
@@ -67,6 +68,12 @@ func _ready():
 	_setup_stats_panel()
 	_setup_combat_gold_label()
 	_setup_right_sidebar_layout()
+
+	# Try to find Shop node dynamically
+	shop_node = get_tree().root.find_child("Shop", true, false)
+	if not shop_node and GameManager.get("main_game"):
+		# If MainGame reference exists, try there
+		shop_node = GameManager.main_game.find_child("Shop", true, false)
 
 	update_ui()
 
@@ -201,9 +208,21 @@ func _update_sidebar_position():
 
 	var target_offset_bottom = -10 # Default for combat
 	if not GameManager.is_wave_active:
-		# Shop is open, occupy bottom 200px
-		# Updated: Move up further to avoid overlap with Shop (was -210 -> -300 -> -340)
-		target_offset_bottom = -340
+		# Shop is open
+		var shop_height = 300.0 # Fallback
+		if shop_node and is_instance_valid(shop_node):
+			# Use minimal height logic or actual height
+			if shop_node.visible:
+				shop_height = shop_node.size.y
+				# If Shop uses anchors, size might be reliable if layout happened
+				if shop_height < 100: shop_height = 300.0
+			else:
+				# If hidden, maybe we shouldn't move up?
+				# But is_wave_active = false usually implies Shop Phase.
+				pass
+
+		# Add padding
+		target_offset_bottom = -(shop_height + 40)
 
 	sidebar_tween.set_parallel(true)
 	sidebar_tween.tween_property(left_sidebar, "offset_bottom", float(target_offset_bottom), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
