@@ -75,6 +75,10 @@ func _ready():
 		# If MainGame reference exists, try there
 		shop_node = GameManager.main_game.find_child("Shop", true, false)
 
+	if shop_node and shop_node.has_signal("shop_state_changed"):
+		if not shop_node.shop_state_changed.is_connected(_update_sidebar_position_from_signal):
+			shop_node.shop_state_changed.connect(_update_sidebar_position_from_signal)
+
 	update_ui()
 
 	# Initial visibility state
@@ -114,6 +118,12 @@ func _setup_combat_gold_label():
 func _setup_right_sidebar_layout():
 	if not right_sidebar: return
 
+	# Update right_sidebar anchors to fill vertical space
+	right_sidebar.anchor_top = 0
+	right_sidebar.anchor_bottom = 1
+	# We assume anchors for left/right are handled in scene or elsewhere,
+	# but ensure it stretches vertically.
+
 	# Create Unified Container
 	var right_content = VBoxContainer.new()
 	right_content.name = "RightContentBox"
@@ -121,6 +131,9 @@ func _setup_right_sidebar_layout():
 	right_content.anchors_preset = Control.PRESET_FULL_RECT
 	right_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	# Use separation constant instead of Spacer
+	right_content.add_theme_constant_override("separation", 10)
 
 	# Pack content at bottom so new rows grow upwards (conceptually)
 	right_content.alignment = BoxContainer.ALIGNMENT_END
@@ -145,18 +158,11 @@ func _setup_right_sidebar_layout():
 			passive_bar.reparent(right_content)
 		passive_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		# Don't expand vertical, let it take min size so it packs at bottom
+		# But we want width consistence, so ensure expand fill
 		passive_bar.size_flags_vertical = Control.SIZE_SHRINK_END
 
 		# Ensure order: Passive Top
 		right_content.move_child(passive_bar, 0)
-
-	# Add Spacer between Passive and Inventory
-	# Increased from 40 to 80 to resolve overlap as requested
-	var spacer = Control.new()
-	spacer.custom_minimum_size = Vector2(0, 80)
-	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	right_content.add_child(spacer)
-	right_content.move_child(spacer, 1)
 
 	if inv_panel:
 		if inv_panel.get_parent() != right_content:
@@ -164,7 +170,8 @@ func _setup_right_sidebar_layout():
 		inv_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		inv_panel.size_flags_vertical = Control.SIZE_SHRINK_END
 		# Ensure order: Inventory Bottom
-		right_content.move_child(inv_panel, 2)
+		# If passive is there, this is index 1
+		right_content.move_child(inv_panel, right_content.get_child_count() - 1)
 
 func _setup_stats_panel():
 	# Requirements:
@@ -201,28 +208,26 @@ func _update_hud_visibility():
 	if combat_gold_label:
 		combat_gold_label.visible = is_combat
 
+func _update_sidebar_position_from_signal(is_expanded):
+	_update_sidebar_position()
+
 func _update_sidebar_position():
 	if sidebar_tween and sidebar_tween.is_valid():
 		sidebar_tween.kill()
 	sidebar_tween = create_tween()
 
 	var target_offset_bottom = -10 # Default for combat
-	if not GameManager.is_wave_active:
-		# Shop is open
-		var shop_height = 300.0 # Fallback
-		if shop_node and is_instance_valid(shop_node):
-			# Use minimal height logic or actual height
-			if shop_node.visible:
-				shop_height = shop_node.size.y
-				# If Shop uses anchors, size might be reliable if layout happened
-				if shop_height < 100: shop_height = 300.0
-			else:
-				# If hidden, maybe we shouldn't move up?
-				# But is_wave_active = false usually implies Shop Phase.
-				pass
+	var shop_height = 0.0
 
-		# Add padding
-		target_offset_bottom = -(shop_height + 40)
+	# Check shop state logic
+	if shop_node and is_instance_valid(shop_node) and shop_node.has_method("get_shop_height"):
+		shop_height = shop_node.get_shop_height()
+	elif not GameManager.is_wave_active:
+		# Fallback if method missing but presumably shop phase
+		shop_height = 300.0
+
+	if shop_height > 0:
+		target_offset_bottom = -(shop_height + 20) # 20 padding
 
 	sidebar_tween.set_parallel(true)
 	sidebar_tween.tween_property(left_sidebar, "offset_bottom", float(target_offset_bottom), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
