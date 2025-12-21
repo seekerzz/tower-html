@@ -1,23 +1,28 @@
 extends Control
 
-@onready var container = $PanelContainer/GridContainer
+var container: VBoxContainer
 @onready var panel_container = $PanelContainer
 
 var monitored_units = []
 
 func _ready():
-	# Ensure the container is set up correctly
-	if container:
-		container.add_theme_constant_override("h_separation", 10)
-		container.add_theme_constant_override("v_separation", 10)
+	# Dynamically replace GridContainer with VBoxContainer for Row-based layout
+	var old_grid = panel_container.get_node_or_null("GridContainer")
+	if old_grid:
+		old_grid.queue_free()
 
-		# Updated: 3 columns as requested
-		container.columns = 3
+	container = VBoxContainer.new()
+	container.name = "RowsContainer"
+	# Compact spacing between rows
+	container.add_theme_constant_override("separation", 10)
+	container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	container.size_flags_vertical = Control.SIZE_SHRINK_END # Pack at bottom
 
-		var parent = container.get_parent()
-		if parent is PanelContainer:
-			var style = StyleBoxEmpty.new()
-			parent.add_theme_stylebox_override("panel", style)
+	panel_container.add_child(container)
+
+	if panel_container:
+		var style = StyleBoxEmpty.new()
+		panel_container.add_theme_stylebox_override("panel", style)
 
 	refresh_units()
 
@@ -38,18 +43,42 @@ func refresh_units():
 
 	# Assuming GridManager has tiles dict
 	var tiles = GameManager.grid_manager.tiles
+	# Collect all valid passive units first
 	for key in tiles:
 		var tile = tiles[key]
 		if tile.unit:
 			var u = tile.unit
 			if u.type_key == "viper" or u.type_key == "scorpion":
 				monitored_units.append(u)
-				_create_card(u)
 
-func _create_card(unit):
+	# Create Rows (Chunks of 3)
+	# Requirement: "Add a new row above the existing row".
+	# Logic: Chunk 0 (Oldest) -> Bottom. Chunk N (Newest) -> Top.
+	# Implementation: Create rows in order 0..N, and move each new row to index 0 of the VBox.
+	# This stacks them: Row N, ..., Row 1, Row 0.
+
+	var chunk_size = 3
+	var current_row: HBoxContainer = null
+
+	for i in range(monitored_units.size()):
+		if i % chunk_size == 0:
+			# Start new row
+			current_row = HBoxContainer.new()
+			current_row.name = "Row_%d" % (i / chunk_size)
+			current_row.add_theme_constant_override("separation", 10)
+			current_row.alignment = BoxContainer.ALIGNMENT_CENTER
+
+			container.add_child(current_row)
+			# Move to top to stack upwards
+			container.move_child(current_row, 0)
+
+		var unit = monitored_units[i]
+		_create_card(unit, current_row)
+
+func _create_card(unit, parent_row):
 	var card = PanelContainer.new()
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.custom_minimum_size.y = 60 # Reduced height for smaller icons
+	# Fixed size for 1:1 look
+	card.custom_minimum_size = Vector2(60, 60)
 	card.name = "PassiveCard_%s" % unit.name
 
 	# Style matching SkillBar
@@ -73,7 +102,7 @@ func _create_card(unit):
 	icon_rect.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	# Updated: Smaller Square 45x45
+	# Smaller Square 45x45
 	var size = 45
 	icon_rect.custom_minimum_size = Vector2(size, size)
 	icon_rect.size = Vector2(size, size)
@@ -103,47 +132,81 @@ func _create_card(unit):
 
 	layout.add_child(cd_bar)
 
-	container.add_child(card)
+	parent_row.add_child(card)
 
 func _process(_delta):
 	# Resize Logic: Ensure this Control reports size matching content
-	if panel_container:
-		var target = panel_container.get_combined_minimum_size()
-		if custom_minimum_size != target:
-			custom_minimum_size = target
+	if panel_container and container:
+		# Calculate combined height of rows
+		var target_height = 0.0
+		for child in container.get_children():
+			if child is Container:
+				target_height += child.get_combined_minimum_size().y
+
+		# Add separation
+		var sep = container.get_theme_constant("separation")
+		var visible_children = 0
+		for c in container.get_children(): if c.visible: visible_children += 1
+		if visible_children > 1:
+			target_height += (visible_children - 1) * sep
+
+		# Enforce minimum size on self so VBox parent respects it
+		if custom_minimum_size.y != target_height:
+			custom_minimum_size.y = target_height
 
 	# Update CD overlays and handle flashing
-	var children = container.get_children()
-	for i in range(children.size()):
-		if i >= monitored_units.size(): break
+	# Iterate rows, then cards
+	if !container: return
 
-		var card = children[i]
-		var unit = monitored_units[i]
+	var unit_index = 0
+	# Note: Rows are in reverse order visually (Child 0 is Top/Newest).
+	# But we populated them by chunks.
+	# Chunk 0 (Units 0,1,2) is at Index N (Bottom).
+	# Chunk 1 (Units 3,4,5) is at Index N-1.
+	# ...
+	# Chunk M (Newest) is at Index 0.
 
-		if !is_instance_valid(unit):
-			card.queue_free()
-			continue
+	# We need to map cards back to monitored_units indices.
+	# It's easier to just iterate the hierarchy and match against monitored_units sequentially?
+	# No, because hierarchy is reversed in terms of chunks.
+	# Chunk 0 has units 0,1,2. It is at the BOTTOM.
+	# So we should iterate rows from Bottom (Last Child) to Top (First Child).
 
-		var layout = card.get_child(0)
-		var cd_bar = layout.get_node("CD_Overlay")
+	var rows = container.get_children()
+	# Reverse iteration to match unit order 0..N
+	for r_i in range(rows.size() - 1, -1, -1):
+		var row = rows[r_i]
+		var cards = row.get_children()
+		for card in cards:
+			if unit_index >= monitored_units.size(): break
 
-		var prev_timer = card.get_meta("prev_timer", 0.0)
-		var current_timer = unit.production_timer
+			var unit = monitored_units[unit_index]
+			unit_index += 1
 
-		if prev_timer > 0 and current_timer <= 0:
-			_trigger_flash(card)
-		elif prev_timer > 0 and current_timer > prev_timer:
-			_trigger_flash(card)
+			if !is_instance_valid(unit):
+				continue
 
-		card.set_meta("prev_timer", current_timer)
+			var layout = card.get_child(0)
+			var cd_bar = layout.get_node("CD_Overlay")
 
-		cd_bar.max_value = unit.max_production_timer
-		cd_bar.value = unit.production_timer
+			var prev_timer = card.get_meta("prev_timer", 0.0)
+			var current_timer = unit.production_timer
+
+			if prev_timer > 0 and current_timer <= 0:
+				_trigger_flash(card)
+			elif prev_timer > 0 and current_timer > prev_timer:
+				_trigger_flash(card)
+
+			card.set_meta("prev_timer", current_timer)
+
+			cd_bar.max_value = unit.max_production_timer
+			cd_bar.value = unit.production_timer
 
 func _trigger_flash(card):
 	if !card.has_meta("flashing") or !card.get_meta("flashing"):
 		card.set_meta("flashing", true)
 		var tween = create_tween()
-		tween.tween_property(card, "modulate", Color(1.5, 1.5, 1.5), 0.15).set_trans(Tween.TRANS_SINE)
+		# High intensity white flash
+		tween.tween_property(card, "modulate", Color(3.0, 3.0, 3.0), 0.15).set_trans(Tween.TRANS_SINE)
 		tween.tween_property(card, "modulate", Color.WHITE, 0.15).set_trans(Tween.TRANS_SINE)
 		tween.finished.connect(func(): card.set_meta("flashing", false))
