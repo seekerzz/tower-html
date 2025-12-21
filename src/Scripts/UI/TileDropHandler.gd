@@ -46,18 +46,29 @@ func _handle_inventory_drop(data):
 	var item_id = item_data.get("item_id", "")
 
 	# Trap Logic
-	if "trap" in item_id or item_id in ["poison_trap", "fang_trap"]:
+	if "trap" in item_id or Constants.BARRICADE_TYPES.has(item_id) or item_id in ["poison_trap", "fang_trap"]:
 		# Check empty tile
 		if tile_ref.unit == null and tile_ref.occupied_by == Vector2i.ZERO:
-			# Determine trap type
-			var trap_type = "poison"
-			if item_id == "fang_trap": trap_type = "fang"
-			# Or if generic trap id handling needed, for now hardcode as per context or map item_id to trap_type
-			# Assuming item_id contains type info or we deduce it.
-			# Using "poison" and "fang" as keys for spawn_trap_custom based on unit logic in Unit.gd
+			# Determine trap type mapping
+			var trap_type = ""
 
-			if "poison" in item_id: trap_type = "poison"
-			elif "fang" in item_id: trap_type = "fang"
+			# 1. Direct match in BARRICADE_TYPES
+			if Constants.BARRICADE_TYPES.has(item_id):
+				trap_type = item_id
+			# 2. Legacy Mapping for poison/fang which use _trap suffix in items but short keys in barricades
+			elif item_id == "poison_trap":
+				trap_type = "poison"
+			elif item_id == "fang_trap":
+				trap_type = "fang"
+			# 3. Fallback: default to poison if likely intended but unknown?
+			# Or better: check for specific substring matches if not found
+			elif "poison" in item_id:
+				trap_type = "poison"
+			elif "fang" in item_id:
+				trap_type = "fang"
 
-			GameManager.grid_manager.spawn_trap_custom(Vector2i(tile_ref.x, tile_ref.y), trap_type)
-			GameManager.inventory_manager.remove_item(data.slot_index)
+			if trap_type != "":
+				GameManager.grid_manager.spawn_trap_custom(Vector2i(tile_ref.x, tile_ref.y), trap_type)
+				GameManager.inventory_manager.remove_item(data.slot_index)
+			else:
+				print("TileDropHandler: Unknown trap type for item_id: ", item_id)
