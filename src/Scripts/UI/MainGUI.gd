@@ -197,17 +197,17 @@ func _update_sidebar_position():
 		sidebar_tween.kill()
 	sidebar_tween = create_tween()
 
-	var target_offset_bottom = -10.0 # 战斗模式：贴近底边 (InventoryPanel 会在这个位置之上)
+	var target_offset_bottom = UIConstants.MARGINS.sidebar_bottom_combat # 战斗模式：贴近底边 (InventoryPanel 会在这个位置之上)
 	
 	if not GameManager.is_wave_active:
 		# 商店模式：向上避让
-		var shop_height = 200.0 
+		var shop_height = UIConstants.MARGINS.sidebar_shop_base_height
 		if shop_node and is_instance_valid(shop_node) and shop_node.visible:
 			shop_height = shop_node.size.y
 			if shop_height < 150: shop_height = 180.0 # 最小高度保护
 		
 		# 向上移动侧边栏底部，留出商店空间 + 缓冲
-		target_offset_bottom = -(shop_height + 20)
+		target_offset_bottom = -(shop_height + UIConstants.MARGINS.sidebar_cushion)
 
 	sidebar_tween.set_parallel(true)
 	# 通过改变 offset_bottom 来挤压/拉伸 VBox 的高度。
@@ -217,18 +217,19 @@ func _update_sidebar_position():
 		sidebar_tween.tween_property(right_sidebar, "offset_bottom", float(target_offset_bottom), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func _setup_ui_styles():
-	var radius = 6
+	print("UIConstants.COLORS.primary: ", UIConstants.COLORS.primary)
+	var radius = UIConstants.CORNER_RADIUS.medium
 	var hp_fill = StyleBoxFlat.new()
-	hp_fill.bg_color = Color(0.8, 0.1, 0.1)
+	hp_fill.bg_color = UIConstants.BAR_COLORS.hp
 	hp_fill.set_corner_radius_all(radius)
 	var food_fill = StyleBoxFlat.new()
-	food_fill.bg_color = Color(1.0, 0.84, 0.0)
+	food_fill.bg_color = UIConstants.BAR_COLORS.food
 	food_fill.set_corner_radius_all(radius)
 	var mana_fill = StyleBoxFlat.new()
-	mana_fill.bg_color = Color(0.2, 0.4, 1.0)
+	mana_fill.bg_color = UIConstants.BAR_COLORS.mana
 	mana_fill.set_corner_radius_all(radius)
 	var bg_style = StyleBoxFlat.new()
-	bg_style.bg_color = Color(0.1, 0.1, 0.1, 0.5)
+	bg_style.bg_color = UIConstants.COLORS.panel_bg
 	bg_style.set_corner_radius_all(radius)
 
 	if hp_bar:
