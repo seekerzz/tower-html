@@ -9,6 +9,9 @@ var props: Dictionary
 # @onready var line_2d = $Line2D # Deprecated
 var visual_rect: ColorRect = null
 
+var trap_timer: float = 0.0
+var is_triggered: bool = false
+
 func init(grid_pos: Vector2i, type_key: String):
 	type = type_key
 	if Constants.BARRICADE_TYPES.has(type_key):
@@ -46,14 +49,54 @@ func init(grid_pos: Vector2i, type_key: String):
 		# This ensures enemies (Layer 1 RayCast) walk through walls.
 		# But enemies' Area2D (Mask 1+2) will still detect it for trap effects.
 		collision_layer = 2
+
+		# Snowball Trap Logic: Start Timer
+		if props.get("type") == "trap_freeze":
+			trap_timer = 3.0
+			GameManager.spawn_floating_text(global_position, "3...", Color.WHITE)
+
 	else:
 		push_error("Invalid barricade type: " + type_key)
 
 func _process(delta):
-	if props and props.get("duration"):
-		var duration = props.get("duration")
-		var damage_per_sec = max_hp / duration
-		take_damage(damage_per_sec * delta)
+	if props:
+		# Duration decay (for wall/obstacle types with lifespan)
+		if props.get("duration"):
+			var duration = props.get("duration")
+			var damage_per_sec = max_hp / duration
+			take_damage(damage_per_sec * delta)
+
+		# Snowball Trap Logic
+		if props.get("type") == "trap_freeze" and !is_triggered:
+			trap_timer -= delta
+			if trap_timer <= 0:
+				trigger_freeze_explosion()
+
+func trigger_freeze_explosion():
+	is_triggered = true
+	GameManager.spawn_floating_text(global_position, "Freeze!", Color.CYAN)
+
+	# Visual Effect
+	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
+	get_parent().add_child(effect)
+	effect.global_position = global_position
+	effect.configure("cross", Color.CYAN)
+	effect.scale = Vector2(3, 3)
+	effect.play()
+
+	# Logic: Freeze enemies in 3x3 range
+	var center_pos = global_position
+	var range_sq = (Constants.TILE_SIZE * 1.5) ** 2 # Roughly 1.5 tiles radius covers 3x3 box
+
+	var enemies = get_tree().get_nodes_in_group("enemies")
+	for enemy in enemies:
+		if enemy.global_position.distance_squared_to(center_pos) <= range_sq:
+			if enemy.has_method("apply_freeze"):
+				enemy.apply_freeze(2.0) # 2 seconds freeze? Or infinite until killed? Prompt said "delayed explosion freeze". Usually temporary.
+			elif enemy.has_method("apply_stun"):
+				enemy.apply_stun(2.0)
+
+	queue_free()
 
 func take_damage(amount: float, source = null):
 	hp -= amount
