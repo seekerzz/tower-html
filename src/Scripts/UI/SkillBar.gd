@@ -57,8 +57,8 @@ func refresh_skills():
 		card.name = "SkillCard_%d" % i
 
 		# Style
-		var bg_color = Color("#2c3e50") # Dark background
-		var style = StyleMaker.get_flat_style(bg_color, 8, 2, Color("#3498db")) # Blue border default
+		var bg_color = UIConstants.COLORS.dark_bg # Dark background
+		var style = StyleMaker.get_flat_style(bg_color, UIConstants.CORNER_RADIUS.large, 2, UIConstants.COLORS.primary) # Blue border default
 		card.add_theme_stylebox_override("panel", style)
 
 		# Layout Container
@@ -199,17 +199,17 @@ func _process(_delta):
 				if unit.skill_cooldown <= 0:
 					# No mana but ready -> Grey out / Red Border
 					card.modulate = Color(0.6, 0.6, 0.6)
-					style.border_color = Color("#e74c3c") # Red
-					cost_lbl.add_theme_color_override("font_color", Color("#e74c3c"))
+					style.border_color = UIConstants.COLORS.danger # Red
+					cost_lbl.add_theme_color_override("font_color", UIConstants.COLORS.danger)
 				else:
 					# Cooldown and no mana -> Just keep normal grey (handled by overlay mostly, but set border to grey)
 					card.modulate = Color.WHITE
 					style.border_color = Color("#95a5a6") # Grey border
-					cost_lbl.add_theme_color_override("font_color", Color("#e74c3c"))
+					cost_lbl.add_theme_color_override("font_color", UIConstants.COLORS.danger)
 			else:
 				# Enough mana
 				card.modulate = Color.WHITE
-				style.border_color = Color("#3498db") # Blue
+				style.border_color = UIConstants.COLORS.primary # Blue
 				cost_lbl.remove_theme_color_override("font_color") # Default
 
 func _trigger_flash(card):

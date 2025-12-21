@@ -88,17 +88,13 @@ func _apply_styles():
 	panel.add_theme_stylebox_override("panel", panel_style)
 
 	# Style Buttons
-	apply_button_style(refresh_btn, Color("#3498db")) # Blue
-	apply_button_style(expand_btn, Color("#2ecc71")) # Green
-	apply_button_style(start_wave_btn, Color("#e74c3c"), true) # Red, Main Action
+	apply_button_style(refresh_btn, "primary") # Blue
+	apply_button_style(expand_btn, "success") # Green
+	apply_button_style(start_wave_btn, "danger", true) # Red, Main Action
 
-func apply_button_style(button: Button, color: Color, is_main_action: bool = false):
-	var corner_radius = 8
-
-	# Normal State
-	var style_normal = StyleBoxFlat.new()
-	style_normal.bg_color = color
-	style_normal.set_corner_radius_all(corner_radius)
+func apply_button_style(button: Button, color_type: String, is_main_action: bool = false):
+	var style_normal = StyleMaker.get_button_style(color_type)
+	var color = style_normal.bg_color
 
 	# Hover State
 	var style_hover = style_normal.duplicate()
@@ -177,7 +173,7 @@ func refresh_shop(force: bool = false):
 func create_shop_card(index, unit_key):
 	var card = ShopCard.new()
 	card.setup(unit_key)
-	card.custom_minimum_size = Vector2(80, 80) # Adjusted size for smaller shop
+	card.custom_minimum_size = UIConstants.CARD_SIZE.large # Adjusted size for smaller shop
 	card.size_flags_horizontal = SIZE_EXPAND_FILL
 
 	card.card_clicked.connect(func(key): buy_unit(index, key, card))

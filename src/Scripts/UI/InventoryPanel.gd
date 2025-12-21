@@ -74,16 +74,14 @@ func _init_slots():
 	for i in range(SLOT_COUNT):
 		var slot = Control.new()
 		slot.set_script(drag_handler_script)
-		slot.custom_minimum_size = Vector2(60, 60)
+		slot.custom_minimum_size = UIConstants.CARD_SIZE.medium
 		slot.name = "Slot_%d" % i
 
 		var panel = Panel.new()
 		panel.layout_mode = 1
 		panel.anchors_preset = 15
 		panel.mouse_filter = MOUSE_FILTER_IGNORE
-		var style = StyleBoxFlat.new()
-		style.bg_color = Color(0.2, 0.2, 0.2, 1)
-		style.set_corner_radius_all(8)
+		var style = StyleMaker.get_slot_style()
 		panel.add_theme_stylebox_override("panel", style)
 		slot.add_child(panel)
 
