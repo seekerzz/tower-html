@@ -23,6 +23,12 @@ var is_collapsed: bool = false
 var panel_initial_y: float = 0.0
 
 signal unit_bought(unit_key)
+signal shop_state_changed(is_expanded)
+
+func get_shop_height() -> float:
+	if is_collapsed:
+		return 0.0
+	return $Panel.size.y
 
 func _ready():
 	GameManager.resource_changed.connect(update_ui)
@@ -67,6 +73,7 @@ func collapse_shop():
 	# Since handle is hidden/invisible, we might not see anything. But logic is preserved as requested.
 	var target_y = panel_initial_y + $Panel.size.y
 	tween.tween_property($Panel, "position:y", target_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	shop_state_changed.emit(false)
 
 func expand_shop():
 	if !is_collapsed: return
@@ -75,6 +82,7 @@ func expand_shop():
 
 	var tween = create_tween()
 	tween.tween_property($Panel, "position:y", panel_initial_y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	shop_state_changed.emit(true)
 
 func _apply_styles():
 	# Style Panel
