@@ -7,6 +7,7 @@ var monitored_units = []
 func _ready():
 	# Ensure the container is set up correctly
 	if container:
+		container.columns = 3
 		container.add_theme_constant_override("h_separation", 10)
 		container.add_theme_constant_override("v_separation", 10)
 		var parent = container.get_parent()
@@ -47,12 +48,8 @@ func refresh_units():
 func _create_card(unit):
 	var card = PanelContainer.new()
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.custom_minimum_size.y = 80
-	# Force 1:1 Aspect ratio if possible, or just set min width to match height?
-	# Requirement: "Icons adjusted to Square (1:1) ratio (suggest 60x60)".
-	# The card itself might be a row, but the requirement says "Card (PanelContainer) and Icon".
-	# If card is in a VBox/Grid, setting ratio might be tricky if it expands.
-	# But let's set icon to 60x60 square.
+	# Removed fixed height 80. Let it be determined by content (icon size + margins)
+
 	card.name = "PassiveCard_%s" % unit.name
 
 	# Style matching SkillBar
@@ -77,7 +74,8 @@ func _create_card(unit):
 	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	# Requirement: Square 1:1, suggest 60x60.
-	var icon_size = 60
+	# Reduced to 50 to fit 3 columns in ~200px width (200 / 3 = 66, minus margins)
+	var icon_size = 50
 	icon_rect.custom_minimum_size = Vector2(icon_size, icon_size)
 	icon_rect.size = Vector2(icon_size, icon_size)
 	icon_rect.offset_left = -icon_size/2
