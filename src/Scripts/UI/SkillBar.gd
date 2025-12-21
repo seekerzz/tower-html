@@ -166,6 +166,15 @@ func _process(_delta):
 		var cd_bar = layout.get_node("CD_Overlay")
 		var cost_lbl = layout.get_node("CostLabel")
 
+		var prev_cd = card.get_meta("prev_cd", 0.0)
+		var current_cd = unit.skill_cooldown
+
+		# Trigger flash if CD just finished (went from >0 to 0)
+		if prev_cd > 0 and current_cd <= 0:
+			_trigger_flash(card)
+
+		card.set_meta("prev_cd", current_cd)
+
 		# Cooldown Logic
 		if unit.skill_cooldown > 0:
 			var max_cd = unit.unit_data.get("skillCd", 10.0)
@@ -195,6 +204,14 @@ func _process(_delta):
 				card.modulate = Color.WHITE
 				style.border_color = Color("#3498db") # Blue
 				cost_lbl.remove_theme_color_override("font_color") # Default
+
+func _trigger_flash(card):
+	if !card.has_meta("flashing") or !card.get_meta("flashing"):
+		card.set_meta("flashing", true)
+		var tween = create_tween()
+		tween.tween_property(card, "modulate", Color(2.0, 2.0, 2.0), 0.15).set_trans(Tween.TRANS_SINE)
+		tween.tween_property(card, "modulate", Color.WHITE, 0.15).set_trans(Tween.TRANS_SINE)
+		tween.finished.connect(func(): card.set_meta("flashing", false))
 
 func _unhandled_input(event):
 	if event is InputEventKey and event.pressed and !event.echo:
