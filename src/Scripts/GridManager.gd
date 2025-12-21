@@ -22,8 +22,13 @@ var last_preview_frame: int = 0
 # Interaction System (Neighbor Buff Selection)
 const STATE_IDLE = 0
 const STATE_SELECTING_INTERACTION_TARGET = 1
+const STATE_SKILL_TARGETING = 2
+
 var interaction_state: int = STATE_IDLE
 var interaction_source_unit = null
+var skill_source_unit: Node2D = null
+var skill_preview_node: Node2D = null
+
 var valid_interaction_targets: Array = [] # Array[Vector2i]
 var interaction_highlights: Array = [] # Array[Node2D] (Visuals)
 
@@ -60,7 +65,31 @@ func _process(_delta):
 	if interaction_state == STATE_SELECTING_INTERACTION_TARGET:
 		selection_overlay.queue_redraw()
 
+	if interaction_state == STATE_SKILL_TARGETING and skill_preview_node and is_instance_valid(skill_preview_node):
+		var mouse_pos = get_global_mouse_position()
+		var gx = round(mouse_pos.x / TILE_SIZE)
+		var gy = round(mouse_pos.y / TILE_SIZE)
+		skill_preview_node.global_position = Vector2(gx * TILE_SIZE, gy * TILE_SIZE)
+
 func _input(event):
+	if interaction_state == STATE_SKILL_TARGETING:
+		if event is InputEventMouseButton and event.pressed:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				var mouse_pos = get_global_mouse_position()
+				var gx = int(round(mouse_pos.x / TILE_SIZE))
+				var gy = int(round(mouse_pos.y / TILE_SIZE))
+
+				if skill_source_unit and is_instance_valid(skill_source_unit):
+					skill_source_unit.execute_skill_at(Vector2i(gx, gy))
+
+				exit_skill_targeting()
+				get_viewport().set_input_as_handled()
+
+			elif event.button_index == MOUSE_BUTTON_RIGHT:
+				exit_skill_targeting()
+				get_viewport().set_input_as_handled()
+		return
+
 	if interaction_state == STATE_SELECTING_INTERACTION_TARGET:
 		if event is InputEventMouseButton and event.pressed:
 			if event.button_index == MOUSE_BUTTON_LEFT:
@@ -485,6 +514,38 @@ func _clear_tiles_occupied(x: int, y: int, w: int, h: int):
 
 func is_in_core_zone(pos: Vector2i) -> bool:
 	return abs(pos.x) <= Constants.CORE_ZONE_RADIUS and abs(pos.y) <= Constants.CORE_ZONE_RADIUS
+
+# --- Skill Targeting ---
+
+func enter_skill_targeting(unit: Node2D):
+	exit_skill_targeting() # Cleanup if already active
+
+	interaction_state = STATE_SKILL_TARGETING
+	skill_source_unit = unit
+
+	skill_preview_node = Node2D.new()
+	skill_preview_node.name = "SkillPreview"
+	skill_preview_node.z_index = 100
+
+	# Create 3x3 highlight
+	for x in range(-1, 2):
+		for y in range(-1, 2):
+			var rect = ColorRect.new()
+			rect.size = Vector2(TILE_SIZE, TILE_SIZE)
+			rect.position = Vector2(x * TILE_SIZE, y * TILE_SIZE) - Vector2(TILE_SIZE/2.0, TILE_SIZE/2.0)
+			rect.color = Color(0, 1, 0, 0.4)
+			rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			skill_preview_node.add_child(rect)
+
+	add_child(skill_preview_node)
+
+func exit_skill_targeting():
+	if skill_preview_node:
+		skill_preview_node.queue_free()
+		skill_preview_node = null
+
+	interaction_state = STATE_IDLE
+	skill_source_unit = null
 
 # --- Interaction System Implementation ---
 
