@@ -208,7 +208,8 @@ func _on_area_2d_area_entered(area):
 			area.effects["burn"] = max(area.effects["burn"], effects["burn"])
 			area.burn_source = source_unit
 		if effects.get("poison", 0.0) > 0.0:
-			area.effects["poison"] = max(area.effects["poison"], effects["poison"])
+			# Call apply_poison instead of setting directly
+			area.apply_poison(source_unit, 1, effects["poison"])
 		if effects.get("slow", 0.0) > 0.0:
 			area.slow_timer = max(area.slow_timer, effects["slow"])
 		if effects.get("freeze", 0.0) > 0.0:

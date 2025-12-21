@@ -9,6 +9,13 @@ const CORE_ZONE_RADIUS = 2
 
 const BASE_CORE_HP = 500
 
+const POISON_TICK_INTERVAL = 0.5
+const POISON_DAMAGE_RATIO = 0.1
+const POISON_MAX_STACKS = 9999
+const POISON_TRAP_MULTIPLIER = 1.1
+const POISON_TRAP_INTERVAL = 1.0
+const POISON_VISUAL_SATURATION_STACKS = 50
+
 const COLORS = {
 	"bg": Color("#1a1a2e"),
 	"grid": Color("#303045"),

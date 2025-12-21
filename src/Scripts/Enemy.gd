@@ -9,6 +9,12 @@ var slow_timer: float = 0.0
 var freeze_timer: float = 0.0
 var stun_timer: float = 0.0
 var effects = { "burn": 0.0, "poison": 0.0 }
+
+var poison_stacks: int = 0
+var poison_power: float = 0.0
+var poison_tick_timer: float = 0.0
+var poison_trap_timer: float = 0.0
+
 var burn_source: Node2D = null
 var heat_accumulation: float = 0.0
 
@@ -182,11 +188,24 @@ func _process(delta):
 		effects.burn -= delta
 		if effects.burn <= 0: effects.burn = 0
 
+	# Poison Logic
 	if effects.poison > 0:
-		hp -= (max_hp * 0.05) * delta
 		effects.poison -= delta
-		if effects.poison <= 0: effects.poison = 0
-		if hp <= 0: die()
+		if effects.poison <= 0:
+			effects.poison = 0
+			poison_stacks = 0
+			poison_power = 0.0
+			modulate = Color.WHITE
+
+	if poison_stacks > 0:
+		poison_tick_timer -= delta
+		if poison_tick_timer <= 0:
+			poison_tick_timer = Constants.POISON_TICK_INTERVAL
+			take_damage(poison_power, null, "poison")
+
+		# Visual Feedback
+		var t = clamp(float(poison_stacks) / Constants.POISON_VISUAL_SATURATION_STACKS, 0.0, 1.0)
+		modulate = Color.WHITE.lerp(Color(0.2, 1.0, 0.2), t)
 
 	# Wobble Effect
 	if !is_playing_attack_anim:
@@ -313,6 +332,27 @@ func perform_boss_skill(skill_name: String):
 		if GameManager.combat_manager:
 			GameManager.combat_manager._spawn_enemy_at_pos(global_position, "bullet_entity")
 
+func apply_poison(source_unit, stacks_added: int, duration: float):
+	if poison_stacks == 0:
+		poison_tick_timer = Constants.POISON_TICK_INTERVAL
+
+	# Refresh duration
+	if duration > 0:
+		effects["poison"] = duration
+
+	# Stack accumulation
+	poison_stacks += stacks_added
+	if poison_stacks > Constants.POISON_MAX_STACKS:
+		poison_stacks = Constants.POISON_MAX_STACKS
+
+	# Damage pool accumulation
+	var base_dmg = 10.0
+	if source_unit and is_instance_valid(source_unit) and source_unit.get("damage"):
+		base_dmg = source_unit.damage
+
+	var damage_increment = base_dmg * Constants.POISON_DAMAGE_RATIO * stacks_added
+	poison_power += damage_increment
+
 func apply_stun(duration: float):
 	stun_timer = duration
 	GameManager.spawn_floating_text(global_position, "Stunned!", Color.GRAY)
@@ -329,7 +369,29 @@ func check_traps(delta):
 			if b_type == "slow":
 				temp_speed_mod = 0.5
 			elif b_type == "poison":
-				effects.poison = 1.0
+				# Poison Trap Logic
+				if effects.get("poison", 0) <= 0:
+					# Apply initial poison if not poisoned
+					apply_poison(null, 1, 3.0) # Default duration
+				else:
+					# Refresh duration
+					effects["poison"] = 3.0
+
+					poison_trap_timer -= delta
+					if poison_trap_timer <= 0:
+						poison_trap_timer = Constants.POISON_TRAP_INTERVAL
+
+						# Multiply stacks
+						var old_stacks = poison_stacks
+						poison_stacks = floor(poison_stacks * Constants.POISON_TRAP_MULTIPLIER)
+						if poison_stacks > Constants.POISON_MAX_STACKS:
+							poison_stacks = Constants.POISON_MAX_STACKS
+
+						# Sync power
+						# We want to keep damage per stack same, or increase total power?
+						# "poison_power 同步乘以 POISON_TRAP_MULTIPLIER"
+						poison_power = poison_power * Constants.POISON_TRAP_MULTIPLIER
+
 			elif b_type == "reflect":
 				# Fang trap reflects damage or deals damage
 				take_damage(props.strength * delta)
