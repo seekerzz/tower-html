@@ -121,7 +121,7 @@ func can_place_item_at(grid_pos: Vector2i, item_id: String) -> bool:
 
 	var tile = tiles[key]
 
-	if "trap" in item_id or item_id == "poison_trap" or item_id == "fang_trap":
+	if "trap" in item_id or item_id == "poison_trap" or item_id == "fang_trap" or item_id == "snowball_trap":
 		# 1. Not on spawn tiles
 		if spawn_tiles.has(grid_pos): return false
 		# 2. No obstacles

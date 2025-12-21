@@ -51,13 +51,21 @@ func _handle_inventory_drop(data):
 		if tile_ref.unit == null and tile_ref.occupied_by == Vector2i.ZERO:
 			# Determine trap type
 			var trap_type = "poison"
-			if item_id == "fang_trap": trap_type = "fang"
-			# Or if generic trap id handling needed, for now hardcode as per context or map item_id to trap_type
-			# Assuming item_id contains type info or we deduce it.
-			# Using "poison" and "fang" as keys for spawn_trap_custom based on unit logic in Unit.gd
 
-			if "poison" in item_id: trap_type = "poison"
-			elif "fang" in item_id: trap_type = "fang"
+			# Generic mapping: check if item_id matches a barricade key directly
+			if Constants.BARRICADE_TYPES.has(item_id):
+				trap_type = item_id
+			else:
+				# Fallback logic for existing items if they differ from keys
+				if item_id == "poison_trap": trap_type = "poison"
+				elif item_id == "fang_trap": trap_type = "fang"
+				# Logic for snowball is handled by generic check above if item_id is "snowball_trap"
+				# and BARRICADE_TYPES has "snowball_trap".
+
+				# Legacy substring check as fallback
+				elif "poison" in item_id: trap_type = "poison"
+				elif "fang" in item_id: trap_type = "fang"
+				elif "snowball" in item_id: trap_type = "snowball_trap"
 
 			GameManager.grid_manager.spawn_trap_custom(Vector2i(tile_ref.x, tile_ref.y), trap_type)
 			GameManager.inventory_manager.remove_item(data.slot_index)

@@ -48,7 +48,11 @@ func refresh_units():
 		var tile = tiles[key]
 		if tile.unit:
 			var u = tile.unit
-			if u.type_key == "viper" or u.type_key == "scorpion":
+			# Generic check for producer units (Items)
+			if u.unit_data.get("production_type") == "item":
+				monitored_units.append(u)
+			# Fallback for old hardcoded checks if data missing (optional, but cleaner to rely on data)
+			elif u.type_key == "viper" or u.type_key == "scorpion":
 				monitored_units.append(u)
 
 	# Create Rows (Chunks of 3)
