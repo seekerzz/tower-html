@@ -1,15 +1,20 @@
 extends Node2D
 
+const TILE_SIZE = 60
+
 var duration: float = 5.0
 var tick_timer: float = 0.0
 var damage_per_tick: float = 0.0
 
-func init(dmg: float):
+func init(dmg: float, radius: int = 1):
 	damage_per_tick = dmg
+
+	var total_size = (radius * 2 + 1) * TILE_SIZE
+	var size_vec = Vector2(total_size, total_size)
 
 	# Visual setup
 	var color_rect = ColorRect.new()
-	color_rect.size = Vector2(180, 180) # 3x3 tiles = 180x180
+	color_rect.size = size_vec
 	color_rect.position = -color_rect.size / 2
 	color_rect.color = Color(1.0, 0.3, 0.0, 0.3) # Orange translucent
 	add_child(color_rect)
@@ -19,7 +24,7 @@ func init(dmg: float):
 	particles.amount = 50
 	particles.lifetime = 0.8
 	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	particles.emission_rect_extents = Vector2(90, 90)
+	particles.emission_rect_extents = size_vec / 2
 	particles.gravity = Vector2(0, 200)
 	particles.scale_amount_min = 2.0
 	particles.scale_amount_max = 4.0
@@ -31,7 +36,7 @@ func init(dmg: float):
 	var area = Area2D.new()
 	var shape = CollisionShape2D.new()
 	var rect_shape = RectangleShape2D.new()
-	rect_shape.size = Vector2(180, 180)
+	rect_shape.size = size_vec
 	shape.shape = rect_shape
 	area.add_child(shape)
 	add_child(area)

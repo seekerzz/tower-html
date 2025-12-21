@@ -22,8 +22,10 @@ var last_preview_frame: int = 0
 # Interaction System (Neighbor Buff Selection)
 const STATE_IDLE = 0
 const STATE_SELECTING_INTERACTION_TARGET = 1
+const STATE_SKILL_TARGETING = 2
 var interaction_state: int = STATE_IDLE
 var interaction_source_unit = null
+var skill_source_unit: Node2D = null
 var valid_interaction_targets: Array = [] # Array[Vector2i]
 var interaction_highlights: Array = [] # Array[Node2D] (Visuals)
 
@@ -61,6 +63,31 @@ func _process(_delta):
 		selection_overlay.queue_redraw()
 
 func _input(event):
+	if interaction_state == STATE_SKILL_TARGETING:
+		if event is InputEventMouseButton and event.pressed:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				var mouse_pos = get_local_mouse_position()
+				var gx = int(round(mouse_pos.x / TILE_SIZE))
+				var gy = int(round(mouse_pos.y / TILE_SIZE))
+				var grid_pos = Vector2i(gx, gy)
+
+				# Optional: Check bounds
+				if astar_grid.is_in_boundsv(grid_pos):
+					if skill_source_unit and is_instance_valid(skill_source_unit):
+						skill_source_unit.execute_skill_at(grid_pos)
+					exit_skill_targeting()
+					get_viewport().set_input_as_handled()
+				else:
+					# Maybe allow clicking outside to cancel? Or just ignore?
+					# For now ignore invalid clicks
+					pass
+
+			elif event.button_index == MOUSE_BUTTON_RIGHT:
+				exit_skill_targeting()
+				GameManager.spawn_floating_text(get_global_mouse_position(), "Cast Cancelled", Color.WHITE)
+				get_viewport().set_input_as_handled()
+		return
+
 	if interaction_state == STATE_SELECTING_INTERACTION_TARGET:
 		if event is InputEventMouseButton and event.pressed:
 			if event.button_index == MOUSE_BUTTON_LEFT:
@@ -90,6 +117,17 @@ func _input(event):
 				end_interaction_selection()
 				get_viewport().set_input_as_handled()
 		return # Block other inputs
+
+func enter_skill_targeting(unit: Node2D):
+	interaction_state = STATE_SKILL_TARGETING
+	skill_source_unit = unit
+	if unit:
+		GameManager.spawn_floating_text(unit.global_position, "Select Target Area", Color.YELLOW)
+		print("Skill Targeting Entered for: ", unit.name)
+
+func exit_skill_targeting():
+	interaction_state = STATE_IDLE
+	skill_source_unit = null
 
 func update_placement_preview(grid_pos: Vector2i, world_pos: Vector2, item_id: String):
 	if not placement_preview_cursor:
