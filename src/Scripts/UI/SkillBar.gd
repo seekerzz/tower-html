@@ -167,6 +167,11 @@ func _process(_delta):
 		var cost_lbl = layout.get_node("CostLabel")
 
 		# Cooldown Logic
+		# Flash logic detection
+		var last_cd = 0.0
+		if card.has_meta("last_cd"):
+			last_cd = card.get_meta("last_cd")
+
 		if unit.skill_cooldown > 0:
 			var max_cd = unit.unit_data.get("skillCd", 10.0)
 			cd_bar.visible = true
@@ -174,6 +179,12 @@ func _process(_delta):
 			cd_bar.value = unit.skill_cooldown # Remaining time
 		else:
 			cd_bar.visible = false
+
+		# Check for completion (transition from >0 to 0)
+		if last_cd > 0 and unit.skill_cooldown <= 0:
+			_trigger_flash(card)
+
+		card.set_meta("last_cd", unit.skill_cooldown)
 
 		# Mana Logic & Styling
 		var style = card.get_theme_stylebox("panel")
@@ -212,3 +223,13 @@ func _unhandled_input(event):
 
 func _on_skill_btn_pressed(unit):
 	unit.activate_skill()
+
+func _trigger_flash(card):
+	if card.has_meta("flashing") and card.get_meta("flashing"): return
+
+	card.set_meta("flashing", true)
+	var tween = create_tween()
+	# Flash to bright gold/white
+	tween.tween_property(card, "modulate", Color(2, 2, 2, 1), 0.15).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(card, "modulate", Color.WHITE, 0.15).set_trans(Tween.TRANS_SINE)
+	tween.finished.connect(func(): card.set_meta("flashing", false))

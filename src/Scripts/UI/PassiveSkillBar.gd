@@ -48,6 +48,11 @@ func _create_card(unit):
 	var card = PanelContainer.new()
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.custom_minimum_size.y = 80
+	# Force 1:1 Aspect ratio if possible, or just set min width to match height?
+	# Requirement: "Icons adjusted to Square (1:1) ratio (suggest 60x60)".
+	# The card itself might be a row, but the requirement says "Card (PanelContainer) and Icon".
+	# If card is in a VBox/Grid, setting ratio might be tricky if it expands.
+	# But let's set icon to 60x60 square.
 	card.name = "PassiveCard_%s" % unit.name
 
 	# Style matching SkillBar
@@ -70,12 +75,15 @@ func _create_card(unit):
 	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon_rect.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	icon_rect.custom_minimum_size = Vector2(50, 50)
-	icon_rect.size = Vector2(50, 50)
-	icon_rect.offset_left = -25
-	icon_rect.offset_top = -25
-	icon_rect.offset_right = 25
-	icon_rect.offset_bottom = 25
+
+	# Requirement: Square 1:1, suggest 60x60.
+	var icon_size = 60
+	icon_rect.custom_minimum_size = Vector2(icon_size, icon_size)
+	icon_rect.size = Vector2(icon_size, icon_size)
+	icon_rect.offset_left = -icon_size/2
+	icon_rect.offset_top = -icon_size/2
+	icon_rect.offset_right = icon_size/2
+	icon_rect.offset_bottom = icon_size/2
 	layout.add_child(icon_rect)
 
 	# CD Overlay
@@ -128,10 +136,35 @@ func _process(_delta):
 		cd_bar.value = unit.production_timer
 
 		# Flash animation
-		if unit.production_timer <= 0.1: # Just finished or about to
-			if !card.has_meta("flashing") or !card.get_meta("flashing"):
-				card.set_meta("flashing", true)
-				var tween = create_tween()
-				tween.tween_property(card, "modulate", Color(1.5, 1.5, 1.5), 0.1)
-				tween.tween_property(card, "modulate", Color.WHITE, 0.1)
-				tween.finished.connect(func(): card.set_meta("flashing", false))
+		# Detect transition from >0 to 0 (or restart).
+		# We store the last frame's timer value in meta
+		var last_timer = 0.0
+		if card.has_meta("last_timer"):
+			last_timer = card.get_meta("last_timer")
+
+		# If it WAS > 0 and NOW is <= 0 (or it reset to max, meaning it triggered)
+		# Usually production_timer resets to max_production_timer immediately after trigger in Unit logic.
+		# So we check if it suddenly went up (reset) or hit 0.
+		# But if it hits 0 and stays 0, we don't want to flash continuously.
+		# The prompt says: "When cooldown ends (from >0 to 0)".
+
+		# If unit resets immediately, we might see it jump from 0.1 to MAX.
+		# Or if it's manual trigger, it sits at 0.
+
+		var just_finished = (last_timer > 0 and unit.production_timer <= 0) or (last_timer < 0.2 and unit.production_timer > last_timer + 0.5)
+		# The second condition catches the reset if it happens instantly within frame
+
+		if just_finished:
+			_trigger_flash(card)
+
+		card.set_meta("last_timer", unit.production_timer)
+
+func _trigger_flash(card):
+	if card.has_meta("flashing") and card.get_meta("flashing"): return
+
+	card.set_meta("flashing", true)
+	var tween = create_tween()
+	# Flash to bright gold/white
+	tween.tween_property(card, "modulate", Color(2, 2, 2, 1), 0.15).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(card, "modulate", Color.WHITE, 0.15).set_trans(Tween.TRANS_SINE)
+	tween.finished.connect(func(): card.set_meta("flashing", false))

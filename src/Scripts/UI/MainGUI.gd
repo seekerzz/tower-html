@@ -13,7 +13,6 @@ signal sacrifice_requested
 @onready var damage_stats_panel = $DamageStats
 @onready var stats_scroll = $DamageStats/ScrollContainer
 @onready var stats_header = $DamageStats/Header
-@onready var stats_toggle_btn = $DamageStats/ToggleButton
 @onready var left_sidebar = $LeftSidebar
 @onready var right_sidebar = $RightSidebar
 @onready var top_left_panel = $TopLeftPanel
@@ -58,8 +57,6 @@ func _ready():
 	GameManager.skill_activated.connect(_on_skill_activated)
 	GameManager.ftext_spawn_requested.connect(_on_ftext_spawn_requested)
 
-	stats_toggle_btn.pressed.connect(_on_stats_toggle_pressed)
-
 	_setup_ui_styles()
 
 	if retry_button:
@@ -68,6 +65,9 @@ func _ready():
 		new_game_button.pressed.connect(_on_new_game_pressed)
 
 	_setup_tooltip()
+
+	_setup_right_layout()
+	_setup_combat_gold()
 
 	update_ui()
 	_setup_stats_panel()
@@ -81,6 +81,51 @@ func _update_hud_visibility():
 	hp_bar.visible = active
 	food_bar.visible = active
 	mana_bar.visible = active
+
+	if damage_stats_panel:
+		damage_stats_panel.visible = !active
+
+	if combat_gold_label:
+		combat_gold_label.visible = active
+
+func _setup_right_layout():
+	if !right_sidebar: return
+
+	# Find children by name as they are instances in the scene
+	var passive_bar = right_sidebar.get_node_or_null("PassiveSkillBar")
+	var inv_panel = right_sidebar.get_node_or_null("InventoryPanel")
+
+	if !passive_bar or !inv_panel:
+		push_warning("RightSidebar children not found for refactoring")
+		return
+
+	var content_box = VBoxContainer.new()
+	content_box.name = "RightContentBox"
+	content_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right_sidebar.add_child(content_box)
+
+	passive_bar.reparent(content_box)
+	inv_panel.reparent(content_box)
+
+	passive_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inv_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	# Order: Passive Top, Inventory Bottom
+	content_box.move_child(passive_bar, 0)
+	content_box.move_child(inv_panel, 1)
+
+var combat_gold_label: Label
+
+func _setup_combat_gold():
+	if !top_left_panel: return
+	combat_gold_label = Label.new()
+	combat_gold_label.name = "CombatGoldLabel"
+	combat_gold_label.add_theme_font_size_override("font_size", 18)
+	combat_gold_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	combat_gold_label.add_theme_constant_override("outline_size", 4)
+	top_left_panel.add_child(combat_gold_label)
+	combat_gold_label.hide()
 
 func _update_sidebar_position():
 	if sidebar_tween and sidebar_tween.is_valid():
@@ -141,38 +186,16 @@ func _setup_ui_styles():
 			label.add_theme_font_size_override("font_size", 18) # Larger font
 
 func _setup_stats_panel():
-	# Anchor to Center Right
-	damage_stats_panel.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
-	# Initial state: Collapsed
-	is_stats_collapsed = true
-	# We need to defer position update because layout happens after ready
-	call_deferred("_update_stats_panel_position")
+	# Anchor to Center Left
+	damage_stats_panel.set_anchors_preset(Control.PRESET_CENTER_LEFT)
+	damage_stats_panel.position.x = 10
+	damage_stats_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-func _update_stats_panel_position():
-	_animate_stats_panel()
+	if stats_header:
+		stats_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-func _animate_stats_panel():
-	if stats_tween and stats_tween.is_valid():
-		stats_tween.kill()
-	stats_tween = create_tween()
-
-	# Ensure panel is on top
-	damage_stats_panel.z_index = 10
-
-	var viewport_width = get_viewport_rect().size.x
-	var panel_width = damage_stats_panel.size.x
-
-	var target_pos_x
-	if is_stats_collapsed:
-		stats_scroll.visible = false
-		damage_stats_panel.custom_minimum_size.y = 30
-		target_pos_x = viewport_width
-	else:
-		stats_scroll.visible = true
-		damage_stats_panel.custom_minimum_size.y = 300
-		target_pos_x = viewport_width - max(panel_width, 200)
-
-	stats_tween.tween_property(damage_stats_panel, "position:x", target_pos_x, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	# Remove old logic animation references if any, just ensure it's placed correctly
+	# We no longer collapse/animate it.
 
 func _setup_tooltip():
 	tooltip_instance = TOOLTIP_SCENE.instantiate()
@@ -238,6 +261,9 @@ func update_ui():
 	mana_label.text = "💧 %d/%d" % [int(GameManager.mana), int(GameManager.max_mana)]
 
 	wave_label.text = "Wave %d" % GameManager.wave
+
+	if combat_gold_label and combat_gold_label.visible:
+		combat_gold_label.text = "💰 %d" % GameManager.gold
 
 func _on_damage_dealt(unit, amount):
 	if not unit: return
@@ -338,20 +364,11 @@ func _on_ftext_spawn_requested(pos, value, color):
 
 	ftext.setup(display_value, color, is_crit, value_num)
 
-func _on_stats_toggle_pressed():
-	is_stats_collapsed = !is_stats_collapsed
-	_animate_stats_panel()
-
 func _force_collapse_stats():
-	if !is_stats_collapsed:
-		is_stats_collapsed = true
-		_animate_stats_panel()
+	pass
 
 func _on_wave_ended_stats():
-	# Auto pop up stats
-	if is_stats_collapsed:
-		is_stats_collapsed = false
-		_animate_stats_panel()
+	pass
 
 func _on_game_over():
 	if game_over_panel:

@@ -1,6 +1,6 @@
 extends Control
 
-const SLOT_COUNT = 8
+const SLOT_COUNT = 9
 
 @onready var slots_container = $PanelContainer/SlotsContainer
 
@@ -8,12 +8,39 @@ func _ready():
 	print("[InventoryPanel] UI Ready initialized.") # 调试日志
 	
 	if slots_container:
+		slots_container.columns = 3
 		slots_container.add_theme_constant_override("h_separation", 10)
 		slots_container.add_theme_constant_override("v_separation", 10)
+
+		# Ensure scrolling support
 		var parent = slots_container.get_parent()
-		if parent is PanelContainer:
+		if not parent is ScrollContainer:
+			var scroll = ScrollContainer.new()
+			scroll.name = "InventoryScroll"
+			scroll.custom_minimum_size.y = 200 # Allow scrolling if content exceeds this
+			scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+			# We need to swap parents carefully
+			var grand_parent = parent.get_parent() # Likely PanelContainer
+
+			# Remove Grid from current parent
+			parent.remove_child(slots_container)
+
+			# Add Grid to Scroll
+			scroll.add_child(slots_container)
+
+			# Add Scroll to where Grid was (or to the PanelContainer if parent was just a helper)
+			# The structure is $PanelContainer -> $SlotsContainer (Grid)
+			# We want $PanelContainer -> $ScrollContainer -> $SlotsContainer
+
+			parent.add_child(scroll)
+
+		var container_parent = slots_container.get_parent() # ScrollContainer now
+		if container_parent and container_parent.get_parent() is PanelContainer:
 			var style = StyleBoxEmpty.new()
-			parent.add_theme_stylebox_override("panel", style)
+			container_parent.get_parent().add_theme_stylebox_override("panel", style)
+
 	else:
 		push_error("[InventoryPanel] Error: SlotsContainer not found!")
 
