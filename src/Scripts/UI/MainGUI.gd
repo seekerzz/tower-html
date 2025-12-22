@@ -362,7 +362,7 @@ func _get_amount_from_row(row):
 func _on_skill_activated(unit):
 	if cutin_manager: cutin_manager.trigger_cutin(unit)
 
-func _on_ftext_spawn_requested(pos, value, color):
+func _on_ftext_spawn_requested(pos, value, color, direction):
 	var ftext = FLOATING_TEXT_SCENE.instantiate()
 	var offset = Vector2(randf_range(-10, 10), randf_range(-10, 10))
 	var world_pos = pos + offset
@@ -378,7 +378,7 @@ func _on_ftext_spawn_requested(pos, value, color):
 		display_value = str(int(value_num))
 
 	var is_crit = color.r > 0.9 and color.g > 0.8 and color.b < 0.4
-	ftext.setup(display_value, color, is_crit, value_num)
+	ftext.setup(display_value, color, is_crit, value_num, direction)
 
 func _on_game_over():
 	if game_over_panel: game_over_panel.show()

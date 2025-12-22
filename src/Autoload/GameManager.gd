@@ -9,7 +9,7 @@ signal unit_purchased(unit_data)
 signal unit_sold(amount)
 signal skill_activated(unit)
 signal damage_dealt(unit, amount)
-signal ftext_spawn_requested(pos, value, color)
+signal ftext_spawn_requested(pos, value, color, direction)
 signal show_tooltip(data, stats, buffs, pos)
 signal hide_tooltip()
 
@@ -266,7 +266,7 @@ func add_resource(type: String, amount: float):
 
 	resource_changed.emit()
 
-func spawn_floating_text(pos: Vector2, value: String, type_or_color: Variant):
+func spawn_floating_text(pos: Vector2, value: String, type_or_color: Variant, direction: Vector2 = Vector2.ZERO):
 	var color = Color.WHITE
 
 	if typeof(type_or_color) == TYPE_COLOR:
@@ -281,7 +281,7 @@ func spawn_floating_text(pos: Vector2, value: String, type_or_color: Variant):
 			"crit": color = Color(1, 0.8, 0.2)
 			_: color = Color.WHITE
 
-	ftext_spawn_requested.emit(pos, value, color)
+	ftext_spawn_requested.emit(pos, value, color, direction)
 
 func execute_skill_effect(source_key: String, target_pos: Vector2i) -> bool:
 	if !grid_manager: return false

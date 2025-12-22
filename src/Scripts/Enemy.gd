@@ -38,6 +38,9 @@ var base_attack_timer: float = 0.0
 var is_playing_attack_anim: bool = false
 var anim_tween: Tween
 
+var knockback_velocity: Vector2 = Vector2.ZERO
+var knockback_resistance: float = 1.0
+
 # Boss / Special Properties
 var stationary_timer: float = 0.0
 var boss_skill: String = ""
@@ -79,6 +82,9 @@ func setup(key: String, wave: int):
 
 	if stationary_timer > 0.0:
 		is_stationary = true
+
+	if type_key == "boss" or type_key == "tank":
+		knockback_resistance = 100.0
 
 	update_visuals()
 
@@ -548,7 +554,13 @@ func move_along_path(delta):
 	var current_speed = speed * temp_speed_mod
 	if slow_timer > 0: current_speed *= 0.5
 
-	position += direction * current_speed * delta
+	# Apply movement + knockback
+	var move_vec = direction * current_speed
+	position += (move_vec + knockback_velocity) * delta
+
+	# Knockback damping
+	if knockback_velocity.length() > 0:
+		knockback_velocity = knockback_velocity.move_toward(Vector2.ZERO, 1000.0 * delta)
 
 	# Legacy check if reached core (GridManager center) - Fallback
 	if !current_target_tile and global_position.distance_to(GameManager.grid_manager.global_position) < 30:
@@ -668,13 +680,21 @@ func is_trap(node):
 		return b_type == "slow" or b_type == "poison" or b_type == "reflect"
 	return false
 
-func take_damage(amount: float, source_unit = null, damage_type: String = "physical"):
+func take_damage(amount: float, source_unit = null, damage_type: String = "physical", hit_source: Node2D = null, kb_force: float = 0.0):
 	hp -= amount
 	hit_flash_timer = 0.1
 	queue_redraw()
 
+	# Calculate Knockback
+	var kb_dir = Vector2.ZERO
+	if kb_force > 0 and hit_source and is_instance_valid(hit_source):
+		kb_dir = (global_position - hit_source.global_position).normalized()
+		var applied_force = kb_force / max(0.1, knockback_resistance)
+		knockback_velocity += kb_dir * applied_force
+
 	var display_val = max(1, int(amount))
-	GameManager.spawn_floating_text(global_position, str(display_val), damage_type)
+	# Pass kb_dir as direction for floating text
+	GameManager.spawn_floating_text(global_position, str(display_val), damage_type, kb_dir)
 	if source_unit:
 		GameManager.damage_dealt.emit(source_unit, amount)
 
