@@ -2,107 +2,137 @@ extends Node2D
 
 @onready var label = $Label
 
-# Physics properties
+# 物理属性
 var velocity: Vector2 = Vector2.ZERO
-var gravity: float = 1200.0
-var friction: float = 4.0
-var initial_pos: Vector2
-var fade_start_dist: float = 100.0
+var gravity: float = 0.0
+var friction: float = 0.0
+var floor_y: float = 0.0
+var mode: String = "impact" # impact(射击), gravity(金币), float(近战)
 
-# Effect properties
+# 效果属性
 var is_crit_hit: bool = false
 var shake_amount: float = 2.0
+var fade_speed: float = 3.0 # 默认淡出速度
 
 func setup(value_str: String, color: Color, is_crit: bool = false, value_num: float = 0.0, direction: Vector2 = Vector2.ZERO):
 	label.text = value_str
+	label.modulate = color
 	is_crit_hit = is_crit
 	z_index = 200 if is_crit else 100
 
-	initial_pos = position
-
-	# 1. Pivot Center
+	# 1. 中心点设置
 	if label.size == Vector2.ZERO:
 		label.size = Vector2(100, 50)
 	label.pivot_offset = label.size / 2.0
 
-	# 2. Scale & Pop Animation (Continuous Expansion)
+	# 2. 智能模式识别
+	# 判断是否为资源（包含G或者+号开头通常是回血或金币）
+	var is_resource = value_str.contains("G") or value_str.begins_with("+")
+	
+	if is_resource:
+		# [模式 A: 掉落物/金币] - 抛物线跳动
+		mode = "gravity"
+		gravity = 2000.0 # 增加重力，让它掉得更快
+		friction = 2.0
+		floor_y = position.y + randf_range(10.0, 30.0)
+		
+		# 初始向上跳
+		velocity = Vector2(randf_range(-100, 100), -500.0)
+		fade_speed = 8.0 # 【修改点】快速消失
+		
+	elif direction != Vector2.ZERO:
+		# [模式 B: 远程射击] - 冲击模式
+		mode = "impact"
+		gravity = 0.0
+		friction = 6.0
+		
+		# 【修改点】只计算方向，不旋转节点(rotation)，保证文字永远正向
+		var spread = randf_range(-0.2, 0.2)
+		var final_dir = direction.rotated(spread).normalized()
+		var speed = 800.0 if is_crit else 500.0
+		velocity = final_dir * speed
+		
+		# 移除 rotation = ... 代码，保持正向显示
+		
+	else:
+		# [模式 C: 近战/默认] - 传统上浮模式
+		# 解决了"近战也弹跳"的问题
+		mode = "float"
+		gravity = 0.0
+		friction = 3.0 # 适中阻力
+		
+		# 简单的向上飘，带一点点随机左右偏移
+		velocity = Vector2(randf_range(-50, 50), -300.0 if is_crit else -200.0)
+
+	# 3. 缩放动画
 	var base_scale = clamp(1.0 + (value_num / 500.0), 1.0, 2.5)
-	if is_crit:
+	
+	# 【修改点】针对金币强制缩小
+	if is_resource:
+		base_scale = 0.7 # 金币更小更精致
+	elif is_crit:
 		base_scale *= 1.5
 
-	scale = Vector2(0.5, 0.5) # Initial visible but small scale
+	# 初始极小
+	scale = Vector2(0.1, 0.1)
 
 	var tween = create_tween()
-	# Phase 1: Rapid Explosion (0.5 -> 1.3x)
-	tween.tween_property(self, "scale", Vector2(base_scale * 1.3, base_scale * 1.3), 0.05)\
+	# 阶段1: 弹出
+	tween.tween_property(self, "scale", Vector2(base_scale * 1.2, base_scale * 1.2), 0.05)\
 		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	# 阶段2: 回稳
+	tween.tween_property(self, "scale", Vector2(base_scale, base_scale), 0.3)\
+		.set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 
-	# Phase 2: Continuous Expansion (1.3x -> 1.5x) - No Shrink!
-	# Expand slowly over 0.4s (or lifetime)
-	tween.tween_property(self, "scale", Vector2(base_scale * 1.5, base_scale * 1.5), 0.4)\
-		.set_trans(Tween.TRANS_LINEAR)
-
-	# 3. Color Flash (Juice)
-	label.modulate = Color(1.5, 1.5, 1.5) # Bright White Flash (HDR)
-	var color_tween = create_tween()
-	color_tween.tween_property(label, "modulate", color, 0.2)
-
-	# 4. Physics / Movement Logic (Hybrid System)
-	if direction != Vector2.ZERO:
-		# --- Directional Mode (Bullet-like Trajectory) ---
-		gravity = 200.0 # Very low gravity for straight flight
-
-		# Slight upward correction to avoid floor dragging
-		var adjust_dir = (direction.normalized() + Vector2(0, -0.15)).normalized()
-
-		# High speed + High friction = Fast burst then stop
-		var speed = 600.0
-		if is_crit: speed = 900.0
-
-		velocity = adjust_dir * speed
-	else:
-		# --- Random Mode (Jump/Pop-up) ---
-		gravity = 1200.0 # High gravity for bounce
-
-		var spread = 200.0 if is_crit else 100.0
-		var jump = -600.0 if is_crit else -400.0
-		velocity = Vector2(randf_range(-1, 1) * spread, randf_range(jump, jump * 0.5))
+	# 4. 闪光 (仅伤害)
+	if not is_resource:
+		label.modulate = Color(2.0, 2.0, 2.0)
+		var color_tween = create_tween()
+		color_tween.tween_property(label, "modulate", color, 0.15)
 
 func _process(delta):
-	# Apply Gravity
-	velocity.y += gravity * delta
+	# === 物理逻辑 ===
+	if mode == "gravity":
+		# 抛物线逻辑
+		velocity.y += gravity * delta
+		position += velocity * delta
+		
+		if position.y >= floor_y and velocity.y > 0:
+			position.y = floor_y
+			velocity.y *= -0.4 # 减少反弹力度，更干脆
+			velocity.x *= 0.6
+			if abs(velocity.y) < 50: velocity = Vector2.ZERO
+			
+	elif mode == "impact":
+		# 冲击逻辑 (强阻力)
+		velocity = velocity.move_toward(Vector2.ZERO, friction * 200.0 * delta)
+		position += velocity * delta
+		
+	elif mode == "float":
+		# 上浮逻辑 (恒定向上减速)
+		velocity.y = move_toward(velocity.y, 0, friction * 50.0 * delta) # 慢慢减速
+		position += velocity * delta
 
-	# Apply Friction (Air Resistance)
-	# Use move_toward for linear drag (simulating strong air resistance)
-	velocity = velocity.move_toward(Vector2.ZERO, friction * 100.0 * delta)
+	# === 暴击震动 ===
+	if is_crit_hit and mode != "gravity" and velocity.length() > 50:
+		var offset = Vector2(randf(), randf()) * shake_amount
+		label.position = offset - (label.size / 2.0)
+	else:
+		label.position = -(label.size / 2.0)
 
-	# Update Position
-	position += velocity * delta
-
-	# Crit Shake (Instability)
-	if is_crit_hit:
-		# Simple check: if still flashing (modulate is bright), apply shake
-		if label.modulate.r > 1.2 or label.modulate.g > 1.2 or label.modulate.b > 1.2:
-			var offset = Vector2(randf(), randf()) * shake_amount
-			label.position = offset - (label.size / 2.0) # Keep centered + offset
-		else:
-			label.position = -(label.size / 2.0) # Reset to centered
-
-	# Fade Out Logic
-	var dist = position.distance_to(initial_pos)
-
-	# Fade if far away OR if velocity is low (stopped)
-	if dist > fade_start_dist or velocity.length() < 20.0:
-		# Start fading
-		# Check if we should wait for expansion to finish?
-		# Expansion is 0.45s total.
-		# If velocity stops quickly (high friction), it might happen before 0.45s.
-		# Let's ensure we don't fade TOO fast if it stops instantly, but visual feedback is key.
-		# With friction 4.0 * 100 = 400 reduction/sec.
-		# Start speed 600 -> 0 in 1.5s? No, move_toward is linear.
-		# So it takes 1.5s to stop.
-		# Fade check:
-		if velocity.length() < 50.0 or dist > fade_start_dist * 2.0:
-			modulate.a -= delta * 5.0
-			if modulate.a <= 0:
-				queue_free()
+	# === 淡出逻辑 ===
+	# 允许根据不同模式判断开始淡出的时机
+	var start_fade = false
+	if mode == "gravity":
+		# 金币落地停稳后，或者存在时间稍长后
+		if velocity.length() < 10.0: start_fade = true
+	elif mode == "float":
+		# 上浮一定时间后(例如速度很慢了)
+		if abs(velocity.y) < 50.0: start_fade = true
+	else: # impact
+		if velocity.length() < 50.0: start_fade = true
+		
+	if start_fade:
+		modulate.a -= delta * fade_speed
+		if modulate.a <= 0:
+			queue_free()
