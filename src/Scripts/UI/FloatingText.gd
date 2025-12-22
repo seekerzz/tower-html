@@ -25,28 +25,29 @@ func setup(value_str: String, color: Color, is_crit: bool = false, value_num: fl
 		label.size = Vector2(100, 50)
 	label.pivot_offset = label.size / 2.0
 
-	# 2. Scale & Pop Animation (Juice)
+	# 2. Scale & Pop Animation (Continuous Expansion)
 	var base_scale = clamp(1.0 + (value_num / 500.0), 1.0, 2.5)
 	if is_crit:
 		base_scale *= 1.5
 
-	scale = Vector2(0.2, 0.2) # Initial tiny scale
+	scale = Vector2(0.5, 0.5) # Initial visible but small scale
 
 	var tween = create_tween()
-	# Phase 1: Explosion (Overshoot)
-	tween.tween_property(self, "scale", Vector2(base_scale * 1.5, base_scale * 1.5), 0.05)\
+	# Phase 1: Rapid Explosion (0.5 -> 1.3x)
+	tween.tween_property(self, "scale", Vector2(base_scale * 1.3, base_scale * 1.3), 0.05)\
 		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	# Phase 2: Settle (Back)
-	tween.tween_property(self, "scale", Vector2(base_scale, base_scale), 0.15)\
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+	# Phase 2: Continuous Expansion (1.3x -> 1.5x) - No Shrink!
+	# Expand slowly over 0.4s (or lifetime)
+	tween.tween_property(self, "scale", Vector2(base_scale * 1.5, base_scale * 1.5), 0.4)\
+		.set_trans(Tween.TRANS_LINEAR)
 
 	# 3. Color Flash (Juice)
-	label.modulate = Color(1.5, 1.5, 1.5) # Bright White Flash
+	label.modulate = Color(1.5, 1.5, 1.5) # Bright White Flash (HDR)
 	var color_tween = create_tween()
 	color_tween.tween_property(label, "modulate", color, 0.2)
 
 	# 4. Physics / Movement Logic (Hybrid System)
-
 	if direction != Vector2.ZERO:
 		# --- Directional Mode (Bullet-like Trajectory) ---
 		gravity = 200.0 # Very low gravity for straight flight
@@ -55,7 +56,9 @@ func setup(value_str: String, color: Color, is_crit: bool = false, value_num: fl
 		var adjust_dir = (direction.normalized() + Vector2(0, -0.15)).normalized()
 
 		# High speed + High friction = Fast burst then stop
-		var speed = 900.0 if is_crit else 600.0
+		var speed = 600.0
+		if is_crit: speed = 900.0
+
 		velocity = adjust_dir * speed
 	else:
 		# --- Random Mode (Jump/Pop-up) ---
@@ -91,9 +94,14 @@ func _process(delta):
 	# Fade if far away OR if velocity is low (stopped)
 	if dist > fade_start_dist or velocity.length() < 20.0:
 		# Start fading
-		# Only fade if velocity is low or distance is very high, to prevent fading mid-flight if it's just moving fast?
-		# No, the logic requested is "fade out and destroy".
-		# Let's start fading when stopped.
+		# Check if we should wait for expansion to finish?
+		# Expansion is 0.45s total.
+		# If velocity stops quickly (high friction), it might happen before 0.45s.
+		# Let's ensure we don't fade TOO fast if it stops instantly, but visual feedback is key.
+		# With friction 4.0 * 100 = 400 reduction/sec.
+		# Start speed 600 -> 0 in 1.5s? No, move_toward is linear.
+		# So it takes 1.5s to stop.
+		# Fade check:
 		if velocity.length() < 50.0 or dist > fade_start_dist * 2.0:
 			modulate.a -= delta * 5.0
 			if modulate.a <= 0:
