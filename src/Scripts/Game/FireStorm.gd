@@ -69,7 +69,8 @@ func _deal_damage():
 		var enemy = body.get_parent()
 		if enemy.is_in_group("enemies"):
 			if enemy.has_method("take_damage"):
-				enemy.take_damage(damage_per_tick, self, "fire")
+				# AOE damage: No knockback (kb_force = 0.0), Self as source
+				enemy.take_damage(damage_per_tick, self, "fire", self, 0.0)
 		elif body.is_in_group("enemies"): # If body itself is enemy
 			if body.has_method("take_damage"):
-				body.take_damage(damage_per_tick, self, "fire")
+				body.take_damage(damage_per_tick, self, "fire", self, 0.0)

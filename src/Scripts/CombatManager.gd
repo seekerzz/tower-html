@@ -414,7 +414,8 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	stats.merge(extra_stats, true)
 	stats.source = source_unit
 
-	proj.setup(pos, target, final_damage, 400.0, source_unit.unit_data.proj, stats)
+	var proj_speed = float(source_unit.unit_data.get("projectile_speed", 400.0))
+	proj.setup(pos, target, final_damage, proj_speed, source_unit.unit_data.proj, stats)
 	add_child(proj)
 
 func queue_burn_explosion(pos: Vector2, damage: float, source: Node2D):

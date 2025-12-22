@@ -201,7 +201,13 @@ func _on_area_2d_area_entered(area):
 		if is_critical:
 			final_damage_type = "crit"
 
-		area.take_damage(damage, source_unit, final_damage_type)
+		# Calculate Knockback Force: speed * damage * constant
+		# Constant 0.005 suggested
+		var kb_force = damage * speed * 0.005
+		if type == "roar":
+			kb_force *= 2.0 # Extra knockback for roar
+
+		area.take_damage(damage, source_unit, final_damage_type, self, kb_force)
 
 		# Apply Status Effects
 		if effects.get("burn", 0.0) > 0.0:
