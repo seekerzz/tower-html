@@ -66,20 +66,21 @@ func _process(_delta):
 		selection_overlay.queue_redraw()
 
 	if interaction_state == STATE_SKILL_TARGETING and skill_preview_node and is_instance_valid(skill_preview_node):
-		var mouse_pos = get_global_mouse_position()
+		var mouse_pos = get_local_mouse_position()
 		var gx = round(mouse_pos.x / TILE_SIZE)
 		var gy = round(mouse_pos.y / TILE_SIZE)
-		skill_preview_node.global_position = Vector2(gx * TILE_SIZE, gy * TILE_SIZE)
+		skill_preview_node.position = Vector2(gx * TILE_SIZE, gy * TILE_SIZE)
 
 func _input(event):
 	if interaction_state == STATE_SKILL_TARGETING:
 		if event is InputEventMouseButton and event.pressed:
 			if event.button_index == MOUSE_BUTTON_LEFT:
-				var mouse_pos = get_global_mouse_position()
+				var mouse_pos_global = get_global_mouse_position()
+				var mouse_pos = get_local_mouse_position()
 				var gx = int(round(mouse_pos.x / TILE_SIZE))
 				var gy = int(round(mouse_pos.y / TILE_SIZE))
 
-				print("[DEBUG] GridManager._input: Click at ", mouse_pos, " Grid: ", gx, ",", gy)
+				print("[DEBUG] GridManager._input: Global Mouse: ", mouse_pos_global, " Local Mouse: ", mouse_pos, " Grid: ", gx, ",", gy)
 
 				if skill_source_unit and is_instance_valid(skill_source_unit):
 					skill_source_unit.execute_skill_at(Vector2i(gx, gy))
