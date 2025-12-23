@@ -66,7 +66,11 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 		# modulate = Color(1.5, 1.2, 0.5) # Example glow
 
 	# Swarm Wave Visuals
-	if type == "snowball":
+	if type == "invisible_swipe":
+		if visual_node: visual_node.hide()
+		for child in get_children():
+			if child is Node2D: child.hide()
+	elif type == "snowball":
 		_setup_snowball()
 	elif type == "web":
 		_setup_web()

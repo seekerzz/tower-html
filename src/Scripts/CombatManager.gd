@@ -225,7 +225,9 @@ func process_unit_combat(unit, tile, delta):
 
 		unit.play_attack_anim(unit.unit_data.attackType, target.global_position)
 
-		if unit.unit_data.attackType == "melee":
+		if unit.type_key == "bear":
+			_perform_swipe_attack(unit, target)
+		elif unit.unit_data.attackType == "melee":
 			# AOE Cone Logic
 			var attack_dir = (target.global_position - unit.global_position).normalized()
 			var cone_angle = PI / 2.0
@@ -297,6 +299,53 @@ func process_unit_combat(unit, tile, delta):
 				spawn_multishot_projectile(unit, tile.global_position, target, proj_count, spread)
 			else:
 				spawn_projectile(unit, tile.global_position, target)
+
+func _perform_swipe_attack(source_unit, target_enemy):
+	if not is_instance_valid(target_enemy): return
+
+	var to_target_dir = (target_enemy.global_position - source_unit.global_position).normalized()
+	var right_dir = Vector2(-to_target_dir.y, to_target_dir.x)
+
+	var start_pos = Vector2.ZERO
+	var fly_dir = Vector2.ZERO
+	var swipe_width = 60.0 # 侧向偏移距离
+
+	# 交替方向逻辑
+	if source_unit.swipe_right_next:
+		# 右挥 (Left -> Right)
+		start_pos = target_enemy.global_position - (right_dir * swipe_width)
+		fly_dir = right_dir
+	else:
+		# 左挥 (Right -> Left)
+		start_pos = target_enemy.global_position + (right_dir * swipe_width)
+		fly_dir = -right_dir
+
+	# Verification Print
+	# print("Bear Swipe: ", "Right" if fly_dir == right_dir else "Left")
+
+	source_unit.swipe_right_next = !source_unit.swipe_right_next
+
+	# 生成隐形子弹
+	var proj = PROJECTILE_SCENE.instantiate()
+	var damage = source_unit.calculate_damage_against(target_enemy)
+
+	var stats = {
+		"pierce": 99,
+		"angle": fly_dir.angle(),
+		"lifetime": 0.25,
+		"source": source_unit
+	}
+
+	# 为了防止生成在墙里被卡住，稍微抬高一点层级或确保 mask 正确，但在 Enemy 碰撞检测中通常没问题
+	proj.setup(start_pos, null, damage, 1000.0, "invisible_swipe", stats)
+	add_child(proj)
+
+	# 播放特效
+	var slash = SLASH_EFFECT_SCRIPT.new()
+	add_child(slash)
+	slash.global_position = target_enemy.global_position
+	slash.rotation = fly_dir.angle()
+	slash.play()
 
 func find_nearest_enemy(pos: Vector2, range_val: float):
 	var nearest = null

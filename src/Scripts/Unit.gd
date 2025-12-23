@@ -34,6 +34,7 @@ var crit_rate: float = 0.0
 var crit_dmg: float = 1.5
 var bounce_count: int = 0
 var split_count: int = 0
+var swipe_right_next: bool = false
 
 # Grid
 var grid_pos: Vector2i = Vector2i.ZERO
