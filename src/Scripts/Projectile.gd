@@ -9,6 +9,9 @@ var hit_list = []
 var source_unit = null
 var effects: Dictionary = {}
 
+var is_meteor_falling: bool = false
+var meteor_target: Vector2 = Vector2.ZERO
+
 # Advanced Stats
 var pierce: int = 0
 var bounce: int = 0
@@ -48,11 +51,32 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 	damage_type = stats.get("damageType", "physical")
 	is_critical = stats.get("is_critical", false)
 
+	if stats.has("is_meteor"):
+		is_meteor_falling = true
+		meteor_target = stats["ground_pos"]
+		type = "fireball" # Reuse dragon breath or fireball visual if available, using dragon_breath as fallback if fireball not defined
+		if proj_type == "fireball": pass # Already set
+		else: type = "dragon_breath" # Use dragon breath visual as base if fireball not specific
+
+		# Override type to ensure visual works? Let's check visuals.
+		# Code has `_setup_dragon_breath`, no `_setup_fireball`.
+		# So I will set type to "dragon_breath" for visual, or just assume "fireball" triggers something else?
+		# Actually, `setup` sets `type = proj_type` earlier.
+		# In CombatManager, we passed `proj: "fireball"`.
+		# But Projectile.gd doesn't seem to have "fireball" in setup.
+		# Let's map "fireball" to "dragon_breath" visual or create a simple one.
+		if type == "fireball":
+			type = "dragon_breath"
+
+		speed = 1200.0
+		rotation = (meteor_target - position).angle()
+
 	# Initial rotation
-	if target and is_instance_valid(target):
-		look_at(target.global_position)
-	elif stats.get("angle") != null:
-		rotation = stats.get("angle")
+	if not is_meteor_falling:
+		if target and is_instance_valid(target):
+			look_at(target.global_position)
+		elif stats.get("angle") != null:
+			rotation = stats.get("angle")
 
 	# Visual Separation
 	if has_node("Sprite2D"):
@@ -109,6 +133,15 @@ func fade_out():
 
 func _process(delta):
 	if is_fading: return
+
+	if is_meteor_falling:
+		var dist = global_position.distance_to(meteor_target)
+		if dist < 20.0:
+			_on_meteor_hit()
+			return
+
+		position += Vector2.RIGHT.rotated(rotation) * speed * delta
+		return
 
 	# Dragon Breath Logic
 	if type == "dragon_breath":
@@ -277,6 +310,32 @@ func _on_area_2d_area_entered(area):
 					perform_split()
 				fade_out()
 
+func _on_meteor_hit():
+	is_meteor_falling = false
+
+	# Momentum Bounce Logic
+	# Current rotation is the incidence angle.
+	# Bounce angle = rotation + randf_range(-0.5, 0.5) (approx +/- 30 deg)
+	var bounce_angle = rotation + randf_range(-0.5, 0.5)
+	rotation = bounce_angle
+
+	# Reset Stats
+	life = 1.0 # 1 sec ground slide
+	speed = 500.0 # Slow down
+	target = null
+
+	# Visual Splash
+	# Existing SlashEffect logic in codebase uses .new() on the script, so we follow that pattern.
+	var SlashEffectScript = load("res://src/Scripts/Effects/SlashEffect.gd")
+	if SlashEffectScript:
+		var slash = SlashEffectScript.new()
+		get_parent().add_child(slash)
+		slash.global_position = global_position
+		slash.rotation = rotation
+		slash.modulate = Color.ORANGE
+		slash.play()
+
+	type = "meteor_debris"
 
 func _setup_simple_visual(color, shape):
 	if visual_node: visual_node.hide()
