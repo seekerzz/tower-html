@@ -282,59 +282,28 @@ func process_unit_combat(unit, tile, delta):
 		unit.play_attack_anim(unit.unit_data.attackType, target.global_position)
 
 		if unit.unit_data.attackType == "melee":
-			# AOE Cone Logic
+			var swing_hit_list = []
 			var attack_dir = (target.global_position - unit.global_position).normalized()
-			var cone_angle = PI / 2.0
-			var aoe_radius = unit.range_val + 20.0
 
-			# Crit Calculation
-			var is_critical = randf() < unit.crit_rate
-			# Use helper to calculate damage including artifacts
-			var final_damage = unit.calculate_damage_against(target)
-			var dmg_type = unit.unit_data.get("damageType", "physical")
-			if is_critical:
-				final_damage *= unit.crit_dmg
-				dmg_type = "crit"
+			var proj_speed = 600.0
+			var proj_life = (unit.range_val + 20.0) / proj_speed
+			var count = 5
+			var spread = PI / 2.0
 
-			# Prepare Melee Effects (Poison etc)
-			var melee_effects = {}
-			if unit.unit_data.get("trait") == "poison_touch":
-				melee_effects["poison"] = 5.0
+			var base_angle = attack_dir.angle()
+			var start_angle = base_angle - spread / 2.0
+			var step = spread / max(1, count - 1)
 
-			# Check active buffs or implicit traits for Burn (e.g. from Fire Spirit or similar)
-			if "active_buffs" in unit:
-				for buff in unit.active_buffs:
-					if buff == "fire": melee_effects["burn"] = 3.0
-					if buff == "poison": melee_effects["poison"] = 5.0
-
-			if unit.unit_data.get("buffProvider") == "fire":
-				melee_effects["burn"] = 3.0
-
-			for enemy in get_tree().get_nodes_in_group("enemies"):
-				if !is_instance_valid(enemy): continue
-
-				var to_enemy_vec = enemy.global_position - unit.global_position
-				var dist = to_enemy_vec.length()
-
-				# Distance Check
-				if dist <= aoe_radius:
-					# Angle Check
-					var angle_diff = attack_dir.angle_to(to_enemy_vec)
-					if abs(angle_diff) <= cone_angle / 2.0:
-						enemy.take_damage(final_damage, unit, dmg_type)
-
-						# Apply Melee Effects
-						if melee_effects.has("poison"):
-							enemy.effects["poison"] = max(enemy.effects.get("poison", 0), melee_effects["poison"])
-						if melee_effects.has("burn"):
-							enemy.effects["burn"] = max(enemy.effects.get("burn", 0), melee_effects["burn"])
-							enemy.burn_source = unit
-
-			var slash = SLASH_EFFECT_SCRIPT.new()
-			add_child(slash)
-			slash.global_position = target.global_position
-			slash.rotation = attack_dir.angle()
-			slash.play()
+			for i in range(count):
+				var angle = start_angle + (i * step)
+				var stats = {
+					"pierce": 100,
+					"hide_visuals": true,
+					"life": proj_life,
+					"angle": angle,
+					"shared_hit_list": swing_hit_list
+				}
+				_spawn_single_projectile(unit, unit.global_position, null, stats)
 
 		elif unit.unit_data.attackType == "ranged" and unit.unit_data.get("proj") == "lightning":
 			# Lightning handling
@@ -471,7 +440,7 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	stats.source = source_unit
 
 	var proj_speed = source_unit.unit_data.get("projectile_speed", 400.0)
-	proj.setup(pos, target, final_damage, proj_speed, source_unit.unit_data.proj, stats)
+	proj.setup(pos, target, final_damage, proj_speed, source_unit.unit_data.get("proj", "melee"), stats)
 	add_child(proj)
 
 func queue_burn_explosion(pos: Vector2, damage: float, source: Node2D):

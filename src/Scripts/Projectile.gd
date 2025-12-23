@@ -6,6 +6,7 @@ var damage: float = 10.0
 var life: float = 2.0
 var type: String = "pinecone"
 var hit_list = []
+var shared_hit_list_ref: Array = []
 var source_unit = null
 var effects: Dictionary = {}
 
@@ -51,6 +52,12 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 	damage_type = stats.get("damageType", "physical")
 	is_critical = stats.get("is_critical", false)
 
+	if stats.has("life"):
+		life = stats.get("life")
+
+	if stats.has("shared_hit_list"):
+		shared_hit_list_ref = stats.get("shared_hit_list")
+
 	if stats.has("is_meteor"):
 		is_meteor_falling = true
 		meteor_target = stats["ground_pos"]
@@ -83,6 +90,11 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 		visual_node = get_node("Sprite2D")
 	elif has_node("Polygon2D"):
 		visual_node = get_node("Polygon2D")
+
+	if stats.get("hide_visuals", false):
+		if visual_node: visual_node.hide()
+		if has_node("ColorRect"): get_node("ColorRect").hide()
+		modulate.a = 0.0
 
 	if is_critical:
 		scale *= 1.2
@@ -227,6 +239,7 @@ func _on_area_2d_area_entered(area):
 	if type == "dragon_breath": return
 
 	if area.is_in_group("enemies"):
+		if shared_hit_list_ref != null and area in shared_hit_list_ref: return
 		if area in hit_list: return
 
 		# Apply Damage
@@ -290,6 +303,8 @@ func _on_area_2d_area_entered(area):
 					GameManager.grid_manager.try_spawn_trap(area.global_position, trap_type)
 
 		hit_list.append(area)
+		if shared_hit_list_ref != null:
+			shared_hit_list_ref.append(area)
 
 		# 1. Bounce/Chain Logic
 		# Chain is treated essentially as bounce in the reference
