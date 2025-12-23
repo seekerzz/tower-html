@@ -160,32 +160,7 @@ func _process(delta):
 		_process_dragon_breath(delta)
 		return
 
-	life -= delta
-	if life <= 0:
-		fade_out()
-		return
-
-	# Roar Logic
-	if type == "roar":
-		scale += Vector2(delta, delta) * speed * 0.01
-		modulate.a = max(0, modulate.a - delta * 0.8)
-		if has_node("WaveLine"):
-			var line = get_node("WaveLine")
-			line.width += delta * 15.0
-
-	# Roar Logic
-	if type == "roar":
-		scale += Vector2(delta, delta) * speed * 0.01
-		modulate.a = max(0, modulate.a - delta * 0.8)
-		# No movement for roar, it expands from center (or source) usually,
-		# but if it's a projectile, it might move.
-		# If it acts like a wave, we expand it. If it moves like a projectile, we move it.
-		# Ref implies it's a "projectile" replacement for Cannon, so it likely moves?
-		# Or Cannon was "swarm_wave" which expands.
-		# "Roar" sounds like it expands. "Cannon" desc was "swarm_wave".
-		# Let's assume it expands like swarm_wave but looks different.
-		pass
-
+	# Move first, check life later to ensure at least one frame of movement/collision
 	var direction = Vector2.RIGHT.rotated(rotation)
 
 	if is_instance_valid(target):
@@ -198,6 +173,19 @@ func _process(delta):
 	# Visual Rotation (Spin)
 	if visual_node:
 		visual_node.rotation += delta * 15.0
+
+	life -= delta
+	if life <= 0:
+		fade_out()
+		return
+
+	# Roar Logic (Expands)
+	if type == "roar":
+		scale += Vector2(delta, delta) * speed * 0.01
+		modulate.a = max(0, modulate.a - delta * 0.8)
+		if has_node("WaveLine"):
+			var line = get_node("WaveLine")
+			line.width += delta * 15.0
 
 func _process_dragon_breath(delta):
 	if state == State.MOVING:
