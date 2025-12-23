@@ -1,5 +1,8 @@
 extends Node2D
 
+# 用于记录下一次攻击是否为右挥（用于暴躁熊等交替攻击单位）
+var swipe_right_next: bool = false
+
 var type_key: String
 var level: int = 1
 var stats_multiplier: float = 1.0

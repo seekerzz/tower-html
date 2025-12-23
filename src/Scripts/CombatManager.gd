@@ -225,60 +225,16 @@ func process_unit_combat(unit, tile, delta):
 
 		unit.play_attack_anim(unit.unit_data.attackType, target.global_position)
 
+		# [New Logic] Melee as Projectile
 		if unit.unit_data.attackType == "melee":
-			# AOE Cone Logic
-			var attack_dir = (target.global_position - unit.global_position).normalized()
-			var cone_angle = PI / 2.0
-			var aoe_radius = unit.range_val + 20.0
-
-			# Crit Calculation
-			var is_critical = randf() < unit.crit_rate
-			# Use helper to calculate damage including artifacts
-			var final_damage = unit.calculate_damage_against(target)
-			var dmg_type = unit.unit_data.get("damageType", "physical")
-			if is_critical:
-				final_damage *= unit.crit_dmg
-				dmg_type = "crit"
-
-			# Prepare Melee Effects (Poison etc)
-			var melee_effects = {}
-			if unit.unit_data.get("trait") == "poison_touch":
-				melee_effects["poison"] = 5.0
-
-			# Check active buffs or implicit traits for Burn (e.g. from Fire Spirit or similar)
-			if "active_buffs" in unit:
-				for buff in unit.active_buffs:
-					if buff == "fire": melee_effects["burn"] = 3.0
-					if buff == "poison": melee_effects["poison"] = 5.0
-
-			if unit.unit_data.get("buffProvider") == "fire":
-				melee_effects["burn"] = 3.0
-
-			for enemy in get_tree().get_nodes_in_group("enemies"):
-				if !is_instance_valid(enemy): continue
-
-				var to_enemy_vec = enemy.global_position - unit.global_position
-				var dist = to_enemy_vec.length()
-
-				# Distance Check
-				if dist <= aoe_radius:
-					# Angle Check
-					var angle_diff = attack_dir.angle_to(to_enemy_vec)
-					if abs(angle_diff) <= cone_angle / 2.0:
-						enemy.take_damage(final_damage, unit, dmg_type)
-
-						# Apply Melee Effects
-						if melee_effects.has("poison"):
-							enemy.effects["poison"] = max(enemy.effects.get("poison", 0), melee_effects["poison"])
-						if melee_effects.has("burn"):
-							enemy.effects["burn"] = max(enemy.effects.get("burn", 0), melee_effects["burn"])
-							enemy.burn_source = unit
-
-			var slash = SLASH_EFFECT_SCRIPT.new()
-			add_child(slash)
-			slash.global_position = target.global_position
-			slash.rotation = attack_dir.angle()
-			slash.play()
+			# 区分攻击模式
+			if unit.type_key == "bear":
+				# 模式A: 暴躁熊 - 左右横扫 (Side Swipe)
+				_perform_swipe_attack(unit, target)
+			else:
+				# 模式B: 普通近战 - 正向突刺 (Forward Thrust)
+				# 将普通近战也转化为投射物，以获得正确的飘字方向
+				_perform_direct_melee_attack(unit, target)
 
 		elif unit.unit_data.attackType == "ranged" and unit.unit_data.get("proj") == "lightning":
 			# Lightning handling
@@ -439,3 +395,79 @@ func _process_burn_explosion(expl):
 			enemy.take_damage(damage, source, "fire")
 			enemy.effects["burn"] = 5.0
 			enemy.burn_source = source
+
+# 模式A: 左右交替横扫 (Bear)
+func _perform_swipe_attack(source_unit, target_enemy):
+	if not is_instance_valid(target_enemy): return
+
+	var to_target_dir = (target_enemy.global_position - source_unit.global_position).normalized()
+	var right_dir = Vector2(-to_target_dir.y, to_target_dir.x)
+
+	var start_pos = Vector2.ZERO
+	var fly_dir = Vector2.ZERO
+	var swipe_width = 80.0 # 挥击半宽
+
+	# 交替方向
+	if source_unit.swipe_right_next:
+		# 右 -> 左
+		start_pos = target_enemy.global_position + (right_dir * swipe_width)
+		fly_dir = -right_dir
+	else:
+		# 左 -> 右
+		start_pos = target_enemy.global_position - (right_dir * swipe_width)
+		fly_dir = right_dir
+
+	source_unit.swipe_right_next = !source_unit.swipe_right_next
+
+	# 稍微修正起点，避免过于贴脸导致判定失效，往回拉一点
+	start_pos -= fly_dir * 10.0
+
+	# 配置横扫子弹: 穿透所有(99)，极快速度，极短生存时间
+	var stats = {
+		"pierce": 99,
+		"angle": fly_dir.angle(),
+		"lifetime": 0.2, # 0.2秒扫过屏幕
+		"source": source_unit
+	}
+
+	# 使用高速度 (1000) 确保瞬间扫过
+	_spawn_melee_projectile(source_unit, start_pos, null, 1000.0, stats)
+
+	# 播放爪痕特效 (SlashEffect)
+	var slash = SLASH_EFFECT_SCRIPT.new()
+	add_child(slash)
+	slash.global_position = target_enemy.global_position
+	slash.rotation = fly_dir.angle()
+	slash.play()
+
+# 模式B: 正向突刺 (Standard Melee)
+func _perform_direct_melee_attack(source_unit, target_enemy):
+	if not is_instance_valid(target_enemy): return
+
+	var start_pos = source_unit.global_position
+	var dir = (target_enemy.global_position - start_pos).normalized()
+
+	# 配置突刺子弹: 速度适中，射程覆盖攻击范围即可
+	var stats = {
+		"pierce": source_unit.unit_data.get("pierce", 0), # 继承单位穿透属性
+		"angle": dir.angle(),
+		"source": source_unit
+	}
+
+	# 速度 600，目标为 null (走直线)，依靠碰撞造成伤害
+	_spawn_melee_projectile(source_unit, start_pos, null, 600.0, stats)
+
+# 通用近战投射物生成器
+func _spawn_melee_projectile(source_unit, pos, target, speed, extra_stats):
+	var proj = PROJECTILE_SCENE.instantiate()
+
+	# 计算伤害 (如果有目标则针对目标计算，否则取面板)
+	var dmg = source_unit.calculate_damage_against(target) if target else source_unit.damage
+	# 暴击判定
+	var is_critical = randf() < source_unit.crit_rate
+	if is_critical: dmg *= source_unit.crit_dmg
+	extra_stats["is_critical"] = is_critical
+
+	# 强制设置为隐形类型
+	proj.setup(pos, target, dmg, speed, "melee_invisible", extra_stats)
+	add_child(proj)
