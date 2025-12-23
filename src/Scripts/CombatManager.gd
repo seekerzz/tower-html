@@ -61,6 +61,61 @@ func start_wave_logic():
 
 	_run_batch_sequence(batch_count, int(enemies_per_batch))
 
+func start_meteor_shower(center_pos: Vector2, damage: float):
+	# Wave Loop: 5 Waves, 0.1s interval (using async/await)
+	for w in range(5):
+		# Spawn Loop: 8 projectiles per wave
+		for i in range(8):
+			# land_pos: Random point within 150.0 pixels radius of center_pos
+			var angle = randf() * TAU
+			var dist = randf() * 150.0
+			var land_pos = center_pos + Vector2(cos(angle), sin(angle)) * dist
+
+			# start_pos: land_pos + Vector2(-300, -800) (Angle from top-left)
+			var start_pos = land_pos + Vector2(-300, -800)
+
+			var stats = {
+				"is_meteor": true,
+				"ground_pos": land_pos,
+				"pierce": 2,
+				"bounce": 0
+			}
+
+			# Call spawn (passing null as source_unit for now, or we could pass a dummy if needed)
+			# But _spawn_single_projectile expects a source_unit to get 'damage', 'crit_rate' etc.
+			# Or we can pass 'damage' directly if we modify _spawn_single_projectile to handle manual damage override more gracefully.
+			# Let's see _spawn_single_projectile...
+			# It uses source_unit.calculate_damage_against...
+			# I need to create a dummy source unit or modify _spawn_single_projectile to accept direct damage.
+			# Actually, I can pass a dummy dictionary acting as object if GDScript allows (duck typing),
+			# but 'calculate_damage_against' is a method.
+
+			# Workaround: Create a lightweight object or struct, OR better:
+			# create a specialized spawn function for this, OR reuse _spawn_single_projectile but fix the source dependency.
+
+			# Let's check _spawn_single_projectile again.
+			# `var base_dmg = source_unit.calculate_damage_against(target) if target else source_unit.damage`
+			# So if I pass a duck-typed object with `damage` property, it works if target is null.
+			# Here target is null.
+
+			var dummy_source = MeteorSource.new(damage)
+			_spawn_single_projectile(dummy_source, start_pos, null, stats)
+
+		await get_tree().create_timer(0.1).timeout
+
+# Inner class to act as a source unit for meteors, avoiding dictionary access errors
+class MeteorSource:
+	var damage: float
+	var crit_rate: float = 0.0
+	var crit_dmg: float = 1.5
+	var unit_data: Dictionary = {"proj": "fireball", "damageType": "fire"}
+
+	func _init(dmg):
+		damage = dmg
+
+	func calculate_damage_against(_target):
+		return damage
+
 func spawn_boss_wave():
 	# Hardcoded Wave 5 Event
 	# Pick 2 different bosses from [summoner, ranger, tank]
