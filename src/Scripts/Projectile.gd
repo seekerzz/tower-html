@@ -71,6 +71,11 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 	elif type == "web":
 		_setup_web()
 	# Visual Setup
+	elif type == "melee_invisible":
+		if visual_node: visual_node.hide()
+		# 确保隐藏所有子节点（如 Polygon2D, Sprite 等），只保留碰撞功能
+		for child in get_children():
+			if child is Node2D: child.hide()
 	elif type == "stinger":
 		_setup_stinger()
 	elif type == "roar":

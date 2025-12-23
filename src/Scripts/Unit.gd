@@ -28,6 +28,9 @@ var visual_holder: Node2D = null
 # Keeping this for compatibility if other scripts access it, though it was local-ish before
 var visual_node: CanvasItem = null
 
+# 用于记录下一次攻击是否为右挥（用于暴躁熊等交替攻击单位）
+var swipe_right_next: bool = false
+
 var is_starving: bool = false
 var is_no_mana: bool = false
 var crit_rate: float = 0.0
