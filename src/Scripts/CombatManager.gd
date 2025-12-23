@@ -286,7 +286,7 @@ func process_unit_combat(unit, tile, delta):
 			var attack_dir = (target.global_position - unit.global_position).normalized()
 
 			var proj_speed = 600.0
-			var proj_life = (unit.range_val + 20.0) / proj_speed
+			var proj_life = (unit.range_val + 30.0) / proj_speed
 			var count = 5
 			var spread = PI / 2.0
 
@@ -301,6 +301,7 @@ func process_unit_combat(unit, tile, delta):
 					"hide_visuals": true,
 					"life": proj_life,
 					"angle": angle,
+					"speed": proj_speed,
 					"shared_hit_list": swing_hit_list
 				}
 				_spawn_single_projectile(unit, unit.global_position, null, stats)
@@ -439,7 +440,7 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	stats.merge(extra_stats, true)
 	stats.source = source_unit
 
-	var proj_speed = source_unit.unit_data.get("projectile_speed", 400.0)
+	var proj_speed = stats.get("speed", source_unit.unit_data.get("projectile_speed", 400.0))
 	proj.setup(pos, target, final_damage, proj_speed, source_unit.unit_data.get("proj", "melee"), stats)
 	add_child(proj)
 
