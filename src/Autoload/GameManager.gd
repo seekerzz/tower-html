@@ -10,6 +10,7 @@ signal unit_sold(amount)
 signal skill_activated(unit)
 signal damage_dealt(unit, amount)
 signal ftext_spawn_requested(pos, value, color, direction)
+signal camera_shake_requested(intensity, duration)
 signal show_tooltip(data, stats, buffs, pos)
 signal hide_tooltip()
 

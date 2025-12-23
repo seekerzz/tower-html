@@ -41,6 +41,10 @@ var anim_tween: Tween
 var knockback_velocity: Vector2 = Vector2.ZERO
 var knockback_resistance: float = 1.0
 
+const KNOCKBACK_COLLISION_SPEED_THRESHOLD = 300.0
+const RAM_DAMAGE_COEFFICIENT = 0.05
+var collision_cooldown_timer: float = 0.0
+
 # Boss / Special Properties
 var stationary_timer: float = 0.0
 var boss_skill: String = ""
@@ -51,7 +55,8 @@ var is_stationary: bool = false
 func _ready():
 	add_to_group("enemies")
 	# We also need to monitor layer 2 (traps) for overlaps
-	collision_mask = 3 # Layer 1 (Walls) + Layer 2 (Traps)
+	# Adding layer 3 (Enemies) to mask to allow Enemy-on-Enemy collision detection
+	collision_mask = 7 # Layer 1 (Walls) + Layer 2 (Traps) + Layer 3 (Enemies)
 
 	# Ensure Area2D does not pick up input (only physics collisions)
 	input_pickable = false
@@ -269,6 +274,12 @@ func _process(delta):
 
 			return # Skip movement logic while stationary
 
+	if collision_cooldown_timer > 0:
+		collision_cooldown_timer -= delta
+
+	if knockback_velocity.length() > KNOCKBACK_COLLISION_SPEED_THRESHOLD and collision_cooldown_timer <= 0:
+		check_knockback_collisions()
+
 	if is_attacking_base:
 		attack_base_logic(delta)
 	elif attacking_wall and is_instance_valid(attacking_wall):
@@ -285,6 +296,51 @@ func _process(delta):
 			nav_timer = 0.5
 
 		move_along_path(delta)
+
+func check_knockback_collisions():
+	# 1. Enemy-on-Enemy Collision
+	var areas = get_overlapping_areas()
+	for area in areas:
+		if area.is_in_group("enemies") and area != self:
+			var speed = knockback_velocity.length()
+			var damage = speed * RAM_DAMAGE_COEFFICIENT
+
+			if area.has_method("take_damage"):
+				area.take_damage(damage, null, "physical", self, speed * 0.5)
+
+			# Transfer momentum
+			if area.get("knockback_velocity") != null:
+				var transfer_dir = knockback_velocity.normalized()
+				area.knockback_velocity += transfer_dir * (speed * 0.5)
+
+			# Attacker decay
+			knockback_velocity *= 0.6
+
+			# Camera Shake
+			GameManager.camera_shake_requested.emit(2.0, 0.1)
+
+			collision_cooldown_timer = 0.2
+			break # Handle one collision per check to prevent chaos
+
+	# 2. Wall Bounce (Map Boundaries)
+	var boundary_x = (Constants.MAP_WIDTH * Constants.TILE_SIZE) / 2.0
+	var boundary_y = (Constants.MAP_HEIGHT * Constants.TILE_SIZE) / 2.0
+
+	var bounced = false
+
+	if abs(global_position.x) > boundary_x:
+		knockback_velocity.x *= -1
+		global_position.x = sign(global_position.x) * boundary_x
+		bounced = true
+
+	if abs(global_position.y) > boundary_y:
+		knockback_velocity.y *= -1
+		global_position.y = sign(global_position.y) * boundary_y
+		bounced = true
+
+	if bounced:
+		apply_stun(0.5)
+		GameManager.camera_shake_requested.emit(5.0, 0.3)
 
 func apply_poison(source_unit, stacks_added, duration):
 	if poison_stacks == 0:
