@@ -294,7 +294,16 @@ func execute_skill_effect(source_key: String, target_pos: Vector2i) -> bool:
 			grid_manager.spawn_trap_custom(target_pos, "fang")
 			return true
 		"phoenix":
-			var world_pos = Vector2(target_pos.x * Constants.TILE_SIZE, target_pos.y * Constants.TILE_SIZE)
+			var world_pos = Vector2.ZERO
+			var key = grid_manager.get_tile_key(target_pos.x, target_pos.y)
+			if grid_manager.tiles.has(key):
+				world_pos = grid_manager.tiles[key].global_position
+			else:
+				# Fallback if tile not found (e.g. valid coord but no tile instance?)
+				# Convert local grid pos to global assuming grid_manager is at (0,0) or transforming
+				var local_pos = Vector2(target_pos.x * Constants.TILE_SIZE, target_pos.y * Constants.TILE_SIZE)
+				world_pos = grid_manager.to_global(local_pos)
+
 			var dmg = 15.0
 			if Constants.UNIT_TYPES.has("phoenix"):
 				dmg = Constants.UNIT_TYPES["phoenix"].get("damage", 30.0) * 0.5
