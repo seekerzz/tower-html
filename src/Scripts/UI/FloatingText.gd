@@ -35,10 +35,29 @@ func setup(value_str: String, color: Color, is_crit: bool = false, value_num: fl
 		gravity = 2000.0 # 增加重力，让它掉得更快
 		friction = 2.0
 		floor_y = position.y + randf_range(10.0, 30.0)
+		fade_speed = 8.0 # 快速消失
 		
-		# 初始向上跳
-		velocity = Vector2(randf_range(-100, 100), -500.0)
-		fade_speed = 8.0 # 【修改点】快速消失
+		# [修改点] 金币方向跟随子弹 + 散射 + 强制上抛
+		if direction != Vector2.ZERO:
+			# 1. 散射 (随机偏转 +/- 0.3 弧度)
+			var spread = randf_range(-0.3, 0.3)
+			var final_dir = direction.rotated(spread).normalized()
+			
+			# 2. 赋予速度
+			# 水平方向跟随子弹方向
+			velocity = final_dir * 400.0
+			
+			# 3. 强制上抛混合逻辑
+			# 基础向上弹力(-400) + 子弹垂直方向的影响
+			# 向上射击(y<0)会跳更高，向下射击(y>0)会压低高度但仍保持向上
+			velocity.y = -400.0 + (final_dir.y * 200.0)
+			
+			# 兜底：确保至少有一定的向上跳跃力度，防止贴地
+			if velocity.y > -200.0: velocity.y = -200.0
+			
+		else:
+			# 无方向时的默认原地随机跳起
+			velocity = Vector2(randf_range(-100, 100), -500.0)
 		
 	elif direction != Vector2.ZERO:
 		# [模式 B: 远程射击] - 冲击模式
@@ -46,17 +65,14 @@ func setup(value_str: String, color: Color, is_crit: bool = false, value_num: fl
 		gravity = 0.0
 		friction = 6.0
 		
-		# 【修改点】只计算方向，不旋转节点(rotation)，保证文字永远正向
+		# 只计算方向，不旋转节点(rotation)，保证文字永远正向
 		var spread = randf_range(-0.2, 0.2)
 		var final_dir = direction.rotated(spread).normalized()
 		var speed = 800.0 if is_crit else 500.0
 		velocity = final_dir * speed
 		
-		# 移除 rotation = ... 代码，保持正向显示
-		
 	else:
 		# [模式 C: 近战/默认] - 传统上浮模式
-		# 解决了"近战也弹跳"的问题
 		mode = "float"
 		gravity = 0.0
 		friction = 3.0 # 适中阻力
@@ -67,7 +83,6 @@ func setup(value_str: String, color: Color, is_crit: bool = false, value_num: fl
 	# 3. 缩放动画
 	var base_scale = clamp(1.0 + (value_num / 500.0), 1.0, 2.5)
 	
-	# 【修改点】针对金币强制缩小
 	if is_resource:
 		base_scale = 0.7 # 金币更小更精致
 	elif is_crit:
@@ -114,11 +129,8 @@ func _process(delta):
 		position += velocity * delta
 
 	# === 暴击震动 ===
-	if is_crit_hit and mode != "gravity" and velocity.length() > 50:
-		var offset = Vector2(randf(), randf()) * shake_amount
-		label.position = offset - (label.size / 2.0)
-	else:
-		label.position = -(label.size / 2.0)
+	# [修改]: 移除了原有的 is_crit_hit 随机抖动逻辑，仅保持居中
+	label.position = -(label.size / 2.0)
 
 	# === 淡出逻辑 ===
 	# 允许根据不同模式判断开始淡出的时机
