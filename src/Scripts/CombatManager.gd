@@ -66,10 +66,10 @@ func start_meteor_shower(center_pos: Vector2, damage: float):
 	for w in range(5):
 		# Spawn Loop: 8 projectiles per wave
 		for i in range(8):
-			# land_pos: Random point within 150.0 pixels radius of center_pos
-			var angle = randf() * TAU
-			var dist = randf() * 150.0
-			var land_pos = center_pos + Vector2(cos(angle), sin(angle)) * dist
+			# land_pos: Random point within 1.5 * TILE_SIZE (3x3 grid)
+			var spread = 1.5 * Constants.TILE_SIZE
+			var offset = Vector2(randf_range(-spread, spread), randf_range(-spread, spread))
+			var land_pos = center_pos + offset
 
 			# start_pos: land_pos + Vector2(-300, -800) (Angle from top-left)
 			var start_pos = land_pos + Vector2(-300, -800)
