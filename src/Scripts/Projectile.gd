@@ -89,6 +89,8 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 		_setup_roar()
 	elif type == "dragon_breath":
 		_setup_dragon_breath()
+	elif type == "fireball":
+		_setup_simple_visual(Color.ORANGE, "circle")
 	elif type == "pinecone":
 		_setup_simple_visual(Color("8B4513"), "circle") # Brown circle
 	elif type == "ink":
