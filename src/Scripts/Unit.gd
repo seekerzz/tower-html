@@ -312,16 +312,7 @@ func execute_skill_at(grid_pos: Vector2i):
 
 		print("[DEBUG] Unit.execute_skill_at: ", grid_pos)
 
-		if type_key != "phoenix":
-			GameManager.execute_skill_effect(type_key, grid_pos)
-
-		if type_key == "phoenix":
-			var firestorm_scene = load("res://src/Scenes/Game/FireStorm.tscn")
-			if firestorm_scene:
-				var storm = firestorm_scene.instantiate()
-				storm.position = Vector2(grid_pos.x * Constants.TILE_SIZE, grid_pos.y * Constants.TILE_SIZE)
-				storm.init(damage * 0.5, 1)
-				get_parent().add_child(storm)
+		GameManager.execute_skill_effect(type_key, grid_pos)
 
 	else:
 		is_no_mana = true
