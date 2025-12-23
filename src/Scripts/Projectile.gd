@@ -329,14 +329,12 @@ func _on_meteor_hit():
 	is_meteor_falling = false
 
 	# Momentum Bounce Logic
-	# Current rotation is the incidence angle.
-	# Bounce angle = rotation + randf_range(-0.5, 0.5) (approx +/- 30 deg)
-	var bounce_angle = rotation + randf_range(-0.5, 0.5)
-	rotation = bounce_angle
+	# Random scatter for bounce effect
+	rotation = randf() * TAU
 
 	# Reset Stats
-	life = 0.3 # Quick fade out
-	speed = 50.0 # Strong friction/stop
+	life = 0.4 # Short bounce life
+	speed = 150.0 # Visible bounce movement
 	target = null
 
 	# Visual Splash

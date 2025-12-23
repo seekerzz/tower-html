@@ -62,8 +62,8 @@ func start_wave_logic():
 	_run_batch_sequence(batch_count, int(enemies_per_batch))
 
 func start_meteor_shower(center_pos: Vector2, damage: float):
-	# Wave Loop: 5 Waves, 0.1s interval (using async/await)
-	for w in range(5):
+	# Wave Loop: 8 Waves, 0.2s interval (using async/await)
+	for w in range(8):
 		# Spawn Loop: 8 projectiles per wave
 		for i in range(8):
 			# land_pos: Random point within 3x3 grid (1.5 * TILE_SIZE radius box)
@@ -101,7 +101,7 @@ func start_meteor_shower(center_pos: Vector2, damage: float):
 			var dummy_source = MeteorSource.new(damage)
 			_spawn_single_projectile(dummy_source, start_pos, null, stats)
 
-		await get_tree().create_timer(0.1).timeout
+		await get_tree().create_timer(0.2).timeout
 
 # Inner class to act as a source unit for meteors, avoiding dictionary access errors
 class MeteorSource:
