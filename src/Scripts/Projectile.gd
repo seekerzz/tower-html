@@ -335,8 +335,8 @@ func _on_meteor_hit():
 	rotation = bounce_angle
 
 	# Reset Stats
-	life = 1.0 # 1 sec ground slide
-	speed = 500.0 # Slow down
+	life = 0.3 # Quick fade out
+	speed = 50.0 # Strong friction/stop
 	target = null
 
 	# Visual Splash
