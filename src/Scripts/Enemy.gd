@@ -41,6 +41,10 @@ var anim_tween: Tween
 var knockback_velocity: Vector2 = Vector2.ZERO
 var knockback_resistance: float = 1.0
 
+const KNOCKBACK_COLLISION_SPEED_THRESHOLD = 300.0
+const RAM_DAMAGE_COEFFICIENT = 0.05
+var knockback_collision_cooldown: float = 0.0
+
 # Boss / Special Properties
 var stationary_timer: float = 0.0
 var boss_skill: String = ""
@@ -557,6 +561,54 @@ func move_along_path(delta):
 	# Apply movement + knockback
 	var move_vec = direction * current_speed
 	position += (move_vec + knockback_velocity) * delta
+
+	# Update collision cooldown
+	if knockback_collision_cooldown > 0:
+		knockback_collision_cooldown -= delta
+
+	# Check for High Speed Collisions (Bowling Effect)
+	var speed_val = knockback_velocity.length()
+	if speed_val > KNOCKBACK_COLLISION_SPEED_THRESHOLD:
+		# 1. Enemy-on-Enemy Collision
+		if knockback_collision_cooldown <= 0:
+			var areas = get_overlapping_areas()
+			for area in areas:
+				if area.is_in_group("enemies") and area != self:
+					# Hit another enemy!
+					var victim = area
+					var damage = speed_val * RAM_DAMAGE_COEFFICIENT
+
+					# Apply damage and momentum
+					victim.take_damage(damage, null, "physical", self, speed_val * 0.5)
+
+					# Attacker slows down
+					knockback_velocity *= 0.6
+
+					# Camera Shake
+					GameManager.camera_shake_requested.emit(2.0, 0.1)
+
+					knockback_collision_cooldown = 0.2
+					break # Handle one collision per frame/cooldown to avoid multi-hit spikes
+
+		# 2. Map Boundary Collision (Wall Bounce)
+		var map_w_pixels = Constants.MAP_WIDTH * Constants.TILE_SIZE
+		var map_h_pixels = Constants.MAP_HEIGHT * Constants.TILE_SIZE
+		var boundary_x = map_w_pixels / 2.0
+		var boundary_y = map_h_pixels / 2.0
+
+		# Check X Bounds
+		if abs(position.x) > boundary_x:
+			knockback_velocity.x = -knockback_velocity.x # Bounce
+			position.x = sign(position.x) * (boundary_x - 10) # Push back inside
+			apply_stun(0.5)
+			GameManager.camera_shake_requested.emit(5.0, 0.2)
+
+		# Check Y Bounds
+		if abs(position.y) > boundary_y:
+			knockback_velocity.y = -knockback_velocity.y # Bounce
+			position.y = sign(position.y) * (boundary_y - 10) # Push back inside
+			apply_stun(0.5)
+			GameManager.camera_shake_requested.emit(5.0, 0.2)
 
 	# Knockback damping
 	if knockback_velocity.length() > 0:
