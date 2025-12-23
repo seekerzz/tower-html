@@ -418,6 +418,33 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	proj.setup(pos, target, final_damage, proj_speed, source_unit.unit_data.proj, stats)
 	add_child(proj)
 
+func start_meteor_shower(center_pos: Vector2, damage: float):
+	# Wave Loop: 5 Waves
+	for i in range(5):
+		_spawn_meteor_wave(center_pos, damage)
+		await get_tree().create_timer(0.1).timeout
+
+func _spawn_meteor_wave(center_pos: Vector2, damage: float):
+	# Spawn Loop: 8 projectiles
+	for j in range(8):
+		var land_pos = center_pos + Vector2(randf_range(-150.0, 150.0), randf_range(-150.0, 150.0))
+		var start_pos = land_pos + Vector2(-300, -800)
+
+		var stats = {
+			"is_meteor": true,
+			"ground_pos": land_pos,
+			"pierce": 2,
+			"bounce": 0
+		}
+
+		var proj = PROJECTILE_SCENE.instantiate()
+		var proj_speed = 1200.0 # Will be overridden by meteor logic anyway
+
+		stats["source"] = null
+
+		proj.setup(start_pos, null, damage, proj_speed, "fireball", stats)
+		add_child(proj)
+
 func queue_burn_explosion(pos: Vector2, damage: float, source: Node2D):
 	explosion_queue.append({ "pos": pos, "damage": damage, "source": source })
 

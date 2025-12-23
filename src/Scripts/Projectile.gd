@@ -9,6 +9,9 @@ var hit_list = []
 var source_unit = null
 var effects: Dictionary = {}
 
+var is_meteor_falling: bool = false
+var meteor_target: Vector2
+
 # Advanced Stats
 var pierce: int = 0
 var bounce: int = 0
@@ -48,11 +51,20 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 	damage_type = stats.get("damageType", "physical")
 	is_critical = stats.get("is_critical", false)
 
+	if stats.has("is_meteor"):
+		is_meteor_falling = true
+		meteor_target = stats["ground_pos"]
+		type = "fireball" # Or keep dragon_breath if visual preferred, but fireball is distinct
+		speed = 1200.0
+		# Rotation towards ground target
+		rotation = (meteor_target - position).angle()
+
 	# Initial rotation
-	if target and is_instance_valid(target):
-		look_at(target.global_position)
-	elif stats.get("angle") != null:
-		rotation = stats.get("angle")
+	if !is_meteor_falling:
+		if target and is_instance_valid(target):
+			look_at(target.global_position)
+		elif stats.get("angle") != null:
+			rotation = stats.get("angle")
 
 	# Visual Separation
 	if has_node("Sprite2D"):
@@ -109,6 +121,15 @@ func fade_out():
 
 func _process(delta):
 	if is_fading: return
+
+	if is_meteor_falling:
+		var dist = global_position.distance_to(meteor_target)
+		if dist < 20.0:
+			_on_meteor_hit()
+			return
+
+		position += Vector2.RIGHT.rotated(rotation) * speed * delta
+		return
 
 	# Dragon Breath Logic
 	if type == "dragon_breath":
@@ -277,6 +298,27 @@ func _on_area_2d_area_entered(area):
 					perform_split()
 				fade_out()
 
+func _on_meteor_hit():
+	is_meteor_falling = false
+
+	# Momentum Bounce
+	var bounce_angle = rotation + randf_range(-0.5, 0.5)
+	rotation = bounce_angle
+
+	# Reset stats for ground sliding
+	life = 1.0
+	speed = 500.0
+	target = null
+
+	# Visual Splash
+	var slash_script = load("res://src/Scripts/Effects/SlashEffect.gd")
+	if slash_script:
+		var effect = slash_script.new()
+		get_parent().add_child(effect)
+		effect.global_position = global_position
+		effect.rotation = rotation
+		effect.modulate = Color.ORANGE
+		effect.play()
 
 func _setup_simple_visual(color, shape):
 	if visual_node: visual_node.hide()
