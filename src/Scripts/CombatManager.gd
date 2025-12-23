@@ -108,6 +108,7 @@ class MeteorSource:
 	var damage: float
 	var crit_rate: float = 0.0
 	var crit_dmg: float = 1.5
+	var type_key: String = "phoenix"
 	var unit_data: Dictionary = {"proj": "fireball", "damageType": "fire"}
 
 	func _init(dmg):
