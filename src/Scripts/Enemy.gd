@@ -47,6 +47,7 @@ var boss_skill: String = ""
 var skill_cd_timer: float = 0.0
 var is_suicide: bool = false
 var is_stationary: bool = false
+var last_hit_direction: Vector2 = Vector2.ZERO
 
 func _ready():
 	add_to_group("enemies")
@@ -685,16 +686,24 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 	hit_flash_timer = 0.1
 	queue_redraw()
 
+	var hit_dir = Vector2.ZERO
+	# 仅当攻击源是投射物（拥有速度属性）时，才使用其旋转角度作为方向
+	if hit_source and is_instance_valid(hit_source) and "speed" in hit_source:
+		hit_dir = Vector2.RIGHT.rotated(hit_source.rotation)
+
+	# 无论是投射物方向还是 ZERO（无方向），都更新记录
+	last_hit_direction = hit_dir
+
+	print("Source: ", hit_source.name if hit_source else "Null", " | Dir: ", hit_dir)
+
 	# Calculate Knockback
-	var kb_dir = Vector2.ZERO
-	if kb_force > 0 and hit_source and is_instance_valid(hit_source):
-		kb_dir = (global_position - hit_source.global_position).normalized()
+	if kb_force > 0:
 		var applied_force = kb_force / max(0.1, knockback_resistance)
-		knockback_velocity += kb_dir * applied_force
+		knockback_velocity += hit_dir * applied_force
 
 	var display_val = max(1, int(amount))
-	# Pass kb_dir as direction for floating text
-	GameManager.spawn_floating_text(global_position, str(display_val), damage_type, kb_dir)
+	# Pass hit_dir as direction for floating text
+	GameManager.spawn_floating_text(global_position, str(display_val), damage_type, hit_dir)
 	if source_unit:
 		GameManager.damage_dealt.emit(source_unit, amount)
 
@@ -715,9 +724,9 @@ func die():
 			if global_position.distance_to(core_pos) < 200.0:
 				GameManager.damage_core(-5)
 				GameManager.add_gold(1)
-				GameManager.spawn_floating_text(global_position, "+1💰 (Recycle)", Color.GOLD)
+				GameManager.spawn_floating_text(global_position, "+1💰 (Recycle)", Color.GOLD, last_hit_direction)
 
-	GameManager.spawn_floating_text(global_position, "+1💰", Color.YELLOW)
+	GameManager.spawn_floating_text(global_position, "+1💰", Color.YELLOW, last_hit_direction)
 	GameManager.food += 2
 
 	queue_free()
