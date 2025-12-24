@@ -923,6 +923,10 @@ func recalculate_buffs():
 			var buff_type = unit.unit_data["buffProvider"]
 			_apply_buff_to_neighbors(unit, buff_type)
 
+		# Parrot Range Update
+		if unit.type_key == "parrot":
+			unit.update_parrot_range()
+
 		# Interaction Buffs
 		var info = unit.get_interaction_info()
 		if info.has_interaction and unit.interaction_target_pos != null:
