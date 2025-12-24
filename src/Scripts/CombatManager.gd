@@ -298,6 +298,9 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	# Crit Calculation
 	var is_critical = randf() < source_unit.crit_rate
 	var base_dmg = source_unit.calculate_damage_against(target) if target else source_unit.damage
+	if extra_stats.has("fixed_damage"):
+		base_dmg = extra_stats["fixed_damage"]
+
 	var final_damage = base_dmg
 	if is_critical:
 		final_damage *= source_unit.crit_dmg
@@ -344,8 +347,33 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	stats.source = source_unit
 
 	var proj_speed = stats.get("speed", source_unit.unit_data.get("projectile_speed", 400.0))
-	proj.setup(pos, target, final_damage, proj_speed, source_unit.unit_data.get("proj", "melee"), stats)
+	var proj_type = source_unit.unit_data.get("proj", "melee")
+	proj.setup(pos, target, final_damage, proj_speed, proj_type, stats)
 	add_child(proj)
+
+	# --- Parrot Mimic Logic ---
+	# Only mimic if it's a ranged attack (not melee or none, though usually proj implies ranged)
+	# Check source attackType
+	var attack_type = source_unit.unit_data.get("attackType", "none")
+
+	if attack_type == "ranged" and source_unit.type_key != "parrot":
+		# Only check neighbors if we have GridManager
+		if GameManager.grid_manager:
+			# Get neighbors of source_unit
+			var neighbors = source_unit._get_neighbor_units()
+
+			if not neighbors.is_empty():
+				# Prepare snapshot data
+				var bullet_data = {
+					"type": proj_type,
+					"damage": final_damage, # Snapshot final damage
+					"speed": proj_speed,
+					"stats": stats.duplicate() # Includes pierce, bounce, etc
+				}
+
+				for neighbor in neighbors:
+					if neighbor.type_key == "parrot":
+						neighbor.receive_mimic_bullet(bullet_data, source_unit)
 
 func queue_burn_explosion(pos: Vector2, damage: float, source: Node2D):
 	explosion_queue.append({ "pos": pos, "damage": damage, "source": source })

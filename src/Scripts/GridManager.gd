@@ -931,6 +931,8 @@ func recalculate_buffs():
 
 	for unit in processed_units:
 		unit.update_visuals()
+		if unit.type_key == "parrot":
+			unit.update_parrot_range()
 
 	grid_updated.emit()
 

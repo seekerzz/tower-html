@@ -35,6 +35,13 @@ var crit_dmg: float = 1.5
 var bounce_count: int = 0
 var split_count: int = 0
 
+# Parrot Logic
+var parrot_ammo: Array = []
+var parrot_max_ammo: int = 5
+var parrot_last_source: Node2D = null
+var parrot_last_frame: int = 0
+var parrot_is_discharging: bool = false
+
 # Grid
 var grid_pos: Vector2i = Vector2i.ZERO
 var start_position: Vector2 = Vector2.ZERO
@@ -225,6 +232,13 @@ func reset_stats():
 	attack_cost_food = unit_data.get("foodCost", 1.0)
 	attack_cost_mana = unit_data.get("manaCost", 0.0)
 	skill_mana_cost = unit_data.get("skillCost", 30.0)
+
+	if type_key == "parrot":
+		if level == 1: parrot_max_ammo = 5
+		elif level == 2: parrot_max_ammo = 7
+		elif level == 3: parrot_max_ammo = 10
+		parrot_ammo.clear()
+		update_parrot_range()
 
 	# Mechanics from Level
 	if stats.has("mechanics"):
@@ -631,6 +645,61 @@ func _process_combat(delta):
 		elif unit_data.attackType == "ranged" and unit_data.get("proj") == "lightning":
 			# Lightning handling
 			combat_manager.perform_lightning_attack(self, global_position, target, unit_data.get("chain", 0))
+
+		elif unit_data.attackType == "mimic":
+			# Parrot Burst Fire Logic
+			# Trigger: Full OR already discharging
+			var is_full = parrot_ammo.size() >= parrot_max_ammo
+
+			if is_full:
+				parrot_is_discharging = true
+
+			if !parrot_is_discharging:
+				return
+
+			if parrot_ammo.is_empty():
+				parrot_is_discharging = false
+				return
+
+			# Re-verify target in range (parrot range is dynamic)
+			if global_position.distance_to(target.global_position) > range_val + 20.0:
+				# Target moved out. But we are in discharge state.
+				# Should we hold fire or stop discharge?
+				# Burst usually implies unloading. If no target, we wait for one (handled by Find Target above).
+				# If we are here, we HAVE a target (find_nearest_enemy succeeded).
+				# But range check in find_nearest might be loose or target moved.
+				# If target valid, shoot.
+				pass
+
+			# Burst fire one shot
+			var bullet_data = parrot_ammo.pop_front()
+
+			# Visual direction
+			if visual_holder:
+				# We can rotate visual_holder or just play attack anim
+				# play_attack_anim("ranged", target.global_position) # already called above
+				pass
+
+			# Prepare stats
+			var stats = bullet_data.stats.duplicate()
+			stats["source"] = self
+
+			var proj_type = bullet_data.type
+			var damage = bullet_data.damage
+			var speed = bullet_data.speed
+
+			stats["speed"] = speed
+			stats["fixed_damage"] = damage
+
+			combat_manager.spawn_projectile(self, global_position, target, stats)
+
+			# Set cooldown for next shot in burst
+			cooldown = 0.05
+
+			# Check if empty to stop discharging immediately or wait next frame
+			if parrot_ammo.is_empty():
+				parrot_is_discharging = false
+
 		else:
 			# Check for Multi-shot (projCount)
 			var proj_count = unit_data.get("projCount", 1)
@@ -797,6 +866,59 @@ func _on_connection_overlay_draw():
 						var start_pos = Vector2.ZERO
 						var end_pos = connection_overlay.to_local(neighbor.global_position)
 						_draw_curve_connection(start_pos, end_pos, Color.WHITE, provided_buff)
+
+func update_parrot_range():
+	if type_key != "parrot": return
+
+	var neighbors = _get_neighbor_units()
+	var min_range = 999999.0
+	var found_ranged = false
+
+	for n in neighbors:
+		if n.unit_data.get("attackType") == "ranged":
+			found_ranged = true
+			if n.range_val < min_range:
+				min_range = n.range_val
+
+	if found_ranged:
+		range_val = min_range
+	else:
+		range_val = 0.0
+		# Clear ammo if range becomes 0 (Tactical penalty: "Parrot will not be able to attack... until regains range")
+		# "Accumulated ammo full... neighbor removed... cannot attack and cannot update ammo".
+		# Prompt says: "If full ammo and neighbor removed -> range 0, cannot attack".
+		# It doesn't explicitly say "Clear ammo". It says "Stop responding... until regains range".
+		# So we keep ammo.
+		pass
+
+func receive_mimic_bullet(bullet_data, source_unit):
+	if type_key != "parrot": return
+	if parrot_is_discharging: return # Stop recording when discharging
+	if parrot_ammo.size() >= parrot_max_ammo: return
+	if range_val <= 0: return # No neighbors, cannot learn
+
+	# Deduplication
+	var frame = Engine.get_process_frames()
+	if parrot_last_source == source_unit and parrot_last_frame == frame:
+		return
+
+	parrot_last_source = source_unit
+	parrot_last_frame = frame
+
+	parrot_ammo.append(bullet_data)
+
+	# Visual/UI update is handled via polling in PassiveSkillBar, or we can emit signal
+	# Prompt says "Only add UI counter... update frequency in GridManager...".
+	# UI checks counts every frame or so.
+
+	# "Turn towards neighbor" visual effect? "Snapshot neighbor launch moment".
+	# We can do a small tween to look at neighbor
+	if visual_holder:
+		var tween = create_tween()
+		var dir = (source_unit.global_position - global_position).normalized()
+		# Maybe just a small nudge/scale
+		tween.tween_property(visual_holder, "scale", Vector2(1.1, 1.1), 0.1)
+		tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.1)
 
 func _get_neighbor_units() -> Array:
 	var list = []

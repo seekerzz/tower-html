@@ -54,6 +54,8 @@ func refresh_units():
 			# Fallback for hardcoded types if JSON isn't fully migrated (legacy safety)
 			elif u.type_key == "viper" or u.type_key == "scorpion":
 				monitored_units.append(u)
+			elif u.type_key == "parrot":
+				monitored_units.append(u)
 
 	# Create Rows (Chunks of 3)
 	# Requirement: "Add a new row above the existing row".
@@ -174,24 +176,36 @@ func _create_card(unit, parent_row):
 
 	layout.add_child(icon_rect)
 
-	# CD Overlay
-	var cd_bar = TextureProgressBar.new()
-	cd_bar.name = "CD_Overlay"
-	cd_bar.nine_patch_stretch = true
-	cd_bar.fill_mode = TextureProgressBar.FILL_CLOCKWISE
-	cd_bar.value = 0
-	cd_bar.max_value = 1.0
-	cd_bar.step = 0.01
-	cd_bar.tint_progress = Color(0, 0, 0, 0.7)
-	cd_bar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	cd_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# CD Overlay or Ammo Label
+	if unit.type_key == "parrot":
+		var ammo_lbl = Label.new()
+		ammo_lbl.name = "AmmoLabel"
+		ammo_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		ammo_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		ammo_lbl.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		ammo_lbl.add_theme_font_size_override("font_size", 12)
+		ammo_lbl.add_theme_color_override("font_outline_color", Color.BLACK)
+		ammo_lbl.add_theme_constant_override("outline_size", 4)
+		ammo_lbl.text = "0/5"
+		layout.add_child(ammo_lbl)
+	else:
+		var cd_bar = TextureProgressBar.new()
+		cd_bar.name = "CD_Overlay"
+		cd_bar.nine_patch_stretch = true
+		cd_bar.fill_mode = TextureProgressBar.FILL_CLOCKWISE
+		cd_bar.value = 0
+		cd_bar.max_value = 1.0
+		cd_bar.step = 0.01
+		cd_bar.tint_progress = Color(0, 0, 0, 0.7)
+		cd_bar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		cd_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	var img = Image.create(1, 1, false, Image.FORMAT_RGBA8)
-	img.fill(Color.WHITE)
-	var placeholder = ImageTexture.create_from_image(img)
-	cd_bar.texture_progress = placeholder
+		var img = Image.create(1, 1, false, Image.FORMAT_RGBA8)
+		img.fill(Color.WHITE)
+		var placeholder = ImageTexture.create_from_image(img)
+		cd_bar.texture_progress = placeholder
 
-	layout.add_child(cd_bar)
+		layout.add_child(cd_bar)
 
 	parent_row.add_child(card)
 
@@ -240,20 +254,26 @@ func _process(_delta):
 				continue
 
 			var layout = card.get_child(0)
-			var cd_bar = layout.get_node("CD_Overlay")
 
-			var prev_timer = card.get_meta("prev_timer", 0.0)
-			var current_timer = unit.production_timer
+			if unit.type_key == "parrot":
+				var lbl = layout.get_node_or_null("AmmoLabel")
+				if lbl:
+					lbl.text = "%d/%d" % [unit.parrot_ammo.size(), unit.parrot_max_ammo]
+			else:
+				var cd_bar = layout.get_node_or_null("CD_Overlay")
+				if cd_bar:
+					var prev_timer = card.get_meta("prev_timer", 0.0)
+					var current_timer = unit.production_timer
 
-			if prev_timer > 0 and current_timer <= 0:
-				_trigger_flash(card)
-			elif prev_timer > 0 and current_timer > prev_timer:
-				_trigger_flash(card)
+					if prev_timer > 0 and current_timer <= 0:
+						_trigger_flash(card)
+					elif prev_timer > 0 and current_timer > prev_timer:
+						_trigger_flash(card)
 
-			card.set_meta("prev_timer", current_timer)
+					card.set_meta("prev_timer", current_timer)
 
-			cd_bar.max_value = unit.max_production_timer
-			cd_bar.value = unit.production_timer
+					cd_bar.max_value = unit.max_production_timer
+					cd_bar.value = unit.production_timer
 
 func _trigger_flash(card):
 	if !card.has_meta("flashing") or !card.get_meta("flashing"):
