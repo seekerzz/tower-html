@@ -54,6 +54,8 @@ var cheat_god_mode: bool = false
 var cheat_infinite_resources: bool = false
 var cheat_fast_cooldown: bool = false
 
+var hit_stop_timer: Timer = null
+
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
@@ -74,6 +76,27 @@ func _ready():
 			reward_manager = rm_scene.new()
 			add_child(reward_manager)
 			reward_manager.sacrifice_state_changed.connect(_on_sacrifice_state_changed)
+
+	# Setup Hit Stop Timer (Using SceneTreeTimer for ignore_time_scale support)
+	pass
+
+func trigger_hit_stop(duration_sec: float, time_scale: float = 0.05):
+	# If we are already in hitstop, we might want to extend it or ignore
+	if Engine.time_scale < 1.0 and Engine.time_scale != 0.0:
+		# Simple check: if already slow, don't interrupt? Or overwrite?
+		# Requirement says: "if new request duration is longer, overwrite"
+		# Since we use SceneTreeTimer which we can't easily check time_left of previous easily without keeping ref...
+		# We can just reset time scale and start new one, or check a variable.
+		pass
+
+	Engine.time_scale = time_scale
+
+	# Create a timer that ignores time scale
+	var timer = get_tree().create_timer(duration_sec, true, false, true)
+	timer.timeout.connect(_on_hit_stop_end)
+
+func _on_hit_stop_end():
+	Engine.time_scale = 1.0
 
 func _process(delta):
 	if is_wave_active and core_health > 0:

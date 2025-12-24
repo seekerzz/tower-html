@@ -51,7 +51,51 @@ func _ready():
 		BARRICADE_SCENE = load("res://src/Scenes/Game/Barricade.tscn")
 	_init_astar()
 	create_initial_grid()
+	_create_map_boundaries()
 	# _generate_random_obstacles()
+
+func _create_map_boundaries():
+	var border_body = StaticBody2D.new()
+	border_body.name = "MapBorder"
+	border_body.collision_layer = 1 # Wall layer
+	border_body.collision_mask = 0
+	add_child(border_body)
+
+	var map_w_pixels = Constants.MAP_WIDTH * TILE_SIZE
+	var map_h_pixels = Constants.MAP_HEIGHT * TILE_SIZE
+	var wall_thickness = 100.0
+
+	# Top Wall
+	var top_shape = CollisionShape2D.new()
+	var top_rect = RectangleShape2D.new()
+	top_rect.size = Vector2(map_w_pixels + wall_thickness * 2, wall_thickness)
+	top_shape.shape = top_rect
+	top_shape.position = Vector2(0, -map_h_pixels/2.0 - wall_thickness/2.0)
+	border_body.add_child(top_shape)
+
+	# Bottom Wall
+	var bot_shape = CollisionShape2D.new()
+	var bot_rect = RectangleShape2D.new()
+	bot_rect.size = Vector2(map_w_pixels + wall_thickness * 2, wall_thickness)
+	bot_shape.shape = bot_rect
+	bot_shape.position = Vector2(0, map_h_pixels/2.0 + wall_thickness/2.0)
+	border_body.add_child(bot_shape)
+
+	# Left Wall
+	var left_shape = CollisionShape2D.new()
+	var left_rect = RectangleShape2D.new()
+	left_rect.size = Vector2(wall_thickness, map_h_pixels + wall_thickness * 2)
+	left_shape.shape = left_rect
+	left_shape.position = Vector2(-map_w_pixels/2.0 - wall_thickness/2.0, 0)
+	border_body.add_child(left_shape)
+
+	# Right Wall
+	var right_shape = CollisionShape2D.new()
+	var right_rect = RectangleShape2D.new()
+	right_rect.size = Vector2(wall_thickness, map_h_pixels + wall_thickness * 2)
+	right_shape.shape = right_rect
+	right_shape.position = Vector2(map_w_pixels/2.0 + wall_thickness/2.0, 0)
+	border_body.add_child(right_shape)
 
 func _process(_delta):
 	if placement_preview_cursor and placement_preview_cursor.visible:
