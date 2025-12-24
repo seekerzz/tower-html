@@ -51,7 +51,57 @@ func _ready():
 		BARRICADE_SCENE = load("res://src/Scenes/Game/Barricade.tscn")
 	_init_astar()
 	create_initial_grid()
+	_create_map_boundaries()
 	# _generate_random_obstacles()
+
+func _create_map_boundaries():
+	var map_pixel_width = Constants.MAP_WIDTH * TILE_SIZE
+	var map_pixel_height = Constants.MAP_HEIGHT * TILE_SIZE
+
+	var half_width = map_pixel_width / 2.0
+	var half_height = map_pixel_height / 2.0
+
+	var wall_thickness = 100.0
+
+	var boundaries = [
+		# Position, Size (Vector2)
+		# Top
+		[Vector2(0, -half_height - wall_thickness/2), Vector2(map_pixel_width + wall_thickness*2, wall_thickness)],
+		# Bottom
+		[Vector2(0, half_height + wall_thickness/2), Vector2(map_pixel_width + wall_thickness*2, wall_thickness)],
+		# Left
+		[Vector2(-half_width - wall_thickness/2, 0), Vector2(wall_thickness, map_pixel_height)],
+		# Right
+		[Vector2(half_width + wall_thickness/2, 0), Vector2(wall_thickness, map_pixel_height)]
+	]
+
+	var border_node = StaticBody2D.new()
+	border_node.name = "MapBorder"
+	# Layer 1 (Walls) - default is usually Layer 1, but let's be explicit if possible.
+	# Collision layers are bitmasks. Layer 1 is value 1.
+	border_node.collision_layer = 1
+	border_node.collision_mask = 0 # Walls don't need to scan for anything usually
+
+	add_child(border_node)
+
+	for b in boundaries:
+		var pos = b[0]
+		var size = b[1]
+
+		var shape = RectangleShape2D.new()
+		shape.size = size
+
+		var collision = CollisionShape2D.new()
+		collision.shape = shape
+		collision.position = pos
+		border_node.add_child(collision)
+
+		# Optional: Add visual debug for walls (invisible in game usually)
+		# var debug_rect = ColorRect.new()
+		# debug_rect.size = size
+		# debug_rect.position = -size / 2
+		# debug_rect.color = Color(1, 0, 0, 0.2)
+		# collision.add_child(debug_rect)
 
 func _process(_delta):
 	if placement_preview_cursor and placement_preview_cursor.visible:

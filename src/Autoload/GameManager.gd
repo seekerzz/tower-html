@@ -54,6 +54,8 @@ var cheat_god_mode: bool = false
 var cheat_infinite_resources: bool = false
 var cheat_fast_cooldown: bool = false
 
+var _hit_stop_timer: Timer = null
+
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
@@ -74,6 +76,26 @@ func _ready():
 			reward_manager = rm_scene.new()
 			add_child(reward_manager)
 			reward_manager.sacrifice_state_changed.connect(_on_sacrifice_state_changed)
+
+func trigger_hit_stop(duration_sec: float, time_scale: float = 0.05):
+	# If current time scale is already low, check if we should extend it
+	if Engine.time_scale < 1.0 and _hit_stop_timer and not _hit_stop_timer.is_stopped():
+		if _hit_stop_timer.time_left >= duration_sec:
+			return # Current hit stop is longer, ignore new one
+
+	Engine.time_scale = time_scale
+
+	if not _hit_stop_timer:
+		_hit_stop_timer = Timer.new()
+		_hit_stop_timer.process_mode = Node.PROCESS_MODE_ALWAYS
+		_hit_stop_timer.one_shot = true
+		_hit_stop_timer.timeout.connect(_on_hit_stop_end)
+		add_child(_hit_stop_timer)
+
+	_hit_stop_timer.start(duration_sec)
+
+func _on_hit_stop_end():
+	Engine.time_scale = 1.0
 
 func _process(delta):
 	if is_wave_active and core_health > 0:
