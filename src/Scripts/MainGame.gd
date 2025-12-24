@@ -18,6 +18,9 @@ var default_zoom: Vector2 = Vector2(0.8, 0.8)
 var default_position: Vector2 = Vector2(640, 400)
 var min_allowed_zoom: Vector2 = Vector2(0.5, 0.5)
 
+var shake_offset: Vector2 = Vector2.ZERO
+var noise_shake_strength: float = 0.0
+
 func _ready():
 	# Initialize bench array with nulls based on constant
 	bench.resize(Constants.BENCH_SIZE)
@@ -48,6 +51,31 @@ func _on_viewport_size_changed():
 	calculate_min_allowed_zoom()
 	setup_background()
 	_adjust_zoom(0) # Re-clamp zoom
+
+func _process(delta):
+	# Apply impulse shake decay
+	if shake_offset.length_squared() > 1.0:
+		shake_offset = shake_offset.lerp(Vector2.ZERO, 10.0 * delta)
+	else:
+		shake_offset = Vector2.ZERO
+
+	# Apply noise shake decay
+	if noise_shake_strength > 0.0:
+		noise_shake_strength = lerp(noise_shake_strength, 0.0, 5.0 * delta)
+		if noise_shake_strength < 1.0: noise_shake_strength = 0.0
+
+	var total_shake = shake_offset
+	if noise_shake_strength > 0.0:
+		total_shake += Vector2(randf_range(-1, 1), randf_range(-1, 1)) * noise_shake_strength
+
+	if camera:
+		camera.offset = total_shake
+
+func apply_impulse_shake(direction: Vector2, strength: float):
+	shake_offset += direction * strength
+
+func apply_camera_shake(strength: float):
+	noise_shake_strength = strength
 
 func setup_background():
 	if not background: return

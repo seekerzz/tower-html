@@ -193,8 +193,22 @@ func _physics_process(delta):
 	# Process Timers and Effects
 	_process_effects(delta)
 
+	# Prioritize Knockback (Physics) over Stun (AI)
+	var is_knockback = knockback_velocity.length() > 10.0
+
+	if is_knockback:
+		if stun_timer > 0:
+			print("[Check] Unit is Stunned BUT Moving! Velocity: ", knockback_velocity.length())
+
+		velocity = knockback_velocity
+		knockback_velocity = knockback_velocity.move_toward(Vector2.ZERO, 500.0 * delta)
+		move_and_slide()
+		# Handle Collisions while in knockback
+		handle_collisions(delta)
+		return
+
+	# If not being knocked back, check for stun/freeze
 	if stun_timer > 0:
-		# Apply friction/stop if stunned but still moving?
 		velocity = velocity.move_toward(Vector2.ZERO, 500 * delta)
 		move_and_slide()
 		return
@@ -205,14 +219,8 @@ func _physics_process(delta):
 	# Movement Logic
 	var desired_velocity = Vector2.ZERO
 
-	# If in knockback (high velocity not from movement)
-	var is_knockback = knockback_velocity.length() > 10.0 # small threshold
-
-	if is_knockback:
-		velocity = knockback_velocity
-		# Damping handled via collision or manual drag?
-		# Apply drag
-		knockback_velocity = knockback_velocity.move_toward(Vector2.ZERO, 500.0 * delta)
+	if false: # Placeholder for old else block structure
+		pass
 	else:
 		# Normal Movement
 		check_traps(delta)
@@ -336,7 +344,19 @@ func handle_collisions(delta):
 				# Heavy Impact
 				if impact > HEAVY_IMPACT_THRESHOLD:
 					GameManager.trigger_hit_stop(0.1)
-					# Camera shake could be added here via GameManager or Camera singleton
+					if GameManager.main_game:
+						GameManager.main_game.apply_impulse_shake(velocity.normalized() * -1.0, 5.0) # Shake in direction of impact (opposite to bounce?) or direction of hit?
+						# If we hit wall, we want shake in direction of impact.
+						# But we just zeroed velocity. We should use previous momentum direction or simply normalized knockback before zeroing.
+						# But we don't have it easily here since we zeroed it.
+						# Actually we have `momentum` calculated earlier, but not direction.
+						# Let's assume we shake 'screen' roughly.
+						# Ref says "apply_impulse_shake(direction, strength)".
+						# Direction should be into the wall.
+						# Since we are colliding, we can get collision normal.
+						# collision.get_normal() points OUT of wall.
+						# So impulse should be -normal.
+						GameManager.main_game.apply_impulse_shake(-collision.get_normal(), 8.0)
 
 				apply_physics_stagger(1.5)
 
@@ -354,8 +374,9 @@ func handle_collisions(delta):
 					if "knockback_velocity" in target:
 						target.knockback_velocity = knockback_velocity * ratio * TRANSFER_RATE
 
-					# Stagger Target
-					target.apply_physics_stagger(1.0)
+					# Conditional Stagger based on mass
+					if mass > t_mass * 1.5:
+						target.apply_physics_stagger(1.0)
 
 					# Stagger Self if hitting big object?
 					if t_mass > mass * 2:
@@ -405,7 +426,8 @@ func calculate_move_velocity() -> Vector2:
 	# Check attack range again (move this logic here or keep in process?)
 	if current_target_tile and is_instance_valid(current_target_tile):
 		var d = global_position.distance_to(current_target_tile.global_position)
-		if d < 40.0:
+		var attack_range = enemy_data.radius + 10.0 # Dynamic range + margin
+		if d < attack_range:
 			is_attacking_base = true
 			return Vector2.ZERO
 
@@ -540,12 +562,22 @@ func attack_wall_logic(delta):
 		attack_timer = 1.0
 
 func attack_base_logic(delta):
+	# Dynamic Range Check - Break attack if pushed away
+	var target_pos = GameManager.grid_manager.global_position
+	if current_target_tile and is_instance_valid(current_target_tile):
+		target_pos = current_target_tile.global_position
+
+	var dist = global_position.distance_to(target_pos)
+	var attack_range = enemy_data.radius + 10.0
+
+	if dist > attack_range * 1.5: # Tolerance to prevent flickering
+		is_attacking_base = false
+		return
+
 	base_attack_timer -= delta
 	if base_attack_timer <= 0:
 		base_attack_timer = 1.0 / enemy_data.atkSpeed
-		var target_pos = GameManager.grid_manager.global_position
-		if current_target_tile and is_instance_valid(current_target_tile):
-			target_pos = current_target_tile.global_position
+
 		play_attack_animation(target_pos, func():
 			GameManager.damage_core(enemy_data.dmg)
 			if current_target_tile and not is_instance_valid(current_target_tile):
