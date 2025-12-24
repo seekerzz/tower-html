@@ -51,7 +51,48 @@ func _ready():
 		BARRICADE_SCENE = load("res://src/Scenes/Game/Barricade.tscn")
 	_init_astar()
 	create_initial_grid()
+	_create_map_boundaries()
 	# _generate_random_obstacles()
+
+func _create_map_boundaries():
+	var boundary_body = StaticBody2D.new()
+	boundary_body.name = "MapBorder"
+	boundary_body.collision_layer = 1 # Walls
+	boundary_body.collision_mask = 0
+	add_child(boundary_body)
+
+	# Calculate total map dimensions
+	# Tiles are indexed from -half_w to +half_w.
+	# e.g. Width 9 -> indices -4 to 4.
+	# Pixel range: (-4 * 60) - 30 to (4 * 60) + 30
+	# -270 to 270. Total width 540.
+
+	var half_map_tiles_x = floor(Constants.MAP_WIDTH / 2.0)
+	var half_map_tiles_y = floor(Constants.MAP_HEIGHT / 2.0)
+
+	var min_x = -half_map_tiles_x * TILE_SIZE - (TILE_SIZE / 2.0)
+	var max_x = half_map_tiles_x * TILE_SIZE + (TILE_SIZE / 2.0)
+	var min_y = -half_map_tiles_y * TILE_SIZE - (TILE_SIZE / 2.0)
+	var max_y = half_map_tiles_y * TILE_SIZE + (TILE_SIZE / 2.0)
+
+	var width = max_x - min_x
+	var height = max_y - min_y
+	var thickness = 100.0
+
+	var walls = [
+		{ "pos": Vector2(min_x - thickness/2, 0), "size": Vector2(thickness, height + thickness * 2) }, # Left
+		{ "pos": Vector2(max_x + thickness/2, 0), "size": Vector2(thickness, height + thickness * 2) }, # Right
+		{ "pos": Vector2(0, min_y - thickness/2), "size": Vector2(width, thickness) }, # Top
+		{ "pos": Vector2(0, max_y + thickness/2), "size": Vector2(width, thickness) }  # Bottom
+	]
+
+	for w_data in walls:
+		var shape = RectangleShape2D.new()
+		shape.size = w_data.size
+		var col = CollisionShape2D.new()
+		col.shape = shape
+		col.position = w_data.pos
+		boundary_body.add_child(col)
 
 func _process(_delta):
 	if placement_preview_cursor and placement_preview_cursor.visible:
@@ -328,9 +369,10 @@ func create_tile(x: int, y: int, type: String = "normal", state: String = "locke
 	if tiles.has(key): return
 
 	var tile = TILE_SCENE.instantiate()
-	tile.setup(x, y, type)
-	# Explicitly call set_state to ensure visuals are updated
-	tile.set_state(state)
+	if tile.has_method("setup"):
+		tile.setup(x, y, type)
+		# Explicitly call set_state to ensure visuals are updated
+		tile.set_state(state)
 
 	tile.position = Vector2(x * TILE_SIZE, y * TILE_SIZE)
 	add_child(tile)
@@ -340,7 +382,8 @@ func create_tile(x: int, y: int, type: String = "normal", state: String = "locke
 		if not active_territory_tiles.has(tile):
 			active_territory_tiles.append(tile)
 
-	tile.tile_clicked.connect(_on_tile_clicked)
+	if tile.has_signal("tile_clicked"):
+		tile.tile_clicked.connect(_on_tile_clicked)
 
 	# Initial weight setup for AStar
 	var grid_pos = Vector2i(x, y)

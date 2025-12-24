@@ -79,6 +79,17 @@ func _process(delta):
 	if is_wave_active and core_health > 0:
 		update_resources(delta)
 
+func trigger_hit_stop(duration_sec: float, time_scale: float = 0.05):
+	# Create a temporary one-shot timer that ignores time scale (runs in real time)
+	# This ensures 0.1s duration is 0.1s real time, not 0.1s * (1/0.05) = 2s game time
+	if Engine.time_scale < 1.0:
+		return # Already in hit stop or slow motion, ignore overlap for simplicity or check remaining time
+
+	Engine.time_scale = time_scale
+	get_tree().create_timer(duration_sec, true, false, true).timeout.connect(func():
+		Engine.time_scale = 1.0
+	)
+
 func update_resources(delta):
 	if food < max_food:
 		food = min(max_food, food + base_food_rate * delta)

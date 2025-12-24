@@ -1,4 +1,4 @@
-extends Area2D
+extends CharacterBody2D
 
 var type_key: String
 var hp: float
@@ -49,10 +49,37 @@ var is_suicide: bool = false
 var is_stationary: bool = false
 var last_hit_direction: Vector2 = Vector2.ZERO
 
+var sensor_area: Area2D = null
+
 func _ready():
 	add_to_group("enemies")
-	# We also need to monitor layer 2 (traps) for overlaps
-	collision_mask = 3 # Layer 1 (Walls) + Layer 2 (Traps)
+	# CharacterBody2D handles physics collisions (Walls=1, etc).
+	# collision_layer = 2 (Enemy)
+	# collision_mask = 1 (Walls)
+	collision_layer = 2
+	collision_mask = 3 # Mask 1(Walls) + 2(Traps/Enemies if separate)
+
+	# But CharacterBody2D needs separate Area2D to detecting overlapping zones (Traps) reliably
+	# without relying on collision/slide logic for triggers.
+	sensor_area = Area2D.new()
+	sensor_area.name = "SensorArea"
+	sensor_area.collision_layer = 0
+	sensor_area.collision_mask = 2 # Detect Traps (Layer 2)
+	add_child(sensor_area)
+
+	# Clone collision shape for sensor
+	# We assume the enemy has a CollisionShape2D named "CollisionShape2D"
+	var col_shape = get_node_or_null("CollisionShape2D")
+	if col_shape:
+		var new_col = col_shape.duplicate()
+		sensor_area.add_child(new_col)
+	else:
+		# Fallback if no shape found (shouldn't happen)
+		var shape = CircleShape2D.new()
+		shape.radius = 15.0
+		var new_col = CollisionShape2D.new()
+		new_col.shape = shape
+		sensor_area.add_child(new_col)
 
 	# Ensure Area2D does not pick up input (only physics collisions)
 	input_pickable = false
@@ -256,28 +283,37 @@ func _process(delta):
 	if is_suicide:
 		check_suicide_collision()
 
-	# Stationary / Boss Skill Logic
+	# Stationary logic updates
 	if is_stationary:
 		stationary_timer -= delta
 		skill_cd_timer -= delta
 		if stationary_timer <= 0:
-			is_stationary = false # Transition to moving phase
+			is_stationary = false
 		else:
-			# Stationary Phase: Execute Skills
 			if boss_skill != "" and skill_cd_timer <= 0:
 				perform_boss_skill(boss_skill)
-				skill_cd_timer = 2.0 # Internal CD for skill usage
+				skill_cd_timer = 2.0
+			# Return removed, allow physics process to handle 0 velocity
 
-			return # Skip movement logic while stationary
+	# Legacy process movement logic is removed.
+	# We use _physics_process for CharacterBody2D movement.
 
+func _physics_process(delta):
+	if !GameManager.is_wave_active: return
+	if freeze_timer > 0: return
+
+	# Handle attacking logic (states)
 	if is_attacking_base:
 		attack_base_logic(delta)
+		velocity = Vector2.ZERO # Stop moving while attacking base
 	elif attacking_wall and is_instance_valid(attacking_wall):
 		attack_wall_logic(delta)
+		velocity = Vector2.ZERO # Stop moving while attacking wall
+	elif is_stationary:
+		velocity = Vector2.ZERO
 	else:
 		if attacking_wall != null:
-			attacking_wall = null # Reset if invalid or destroyed
-			# _play_state_particles(false) # Removed legacy particle
+			attacking_wall = null
 
 		# Update Navigation Path
 		nav_timer -= delta
@@ -285,7 +321,135 @@ func _process(delta):
 			update_path()
 			nav_timer = 0.5
 
-		move_along_path(delta)
+		calculate_velocity(delta)
+
+	# Apply Physics Movement
+	# velocity is set in calculate_velocity or overridden above
+	# Add knockback logic here if needed, but calculate_velocity handles it
+
+	var last_velocity = velocity
+	move_and_slide()
+	handle_collisions(last_velocity)
+
+func calculate_velocity(delta):
+	# Calculate Desired Velocity from Path
+	var desired_velocity = Vector2.ZERO
+
+	if !GameManager.grid_manager:
+		velocity = Vector2.ZERO
+		return
+
+	# Check for attack range to current target tile (Base Logic)
+	if current_target_tile and is_instance_valid(current_target_tile):
+		var dist_to_target = global_position.distance_to(current_target_tile.global_position)
+		if dist_to_target < 40.0:
+			is_attacking_base = true
+			velocity = Vector2.ZERO
+			return
+
+	var target_pos = GameManager.grid_manager.global_position # Default core
+	if current_target_tile and is_instance_valid(current_target_tile):
+		target_pos = current_target_tile.global_position
+
+	if path.size() > path_index:
+		target_pos = path[path_index]
+
+	var dist = global_position.distance_to(target_pos)
+	if dist < 10:
+		if path.size() > path_index:
+			path_index += 1
+			if path_index < path.size():
+				target_pos = path[path_index]
+
+	var direction = (target_pos - global_position).normalized()
+
+	# Wall detection fallback (if path blocked or nonexistent)
+	if path.size() == 0:
+		direction = (GameManager.grid_manager.global_position - global_position).normalized()
+		# Simple ray check for walls
+		var space_state = get_world_2d().direct_space_state
+		var query = PhysicsRayQueryParameters2D.create(global_position, global_position + direction * 40)
+		query.collision_mask = 1 # Walls
+		var result = space_state.intersect_ray(query)
+		if result:
+			var collider = result.collider
+			if is_blocking_wall(collider):
+				if !(collider.get("props") and collider.props.get("immune")):
+					start_attacking(collider)
+					velocity = Vector2.ZERO
+					return
+
+	var current_speed = speed * temp_speed_mod
+	if slow_timer > 0: current_speed *= 0.5
+
+	desired_velocity = direction * current_speed
+
+	# Apply Knockback
+	if knockback_velocity.length() > 10.0:
+		velocity = knockback_velocity
+		knockback_velocity = knockback_velocity.move_toward(Vector2.ZERO, 1000.0 * delta)
+	else:
+		velocity = desired_velocity
+
+func handle_collisions(last_velocity: Vector2):
+	var collision_count = get_slide_collision_count()
+	for i in range(collision_count):
+		var col = get_slide_collision(i)
+		var collider = col.get_collider()
+
+		# Momentum Calculation
+		# For simplicity, we use the velocity magnitude * mass (assumed 1.0 or knockback_resistance)
+		var my_momentum = last_velocity.length() * max(1.0, knockback_resistance)
+
+		if collider is StaticBody2D: # Wall or MapBorder
+			if my_momentum > 400.0: # Threshold
+				# Slam!
+				knockback_velocity = Vector2.ZERO
+				velocity = Vector2.ZERO
+
+				# Damage self
+				var slam_dmg = my_momentum * 0.1
+				take_damage(slam_dmg, null, "physical", null, 0)
+
+				# Juice
+				GameManager.trigger_hit_stop(0.1, 0.0)
+				GameManager.spawn_floating_text(global_position, "SLAM!", Color.WHITE)
+
+				# Shake (via CombatManager or simple camera offset if available, omitting for now or use generic effect)
+				# Camera shake typically in GameManager or Camera script.
+
+				apply_physics_stagger(0.5)
+
+		elif collider is CharacterBody2D and collider.is_in_group("enemies"):
+			# Enemy Collision
+			if my_momentum > 300.0:
+				# Transfer Momentum
+				var other_res = collider.knockback_resistance if "knockback_resistance" in collider else 1.0
+				var push_dir = -col.get_normal()
+
+				# Apply force to other
+				collider.knockback_velocity += push_dir * (my_momentum * 0.5 / max(1.0, other_res))
+
+				# Slow me down
+				knockback_velocity *= 0.5
+
+				# Stagger both
+				apply_physics_stagger(0.2)
+				collider.apply_physics_stagger(0.2)
+
+				# Damage?
+				take_damage(5, collider, "physical")
+				collider.take_damage(5, self, "physical")
+
+func apply_physics_stagger(duration: float):
+	# Kill attack tweens
+	if anim_tween and anim_tween.is_valid():
+		anim_tween.kill()
+	is_playing_attack_anim = false
+	wobble_scale = Vector2.ONE
+
+	# Apply Stun
+	apply_stun(duration)
 
 func apply_poison(source_unit, stacks_added, duration):
 	if poison_stacks == 0:
@@ -299,7 +463,7 @@ func apply_poison(source_unit, stacks_added, duration):
 			poison_stacks = Constants.POISON_MAX_STACKS
 
 		var base_dmg = 10.0
-		if source_unit and is_instance_valid(source_unit) and source_unit.get("damage"):
+		if source_unit and is_instance_valid(source_unit) and "damage" in source_unit:
 			base_dmg = source_unit.damage
 
 		var damage_increment = base_dmg * Constants.POISON_DAMAGE_RATIO * stacks_added
@@ -307,7 +471,10 @@ func apply_poison(source_unit, stacks_added, duration):
 
 func check_suicide_collision():
 	# Check for overlapping bodies (walls) or distance to core
-	var bodies = get_overlapping_bodies()
+	# Use sensor_area for overlap checks
+	if !sensor_area: return
+
+	var bodies = sensor_area.get_overlapping_bodies()
 	for b in bodies:
 		if is_blocking_wall(b):
 			explode_suicide(b)
@@ -366,7 +533,9 @@ func apply_freeze(duration: float):
 	GameManager.spawn_floating_text(global_position, "Frozen!", Color.CYAN)
 
 func check_traps(delta):
-	var bodies = get_overlapping_bodies()
+	if !sensor_area: return
+
+	var bodies = sensor_area.get_overlapping_bodies()
 	for b in bodies:
 		if b.get("type") and Constants.BARRICADE_TYPES.has(b.type):
 			var props = Constants.BARRICADE_TYPES[b.type]
@@ -399,10 +568,11 @@ func check_unit_interactions(delta):
 	var tile_key = GameManager.grid_manager.get_tile_key(int(round(global_position.x / GameManager.grid_manager.TILE_SIZE)), int(round(global_position.y / GameManager.grid_manager.TILE_SIZE)))
 	if GameManager.grid_manager.tiles.has(tile_key):
 		var tile = GameManager.grid_manager.tiles[tile_key]
+		if !tile.get("unit"): return
 		var unit = tile.unit
 		if unit and is_instance_valid(unit):
 			# Rabbit Logic
-			if unit.unit_data.get("trait") == "dodge_counter":
+			if unit.get("unit_data") and unit.unit_data.get("trait") == "dodge_counter":
 				_trigger_rabbit_interaction(unit)
 
 var _rabbit_interaction_timer: float = 0.0
@@ -444,7 +614,11 @@ func attack_base_logic(delta):
 	base_attack_timer -= delta
 	if base_attack_timer <= 0:
 		# GameManager.damage_core(enemy_data.dmg) # Moved to animation
-		base_attack_timer = 1.0 / enemy_data.atkSpeed
+
+		var atk_spd = 1.0
+		if enemy_data and enemy_data.has("atkSpeed"):
+			atk_spd = enemy_data.atkSpeed
+		base_attack_timer = 1.0 / atk_spd
 		# _play_state_particles(true) # Replaced
 
 		var target_pos = GameManager.grid_manager.global_position
@@ -453,11 +627,7 @@ func attack_base_logic(delta):
 
 		play_attack_animation(target_pos, func():
 			GameManager.damage_core(enemy_data.dmg)
-			# Check validity after attack
-			if current_target_tile and not is_instance_valid(current_target_tile):
-				is_attacking_base = false
-				current_target_tile = null
-				update_path()
+	# Check validity after attack
 		)
 
 func update_path():
@@ -507,66 +677,8 @@ func move_along_path(delta):
 	if current_target_tile and is_instance_valid(current_target_tile):
 		target_pos = current_target_tile.global_position
 
-	if path.size() > path_index:
-		target_pos = path[path_index]
-
-	var dist = global_position.distance_to(target_pos)
-	if dist < 10:
-		if path.size() > path_index:
-			path_index += 1
-			if path_index < path.size():
-				target_pos = path[path_index]
-			else:
-				# Reached end of path
-				pass
-
-	var direction = (target_pos - global_position).normalized()
-
-	# Simple wall detection for attacking (if we are stuck or path leads to a wall we must break)
-	# Wait, if AStar gives a path, it avoids walls.
-	# If AStar returns NO path, we need to break walls.
-
-	if path.size() == 0:
-		# No path found -> Blocked completely. Move towards core and attack what's in front.
-		direction = (GameManager.grid_manager.global_position - global_position).normalized()
-
-		# We need to detect what's blocking us
-		# Use a small raycast or just check for collision?
-		# Since we removed the raycast member, let's just use overlapping bodies if we are very close,
-		# OR re-add a small raycast for attack logic.
-		# Let's create a temporary RayCast logic or just check distance to walls.
-
-		# For simplicity, if no path, we are likely near a wall.
-		var space_state = get_world_2d().direct_space_state
-		var query = PhysicsRayQueryParameters2D.create(global_position, global_position + direction * 40)
-		query.collision_mask = 1 # Walls
-		var result = space_state.intersect_ray(query)
-
-		if result:
-			var collider = result.collider
-			if is_blocking_wall(collider):
-				if collider.get("props") and collider.props.get("immune"):
-					# Do not attack immune walls. Jitter to avoid logic lock.
-					position += Vector2(randf(), randf()) * 0.1
-					return
-				start_attacking(collider)
-				return
-
-	var current_speed = speed * temp_speed_mod
-	if slow_timer > 0: current_speed *= 0.5
-
-	# Apply movement + knockback
-	var move_vec = direction * current_speed
-	position += (move_vec + knockback_velocity) * delta
-
-	# Knockback damping
-	if knockback_velocity.length() > 0:
-		knockback_velocity = knockback_velocity.move_toward(Vector2.ZERO, 1000.0 * delta)
-
-	# Legacy check if reached core (GridManager center) - Fallback
-	if !current_target_tile and global_position.distance_to(GameManager.grid_manager.global_position) < 30:
-		GameManager.damage_core(enemy_data.dmg)
-		queue_free()
+	# Legacy movement block removed
+	pass
 
 func start_attacking(wall):
 	if wall.get("props") and wall.props.get("immune"):
@@ -619,18 +731,19 @@ func play_attack_animation(target_pos: Vector2, hit_callback: Callable = Callabl
 			hit_callback.call()
 
 		# Also handle wall damage here if no callback passed (legacy fallback or specific logic)
-		if attacking_wall and is_instance_valid(attacking_wall) and !hit_callback.is_valid():
-			if attacking_wall.has_method("take_damage"):
-				# Pass source self for Reflect logic
-				attacking_wall.take_damage(enemy_data.dmg, self)
-			else:
-				# Fallback for old barricades without source param or different signature
-				if attacking_wall.has_method("take_damage_legacy"):
-					attacking_wall.take_damage_legacy(enemy_data.dmg)
+		if attacking_wall and is_instance_valid(attacking_wall):
+			if !hit_callback.is_valid():
+				if attacking_wall.has_method("take_damage"):
+					# Pass source self for Reflect logic
+					attacking_wall.take_damage(enemy_data.dmg, self)
 				else:
-					# Assuming Barricade.gd has take_damage(amount)
-					# We should check argument count or just pass amount if standard
-					attacking_wall.take_damage(enemy_data.dmg)
+					# Fallback for old barricades without source param or different signature
+					if attacking_wall.has_method("take_damage_legacy"):
+						attacking_wall.take_damage_legacy(enemy_data.dmg)
+					else:
+						# Assuming Barricade.gd has take_damage(amount)
+						# We should check argument count or just pass amount if standard
+						attacking_wall.take_damage(enemy_data.dmg)
 	)
 
 	# 3. Recovery (Return + Normal Scale)
