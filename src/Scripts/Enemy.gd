@@ -193,9 +193,29 @@ func _physics_process(delta):
 	# Process Timers and Effects
 	_process_effects(delta)
 
+	# Knockback / Inertia Handling (Prioritize physics over status)
+	var is_knockback = knockback_velocity.length() > 10.0
+
+	if is_knockback:
+		velocity = knockback_velocity
+		# Drag
+		knockback_velocity = knockback_velocity.move_toward(Vector2.ZERO, 500.0 * delta)
+
+		if stun_timer > 0:
+			print("[Check] Unit is Stunned BUT Moving! Velocity: ", knockback_velocity.length())
+
+		move_and_slide()
+
+		# Check for attack interrupt (if we are being knocked back while attacking)
+		_check_attack_interrupt()
+
+		# Handle Collisions (so wall slams trigger shake)
+		handle_collisions(delta)
+		return
+
 	if stun_timer > 0:
-		# Apply friction/stop if stunned but still moving?
-		velocity = velocity.move_toward(Vector2.ZERO, 500 * delta)
+		# Stunned and no momentum -> Stop
+		velocity = Vector2.ZERO
 		move_and_slide()
 		return
 
@@ -205,14 +225,8 @@ func _physics_process(delta):
 	# Movement Logic
 	var desired_velocity = Vector2.ZERO
 
-	# If in knockback (high velocity not from movement)
-	var is_knockback = knockback_velocity.length() > 10.0 # small threshold
-
-	if is_knockback:
-		velocity = knockback_velocity
-		# Damping handled via collision or manual drag?
-		# Apply drag
-		knockback_velocity = knockback_velocity.move_toward(Vector2.ZERO, 500.0 * delta)
+	if false: # Placeholder for old else block structure
+		pass
 	else:
 		# Normal Movement
 		check_traps(delta)
@@ -336,7 +350,10 @@ func handle_collisions(delta):
 				# Heavy Impact
 				if impact > HEAVY_IMPACT_THRESHOLD:
 					GameManager.trigger_hit_stop(0.1)
-					# Camera shake could be added here via GameManager or Camera singleton
+					if GameManager.main_game and GameManager.main_game.has_method("apply_impulse_shake"):
+						var shake_dir = knockback_velocity.normalized()
+						if shake_dir == Vector2.ZERO: shake_dir = Vector2.RIGHT
+						GameManager.main_game.apply_impulse_shake(shake_dir, min(impact * 0.05, 10.0))
 
 				apply_physics_stagger(1.5)
 
@@ -354,8 +371,8 @@ func handle_collisions(delta):
 					if "knockback_velocity" in target:
 						target.knockback_velocity = knockback_velocity * ratio * TRANSFER_RATE
 
-					# Stagger Target
-					target.apply_physics_stagger(1.0)
+					# Remove unconditional stagger. Only stagger if mass difference causes it or specific logic?
+					# target.apply_physics_stagger(1.0) <--- REMOVED
 
 					# Stagger Self if hitting big object?
 					if t_mass > mass * 2:
@@ -402,14 +419,34 @@ func calculate_move_velocity() -> Vector2:
 	temp_speed_mod = 1.0
 	if slow_timer > 0: temp_speed_mod = 0.5
 
-	# Check attack range again (move this logic here or keep in process?)
+	# Check attack range again
 	if current_target_tile and is_instance_valid(current_target_tile):
 		var d = global_position.distance_to(current_target_tile.global_position)
-		if d < 40.0:
+		# Dynamic range check: radius + margin
+		var range_check = enemy_data.radius + 20.0
+		if d < range_check:
 			is_attacking_base = true
 			return Vector2.ZERO
 
 	return direction * speed * temp_speed_mod
+
+func _check_attack_interrupt():
+	# If attacking base but pushed away, stop attacking
+	if is_attacking_base:
+		var target_pos = GameManager.grid_manager.global_position
+		if current_target_tile and is_instance_valid(current_target_tile):
+			target_pos = current_target_tile.global_position
+
+		var dist = global_position.distance_to(target_pos)
+		var range_limit = enemy_data.radius + 30.0 # Slightly larger than start threshold to avoid flickering
+
+		if dist > range_limit:
+			is_attacking_base = false
+			# Reset animation?
+			if is_playing_attack_anim:
+				if anim_tween: anim_tween.kill()
+				is_playing_attack_anim = false
+				wobble_scale = Vector2.ONE
 
 func apply_physics_stagger(duration: float):
 	if is_playing_attack_anim:

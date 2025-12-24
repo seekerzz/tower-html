@@ -18,6 +18,10 @@ var default_zoom: Vector2 = Vector2(0.8, 0.8)
 var default_position: Vector2 = Vector2(640, 400)
 var min_allowed_zoom: Vector2 = Vector2(0.5, 0.5)
 
+# Camera Shake
+var shake_offset: Vector2 = Vector2.ZERO
+var shake_decay: float = 5.0
+
 func _ready():
 	# Initialize bench array with nulls based on constant
 	bench.resize(Constants.BENCH_SIZE)
@@ -138,6 +142,22 @@ func _adjust_zoom(amount: float):
 
 	zoom_tween = create_tween()
 	zoom_tween.tween_property(camera, "zoom", zoom_target, 0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+func _process(delta):
+	if shake_offset.length_squared() > 1.0:
+		shake_offset = shake_offset.lerp(Vector2.ZERO, shake_decay * delta)
+		camera.offset = shake_offset
+	elif shake_offset != Vector2.ZERO:
+		shake_offset = Vector2.ZERO
+		camera.offset = Vector2.ZERO
+
+func apply_impulse_shake(direction: Vector2, strength: float):
+	shake_offset += direction * strength
+
+func apply_camera_shake(strength: float):
+	# Compatibility for existing shake (random direction)
+	var random_dir = Vector2(randf_range(-1, 1), randf_range(-1, 1)).normalized()
+	apply_impulse_shake(random_dir, strength)
 
 func zoom_to_fit_board():
 	# Shop Closed (Combat)

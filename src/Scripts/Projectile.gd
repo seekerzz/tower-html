@@ -327,7 +327,52 @@ func _handle_hit(target_node):
 			else:
 				if split > 0 and type != "roar":
 					perform_split()
-				fade_out()
+
+				# Final hit: Spawn effect and destroy immediately (no fade_out)
+				_spawn_hit_effect()
+				print("Projectile hit final: ", type, " -> queue_free")
+				queue_free()
+
+func _spawn_hit_effect():
+	var SlashEffectScript = load("res://src/Scripts/Effects/SlashEffect.gd")
+	if !SlashEffectScript: return
+
+	var effect = SlashEffectScript.new()
+	if get_parent():
+		get_parent().add_child(effect)
+		effect.global_position = global_position
+		effect.rotation = rotation
+
+		var shape = "slash"
+		var color = Color.WHITE
+
+		match type:
+			"pinecone":
+				shape = "circle"
+				color = Color("8B4513")
+			"ink":
+				shape = "blob"
+				color = Color.BLACK
+			"stinger":
+				shape = "triangle"
+				color = Color.YELLOW
+			"pollen":
+				shape = "star"
+				color = Color.PINK
+			"snowball":
+				shape = "circle"
+				color = Color.WHITE
+			"dragon_breath", "fireball":
+				shape = "cloud"
+				color = Color.ORANGE
+			_:
+				shape = "slash"
+				color = Color.WHITE
+
+		if effect.has_method("configure"):
+			effect.configure(shape, color)
+
+		effect.play()
 
 func _on_meteor_hit():
 	is_meteor_falling = false
