@@ -479,6 +479,8 @@ func _get_buff_icon(buff_type: String) -> String:
 func _process(delta):
 	if !GameManager.is_wave_active: return
 
+	_process_combat(delta)
+
 	# Generic Item Production Logic
 	if unit_data.has("production_type") and unit_data["production_type"] == "item":
 		production_timer -= delta
@@ -540,9 +542,6 @@ func _process(delta):
 		if skill_active_timer <= 0:
 			_on_skill_ended()
 
-	if cooldown > 0:
-		cooldown -= delta
-
 	if skill_cooldown > 0:
 		skill_cooldown -= delta
 
@@ -553,6 +552,98 @@ func _process(delta):
 		modulate = Color(0.7, 0.7, 1.0, 1.0)
 	else:
 		modulate = Color.WHITE
+
+func _process_combat(delta):
+	if cooldown > 0:
+		cooldown -= delta
+		return
+
+	if !unit_data.has("attackType") or unit_data.attackType == "none":
+		return
+
+	# Resource Check
+	var can_afford = true
+
+	if attack_cost_food > 0:
+		if !GameManager.check_resource("food", attack_cost_food):
+			is_starving = true
+			can_afford = false
+		else:
+			is_starving = false
+
+	if attack_cost_mana > 0:
+		if !GameManager.check_resource("mana", attack_cost_mana):
+			is_no_mana = true
+			can_afford = false
+		else:
+			is_no_mana = false
+
+	if !can_afford: return
+
+	# Find target
+	var combat_manager = GameManager.combat_manager
+	if !combat_manager: return
+
+	var target = combat_manager.find_nearest_enemy(global_position, range_val)
+	if target:
+		# Consume Resources
+		if attack_cost_food > 0:
+			GameManager.consume_resource("food", attack_cost_food)
+		if attack_cost_mana > 0:
+			GameManager.consume_resource("mana", attack_cost_mana)
+
+		# Attack
+		cooldown = atk_speed
+
+		play_attack_anim(unit_data.attackType, target.global_position)
+
+		if unit_data.attackType == "melee":
+			var swing_hit_list = []
+			var attack_dir = (target.global_position - global_position).normalized()
+
+			var proj_speed = 600.0
+			var proj_life = (range_val + 30.0) / proj_speed
+			var count = 5
+			var spread = PI / 2.0
+
+			var base_angle = attack_dir.angle()
+			var start_angle = base_angle - spread / 2.0
+			var step = spread / max(1, count - 1)
+
+			for i in range(count):
+				var angle = start_angle + (i * step)
+				var stats = {
+					"pierce": 100,
+					"hide_visuals": true,
+					"life": proj_life,
+					"angle": angle,
+					"speed": proj_speed,
+					"shared_hit_list": swing_hit_list
+				}
+				combat_manager.spawn_projectile(self, global_position, null, stats)
+
+		elif unit_data.attackType == "ranged" and unit_data.get("proj") == "lightning":
+			# Lightning handling
+			combat_manager.perform_lightning_attack(self, global_position, target, unit_data.get("chain", 0))
+		else:
+			# Check for Multi-shot (projCount)
+			var proj_count = unit_data.get("projCount", 1)
+			var spread = unit_data.get("spread", 0.5)
+
+			if "multishot" in active_buffs:
+				proj_count += 2
+				spread = max(spread, 0.5)
+
+			if proj_count > 1:
+				var base_angle = (target.global_position - global_position).angle()
+				var start_angle = base_angle - spread / 2.0
+				var step = spread / max(1, proj_count - 1)
+
+				for i in range(proj_count):
+					var angle = start_angle + (i * step)
+					combat_manager.spawn_projectile(self, global_position, target, {"angle": angle})
+			else:
+				combat_manager.spawn_projectile(self, global_position, target)
 
 var breathe_tween: Tween = null
 
