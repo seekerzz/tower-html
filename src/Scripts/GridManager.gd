@@ -72,56 +72,65 @@ func _process(_delta):
 		skill_preview_node.position = Vector2(gx * TILE_SIZE, gy * TILE_SIZE)
 
 func _input(event):
-	if interaction_state == STATE_SKILL_TARGETING:
-		if event is InputEventMouseButton and event.pressed:
-			if event.button_index == MOUSE_BUTTON_LEFT:
-				var mouse_pos_global = get_global_mouse_position()
-				var mouse_pos = get_local_mouse_position()
-				var gx = int(round(mouse_pos.x / TILE_SIZE))
-				var gy = int(round(mouse_pos.y / TILE_SIZE))
+	match interaction_state:
+		STATE_SKILL_TARGETING:
+			_handle_input_skill_targeting(event)
+		STATE_SELECTING_INTERACTION_TARGET:
+			_handle_input_interaction_selection(event)
+		STATE_IDLE:
+			_handle_input_idle(event)
+		_:
+			_handle_input_idle(event)
 
-				print("[DEBUG] GridManager._input: Global Mouse: ", mouse_pos_global, " Local Mouse: ", mouse_pos, " Grid: ", gx, ",", gy)
+func _handle_input_skill_targeting(event):
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			var mouse_pos_global = get_global_mouse_position()
+			var mouse_pos = get_local_mouse_position()
+			var gx = int(round(mouse_pos.x / TILE_SIZE))
+			var gy = int(round(mouse_pos.y / TILE_SIZE))
 
-				if skill_source_unit and is_instance_valid(skill_source_unit):
-					skill_source_unit.execute_skill_at(Vector2i(gx, gy))
+			print("[DEBUG] GridManager._input: Global Mouse: ", mouse_pos_global, " Local Mouse: ", mouse_pos, " Grid: ", gx, ",", gy)
 
-				exit_skill_targeting()
-				get_viewport().set_input_as_handled()
+			if skill_source_unit and is_instance_valid(skill_source_unit):
+				skill_source_unit.execute_skill_at(Vector2i(gx, gy))
 
-			elif event.button_index == MOUSE_BUTTON_RIGHT:
-				exit_skill_targeting()
-				get_viewport().set_input_as_handled()
-		return
+			exit_skill_targeting()
+			get_viewport().set_input_as_handled()
 
-	if interaction_state == STATE_SELECTING_INTERACTION_TARGET:
-		if event is InputEventMouseButton and event.pressed:
-			if event.button_index == MOUSE_BUTTON_LEFT:
-				var mouse_pos = get_local_mouse_position()
-				var gx = int(round(mouse_pos.x / TILE_SIZE))
-				var gy = int(round(mouse_pos.y / TILE_SIZE))
-				var grid_pos = Vector2i(gx, gy)
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			exit_skill_targeting()
+			get_viewport().set_input_as_handled()
 
-				if grid_pos in valid_interaction_targets:
-					if interaction_source_unit and is_instance_valid(interaction_source_unit):
-						interaction_source_unit.interaction_target_pos = grid_pos
-						recalculate_buffs()
-					end_interaction_selection()
-					get_viewport().set_input_as_handled()
-				else:
-					# Clicked outside valid target?
-					# Option: Do nothing, or cancel?
-					# Requirement: "Flow interruption test: Right click to cancel or click invalid tile -> confirm UI restores"
-					# Let's treat invalid click as ignore for now, wait for valid input or Right Click to cancel.
-					pass
+func _handle_input_interaction_selection(event):
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			var mouse_pos = get_local_mouse_position()
+			var gx = int(round(mouse_pos.x / TILE_SIZE))
+			var gy = int(round(mouse_pos.y / TILE_SIZE))
+			var grid_pos = Vector2i(gx, gy)
 
-			elif event.button_index == MOUSE_BUTTON_RIGHT:
-				# Cancel interaction?
-				# If we cancel, the unit is already placed. What happens?
-				# "Place -> Pause -> Select". If cancelled, unit remains but no target selected.
-				# Buff won't be applied.
+			if grid_pos in valid_interaction_targets:
+				if interaction_source_unit and is_instance_valid(interaction_source_unit):
+					interaction_source_unit.interaction_target_pos = grid_pos
+					recalculate_buffs()
 				end_interaction_selection()
 				get_viewport().set_input_as_handled()
-		return # Block other inputs
+			else:
+				# Clicked outside valid target
+				# Cancel selection on invalid click as per requirements
+				end_interaction_selection()
+				get_viewport().set_input_as_handled()
+
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			# Cancel interaction
+			end_interaction_selection()
+			get_viewport().set_input_as_handled()
+
+func _handle_input_idle(event):
+	# Default state handling
+	# Currently logic for unit placement and clicking is handled via Tile signals or other managers
+	pass
 
 func update_placement_preview(grid_pos: Vector2i, world_pos: Vector2, item_id: String):
 	if not placement_preview_cursor:
