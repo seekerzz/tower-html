@@ -49,6 +49,11 @@ var data_manager: Node = null
 
 var permanent_health_bonus: float = 0.0
 
+# Cheat Flags
+var cheat_god_mode: bool = false
+var cheat_infinite_resources: bool = false
+var cheat_fast_cooldown: bool = false
+
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
@@ -128,6 +133,10 @@ func _on_upgrade_selected(upgrade_data):
 	_finish_wave_process()
 
 func damage_core(amount: float):
+	if cheat_god_mode and amount > 0:
+		print("[GodMode] Damage blocked. Original amount: ", amount)
+		amount = 0
+
 	if amount > 0 and reward_manager and "biomass_armor" in reward_manager.acquired_artifacts:
 		amount = min(amount, max_core_health * 0.05)
 
@@ -246,6 +255,9 @@ func check_resource(type: String, amount: float) -> bool:
 	return true
 
 func consume_resource(type: String, amount: float) -> bool:
+	if cheat_infinite_resources:
+		return true
+
 	if !check_resource(type, amount): return false
 
 	if type == "food":
