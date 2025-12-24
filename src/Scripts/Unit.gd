@@ -63,6 +63,12 @@ const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 
 signal unit_clicked(unit)
 
+func _start_skill_cooldown(base_duration: float):
+	if GameManager.cheat_fast_cooldown and base_duration > 1.0:
+		skill_cooldown = 1.0
+	else:
+		skill_cooldown = base_duration
+
 func _ready():
 	_ensure_visual_hierarchy()
 
@@ -304,7 +310,7 @@ func execute_skill_at(grid_pos: Vector2i):
 
 	if GameManager.consume_resource("mana", skill_mana_cost):
 		is_no_mana = false
-		skill_cooldown = unit_data.get("skillCd", 10.0)
+		_start_skill_cooldown(unit_data.get("skillCd", 10.0))
 
 		var skill_name = unit_data.skill
 		GameManager.spawn_floating_text(global_position, skill_name.capitalize() + "!", Color.CYAN)
@@ -341,7 +347,7 @@ func activate_skill():
 
 	if GameManager.consume_resource("mana", skill_mana_cost):
 		is_no_mana = false
-		skill_cooldown = unit_data.get("skillCd", 10.0)
+		_start_skill_cooldown(unit_data.get("skillCd", 10.0))
 
 		var skill_name = unit_data.skill
 		GameManager.spawn_floating_text(global_position, skill_name.capitalize() + "!", Color.CYAN)
