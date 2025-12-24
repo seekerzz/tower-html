@@ -32,6 +32,13 @@ var dragon_breath_timer: float = 0.0
 
 const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
 
+func _ready():
+	# If this script is attached to an Area2D (which it is in the scene), we connect body_entered.
+	# The script extends Node2D, but if the node is Area2D, we can cast/check.
+	if self is Area2D:
+		if not body_entered.is_connected(_on_body_entered):
+			body_entered.connect(_on_body_entered)
+
 func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 	position = start_pos
 	target = target_node
@@ -234,13 +241,19 @@ func _process_dragon_breath(delta):
 				enemy.global_position += pull_dir * 100.0 * delta # Pull speed
 				enemy.take_damage(damage * delta, source_unit, damage_type) # DoT
 
+func _on_body_entered(body):
+	_handle_hit(body)
+
 func _on_area_2d_area_entered(area):
+	_handle_hit(area)
+
+func _handle_hit(target_node):
 	if is_fading: return
 	if type == "dragon_breath": return
 
-	if area.is_in_group("enemies"):
-		if shared_hit_list_ref != null and area in shared_hit_list_ref: return
-		if area in hit_list: return
+	if target_node.is_in_group("enemies"):
+		if shared_hit_list_ref != null and target_node in shared_hit_list_ref: return
+		if target_node in hit_list: return
 
 		# Apply Damage
 		var final_damage_type = damage_type
@@ -255,38 +268,33 @@ func _on_area_2d_area_entered(area):
 		if type == "snowball":
 			kb_force *= 1.5
 
-		area.take_damage(damage, source_unit, final_damage_type, self, kb_force)
+		if target_node.has_method("take_damage"):
+			target_node.take_damage(damage, source_unit, final_damage_type, self, kb_force)
 
 		# Apply Status Effects
 		if effects.get("burn", 0.0) > 0.0:
-			area.effects["burn"] = max(area.effects["burn"], effects["burn"])
-			area.burn_source = source_unit
+			if "effects" in target_node:
+				target_node.effects["burn"] = max(target_node.effects["burn"], effects["burn"])
+				if "burn_source" in target_node:
+					target_node.burn_source = source_unit
 		if effects.get("poison", 0.0) > 0.0:
-			# Call apply_poison instead of direct setting
-			area.apply_poison(source_unit, 1, effects["poison"])
+			if target_node.has_method("apply_poison"):
+				target_node.apply_poison(source_unit, 1, effects["poison"])
 		if effects.get("slow", 0.0) > 0.0:
-			area.slow_timer = max(area.slow_timer, effects["slow"])
+			if "slow_timer" in target_node:
+				target_node.slow_timer = max(target_node.slow_timer, effects["slow"])
 		if effects.get("freeze", 0.0) > 0.0:
 			# Freeze stops movement and attacks
-			# Implemented via temp_speed_mod = 0 and attack blocking in Enemy
-			# Using slow_timer variable in Enemy?
-			# Enemy.gd has slow_timer which halves speed.
-			# I might need to add "freeze_timer" to Enemy.gd or use existing system.
-			# Let's check Enemy.gd...
-			# Enemy.gd doesn't have freeze_timer.
-			# I'll rely on slow_timer for now but set it to 2.0?
-			# Wait, "Snowman ... is_frozen = true (stop moving/attacking 2s)".
-			# I should add `freeze_timer` to Enemy.gd or just add the property dynamically.
-			area.set("freeze_timer", max(area.get("freeze_timer") if area.get("freeze_timer") else 0.0, effects["freeze"]))
+			if target_node.has_method("apply_freeze"):
+				target_node.apply_freeze(effects["freeze"])
+			else:
+				target_node.set("freeze_timer", max(target_node.get("freeze_timer") if target_node.get("freeze_timer") else 0.0, effects["freeze"]))
 
-		# Lifesteal Logic (Moved from Unit.gd to avoid non-standard signals)
+		# Lifesteal Logic
 		if source_unit and is_instance_valid(source_unit) and source_unit.unit_data.get("trait") == "lifesteal":
 			var lifesteal_pct = source_unit.unit_data.get("lifesteal_percent", 0.0)
-			# Estimate heal based on raw damage for simplicity or use final calculated logic
-			# Here damage is already calculated (final_damage set in CombatManager passed to Projectile)
 			var heal_amt = damage * lifesteal_pct
 			if heal_amt > 0:
-				# Heal Core
 				GameManager.damage_core(-heal_amt)
 				GameManager.spawn_floating_text(source_unit.global_position, "+%d" % int(heal_amt), Color.GREEN)
 
@@ -300,19 +308,18 @@ func _on_area_2d_area_entered(area):
 
 			if trap_type != "":
 				if GameManager.grid_manager and GameManager.grid_manager.has_method("try_spawn_trap"):
-					GameManager.grid_manager.try_spawn_trap(area.global_position, trap_type)
+					GameManager.grid_manager.try_spawn_trap(target_node.global_position, trap_type)
 
-		hit_list.append(area)
+		hit_list.append(target_node)
 		if shared_hit_list_ref != null:
-			shared_hit_list_ref.append(area)
+			shared_hit_list_ref.append(target_node)
 
 		# 1. Bounce/Chain Logic
-		# Chain is treated essentially as bounce in the reference
 		var total_bounce = bounce + chain
 		var bounced = false
 
 		if total_bounce > 0:
-			bounced = perform_bounce(area)
+			bounced = perform_bounce(target_node)
 
 		# 2. Pierce & Split Logic
 		if not bounced:
