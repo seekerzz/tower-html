@@ -327,7 +327,40 @@ func _handle_hit(target_node):
 			else:
 				if split > 0 and type != "roar":
 					perform_split()
-				fade_out()
+
+				# Final Hit - Spawn visual and destroy
+				_spawn_hit_visual(target_node.global_position)
+				print("Projectile hit final: ", type, " -> queue_free")
+				queue_free()
+
+func _spawn_hit_visual(pos: Vector2):
+	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
+	get_parent().add_child(effect)
+	effect.global_position = pos
+	effect.rotation = randf() * TAU
+
+	var shape = "circle"
+	var col = Color.WHITE
+
+	if type == "pinecone":
+		shape = "circle"
+		col = Color("8B4513") # SaddleBrown
+	elif type == "ink":
+		shape = "blob"
+		col = Color.BLACK
+	elif type == "stinger":
+		shape = "triangle"
+		col = Color.YELLOW
+	elif type == "pollen":
+		shape = "star"
+		col = Color.PINK
+	else:
+		# Fallback defaults
+		shape = "slash"
+		col = Color.WHITE
+
+	effect.configure(shape, col)
+	effect.play()
 
 func _on_meteor_hit():
 	is_meteor_falling = false
