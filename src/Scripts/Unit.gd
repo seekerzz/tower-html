@@ -35,6 +35,12 @@ var crit_dmg: float = 1.5
 var bounce_count: int = 0
 var split_count: int = 0
 
+# Parrot Mechanics
+var ammo_queue: Array = []
+var max_ammo: int = 0
+var mimicked_bullet_timer: float = 0.0
+var is_discharging: bool = false
+
 # Grid
 var grid_pos: Vector2i = Vector2i.ZERO
 var start_position: Vector2 = Vector2.ZERO
@@ -218,6 +224,14 @@ func reset_stats():
 	range_val = unit_data.get("range", 0)
 	atk_speed = unit_data.get("atkSpeed", 1.0)
 
+	# Parrot Max Ammo
+	if type_key == "parrot":
+		if stats.has("mechanics") and stats["mechanics"].has("max_ammo"):
+			max_ammo = stats["mechanics"]["max_ammo"]
+		else:
+			max_ammo = 5 # Default fallback
+		update_parrot_range()
+
 	crit_rate = unit_data.get("crit_rate", 0.1)
 	crit_dmg = unit_data.get("crit_dmg", 1.5)
 
@@ -247,7 +261,44 @@ func reset_stats():
 	if GameManager.reward_manager and "focus_fire" in GameManager.reward_manager.acquired_artifacts:
 		range_val *= 1.2
 
+	if type_key == "parrot":
+		update_parrot_range()
+
 	update_visuals()
+
+func update_parrot_range():
+	if type_key != "parrot": return
+	if !GameManager.grid_manager: return
+
+	var neighbors = _get_neighbor_units()
+	var min_range = 9999.0
+	var has_ranged_neighbor = false
+
+	for unit in neighbors:
+		if unit.unit_data.get("attackType") == "ranged":
+			has_ranged_neighbor = true
+			if unit.range_val < min_range:
+				min_range = unit.range_val
+
+	if has_ranged_neighbor:
+		range_val = min_range
+	else:
+		range_val = 0.0
+
+func capture_bullet(bullet_snapshot: Dictionary):
+	if type_key != "parrot": return
+	if is_discharging: return # Don't capture while firing
+	if ammo_queue.size() >= max_ammo: return
+
+	# Clone to prevent reference issues
+	ammo_queue.append(bullet_snapshot.duplicate(true))
+
+	# Visual Feedback?
+	# We'll update the UI, but maybe a small effect on the parrot too?
+	if visual_holder:
+		var tween = create_tween()
+		tween.tween_property(visual_holder, "scale", Vector2(1.1, 1.1), 0.1)
+		tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.1)
 
 func calculate_damage_against(target_node: Node2D) -> float:
 	var final_damage = damage
@@ -586,6 +637,59 @@ func _process_combat(delta):
 
 	if !can_afford: return
 
+	# Parrot Attack Logic
+	if type_key == "parrot":
+		if !is_discharging:
+			# Check Start Condition: Full Ammo AND Enemy in Range
+			if ammo_queue.size() >= max_ammo:
+				var combat_manager = GameManager.combat_manager
+				if !combat_manager: return
+				var target = combat_manager.find_nearest_enemy(global_position, range_val)
+				if target:
+					is_discharging = true
+
+		# Discharge Logic
+		if is_discharging:
+			if ammo_queue.size() > 0:
+				var combat_manager = GameManager.combat_manager
+				if !combat_manager: return
+
+				# Re-check target each shot (turning)
+				var target = combat_manager.find_nearest_enemy(global_position, range_val)
+				if target:
+					# Consume Resources (Parrot is 0 cost but good to keep structure)
+					if attack_cost_food > 0: GameManager.consume_resource("food", attack_cost_food)
+					if attack_cost_mana > 0: GameManager.consume_resource("mana", attack_cost_mana)
+
+					cooldown = atk_speed
+
+					# Fire one bullet from queue
+					var bullet_data = ammo_queue.pop_front()
+
+					# Re-orient for each shot
+					play_attack_anim("ranged", target.global_position)
+
+					var extra = bullet_data.duplicate()
+					extra["mimic_damage"] = bullet_data.get("damage", 10.0)
+					extra["proj_override"] = bullet_data.get("type", "pinecone")
+
+					combat_manager.spawn_projectile(self, global_position, target, extra)
+				else:
+					# Lost target mid-burst?
+					# Option A: Stop discharging. Option B: Wait.
+					# Requirement: "Parrot will not attack... until regaining range".
+					# But if it started discharging, should it stop?
+					# "If neighbor removed ... range 0 ... parrot stops attacking".
+					# So yes, if no target found (range 0 or no enemies), we pause or stop.
+					# But we are in "is_discharging" mode. We should probably keep trying until empty if we want to dump?
+					# Or just wait. Cooldown won't be set if we don't fire.
+					pass
+			else:
+				# Empty
+				is_discharging = false
+
+		return # Parrot handles its own flow
+
 	# Find target
 	var combat_manager = GameManager.combat_manager
 	if !combat_manager: return
@@ -631,6 +735,9 @@ func _process_combat(delta):
 		elif unit_data.attackType == "ranged" and unit_data.get("proj") == "lightning":
 			# Lightning handling
 			combat_manager.perform_lightning_attack(self, global_position, target, unit_data.get("chain", 0))
+		elif unit_data.attackType == "mimic":
+			# Handled above
+			pass
 		else:
 			# Check for Multi-shot (projCount)
 			var proj_count = unit_data.get("projCount", 1)

@@ -54,6 +54,8 @@ func refresh_units():
 			# Fallback for hardcoded types if JSON isn't fully migrated (legacy safety)
 			elif u.type_key == "viper" or u.type_key == "scorpion":
 				monitored_units.append(u)
+			elif u.type_key == "parrot":
+				monitored_units.append(u)
 
 	# Create Rows (Chunks of 3)
 	# Requirement: "Add a new row above the existing row".
@@ -193,6 +195,23 @@ func _create_card(unit, parent_row):
 
 	layout.add_child(cd_bar)
 
+	# Ammo Label (Parrot)
+	if unit.type_key == "parrot":
+		cd_bar.visible = false # Hide CD for parrot
+
+		var ammo_lbl = Label.new()
+		ammo_lbl.name = "AmmoLabel"
+		ammo_lbl.add_theme_font_size_override("font_size", 12)
+		ammo_lbl.text = "0/5"
+		ammo_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		ammo_lbl.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		ammo_lbl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+		# Add outline for readability
+		ammo_lbl.add_theme_constant_override("outline_size", 4)
+		ammo_lbl.add_theme_color_override("font_outline_color", Color.BLACK)
+
+		layout.add_child(ammo_lbl)
+
 	parent_row.add_child(card)
 
 func _process(_delta):
@@ -242,18 +261,23 @@ func _process(_delta):
 			var layout = card.get_child(0)
 			var cd_bar = layout.get_node("CD_Overlay")
 
-			var prev_timer = card.get_meta("prev_timer", 0.0)
-			var current_timer = unit.production_timer
+			if unit.type_key == "parrot":
+				var ammo_lbl = layout.get_node_or_null("AmmoLabel")
+				if ammo_lbl:
+					ammo_lbl.text = "%d/%d" % [unit.ammo_queue.size(), unit.max_ammo]
+			else:
+				var prev_timer = card.get_meta("prev_timer", 0.0)
+				var current_timer = unit.production_timer
 
-			if prev_timer > 0 and current_timer <= 0:
-				_trigger_flash(card)
-			elif prev_timer > 0 and current_timer > prev_timer:
-				_trigger_flash(card)
+				if prev_timer > 0 and current_timer <= 0:
+					_trigger_flash(card)
+				elif prev_timer > 0 and current_timer > prev_timer:
+					_trigger_flash(card)
 
-			card.set_meta("prev_timer", current_timer)
+				card.set_meta("prev_timer", current_timer)
 
-			cd_bar.max_value = unit.max_production_timer
-			cd_bar.value = unit.production_timer
+				cd_bar.max_value = unit.max_production_timer
+				cd_bar.value = unit.production_timer
 
 func _trigger_flash(card):
 	if !card.has_meta("flashing") or !card.get_meta("flashing"):

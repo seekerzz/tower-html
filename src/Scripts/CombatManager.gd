@@ -297,7 +297,14 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 
 	# Crit Calculation
 	var is_critical = randf() < source_unit.crit_rate
-	var base_dmg = source_unit.calculate_damage_against(target) if target else source_unit.damage
+
+	# Damage Calculation
+	var base_dmg = 0.0
+	if extra_stats.has("mimic_damage"):
+		base_dmg = extra_stats.mimic_damage
+	else:
+		base_dmg = source_unit.calculate_damage_against(target) if target else source_unit.damage
+
 	var final_damage = base_dmg
 	if is_critical:
 		final_damage *= source_unit.crit_dmg
@@ -343,9 +350,45 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	stats.merge(extra_stats, true)
 	stats.source = source_unit
 
+	# Determine Projectile Type
+	var proj_type = source_unit.unit_data.get("proj", "melee")
+	if extra_stats.has("proj_override"):
+		proj_type = extra_stats.proj_override
+
 	var proj_speed = stats.get("speed", source_unit.unit_data.get("projectile_speed", 400.0))
-	proj.setup(pos, target, final_damage, proj_speed, source_unit.unit_data.get("proj", "melee"), stats)
+	proj.setup(pos, target, final_damage, proj_speed, proj_type, stats)
 	add_child(proj)
+
+	# --- Parrot Logic: Feed Neighbors ---
+	# Only feed if this is NOT a mimicked shot (prevent loops)
+	if !extra_stats.has("mimic_damage") and source_unit.has_method("_get_neighbor_units"):
+		# Debounce: Only record one bullet per frame/action for multi-shot units
+		var current_time = Time.get_ticks_msec()
+		var last_shot = source_unit.get_meta("last_shot_time_parrot", 0)
+
+		# If enough time passed (e.g. 50ms), treat as new shot.
+		# If called instantly in loop (multi-shot), skip subsequent calls.
+		if (current_time - last_shot) > 50:
+			source_unit.set_meta("last_shot_time_parrot", current_time)
+
+			var neighbors = source_unit._get_neighbor_units()
+			if neighbors.size() > 0:
+				# Create snapshot
+				var snapshot = {
+					"damage": final_damage,
+					"type": proj_type,
+					"speed": proj_speed,
+					"pierce": stats.pierce,
+					"bounce": stats.bounce,
+					"split": stats.split,
+					"chain": stats.chain,
+					"damageType": stats.damageType,
+					"effects": effects.duplicate()
+				}
+
+				for neighbor in neighbors:
+					if neighbor.type_key == "parrot":
+						neighbor.capture_bullet(snapshot)
 
 func queue_burn_explosion(pos: Vector2, damage: float, source: Node2D):
 	explosion_queue.append({ "pos": pos, "damage": damage, "source": source })
