@@ -51,7 +51,7 @@ var last_hit_direction: Vector2 = Vector2.ZERO
 
 # Physics Constants
 const WALL_SLAM_FACTOR = 0.5 # Damage multiplier when hitting wall
-const HEAVY_IMPACT_THRESHOLD = 500.0 # Threshold for hit stop
+const HEAVY_IMPACT_THRESHOLD = 50.0 # Threshold for hit stop
 const TRANSFER_RATE = 0.8 # Momentum transfer rate
 var sensor_area: Area2D = null
 
@@ -343,7 +343,7 @@ func handle_collisions(delta):
 
 				# Heavy Impact
 				if impact > HEAVY_IMPACT_THRESHOLD:
-					GameManager.trigger_hit_stop(0.1)
+					# GameManager.trigger_hit_stop(0.1)
 					if GameManager.main_game:
 						GameManager.main_game.apply_impulse_shake(velocity.normalized() * -1.0, 5.0) # Shake in direction of impact (opposite to bounce?) or direction of hit?
 						# If we hit wall, we want shake in direction of impact.
@@ -356,7 +356,7 @@ func handle_collisions(delta):
 						# Since we are colliding, we can get collision normal.
 						# collision.get_normal() points OUT of wall.
 						# So impulse should be -normal.
-						GameManager.main_game.apply_impulse_shake(-collision.get_normal(), 8.0)
+						GameManager.main_game.apply_impulse_shake(-collision.get_normal(), 2.0)
 
 				apply_physics_stagger(1.5)
 
