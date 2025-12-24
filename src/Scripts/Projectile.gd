@@ -1,4 +1,4 @@
-extends Node2D
+extends Area2D
 
 var target = null # Enemy node
 var speed: float = 400.0
@@ -33,11 +33,8 @@ var dragon_breath_timer: float = 0.0
 const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
 
 func _ready():
-	# If this script is attached to an Area2D (which it is in the scene), we connect body_entered.
-	# The script extends Node2D, but if the node is Area2D, we can cast/check.
-	if self is Area2D:
-		if not body_entered.is_connected(_on_body_entered):
-			body_entered.connect(_on_body_entered)
+	if not body_entered.is_connected(_on_body_entered):
+		body_entered.connect(_on_body_entered)
 
 func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 	position = start_pos
