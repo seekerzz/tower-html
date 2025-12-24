@@ -23,13 +23,6 @@ func _process(delta):
 		for expl in current_batch:
 			_process_burn_explosion(expl)
 
-	# Unit Logic (Iterate over grid units)
-	if GameManager.is_wave_active and GameManager.grid_manager:
-		for key in GameManager.grid_manager.tiles:
-			var tile = GameManager.grid_manager.tiles[key]
-			if tile.unit and tile.type != "core":
-				process_unit_combat(tile.unit, tile, delta)
-
 func _on_wave_started():
 	start_wave_logic()
 
@@ -243,87 +236,6 @@ func _spawn_enemy_at_pos(pos: Vector2, type_key: String):
 	enemy.global_position = pos
 	add_child(enemy)
 
-
-# ... Keep existing process_unit_combat logic ...
-func process_unit_combat(unit, tile, delta):
-	if unit.cooldown > 0: return
-
-	# Resource Check
-	var can_afford = true
-
-	if unit.attack_cost_food > 0:
-		if !GameManager.check_resource("food", unit.attack_cost_food):
-			unit.is_starving = true
-			can_afford = false
-		else:
-			unit.is_starving = false
-
-	if unit.attack_cost_mana > 0:
-		if !GameManager.check_resource("mana", unit.attack_cost_mana):
-			unit.is_no_mana = true
-			can_afford = false
-		else:
-			unit.is_no_mana = false
-
-	if !can_afford: return
-
-	# Find target
-	var target = find_nearest_enemy(tile.global_position, unit.range_val)
-	if target:
-		# Consume Resources
-		if unit.attack_cost_food > 0:
-			GameManager.consume_resource("food", unit.attack_cost_food)
-		if unit.attack_cost_mana > 0:
-			GameManager.consume_resource("mana", unit.attack_cost_mana)
-
-		# Attack
-		unit.cooldown = unit.atk_speed
-
-		unit.play_attack_anim(unit.unit_data.attackType, target.global_position)
-
-		if unit.unit_data.attackType == "melee":
-			var swing_hit_list = []
-			var attack_dir = (target.global_position - unit.global_position).normalized()
-
-			var proj_speed = 600.0
-			var proj_life = (unit.range_val + 30.0) / proj_speed
-			var count = 5
-			var spread = PI / 2.0
-
-			var base_angle = attack_dir.angle()
-			var start_angle = base_angle - spread / 2.0
-			var step = spread / max(1, count - 1)
-
-			for i in range(count):
-				var angle = start_angle + (i * step)
-				var stats = {
-					"pierce": 100,
-					"hide_visuals": true,
-					"life": proj_life,
-					"angle": angle,
-					"speed": proj_speed,
-					"shared_hit_list": swing_hit_list
-				}
-				_spawn_single_projectile(unit, unit.global_position, null, stats)
-
-		elif unit.unit_data.attackType == "ranged" and unit.unit_data.get("proj") == "lightning":
-			# Lightning handling
-			# "eel": "attackType": "ranged", "proj": "lightning", "chain": 4
-			perform_lightning_attack(unit, tile.global_position, target, unit.unit_data.get("chain", 0))
-		else:
-			# Check for Multi-shot (projCount)
-			var proj_count = unit.unit_data.get("projCount", 1)
-			var spread = unit.unit_data.get("spread", 0.5)
-
-			if "multishot" in unit.active_buffs:
-				proj_count += 2
-				spread = max(spread, 0.5)
-
-			if proj_count > 1:
-				spawn_multishot_projectile(unit, tile.global_position, target, proj_count, spread)
-			else:
-				spawn_projectile(unit, tile.global_position, target)
-
 func find_nearest_enemy(pos: Vector2, range_val: float):
 	var nearest = null
 	var min_dist = range_val
@@ -373,17 +285,8 @@ func find_nearest_enemy_excluding(pos: Vector2, range_val: float, exclude_list: 
 
 	return nearest
 
-func spawn_projectile(source_unit, pos, target):
-	_spawn_single_projectile(source_unit, pos, target, {})
-
-func spawn_multishot_projectile(source_unit, pos, target, count, spread):
-	var base_angle = (target.global_position - pos).angle()
-	var start_angle = base_angle - spread / 2.0
-	var step = spread / max(1, count - 1)
-
-	for i in range(count):
-		var angle = start_angle + (i * step)
-		_spawn_single_projectile(source_unit, pos, target, {"angle": angle})
+func spawn_projectile(source_unit, pos, target, extra_stats = {}):
+	_spawn_single_projectile(source_unit, pos, target, extra_stats)
 
 func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	# FIX: Shotgun logic - force straight flight by removing target
