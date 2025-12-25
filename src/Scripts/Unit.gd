@@ -72,11 +72,11 @@ const ANIM_WINDUP_TIME: float = 0.15
 const ANIM_STRIKE_TIME: float = 0.05
 const ANIM_RECOVERY_TIME: float = 0.2
 
-const ANIM_WINDUP_DIST: float = 8.0
-const ANIM_STRIKE_DIST: float = 20.0
+const ANIM_WINDUP_DIST: float = 10.0
+const ANIM_STRIKE_DIST: float = 25.0
 
-const ANIM_WINDUP_SCALE: Vector2 = Vector2(1.2, 0.8)
-const ANIM_STRIKE_SCALE: Vector2 = Vector2(0.8, 1.3)
+const ANIM_WINDUP_SCALE: Vector2 = Vector2(1.05, 0.95)
+const ANIM_STRIKE_SCALE: Vector2 = Vector2(0.95, 1.05)
 
 signal unit_clicked(unit)
 
@@ -724,10 +724,7 @@ func _process_combat(delta):
 
 			# Safety Checks after await
 			if !is_instance_valid(self): return
-			if !is_instance_valid(target): return # Optional: if target dead, do we still swing?
-			# Assuming we still swing but maybe projectile logic handles null target gracefully
-			# The requirements said: "If unit dies or is destroyed during windup, abort".
-			# is_instance_valid(self) covers unit death/sale.
+			if !is_instance_valid(target): return
 
 			_spawn_melee_projectiles(target)
 
@@ -766,7 +763,9 @@ func _spawn_melee_projectiles(target: Node2D):
 	var attack_dir = (target.global_position - global_position).normalized()
 
 	var proj_speed = 600.0
-	var proj_life = (range_val + 30.0) / proj_speed
+	# Explicitly access member variable or use local if needed, but member is fine.
+	# Adding explicit self reference for clarity if that was the concern, or just ensuring it works.
+	var proj_life = (self.range_val + 30.0) / proj_speed
 	var count = 5
 	var spread = PI / 2.0
 
@@ -833,9 +832,9 @@ func play_attack_anim(attack_type: String, target_pos: Vector2):
 
 		# 3. Recovery (Reset)
 		tween.tween_property(visual_holder, "position", original_pos, ANIM_RECOVERY_TIME)\
-			.set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tween.parallel().tween_property(visual_holder, "scale", Vector2.ONE, ANIM_RECOVERY_TIME)\
-			.set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 	elif attack_type == "ranged" or attack_type == "lightning":
 		# Recoil
