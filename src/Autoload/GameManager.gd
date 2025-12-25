@@ -49,6 +49,10 @@ var data_manager: Node = null
 
 var permanent_health_bonus: float = 0.0
 
+# Relic Logic
+var indomitable_triggered: bool = false
+var indomitable_timer: float = 0.0
+
 # Cheat Flags
 var cheat_god_mode: bool = false
 var cheat_infinite_resources: bool = false
@@ -98,8 +102,40 @@ func _on_hit_stop_end():
 	Engine.time_scale = 1.0
 
 func _process(delta):
+	if indomitable_timer > 0:
+		indomitable_timer -= delta
+		if indomitable_timer <= 0:
+			indomitable_timer = 0
+			spawn_floating_text(grid_manager.global_position if grid_manager else Vector2.ZERO, "Mortality Restored", Color.RED)
+
 	if is_wave_active and core_health > 0:
 		update_resources(delta)
+
+func get_stat_modifier(stat_type: String, context: Dictionary = {}) -> float:
+	if not reward_manager:
+		return 1.0
+
+	var modifier: float = 1.0
+
+	match stat_type:
+		"cooldown":
+			if "demon_manual" in reward_manager.acquired_artifacts:
+				modifier *= 0.8
+		"damage":
+			if "raven_feather" in reward_manager.acquired_artifacts:
+				# 1.0 + (1.0 - current/max) -> Lower HP, Higher Damage
+				# If full HP: 1.0 + 0 = 1.0
+				# If 0 HP: 1.0 + 1.0 = 2.0
+				modifier *= (1.0 + (1.0 - (core_health / max_core_health)))
+		"attack_interval":
+			if "berserker_horn" in reward_manager.acquired_artifacts:
+				if core_health < max_core_health * 0.2:
+					modifier *= 0.5
+		"enemy_mass":
+			if "moon_soil" in reward_manager.acquired_artifacts:
+				modifier *= 0.8
+
+	return modifier
 
 func update_resources(delta):
 	if food < max_food:
@@ -111,6 +147,7 @@ func update_resources(delta):
 func start_wave():
 	if is_wave_active: return
 	is_wave_active = true
+	indomitable_triggered = false
 	wave_started.emit()
 
 func end_wave():
@@ -159,8 +196,23 @@ func damage_core(amount: float):
 		print("[GodMode] Damage blocked. Original amount: ", amount)
 		amount = 0
 
+	# Indomitable Will Immunity
+	if indomitable_timer > 0 and amount > 0:
+		spawn_floating_text(grid_manager.global_position if grid_manager else Vector2.ZERO, "Immune!", Color.GOLD)
+		return
+
 	if amount > 0 and reward_manager and "biomass_armor" in reward_manager.acquired_artifacts:
 		amount = min(amount, max_core_health * 0.05)
+
+	# Indomitable Will Trigger Check (Prevent Death)
+	if amount > 0 and (core_health - amount <= 0):
+		if reward_manager and "indomitable_will" in reward_manager.acquired_artifacts and not indomitable_triggered:
+			indomitable_triggered = true
+			core_health = 1.0
+			indomitable_timer = 5.0
+			spawn_floating_text(grid_manager.global_position if grid_manager else Vector2.ZERO, "UNDYING!", Color.PURPLE)
+			resource_changed.emit()
+			return
 
 	core_health -= amount
 	resource_changed.emit()

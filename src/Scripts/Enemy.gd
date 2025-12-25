@@ -132,6 +132,10 @@ func setup(key: String, wave: int):
 	else:
 		mass = 1.0
 
+	var mass_mod = GameManager.get_stat_modifier("enemy_mass")
+	mass *= mass_mod
+	knockback_resistance *= mass_mod
+
 	update_visuals()
 
 func update_visuals():
