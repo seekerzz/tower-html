@@ -508,6 +508,9 @@ func get_spawn_points() -> Array[Vector2]:
 func get_tile_key(x: int, y: int) -> String:
 	return "%d,%d" % [x, y]
 
+func get_world_pos_from_grid(grid_pos: Vector2i) -> Vector2:
+	return to_global(Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE))
+
 # --- Unit Logic ---
 
 func place_unit(unit_key: String, x: int, y: int) -> bool:
