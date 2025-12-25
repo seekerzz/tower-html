@@ -65,18 +65,12 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 	if stats.has("is_meteor"):
 		is_meteor_falling = true
 		meteor_target = stats["ground_pos"]
-		type = "fireball" # Reuse dragon breath or fireball visual if available, using dragon_breath as fallback if fireball not defined
-		if proj_type == "fireball": pass # Already set
-		else: type = "dragon_breath" # Use dragon breath visual as base if fireball not specific
-
-		# Override type to ensure visual works? Let's check visuals.
-		# Code has `_setup_dragon_breath`, no `_setup_fireball`.
-		# So I will set type to "dragon_breath" for visual, or just assume "fireball" triggers something else?
-		# Actually, `setup` sets `type = proj_type` earlier.
-		# In CombatManager, we passed `proj: "fireball"`.
-		# But Projectile.gd doesn't seem to have "fireball" in setup.
-		# Let's map "fireball" to "dragon_breath" visual or create a simple one.
-		if type == "fireball":
+		# Only use dragon_breath if it's not a physical meteor (e.g. fire meteor)
+		# But task asks for physical meteor support.
+		# If damageType is physical, maybe use a rock?
+		if stats.get("damageType", "magic") == "physical":
+			type = "meteor_rock" # Special type for setup
+		else:
 			type = "dragon_breath"
 
 		speed = 1200.0
@@ -117,6 +111,8 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 		_setup_roar()
 	elif type == "dragon_breath":
 		_setup_dragon_breath()
+	elif type == "meteor_rock":
+		_setup_simple_visual(Color("FF8C00"), "circle") # Dark Orange Circle
 	elif type == "pinecone":
 		_setup_simple_visual(Color("8B4513"), "circle") # Brown circle
 	elif type == "ink":

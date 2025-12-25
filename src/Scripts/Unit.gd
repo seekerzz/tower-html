@@ -61,6 +61,7 @@ var skill_active_timer: float = 0.0
 var original_atk_speed: float = 0.0
 var _is_skill_highlight_active: bool = false
 var _highlight_color: Color = Color.WHITE
+var _skill_interval_timer: float = 0.0
 
 var connection_overlay: Node2D = null
 
@@ -420,6 +421,11 @@ func activate_skill():
 
 		# --- New Logic ---
 		match type_key:
+			"tiger":
+				skill_active_timer = unit_data.get("skillDuration", 5.0)
+				_skill_interval_timer = 0.0
+				set_highlight(true, Color.ORANGE)
+
 			"cow":
 				skill_active_timer = 5.0
 				set_highlight(true, Color.GREEN)
@@ -604,6 +610,12 @@ func _process(delta):
 		if type_key == "cow":
 			GameManager.damage_core(-200 * delta)
 
+		if type_key == "tiger":
+			_skill_interval_timer -= delta
+			if _skill_interval_timer <= 0:
+				_skill_interval_timer = 0.2
+				_spawn_meteor_at_random_enemy()
+
 		if skill_active_timer <= 0:
 			_on_skill_ended()
 
@@ -773,6 +785,31 @@ func _spawn_melee_projectiles(target: Node2D):
 			"shared_hit_list": swing_hit_list
 		}
 		combat_manager.spawn_projectile(self, global_position, null, stats)
+
+func _spawn_meteor_at_random_enemy():
+	var combat_manager = GameManager.combat_manager
+	if !combat_manager: return
+	var enemies = get_tree().get_nodes_in_group("enemies")
+	if enemies.is_empty(): return
+
+	var target = enemies.pick_random()
+	if !is_instance_valid(target): return
+
+	var ground_pos = target.global_position
+	# Spawn above, with random X offset
+	var spawn_pos = ground_pos + Vector2(randf_range(-100, 100), -600)
+
+	var stats = {
+		"is_meteor": true,
+		"ground_pos": ground_pos,
+		"damageType": "physical",
+		"life": 3.0,
+		"source": self,
+		"damage": damage # Ensure damage is passed correctly if CombatManager uses it or if we need override
+	}
+
+	# combat_manager.spawn_projectile takes: source_unit, start_pos, target_node, extra_stats
+	combat_manager.spawn_projectile(self, spawn_pos, null, stats)
 
 var breathe_tween: Tween = null
 var attack_tween: Tween = null
