@@ -235,19 +235,19 @@ func _process_black_hole(delta):
 			var dir = (black_hole_center - enemy.global_position).normalized()
 
 			# Mass calculation
-			# Check resistance first (assuming property exists or use safe default)
-			var resistance = 0.0
-			if "knockback_resistance" in enemy:
-				resistance = enemy.knockback_resistance
-
-			if resistance >= 1.0:
-				continue # Immune to pull
-
 			var mass = 1.0
-			if "radius" in enemy:
+			if "mass" in enemy:
+				mass = enemy.mass
+			elif "knockback_resistance" in enemy:
+				# Use resistance as mass proxy
+				mass = max(enemy.knockback_resistance, 1.0)
+			elif "radius" in enemy:
 				mass = max(enemy.radius, 1.0)
 			elif "hpMod" in enemy:
 				mass = max(enemy.hpMod * 10.0, 1.0)
+
+			# Boss resistance/immunity check if needed, but logic implies high mass reduces pull
+			mass = max(mass, 0.1)
 
 			var force_magnitude = (pull_strength / max(dist, 10.0)) * (1.0 / mass)
 			var force_vector = dir * force_magnitude * delta
@@ -256,7 +256,7 @@ func _process_black_hole(delta):
 			if enemy.has_method("apply_force"):
 				enemy.apply_force(force_vector)
 			else:
-				# Direct position modification (careful with physics, but standard for this project's simplified physics)
+				# Direct position modification (works on top of physics for control effects)
 				enemy.global_position += force_vector
 
 func _process_dragon_breath(delta):
