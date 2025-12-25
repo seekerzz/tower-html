@@ -67,6 +67,17 @@ var connection_overlay: Node2D = null
 const MAX_LEVEL = 3
 const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 
+# Animation Constants
+const ANIM_WINDUP_TIME: float = 0.15
+const ANIM_STRIKE_TIME: float = 0.05
+const ANIM_RECOVERY_TIME: float = 0.2
+
+const ANIM_WINDUP_DIST: float = 8.0
+const ANIM_STRIKE_DIST: float = 20.0
+
+const ANIM_WINDUP_SCALE: Vector2 = Vector2(1.2, 0.8)
+const ANIM_STRIKE_SCALE: Vector2 = Vector2(0.8, 1.3)
+
 signal unit_clicked(unit)
 
 func _start_skill_cooldown(base_duration: float):
@@ -708,29 +719,17 @@ func _process_combat(delta):
 		play_attack_anim(unit_data.attackType, target.global_position)
 
 		if unit_data.attackType == "melee":
-			var swing_hit_list = []
-			var attack_dir = (target.global_position - global_position).normalized()
+			# Delay damage to match "Strike" phase
+			await get_tree().create_timer(ANIM_WINDUP_TIME).timeout
 
-			var proj_speed = 600.0
-			var proj_life = (range_val + 30.0) / proj_speed
-			var count = 5
-			var spread = PI / 2.0
+			# Safety Checks after await
+			if !is_instance_valid(self): return
+			if !is_instance_valid(target): return # Optional: if target dead, do we still swing?
+			# Assuming we still swing but maybe projectile logic handles null target gracefully
+			# The requirements said: "If unit dies or is destroyed during windup, abort".
+			# is_instance_valid(self) covers unit death/sale.
 
-			var base_angle = attack_dir.angle()
-			var start_angle = base_angle - spread / 2.0
-			var step = spread / max(1, count - 1)
-
-			for i in range(count):
-				var angle = start_angle + (i * step)
-				var stats = {
-					"pierce": 100,
-					"hide_visuals": true,
-					"life": proj_life,
-					"angle": angle,
-					"speed": proj_speed,
-					"shared_hit_list": swing_hit_list
-				}
-				combat_manager.spawn_projectile(self, global_position, null, stats)
+			_spawn_melee_projectiles(target)
 
 		elif unit_data.attackType == "ranged" and unit_data.get("proj") == "lightning":
 			# Lightning handling
@@ -757,6 +756,35 @@ func _process_combat(delta):
 					combat_manager.spawn_projectile(self, global_position, target, {"angle": angle})
 			else:
 				combat_manager.spawn_projectile(self, global_position, target)
+
+func _spawn_melee_projectiles(target: Node2D):
+	if !is_instance_valid(target): return
+	var combat_manager = GameManager.combat_manager
+	if !combat_manager: return
+
+	var swing_hit_list = []
+	var attack_dir = (target.global_position - global_position).normalized()
+
+	var proj_speed = 600.0
+	var proj_life = (range_val + 30.0) / proj_speed
+	var count = 5
+	var spread = PI / 2.0
+
+	var base_angle = attack_dir.angle()
+	var start_angle = base_angle - spread / 2.0
+	var step = spread / max(1, count - 1)
+
+	for i in range(count):
+		var angle = start_angle + (i * step)
+		var stats = {
+			"pierce": 100,
+			"hide_visuals": true,
+			"life": proj_life,
+			"angle": angle,
+			"speed": proj_speed,
+			"shared_hit_list": swing_hit_list
+		}
+		combat_manager.spawn_projectile(self, global_position, null, stats)
 
 var breathe_tween: Tween = null
 
@@ -785,15 +813,29 @@ func play_attack_anim(attack_type: String, target_pos: Vector2):
 	var tween = create_tween()
 
 	if attack_type == "melee":
-		# Lunge
+		# Refactored Melee Animation (Windup -> Strike -> Recovery)
 		var dir = (target_pos - global_position).normalized()
-		var original_pos = Vector2.ZERO # visual_holder is centered at 0,0 locally
-		var lunge_pos = original_pos + dir * 15.0
+		var original_pos = Vector2.ZERO
 
-		tween.tween_property(visual_holder, "position", lunge_pos, 0.1).set_trans(Tween.TRANS_CUBIC)
-		tween.tween_property(visual_holder, "position", original_pos, 0.2).set_trans(Tween.TRANS_CUBIC)
-		# Smoothly reset scale in parallel if needed, though usually pos only
-		tween.parallel().tween_property(visual_holder, "scale", Vector2.ONE, 0.3)
+		# 1. Windup (Back & Squish)
+		var windup_pos = -dir * ANIM_WINDUP_DIST
+		tween.tween_property(visual_holder, "position", windup_pos, ANIM_WINDUP_TIME)\
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(visual_holder, "scale", ANIM_WINDUP_SCALE, ANIM_WINDUP_TIME)\
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+		# 2. Strike (Forward & Stretch)
+		var strike_pos = dir * ANIM_STRIKE_DIST
+		tween.tween_property(visual_holder, "position", strike_pos, ANIM_STRIKE_TIME)\
+			.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+		tween.parallel().tween_property(visual_holder, "scale", ANIM_STRIKE_SCALE, ANIM_STRIKE_TIME)\
+			.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+
+		# 3. Recovery (Reset)
+		tween.tween_property(visual_holder, "position", original_pos, ANIM_RECOVERY_TIME)\
+			.set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(visual_holder, "scale", Vector2.ONE, ANIM_RECOVERY_TIME)\
+			.set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 
 	elif attack_type == "ranged" or attack_type == "lightning":
 		# Recoil
