@@ -778,7 +778,7 @@ func _spawn_meteor_at_random_enemy():
 		"source": self
 	}
 
-	combat_manager.spawn_projectile(self, spawn_pos, null, stats)
+	combat_manager.spawn_projectile(self, spawn_pos, target, stats)
 
 func _spawn_melee_projectiles(target: Node2D):
 	var combat_manager = GameManager.combat_manager

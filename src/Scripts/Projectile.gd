@@ -151,6 +151,10 @@ func _process(delta):
 	if is_fading: return
 
 	if is_meteor_falling:
+		if is_instance_valid(target):
+			meteor_target = target.global_position
+			rotation = (meteor_target - global_position).angle()
+
 		var dist = global_position.distance_to(meteor_target)
 		if dist < 20.0:
 			_on_meteor_hit()
