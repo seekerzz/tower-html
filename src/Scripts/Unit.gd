@@ -64,6 +64,14 @@ var _highlight_color: Color = Color.WHITE
 
 var connection_overlay: Node2D = null
 
+const ANIM_WINDUP_TIME: float = 0.15
+const ANIM_STRIKE_TIME: float = 0.05
+const ANIM_RECOVERY_TIME: float = 0.2
+const ANIM_WINDUP_DIST: float = 8.0
+const ANIM_STRIKE_DIST: float = 20.0
+const ANIM_WINDUP_SCALE: Vector2 = Vector2(1.15, 0.85)
+const ANIM_STRIKE_SCALE: Vector2 = Vector2(0.85, 1.15)
+
 const MAX_LEVEL = 3
 const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 
@@ -708,29 +716,9 @@ func _process_combat(delta):
 		play_attack_anim(unit_data.attackType, target.global_position)
 
 		if unit_data.attackType == "melee":
-			var swing_hit_list = []
-			var attack_dir = (target.global_position - global_position).normalized()
-
-			var proj_speed = 600.0
-			var proj_life = (range_val + 30.0) / proj_speed
-			var count = 5
-			var spread = PI / 2.0
-
-			var base_angle = attack_dir.angle()
-			var start_angle = base_angle - spread / 2.0
-			var step = spread / max(1, count - 1)
-
-			for i in range(count):
-				var angle = start_angle + (i * step)
-				var stats = {
-					"pierce": 100,
-					"hide_visuals": true,
-					"life": proj_life,
-					"angle": angle,
-					"speed": proj_speed,
-					"shared_hit_list": swing_hit_list
-				}
-				combat_manager.spawn_projectile(self, global_position, null, stats)
+			await get_tree().create_timer(ANIM_WINDUP_TIME).timeout
+			if is_instance_valid(self) and is_instance_valid(target):
+				_spawn_melee_projectiles(target)
 
 		elif unit_data.attackType == "ranged" and unit_data.get("proj") == "lightning":
 			# Lightning handling
@@ -758,7 +746,36 @@ func _process_combat(delta):
 			else:
 				combat_manager.spawn_projectile(self, global_position, target)
 
+func _spawn_melee_projectiles(target: Node2D):
+	var combat_manager = GameManager.combat_manager
+	if !combat_manager: return
+
+	var swing_hit_list = []
+	var attack_dir = (target.global_position - global_position).normalized()
+
+	var proj_speed = 600.0
+	var proj_life = (range_val + 30.0) / proj_speed
+	var count = 5
+	var spread = PI / 2.0
+
+	var base_angle = attack_dir.angle()
+	var start_angle = base_angle - spread / 2.0
+	var step = spread / max(1, count - 1)
+
+	for i in range(count):
+		var angle = start_angle + (i * step)
+		var stats = {
+			"pierce": 100,
+			"hide_visuals": true,
+			"life": proj_life,
+			"angle": angle,
+			"speed": proj_speed,
+			"shared_hit_list": swing_hit_list
+		}
+		combat_manager.spawn_projectile(self, global_position, null, stats)
+
 var breathe_tween: Tween = null
+var attack_tween: Tween = null
 
 func get_interaction_info() -> Dictionary:
 	var info = { "has_interaction": false, "buff_id": "" }
@@ -781,28 +798,40 @@ func play_attack_anim(attack_type: String, target_pos: Vector2):
 	if !visual_holder: return
 
 	if breathe_tween: breathe_tween.kill()
+	if attack_tween: attack_tween.kill()
 
-	var tween = create_tween()
+	attack_tween = create_tween()
 
 	if attack_type == "melee":
-		# Lunge
 		var dir = (target_pos - global_position).normalized()
-		var original_pos = Vector2.ZERO # visual_holder is centered at 0,0 locally
-		var lunge_pos = original_pos + dir * 15.0
+		var original_pos = Vector2.ZERO
 
-		tween.tween_property(visual_holder, "position", lunge_pos, 0.1).set_trans(Tween.TRANS_CUBIC)
-		tween.tween_property(visual_holder, "position", original_pos, 0.2).set_trans(Tween.TRANS_CUBIC)
-		# Smoothly reset scale in parallel if needed, though usually pos only
-		tween.parallel().tween_property(visual_holder, "scale", Vector2.ONE, 0.3)
+		# Phase 1: Windup
+		attack_tween.tween_property(visual_holder, "position", -dir * ANIM_WINDUP_DIST, ANIM_WINDUP_TIME)\
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		attack_tween.parallel().tween_property(visual_holder, "scale", ANIM_WINDUP_SCALE, ANIM_WINDUP_TIME)\
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+		# Phase 2: Strike
+		attack_tween.tween_property(visual_holder, "position", dir * ANIM_STRIKE_DIST, ANIM_STRIKE_TIME)\
+			.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+		attack_tween.parallel().tween_property(visual_holder, "scale", ANIM_STRIKE_SCALE, ANIM_STRIKE_TIME)\
+			.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+
+		# Phase 3: Recovery
+		attack_tween.tween_property(visual_holder, "position", original_pos, ANIM_RECOVERY_TIME)\
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		attack_tween.parallel().tween_property(visual_holder, "scale", Vector2.ONE, ANIM_RECOVERY_TIME)\
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 	elif attack_type == "ranged" or attack_type == "lightning":
 		# Recoil
-		tween.tween_property(visual_holder, "scale", Vector2(0.8, 0.8), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.2)
+		attack_tween.tween_property(visual_holder, "scale", Vector2(0.8, 0.8), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		attack_tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.2)
 		# Reset position in parallel just in case
-		tween.parallel().tween_property(visual_holder, "position", Vector2.ZERO, 0.3)
+		attack_tween.parallel().tween_property(visual_holder, "position", Vector2.ZERO, 0.3)
 
-	tween.finished.connect(func(): start_breathe_anim())
+	attack_tween.finished.connect(func(): start_breathe_anim())
 
 func can_merge_with(other_unit) -> bool:
 	if other_unit == null: return false
