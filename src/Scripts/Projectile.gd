@@ -13,6 +13,9 @@ var effects: Dictionary = {}
 var is_meteor_falling: bool = false
 var meteor_target: Vector2 = Vector2.ZERO
 
+# Storage for all stats
+var stats: Dictionary = {}
+
 # Advanced Stats
 var pierce: int = 0
 var bounce: int = 0
@@ -36,12 +39,13 @@ func _ready():
 	if not body_entered.is_connected(_on_body_entered):
 		body_entered.connect(_on_body_entered)
 
-func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
+func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = {}):
 	position = start_pos
 	target = target_node
 	damage = dmg
 	speed = proj_speed
 	type = proj_type
+	stats = incoming_stats
 
 	if stats.has("source"):
 		source_unit = stats.source
@@ -94,6 +98,13 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, stats = {}):
 		visual_node = get_node("Sprite2D")
 	elif has_node("Polygon2D"):
 		visual_node = get_node("Polygon2D")
+
+	if type == "black_hole_field":
+		_setup_black_hole_field()
+		speed = 0.0
+		# Use stats for life/duration if available
+		if stats.has("duration"):
+			life = stats["duration"]
 
 	if stats.get("hide_visuals", false):
 		if visual_node: visual_node.hide()
@@ -168,6 +179,11 @@ func _process(delta):
 		_process_dragon_breath(delta)
 		return
 
+	# Black Hole Logic
+	if type == "black_hole_field":
+		_process_black_hole(delta)
+		# fallthrough to life check
+
 	life -= delta
 	if life <= 0:
 		fade_out()
@@ -206,6 +222,42 @@ func _process(delta):
 	# Visual Rotation (Spin)
 	if visual_node:
 		visual_node.rotation += delta * 15.0
+
+func _process_black_hole(delta):
+	var pull_radius = stats.get("skillRadius", 150.0)
+	var pull_strength = stats.get("skillStrength", 3000.0)
+	var black_hole_center = global_position
+
+	var enemies = get_tree().get_nodes_in_group("enemies")
+	for enemy in enemies:
+		var dist = black_hole_center.distance_to(enemy.global_position)
+		if dist < pull_radius:
+			var dir = (black_hole_center - enemy.global_position).normalized()
+
+			# Mass calculation
+			# Check resistance first (assuming property exists or use safe default)
+			var resistance = 0.0
+			if "knockback_resistance" in enemy:
+				resistance = enemy.knockback_resistance
+
+			if resistance >= 1.0:
+				continue # Immune to pull
+
+			var mass = 1.0
+			if "radius" in enemy:
+				mass = max(enemy.radius, 1.0)
+			elif "hpMod" in enemy:
+				mass = max(enemy.hpMod * 10.0, 1.0)
+
+			var force_magnitude = (pull_strength / max(dist, 10.0)) * (1.0 / mass)
+			var force_vector = dir * force_magnitude * delta
+
+			# Apply force
+			if enemy.has_method("apply_force"):
+				enemy.apply_force(force_vector)
+			else:
+				# Direct position modification (careful with physics, but standard for this project's simplified physics)
+				enemy.global_position += force_vector
 
 func _process_dragon_breath(delta):
 	if state == State.MOVING:
@@ -251,6 +303,7 @@ func _on_area_2d_area_entered(area):
 func _handle_hit(target_node):
 	if is_fading: return
 	if type == "dragon_breath": return
+	if type == "black_hole_field": return # Black hole doesn't hit/destroy on contact, it pulls
 
 	if target_node.is_in_group("enemies"):
 		if shared_hit_list_ref != null and target_node in shared_hit_list_ref: return
@@ -569,6 +622,32 @@ func _setup_roar():
 	var line2 = line.duplicate()
 	line2.scale = Vector2(0.7, 0.7)
 	add_child(line2)
+
+func _setup_black_hole_field():
+	if visual_node: visual_node.hide()
+
+	var color_hex = stats.get("skillColor", "#330066")
+	var color = Color(color_hex)
+	self.modulate = color # Apply modulation to entire node (including children we add)
+
+	# Create visual representation
+	var poly = Polygon2D.new()
+	var points = PackedVector2Array()
+	var r = 20.0
+	var steps = 16
+	for i in range(steps):
+		var angle = (i * TAU) / steps
+		# slightly irregular for effect
+		var rad = r + randf_range(-2, 2)
+		points.append(Vector2(cos(angle), sin(angle)) * rad)
+
+	poly.polygon = points
+	poly.color = Color(1, 1, 1, 0.8) # Base white, modulated by self.modulate
+	add_child(poly)
+
+	# Rotation Tween
+	var tween = create_tween().set_loops()
+	tween.tween_property(poly, "rotation", TAU, 2.0).from(0.0)
 
 func _setup_dragon_breath():
 	if visual_node: visual_node.hide()

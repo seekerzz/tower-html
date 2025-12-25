@@ -380,7 +380,28 @@ func execute_skill_at(grid_pos: Vector2i):
 
 		print("[DEBUG] Unit.execute_skill_at: ", grid_pos)
 
-		GameManager.execute_skill_effect(type_key, grid_pos)
+		if type_key == "dragon":
+			var extra_stats = {
+				"duration": unit_data.get("skillDuration", 8.0),
+				"skillRadius": unit_data.get("skillRadius", 150.0),
+				"skillStrength": unit_data.get("skillStrength", 3000.0),
+				"skillColor": unit_data.get("skillColor", "#330066"),
+				"damage": 0,
+				"hide_visuals": false # Ensure visuals are shown for the field
+			}
+			# Need to convert grid_pos to world position for spawn
+			# Since execute_skill_effect usually handles this via GameManager -> CombatManager,
+			# but here we want to spawn a specific projectile with custom stats directly
+			# OR we rely on GameManager to handle "dragon" type if implemented there.
+			# The task says: "In execute_skill_at ... Call GameManager.combat_manager.spawn_projectile"
+
+			if GameManager.grid_manager:
+				var world_pos = GameManager.grid_manager.get_world_pos_from_grid(grid_pos)
+				# Spawn directly
+				if GameManager.combat_manager:
+					GameManager.combat_manager.spawn_projectile(self, world_pos, null, extra_stats)
+		else:
+			GameManager.execute_skill_effect(type_key, grid_pos)
 
 	else:
 		is_no_mana = true
@@ -398,8 +419,8 @@ func activate_skill():
 	if skill_cooldown > 0:
 		return
 
-	# Point Skill Handling (Phoenix only now)
-	if unit_data.get("skillType") == "point" and type_key == "phoenix":
+	# Point Skill Handling (Phoenix and Dragon)
+	if unit_data.get("skillType") == "point" and (type_key == "phoenix" or type_key == "dragon"):
 		if GameManager.grid_manager:
 			GameManager.grid_manager.enter_skill_targeting(self)
 		return
