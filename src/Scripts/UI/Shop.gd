@@ -181,8 +181,8 @@ func create_shop_card(index, unit_key):
 	card.mouse_entered.connect(func():
 		var proto = Constants.UNIT_TYPES[unit_key]
 		var stats = {
-			"damage": proto.damage,
-			"range": proto.range,
+			"damage": proto.get("damage", 0),
+			"range": proto.get("range", 0),
 			"atk_speed": proto.get("atkSpeed", proto.get("atk_speed", 1.0))
 		}
 		GameManager.show_tooltip.emit(proto, stats, [], card.get_global_mouse_position())
