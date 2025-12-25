@@ -79,10 +79,13 @@ const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 signal unit_clicked(unit)
 
 func _start_skill_cooldown(base_duration: float):
-	if GameManager.cheat_fast_cooldown and base_duration > 1.0:
+	var mod = GameManager.get_stat_modifier("cooldown")
+	var final_duration = base_duration * mod
+
+	if GameManager.cheat_fast_cooldown and final_duration > 1.0:
 		skill_cooldown = 1.0
 	else:
-		skill_cooldown = base_duration
+		skill_cooldown = final_duration
 
 func _ready():
 	_ensure_visual_hierarchy()
@@ -320,6 +323,8 @@ func calculate_damage_against(target_node: Node2D) -> float:
 			focus_stacks = 0
 
 		final_damage *= (1.0 + 0.05 * focus_stacks)
+
+	final_damage *= GameManager.get_stat_modifier("damage")
 
 	return final_damage
 
@@ -723,7 +728,7 @@ func _process_combat(delta):
 			GameManager.consume_resource("mana", attack_cost_mana)
 
 		# Attack
-		cooldown = atk_speed
+		cooldown = atk_speed * GameManager.get_stat_modifier("attack_interval")
 
 		play_attack_anim(unit_data.attackType, target.global_position)
 

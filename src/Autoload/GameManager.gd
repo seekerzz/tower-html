@@ -49,6 +49,10 @@ var data_manager: Node = null
 
 var permanent_health_bonus: float = 0.0
 
+# Relic Variables
+var indomitable_triggered: bool = false
+var indomitable_timer: float = 0.0
+
 # Cheat Flags
 var cheat_god_mode: bool = false
 var cheat_infinite_resources: bool = false
@@ -98,6 +102,14 @@ func _on_hit_stop_end():
 	Engine.time_scale = 1.0
 
 func _process(delta):
+	if indomitable_timer > 0:
+		indomitable_timer -= delta
+		if indomitable_timer <= 0:
+			if grid_manager:
+				spawn_floating_text(grid_manager.global_position, "Mortality Restored", Color.RED)
+			else:
+				print("Mortality Restored")
+
 	if is_wave_active and core_health > 0:
 		update_resources(delta)
 
@@ -111,6 +123,7 @@ func update_resources(delta):
 func start_wave():
 	if is_wave_active: return
 	is_wave_active = true
+	indomitable_triggered = false
 	wave_started.emit()
 
 func end_wave():
@@ -159,8 +172,22 @@ func damage_core(amount: float):
 		print("[GodMode] Damage blocked. Original amount: ", amount)
 		amount = 0
 
+	# Indomitable Will Invulnerability
+	if indomitable_timer > 0 and amount > 0:
+		spawn_floating_text(grid_manager.global_position if grid_manager else Vector2.ZERO, "Immune!", Color.GOLD)
+		return
+
 	if amount > 0 and reward_manager and "biomass_armor" in reward_manager.acquired_artifacts:
 		amount = min(amount, max_core_health * 0.05)
+
+	# Check Indomitable Will Trigger
+	if amount > 0 and (core_health - amount <= 0) and reward_manager and "indomitable_will" in reward_manager.acquired_artifacts and !indomitable_triggered:
+		indomitable_triggered = true
+		core_health = 1
+		indomitable_timer = 5.0
+		spawn_floating_text(grid_manager.global_position if grid_manager else Vector2.ZERO, "UNDYING!", Color.RED)
+		resource_changed.emit()
+		return
 
 	core_health -= amount
 	resource_changed.emit()
@@ -299,6 +326,35 @@ func add_resource(type: String, amount: float):
 		gold += int(amount)
 
 	resource_changed.emit()
+
+func get_stat_modifier(stat_type: String, context: Dictionary = {}) -> float:
+	var modifier = 1.0
+	if !reward_manager: return modifier
+
+	var artifacts = reward_manager.acquired_artifacts
+
+	match stat_type:
+		"cooldown":
+			if "demon_manual" in artifacts:
+				modifier *= 0.8
+		"damage":
+			if "raven_feather" in artifacts:
+				# 1.0 + (1.0 - current/max)
+				# If full hp: 1.0 + 0 = 1.0
+				# If 0 hp (theoretical): 1.0 + 1.0 = 2.0
+				var ratio = 0.0
+				if max_core_health > 0:
+					ratio = core_health / max_core_health
+				modifier *= (1.0 + (1.0 - ratio))
+		"attack_interval":
+			if "berserker_horn" in artifacts:
+				if max_core_health > 0 and core_health < (max_core_health * 0.2):
+					modifier *= 0.5
+		"enemy_mass":
+			if "moon_soil" in artifacts:
+				modifier *= 0.8
+
+	return modifier
 
 func spawn_floating_text(pos: Vector2, value: String, type_or_color: Variant, direction: Vector2 = Vector2.ZERO):
 	var color = Color.WHITE

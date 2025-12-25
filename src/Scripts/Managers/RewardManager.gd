@@ -67,6 +67,54 @@ const REWARDS = {
 		"type": "stat",
 		"desc": "Increases Range by 10%",
 		"unique": false
+	},
+	"blue_crystal": {
+		"icon": "💎",
+		"name": "Blue Crystal",
+		"rarity": "rare",
+		"type": "artifact",
+		"desc": "Max Mana +200, Regen +2/s",
+		"unique": true
+	},
+	"demon_manual": {
+		"icon": "📖",
+		"name": "Demon Manual",
+		"rarity": "rare",
+		"type": "artifact",
+		"desc": "Cooldown -20%",
+		"unique": true
+	},
+	"raven_feather": {
+		"icon": "🪶",
+		"name": "Raven Feather",
+		"rarity": "epic",
+		"type": "artifact",
+		"desc": "Lower HP = Higher Dmg (Max +100%)",
+		"unique": true
+	},
+	"indomitable_will": {
+		"icon": "🛡️",
+		"name": "Indomitable Will",
+		"rarity": "legendary",
+		"type": "artifact",
+		"desc": "Prevent death once/wave (5s Invuln)",
+		"unique": true
+	},
+	"moon_soil": {
+		"icon": "🌑",
+		"name": "Moon Soil",
+		"rarity": "rare",
+		"type": "artifact",
+		"desc": "Enemy Mass -20% (More Knockback)",
+		"unique": true
+	},
+	"berserker_horn": {
+		"icon": "📯",
+		"name": "Berserker's Horn",
+		"rarity": "epic",
+		"type": "artifact",
+		"desc": "2x Atk Speed at <20% Core HP",
+		"unique": true
 	}
 }
 
@@ -150,6 +198,11 @@ func _apply_immediate_effects(id: String):
 				# Maybe global range modifier? GameManager doesn't seem to have it.
 				# Just record it for now.
 				pass
+			"blue_crystal":
+				gm.max_mana += 200
+				gm.mana += 200
+				gm.base_mana_rate += 2.0
+				gm.resource_changed.emit()
 
 func activate_sacrifice():
 	if not "sacrifice_protocol" in acquired_artifacts:
