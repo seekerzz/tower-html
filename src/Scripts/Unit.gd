@@ -11,6 +11,7 @@ var traits: Array = []
 var unit_data: Dictionary
 
 # Stats
+var guaranteed_crit_stacks: int = 0
 var damage: float
 var range_val: float
 var atk_speed: float
@@ -78,6 +79,11 @@ const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 
 signal unit_clicked(unit)
 
+func add_crit_stacks(amount: int):
+	guaranteed_crit_stacks += amount
+	if guaranteed_crit_stacks > 0:
+		GameManager.spawn_floating_text(global_position, "Crit Up!", Color.GOLD)
+
 func _start_skill_cooldown(base_duration: float):
 	if GameManager.cheat_fast_cooldown and base_duration > 1.0:
 		skill_cooldown = 1.0
@@ -139,6 +145,7 @@ func setup(key: String):
 	unit_data = Constants.UNIT_TYPES[key].duplicate()
 	# reset_stats will handle reading stats from levels
 	reset_stats()
+	guaranteed_crit_stacks = 0
 	update_visuals()
 
 	# Preserve interaction target if reloading/upgrading?

@@ -49,6 +49,9 @@ var data_manager: Node = null
 
 var permanent_health_bonus: float = 0.0
 
+# Core Mechanics
+var moonwell_pool: float = 0.0
+
 # Relic Logic
 var indomitable_triggered: bool = false
 var indomitable_timer: float = 0.0
@@ -80,6 +83,9 @@ func _ready():
 			reward_manager = rm_scene.new()
 			add_child(reward_manager)
 			reward_manager.sacrifice_state_changed.connect(_on_sacrifice_state_changed)
+
+	# Connect damage_dealt signal to self for Moon Well logic
+	damage_dealt.connect(_on_damage_dealt_event)
 
 func trigger_hit_stop(duration_sec: float, time_scale: float = 0.05):
 	var current_time = Time.get_ticks_msec()
@@ -148,6 +154,22 @@ func start_wave():
 	if is_wave_active: return
 	is_wave_active = true
 	indomitable_triggered = false
+
+	# Core Item Distribution
+	if Constants.CORE_TYPES.has(core_type):
+		var core_data = Constants.CORE_TYPES[core_type]
+		var item_id = core_data.get("wave_item", "")
+		if item_id != "":
+			var item_data = { "item_id": item_id, "count": 1 }
+
+			# Attempt to add to inventory
+			if inventory_manager:
+				if not inventory_manager.add_item(item_data):
+					spawn_floating_text(grid_manager.global_position if grid_manager else Vector2.ZERO, "Inventory Full!", Color.RED)
+					# TODO: Spawn drop on ground if needed, for now just floating text
+			else:
+				print("InventoryManager not found")
+
 	wave_started.emit()
 
 func end_wave():
@@ -196,6 +218,9 @@ func damage_core(amount: float):
 		print("[GodMode] Damage blocked. Original amount: ", amount)
 		amount = 0
 
+	# Moon Well Accumulation (Damage Dealt = logic inverted? No, Moon Well stores player damage dealt to enemies)
+	# Wait, damage_core is damage TO core.
+
 	# Indomitable Will Immunity
 	if indomitable_timer > 0 and amount > 0:
 		spawn_floating_text(grid_manager.global_position if grid_manager else Vector2.ZERO, "Immune!", Color.GOLD)
@@ -221,6 +246,47 @@ func damage_core(amount: float):
 		is_wave_active = false
 		get_tree().call_group("enemies", "queue_free")
 		game_over.emit()
+
+func use_item_effect(item_id: String, target_unit = null) -> bool:
+	match item_id:
+		"rice_ear":
+			food = min(max_food, food + max_food * 0.5)
+			resource_changed.emit()
+			spawn_floating_text(grid_manager.global_position if grid_manager else Vector2.ZERO, "Rice Ear Used!", Color.YELLOW)
+			return true
+
+		"moon_water":
+			if moonwell_pool > 0:
+				var heal_amount = moonwell_pool
+				moonwell_pool = 0
+
+				# Heal Core
+				var needed = max_core_health - core_health
+				if heal_amount <= needed:
+					core_health += heal_amount
+				else:
+					core_health = max_core_health
+					var overflow = heal_amount - needed
+					var mana_gain = overflow * 0.01
+					mana = min(max_mana, mana + mana_gain)
+
+				resource_changed.emit()
+				spawn_floating_text(grid_manager.global_position if grid_manager else Vector2.ZERO, "Moon Water Used!", Color.CYAN)
+				return true
+			return false
+
+		"holy_sword":
+			if target_unit and is_instance_valid(target_unit) and target_unit.has_method("add_crit_stacks"):
+				target_unit.add_crit_stacks(3)
+				spawn_floating_text(target_unit.global_position, "Holy Sword!", Color.GOLD)
+				return true
+			return false
+
+	return false
+
+func _on_damage_dealt_event(unit, amount):
+	if core_type == "moon_well":
+		moonwell_pool += amount * 0.1
 
 func retry_wave():
 	# Restore core health
