@@ -30,6 +30,7 @@ const COLORS = {
 }
 
 var CORE_TYPES = {}
+var ITEM_TYPES = {}
 var BARRICADE_TYPES = {}
 var UNIT_TYPES = {}
 var TRAITS = []

@@ -15,6 +15,7 @@ func load_data():
 	if error == OK:
 		var data = json.data
 		_parse_core_types(data.get("CORE_TYPES", {}))
+		_parse_item_types(data.get("ITEM_TYPES", {}))
 		_parse_barricade_types(data.get("BARRICADE_TYPES", {}))
 		_parse_unit_types(data.get("UNIT_TYPES", {}))
 		_parse_traits(data.get("TRAITS", []))
@@ -25,6 +26,9 @@ func load_data():
 
 func _parse_core_types(data: Dictionary):
 	Constants.CORE_TYPES = data
+
+func _parse_item_types(data: Dictionary):
+	Constants.ITEM_TYPES = data
 
 func _parse_barricade_types(data: Dictionary):
 	for key in data:
