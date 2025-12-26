@@ -32,5 +32,6 @@ const COLORS = {
 var CORE_TYPES = {}
 var BARRICADE_TYPES = {}
 var UNIT_TYPES = {}
+var ITEM_TYPES = {}
 var TRAITS = []
 var ENEMY_VARIANTS = {}

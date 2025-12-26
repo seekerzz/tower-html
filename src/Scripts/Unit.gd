@@ -10,6 +10,8 @@ var buff_sources: Dictionary = {} # Key: buff_type, Value: source_unit (Node2D)
 var traits: Array = []
 var unit_data: Dictionary
 
+var guaranteed_crit_stacks: int = 0
+
 # Stats
 var damage: float
 var range_val: float
@@ -342,6 +344,10 @@ func apply_buff(buff_type: String, source_unit: Node2D = null):
 			bounce_count += 1
 		"split":
 			split_count += 1
+
+func apply_holy_sword_buff():
+	guaranteed_crit_stacks += 3
+	GameManager.spawn_floating_text(global_position, "Holy Sword!", Color.GOLD)
 
 func set_highlight(active: bool, color: Color = Color.WHITE):
 	_is_skill_highlight_active = active
