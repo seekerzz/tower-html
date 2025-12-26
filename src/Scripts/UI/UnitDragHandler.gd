@@ -69,8 +69,10 @@ func _get_drag_data(at_position):
 func _can_drop_data(_at_position, data):
 	if !data or !data.has("source"): return false
 
-	if data.source == "inventory" and data.has("item") and data.item.get("item_id") == "meat":
-		return true
+	if data.source == "inventory" and data.has("item"):
+		var id = data.item.get("item_id")
+		if id == "meat" or id == "holy_sword":
+			return true
 
 	if data.source == "bench" or data.source == "grid":
 		return true
@@ -79,11 +81,18 @@ func _can_drop_data(_at_position, data):
 func _drop_data(_at_position, data):
 	if !unit_ref: return
 
-	if data.source == "inventory" and data.has("item") and data.item.get("item_id") == "meat":
-		unit_ref.devour(null)
-		if GameManager.inventory_manager:
-			GameManager.inventory_manager.remove_item(data.slot_index)
-		return
+	if data.source == "inventory" and data.has("item"):
+		var id = data.item.get("item_id")
+		if id == "meat":
+			unit_ref.devour(null)
+			if GameManager.inventory_manager:
+				GameManager.inventory_manager.remove_item(data.slot_index)
+			return
+		elif id == "holy_sword":
+			if GameManager.use_item_effect("holy_sword", unit_ref):
+				if GameManager.inventory_manager:
+					GameManager.inventory_manager.remove_item(data.slot_index)
+			return
 
 	if !GameManager.grid_manager: return
 
