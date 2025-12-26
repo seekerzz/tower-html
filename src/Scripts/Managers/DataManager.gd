@@ -2,6 +2,8 @@ extends Node
 
 class_name DataManager
 
+var data: Dictionary = {}
+
 func load_data():
 	var file = FileAccess.open("res://data/game_data.json", FileAccess.READ)
 	if not file:
@@ -13,7 +15,7 @@ func load_data():
 	var error = json.parse(content)
 
 	if error == OK:
-		var data = json.data
+		data = json.data
 		_parse_core_types(data.get("CORE_TYPES", {}))
 		_parse_barricade_types(data.get("BARRICADE_TYPES", {}))
 		_parse_unit_types(data.get("UNIT_TYPES", {}))

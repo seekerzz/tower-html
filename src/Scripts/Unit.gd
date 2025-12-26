@@ -35,6 +35,8 @@ var crit_dmg: float = 1.5
 var bounce_count: int = 0
 var split_count: int = 0
 
+var guaranteed_crit_stacks: int = 0
+
 # Parrot Mechanics
 var ammo_queue: Array = []
 var max_ammo: int = 0
@@ -406,6 +408,11 @@ func execute_skill_at(grid_pos: Vector2i):
 	else:
 		is_no_mana = true
 		GameManager.spawn_floating_text(global_position, "No Mana!", Color.BLUE)
+
+func add_crit_stacks(amount: int):
+	guaranteed_crit_stacks += amount
+	# Visual feedback if needed
+	GameManager.spawn_floating_text(global_position, "Crit Ready!", Color.ORANGE)
 
 func _on_skill_ended():
 	set_highlight(false)

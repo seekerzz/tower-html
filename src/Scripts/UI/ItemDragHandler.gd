@@ -29,3 +29,22 @@ func _get_drag_data(at_position):
 		"item": item_data,
 		"slot_index": slot_index
 	}
+
+func _gui_input(event):
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+			if !item_data.is_empty():
+				var id = item_data.get("item_id", "")
+				if id != "":
+					# Use item
+					if GameManager.use_item_effect(id):
+						# If used successfully, remove or decrease count
+						# But wait, does 'use_item_effect' imply consumption?
+						# Prompt: "触发“使用物品”，调用 GameManager.use_item_effect(id)。"
+						# Usually items are consumed.
+						# Item Types are "consumable" or "target_unit".
+						# Let's assume we consume one.
+
+						# Remove 1 from inventory
+						if GameManager.inventory_manager:
+							GameManager.inventory_manager.remove_item(slot_index)
