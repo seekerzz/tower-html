@@ -298,6 +298,10 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	# Crit Calculation
 	var is_critical = randf() < source_unit.crit_rate
 
+	if source_unit.get("guaranteed_crit_stacks") and source_unit.guaranteed_crit_stacks > 0:
+		is_critical = true
+		source_unit.guaranteed_crit_stacks -= 1
+
 	# Damage Calculation
 	var base_dmg = 0.0
 	if extra_stats.has("mimic_damage"):

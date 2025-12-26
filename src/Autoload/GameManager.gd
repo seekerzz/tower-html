@@ -60,8 +60,15 @@ var cheat_fast_cooldown: bool = false
 
 var _hit_stop_end_time: int = 0
 
+# Core Mechanics Variables
+var moonwell_pool: float = 0.0
+
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
+
+	# Connect signals for Core mechanics
+	damage_dealt.connect(_on_damage_dealt)
+	wave_started.connect(_on_wave_started)
 
 	# Initialize DataManager and load data first
 	var DataManagerScript = load("res://src/Scripts/Managers/DataManager.gd")
@@ -80,6 +87,96 @@ func _ready():
 			reward_manager = rm_scene.new()
 			add_child(reward_manager)
 			reward_manager.sacrifice_state_changed.connect(_on_sacrifice_state_changed)
+
+func _on_damage_dealt(unit, amount):
+	if core_type == "moon_well":
+		moonwell_pool += amount * 0.1
+
+func _on_wave_started():
+	# Distribute core items
+	if inventory_manager:
+		var item_id = ""
+
+		# Try to get from data first
+		if data_manager and data_manager.data.has("CORE_TYPES") and data_manager.data["CORE_TYPES"].has(core_type):
+			var core_data = data_manager.data["CORE_TYPES"][core_type]
+			item_id = core_data.get("wave_item", "")
+
+		# Fallback if not found in data (or for legacy types)
+		if item_id == "":
+			match core_type:
+				"abundance": item_id = "rice_ear"
+				"moon_well": item_id = "moon_water"
+				"holy_sword": item_id = "holy_sword"
+
+		if item_id != "":
+			var item_data = { "item_id": item_id, "count": 1 }
+			if !inventory_manager.add_item(item_data):
+				spawn_floating_text(Vector2(0, 0), "Inventory Full!", Color.RED)
+				# Drop item on ground logic could be added here
+				# For now just warn as per requirements
+
+func use_item_effect(item_id: String, target_unit = null) -> bool:
+	match item_id:
+		"rice_ear":
+			food += max_food * 0.5
+			if food > max_food: food = max_food
+			resource_changed.emit()
+			spawn_floating_text(Vector2(0, 0), "Food +50%", Color.YELLOW)
+			return true
+		"moon_water":
+			var heal_amount = moonwell_pool
+			moonwell_pool = 0
+			var missing_hp = max_core_health - core_health
+			var actual_heal = min(heal_amount, missing_hp)
+			var overflow = heal_amount - actual_heal
+
+			damage_core(-actual_heal) # Negative damage heals
+
+			if overflow > 0:
+				var mana_gain = overflow * 0.01
+				mana = min(max_mana, mana + mana_gain)
+				resource_changed.emit()
+				spawn_floating_text(Vector2(0, 0), "Heal +%d / Mana +%d" % [int(actual_heal), int(mana_gain)], Color.CYAN)
+			else:
+				spawn_floating_text(Vector2(0, 0), "Heal +%d" % int(actual_heal), Color.GREEN)
+			return true
+		"holy_sword":
+			# Holy Sword logic requires a valid target unit OR just returns false if none
+			# But for testing we might want to support self or something?
+			# Requirement says: "If target_unit valid, call add_crit_stacks".
+			# We need to ensure we can select a unit or use it on a unit.
+			# If called without target (e.g. right click in inventory), we might pick a random unit or fail?
+			# Strategy: Inventory click usually doesn't provide target.
+			# If right-click is used, we might need to be in a "targeting mode" or just apply to a random unit / strongest unit?
+			# Prompt says: "Right click: trigger 'use item', call GameManager.use_item_effect(id)."
+			# And "Holy sword: if target_unit valid...".
+			# This implies we need a way to pass target.
+			# For Phase 1 simplification: If no target passed, maybe apply to ALL units or a random one?
+			# Or just return false implying "Select a target first" (not implemented yet).
+			# Let's try to find a best target if null, or just fail.
+			if target_unit == null:
+				# Auto-target logic for convenience?
+				# Let's pick the unit with highest damage.
+				if grid_manager:
+					var best_unit = null
+					var max_dmg = -1.0
+					for key in grid_manager.tiles:
+						var tile = grid_manager.tiles[key]
+						if tile.unit and is_instance_valid(tile.unit):
+							if tile.unit.damage > max_dmg:
+								max_dmg = tile.unit.damage
+								best_unit = tile.unit
+					target_unit = best_unit
+
+			if target_unit and is_instance_valid(target_unit) and target_unit.has_method("add_crit_stacks"):
+				target_unit.add_crit_stacks(3)
+				spawn_floating_text(target_unit.global_position, "Holy Power!", Color.GOLD)
+				return true
+			else:
+				print("No valid target for Holy Sword")
+				return false
+	return false
 
 func trigger_hit_stop(duration_sec: float, time_scale: float = 0.05):
 	var current_time = Time.get_ticks_msec()
