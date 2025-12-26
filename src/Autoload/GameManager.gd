@@ -119,6 +119,10 @@ func use_item(item_data: Dictionary) -> void:
 
 			resource_changed.emit()
 			consumed = true
+		"crit_buff_3":
+			# Effect applied via ItemDropLayer drag-drop logic.
+			# We just need to mark as consumed here.
+			consumed = true
 		_:
 			# Potentially handled by drag drop, but if right clicked:
 			print("Item used: ", item_id)
@@ -207,7 +211,11 @@ func start_wave():
 	is_wave_active = true
 	indomitable_triggered = false
 
-	# Wave Item Distribution
+	distribute_wave_item()
+
+	wave_started.emit()
+
+func distribute_wave_item():
 	if inventory_manager and data_manager:
 		var core_def = data_manager.get_data("CORE_TYPES").get(core_type)
 		if core_def and core_def.has("wave_item"):
@@ -221,8 +229,6 @@ func start_wave():
 
 			if not has_item:
 				inventory_manager.add_item({"item_id": item_id, "count": 1})
-
-	wave_started.emit()
 
 func end_wave():
 	is_wave_active = false

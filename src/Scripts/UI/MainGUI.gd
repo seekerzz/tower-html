@@ -65,6 +65,9 @@ func _ready():
 
 	_setup_tooltip()
 
+	# Fix MainGUI mouse filter to allow clicks to pass through to game world
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
 	_setup_stats_panel()
 	_setup_combat_gold_label()
 	

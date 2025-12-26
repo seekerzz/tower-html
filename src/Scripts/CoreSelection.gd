@@ -34,4 +34,5 @@ func _ready():
 func _on_core_selected(type):
 	print("Selected Core: ", type)
 	GameManager.core_type = type
+	GameManager.distribute_wave_item()
 	get_tree().change_scene_to_file("res://src/Scenes/Game/MainGame.tscn")

@@ -132,3 +132,13 @@ func update_inventory(data: Array):
 			slot.add_child(count_lbl)
 
 		slots_container.add_child(slot)
+
+	if data.is_empty():
+		var empty_label = Label.new()
+		empty_label.text = "Inventory Empty"
+		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		empty_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		empty_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		empty_label.custom_minimum_size = Vector2(0, 100)
+		slots_container.add_child(empty_label)

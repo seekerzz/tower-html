@@ -1,5 +1,14 @@
 extends Control
 
+func _ready():
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+func _notification(what):
+	if what == NOTIFICATION_DRAG_BEGIN:
+		mouse_filter = Control.MOUSE_FILTER_PASS
+	elif what == NOTIFICATION_DRAG_END:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
 func _can_drop_data(at_position, data):
 	if typeof(data) == TYPE_DICTIONARY and data.get("source") == "inventory":
 		var item = data.get("item", {})

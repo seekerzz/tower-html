@@ -10,9 +10,9 @@ var random_frame_index: int = 0
 
 signal tile_clicked(tile)
 
-const DROP_HANDLER_SCRIPT = preload("res://src/Scripts/UI/TileDropHandler.gd")
-const TEXTURE_SHEET = preload("res://assets/images/UI/tile_sheet.png")
-const TEXTURE_SPAWN = preload("res://assets/images/UI/tile_spawn.png")
+# Use load instead of preload to avoid crash if assets are missing
+const TEXTURE_SHEET_PATH = "res://assets/images/UI/tile_sheet.png"
+const TEXTURE_SPAWN_PATH = "res://assets/images/UI/tile_spawn.png"
 
 func setup(grid_x: int, grid_y: int, tile_type: String = "normal"):
 	x = grid_x
@@ -34,7 +34,13 @@ func setup(grid_x: int, grid_y: int, tile_type: String = "normal"):
 
 	# Add Drop Target
 	var drop_target = Control.new()
-	drop_target.set_script(DROP_HANDLER_SCRIPT)
+	var drop_handler_script = load("res://src/Scripts/UI/TileDropHandler.gd")
+	drop_target.set_script(drop_handler_script)
+	# Ensure drop_target does not block clicks on the tile itself.
+	# It should rely on NOTIFICATION_DRAG_BEGIN to enable interaction (handled in script ideally),
+	# or we set it to IGNORE here if the script handles it.
+	# Assuming TileDropHandler behaves like ItemDropLayer:
+	drop_target.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(drop_target)
 	drop_target.setup(self)
 
@@ -50,28 +56,38 @@ func update_visuals():
 	bs.modulate = Color.WHITE
 
 	if state == "spawn":
-		bs.texture = TEXTURE_SPAWN
-		bs.hframes = 5
-		bs.vframes = 5
-		bs.frame = random_frame_index
+		if ResourceLoader.exists(TEXTURE_SPAWN_PATH):
+			bs.texture = load(TEXTURE_SPAWN_PATH)
+			bs.hframes = 5
+			bs.vframes = 5
+			bs.frame = random_frame_index
 
-		# Scale to fit TILE_SIZE (60)
-		if bs.texture:
-			var frame_width = bs.texture.get_width() / bs.hframes
-			var scale_factor = 60.0 / max(frame_width, 1.0)
-			bs.scale = Vector2(scale_factor, scale_factor)
+			# Scale to fit TILE_SIZE (60)
+			if bs.texture:
+				var frame_width = bs.texture.get_width() / bs.hframes
+				var scale_factor = 60.0 / max(frame_width, 1.0)
+				bs.scale = Vector2(scale_factor, scale_factor)
+		else:
+			# Fallback if texture missing
+			bs.texture = null
+			# Add visual indication if needed, e.g. ColorRect or Modulate
+			bs.modulate = Color(0.5, 0.2, 0.2) # Reddish
 
 	elif state == "unlocked" or type == "core":
-		bs.texture = TEXTURE_SHEET
-		bs.hframes = 5
-		bs.vframes = 5
-		bs.frame = random_frame_index
+		if ResourceLoader.exists(TEXTURE_SHEET_PATH):
+			bs.texture = load(TEXTURE_SHEET_PATH)
+			bs.hframes = 5
+			bs.vframes = 5
+			bs.frame = random_frame_index
 
-		# Scale to fit TILE_SIZE (60)
-		if bs.texture:
-			var frame_width = bs.texture.get_width() / bs.hframes
-			var scale_factor = 60.0 / max(frame_width, 1.0)
-			bs.scale = Vector2(scale_factor, scale_factor)
+			# Scale to fit TILE_SIZE (60)
+			if bs.texture:
+				var frame_width = bs.texture.get_width() / bs.hframes
+				var scale_factor = 60.0 / max(frame_width, 1.0)
+				bs.scale = Vector2(scale_factor, scale_factor)
+		else:
+			bs.texture = null
+			bs.modulate = Color(0.3, 0.3, 0.3) # Dark Gray
 
 	elif "locked" in state:
 		bs.visible = false
