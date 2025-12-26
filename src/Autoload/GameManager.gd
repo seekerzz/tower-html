@@ -13,7 +13,9 @@ signal ftext_spawn_requested(pos, value, color, direction)
 signal show_tooltip(data, stats, buffs, pos)
 signal hide_tooltip()
 
-var core_type: String = "cornucopia"
+var core_type: String = "abundance"
+var moonwell_pool: float = 0.0
+
 var food: float = 1000.0
 var max_food: float = 2000.0
 var mana: float = 500.0
@@ -80,6 +82,62 @@ func _ready():
 			reward_manager = rm_scene.new()
 			add_child(reward_manager)
 			reward_manager.sacrifice_state_changed.connect(_on_sacrifice_state_changed)
+
+	# Connect damage_dealt for Moon Well
+	damage_dealt.connect(_on_damage_dealt)
+
+func _on_damage_dealt(_unit, amount):
+	if core_type == "moon_well":
+		moonwell_pool += amount * 0.1
+
+func use_item(item_data: Dictionary) -> void:
+	var item_id = item_data.get("item_id")
+	if not item_id: return
+
+	# Fetch effect from data_manager if possible, or just hardcode for now based on item_id
+	var item_def = data_manager.get_data("ITEM_TYPES").get(item_id, {})
+	var effect = item_def.get("effect")
+
+	var consumed = false
+
+	match effect:
+		"restore_food_50pct":
+			food = min(max_food, food + max_food * 0.5)
+			resource_changed.emit()
+			consumed = true
+		"moon_well_heal":
+			var heal_amount = min(moonwell_pool, max_core_health - core_health)
+			if heal_amount > 0:
+				core_health += heal_amount
+				moonwell_pool -= heal_amount
+
+			# Overflow to Mana
+			if moonwell_pool > 0:
+				var mana_gain = moonwell_pool * 0.01
+				mana = min(max_mana, mana + mana_gain)
+				moonwell_pool = 0
+
+			resource_changed.emit()
+			consumed = true
+		_:
+			# Potentially handled by drag drop, but if right clicked:
+			print("Item used: ", item_id)
+
+	if consumed:
+		# Remove 1 from inventory
+		# We need to find index in inventory manager... but inventory manager expects index.
+		# Ideally InventoryManager should have remove_by_data or something, but we can iterate.
+		# Or better, we should probably pass the index from the slot if possible.
+		# But since we just have item_data here, let's find it.
+
+		# NOTE: item_data passed here is a reference to the dict in the array?
+		# If so, we can find it by reference or matching content.
+		# But since InventoryManager.items is the source of truth, let's assume item_data is one of the elements.
+
+		var items = inventory_manager.items
+		var index = items.find(item_data)
+		if index != -1:
+			inventory_manager.remove_item(index)
 
 func trigger_hit_stop(duration_sec: float, time_scale: float = 0.05):
 	var current_time = Time.get_ticks_msec()
@@ -148,6 +206,22 @@ func start_wave():
 	if is_wave_active: return
 	is_wave_active = true
 	indomitable_triggered = false
+
+	# Wave Item Distribution
+	if inventory_manager and data_manager:
+		var core_def = data_manager.get_data("CORE_TYPES").get(core_type)
+		if core_def and core_def.has("wave_item"):
+			var item_id = core_def.wave_item
+			# Check if we already have it
+			var has_item = false
+			for item in inventory_manager.items:
+				if item.get("item_id") == item_id:
+					has_item = true
+					break
+
+			if not has_item:
+				inventory_manager.add_item({"item_id": item_id, "count": 1})
+
 	wave_started.emit()
 
 func end_wave():

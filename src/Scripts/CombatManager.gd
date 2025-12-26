@@ -296,7 +296,14 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	var proj = PROJECTILE_SCENE.instantiate()
 
 	# Crit Calculation
-	var is_critical = randf() < source_unit.crit_rate
+	var is_critical = false
+	if source_unit.get("guaranteed_crit_stacks") and source_unit.guaranteed_crit_stacks > 0:
+		is_critical = true
+		source_unit.guaranteed_crit_stacks -= 1
+		# Visual feedback for stack consumption
+		GameManager.spawn_floating_text(source_unit.global_position, "%d Crits Left" % source_unit.guaranteed_crit_stacks, Color.GOLD)
+	else:
+		is_critical = randf() < source_unit.crit_rate
 
 	# Damage Calculation
 	var base_dmg = 0.0

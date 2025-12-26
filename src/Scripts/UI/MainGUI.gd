@@ -68,6 +68,9 @@ func _ready():
 	_setup_stats_panel()
 	_setup_combat_gold_label()
 	
+	# Setup Item Drop Layer
+	_setup_drop_layer()
+
 	# 2. 布局核心修复：重新组织右侧栏内容，解决重叠
 	_setup_right_sidebar_layout()
 
@@ -215,6 +218,25 @@ func _update_sidebar_position():
 	sidebar_tween.tween_property(left_sidebar, "offset_bottom", float(target_offset_bottom), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	if right_sidebar:
 		sidebar_tween.tween_property(right_sidebar, "offset_bottom", float(target_offset_bottom), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+func _setup_drop_layer():
+	var drop_layer = Control.new()
+	drop_layer.name = "ItemDropLayer"
+	drop_layer.layout_mode = 1
+	drop_layer.anchors_preset = Control.PRESET_FULL_RECT
+	drop_layer.mouse_filter = Control.MOUSE_FILTER_PASS
+	drop_layer.set_script(preload("res://src/Scripts/UI/ItemDropLayer.gd"))
+
+	# Add it behind other UI elements but covering the game view (conceptually)
+	# Actually MainGUI is usually overlaying the game.
+	# If MainGUI covers the whole screen with `anchors_preset = 15`, `drop_layer` will cover everything.
+	# We need it to be able to catch drops that are NOT on other UI elements.
+	# So we add it as the first child so it is behind panels but can still receive drop data if top elements don't handle it?
+	# No, Control.drop_data works by checking the control under mouse.
+	# If we have a fullscreen control at the back, it will catch drops that fall through holes in UI.
+
+	add_child(drop_layer)
+	move_child(drop_layer, 0)
 
 func _setup_ui_styles():
 	var radius = UIConstants.CORNER_RADIUS.medium

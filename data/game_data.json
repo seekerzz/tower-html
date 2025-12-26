@@ -1,37 +1,13 @@
 {
 	"CORE_TYPES": {
-		"cornucopia": {
-			"name": "丰饶之角",
-			"icon": "🌽",
-			"desc": "基础食物产出 +100%。\n平稳发育，适合新手。",
-			"bonus": {
-				"foodRate": 50
-			}
-		},
-		"thunder": {
-			"name": "雷霆尖塔",
-			"icon": "⚡",
-			"desc": "核心每秒发射闪电攻击最近敌人。\n伤害: 200 (随波次成长)",
-			"ability": "attack",
-			"damage": 200
-		},
-		"alchemy": {
-			"name": "炼金熔炉",
-			"icon": "⚗️",
-			"desc": "每秒产出 +20 法力。\n每波结束获得 10% 现有金币利息。",
-			"bonus": {
-				"manaRate": 20
-			}
-		},
-		"war": {
-			"name": "战争图腾",
-			"icon": "⚔️",
-			"desc": "食物产出减半。\n所有友军单位伤害 +50%。",
-			"bonus": {
-				"foodRate": -25,
-				"globalDmg": 0.5
-			}
-		}
+		"abundance": { "name": "丰饶图腾", "wave_item": "rice_ear", "desc": "每波获得稻穗" },
+		"moon_well": { "name": "月亮井", "wave_item": "moon_water", "desc": "储存伤害转化为治疗" },
+		"holy_sword": { "name": "圣剑图腾", "wave_item": "holy_sword", "desc": "每波获得圣剑" }
+	},
+	"ITEM_TYPES": {
+		"rice_ear": { "name": "稻穗", "type": "consumable", "usage": "right_click", "effect": "restore_food_50pct" },
+		"moon_water": { "name": "月亮井水", "type": "consumable", "usage": "right_click", "effect": "moon_well_heal" },
+		"holy_sword": { "name": "神圣之剑", "type": "target_unit", "usage": "drag", "effect": "crit_buff_3" }
 	},
 	"BARRICADE_TYPES": {
 		"mucus": {

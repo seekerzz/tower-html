@@ -19,9 +19,21 @@ func load_data():
 		_parse_unit_types(data.get("UNIT_TYPES", {}))
 		_parse_traits(data.get("TRAITS", []))
 		_parse_enemy_variants(data.get("ENEMY_VARIANTS", {}))
+		if data.has("ITEM_TYPES"):
+			_parse_item_types(data["ITEM_TYPES"])
 		print("Game data loaded successfully.")
 	else:
 		push_error("JSON Parse Error: ", json.get_error_message(), " in ", content, " at line ", json.get_error_line())
+
+func get_data(type: String):
+	if type == "CORE_TYPES": return Constants.CORE_TYPES
+	if type == "UNIT_TYPES": return Constants.UNIT_TYPES
+	if type == "BARRICADE_TYPES": return Constants.BARRICADE_TYPES
+	if type == "ITEM_TYPES": return Constants.get("ITEM_TYPES")
+	return {}
+
+func _parse_item_types(data: Dictionary):
+	Constants.ITEM_TYPES = data
 
 func _parse_core_types(data: Dictionary):
 	Constants.CORE_TYPES = data
