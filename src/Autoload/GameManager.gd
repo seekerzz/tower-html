@@ -142,39 +142,12 @@ func use_item_effect(item_id: String, target_unit = null) -> bool:
 				spawn_floating_text(Vector2(0, 0), "Heal +%d" % int(actual_heal), Color.GREEN)
 			return true
 		"holy_sword":
-			# Holy Sword logic requires a valid target unit OR just returns false if none
-			# But for testing we might want to support self or something?
-			# Requirement says: "If target_unit valid, call add_crit_stacks".
-			# We need to ensure we can select a unit or use it on a unit.
-			# If called without target (e.g. right click in inventory), we might pick a random unit or fail?
-			# Strategy: Inventory click usually doesn't provide target.
-			# If right-click is used, we might need to be in a "targeting mode" or just apply to a random unit / strongest unit?
-			# Prompt says: "Right click: trigger 'use item', call GameManager.use_item_effect(id)."
-			# And "Holy sword: if target_unit valid...".
-			# This implies we need a way to pass target.
-			# For Phase 1 simplification: If no target passed, maybe apply to ALL units or a random one?
-			# Or just return false implying "Select a target first" (not implemented yet).
-			# Let's try to find a best target if null, or just fail.
-			if target_unit == null:
-				# Auto-target logic for convenience?
-				# Let's pick the unit with highest damage.
-				if grid_manager:
-					var best_unit = null
-					var max_dmg = -1.0
-					for key in grid_manager.tiles:
-						var tile = grid_manager.tiles[key]
-						if tile.unit and is_instance_valid(tile.unit):
-							if tile.unit.damage > max_dmg:
-								max_dmg = tile.unit.damage
-								best_unit = tile.unit
-					target_unit = best_unit
-
 			if target_unit and is_instance_valid(target_unit) and target_unit.has_method("add_crit_stacks"):
 				target_unit.add_crit_stacks(3)
 				spawn_floating_text(target_unit.global_position, "Holy Power!", Color.GOLD)
 				return true
 			else:
-				print("No valid target for Holy Sword")
+				print("No valid target for Holy Sword. Please drag to a unit.")
 				return false
 	return false
 
