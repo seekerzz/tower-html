@@ -36,6 +36,23 @@ func _ready():
 	# Calculate min allowed zoom (maximum field of view)
 	calculate_min_allowed_zoom()
 
+	# Trigger tree generation based on view
+	var map_width_tiles = Constants.MAP_WIDTH
+	var map_height_tiles = Constants.MAP_HEIGHT
+	# View bounds calculation (approximate based on min allowed zoom)
+	# Assuming 0.3 zoom -> ~3x view
+	var visible_w = 24 # Fallback
+	var visible_h = 14
+	if min_allowed_zoom.x > 0:
+		var vp_size = get_viewport_rect().size
+		visible_w = int(vp_size.x / (min_allowed_zoom.x * Constants.TILE_SIZE)) + 4
+		visible_h = int(vp_size.y / (min_allowed_zoom.y * Constants.TILE_SIZE)) + 4
+
+	var half_w = int(visible_w / 2)
+	var half_h = int(visible_h / 2)
+	var view_rect = Rect2i(-half_w, -half_h, visible_w, visible_h)
+	grid_manager.setup_trees(view_rect)
+
 	setup_background()
 
 	# Initial camera position will be set by zoom_to_fit_board later or we call it now to verify

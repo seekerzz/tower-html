@@ -1,5 +1,24 @@
 extends Node2D
 
+func _ready():
+	# Dynamically add collision components
+	var area = Area2D.new()
+	area.name = "Area2D"
+	# Optional: Set collision layer/mask if needed, default is usually fine for interaction
+	add_child(area)
+
+	var shape = CollisionShape2D.new()
+	var rect = RectangleShape2D.new()
+	rect.size = Vector2(5 * Constants.TILE_SIZE, 5 * Constants.TILE_SIZE)
+	shape.shape = rect
+	area.add_child(shape)
+
+	# Ensure Sprite2D exists (though usually it's in the scene)
+	if not has_node("Sprite2D"):
+		var sprite = Sprite2D.new()
+		sprite.name = "Sprite2D"
+		add_child(sprite)
+
 func setup(width_in_tiles: int):
 	var config = Constants.ENVIRONMENT_CONFIG
 	var texture_path = config["tree_tile_set"]
@@ -11,7 +30,8 @@ func setup(width_in_tiles: int):
 		return
 
 	var texture = load(texture_path)
-	$Sprite2D.texture = texture
+	var sprite = $Sprite2D
+	sprite.texture = texture
 
 	var texture_width = texture.get_width()
 	var texture_height = texture.get_height()
@@ -24,9 +44,9 @@ func setup(width_in_tiles: int):
 		frame_width = 1.0
 
 	# Set up sprite frame
-	$Sprite2D.hframes = columns
-	$Sprite2D.vframes = config.get("tree_rows", 1)
-	$Sprite2D.frame = randi() % columns
+	sprite.hframes = columns
+	sprite.vframes = config.get("tree_rows", 1)
+	sprite.frame = randi() % columns
 
 	# Calculate Scale
 	# base_scale = (Constants.TILE_SIZE * width_in_tiles) / (texture_width / columns)
@@ -40,13 +60,16 @@ func setup(width_in_tiles: int):
 	# If centered=true (default), origin is center of sprite.
 	# We want bottom of sprite at (0,0) of the Tree node.
 	# The height of the sprite is texture_height / rows
-	var frame_height = texture_height / float($Sprite2D.vframes)
+	var frame_height = texture_height / float(sprite.vframes)
 
 	# Move sprite up by half its height so its bottom is at 0
-	$Sprite2D.position.y = -frame_height / 2.0
+	sprite.position.y = -frame_height / 2.0
 
 	# Random flip
 	if randf() > 0.5:
-		$Sprite2D.flip_h = true
+		sprite.flip_h = true
 
-	z_index = 200
+	# Removed z_index = 200 for Y-Sort
+
+func play_leaf_fx():
+	pass
