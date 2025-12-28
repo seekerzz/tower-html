@@ -41,3 +41,14 @@ const ENVIRONMENT_CONFIG = {
 	"tree_columns": 3,
 	"tree_rows": 3
 }
+
+const PLANT_CONFIG = {
+	"texture_path": "res://assets/images/UI/tile_flowers.png",
+	"rows": 4,
+	"columns": 6,
+	"min_count": 10,
+	"max_count": 20,
+	"exclusion_zone": (MAP_WIDTH * TILE_SIZE) / 2.0,
+	"min_size": TILE_SIZE * 0.25,
+	"max_size": TILE_SIZE * 0.5
+}
