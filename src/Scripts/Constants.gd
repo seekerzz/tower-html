@@ -29,6 +29,14 @@ const COLORS = {
 	"core": Color("#4a3045")
 }
 
+const ENVIRONMENT_CONFIG = {
+	"tree_atlas_path": "res://assets/Textures/Environment/placeholder_trees.png",
+	"atlas_columns": 3,
+	"atlas_rows": 3,
+	"random_offset_range": 15.0,
+	"fill_probability": 1.0
+}
+
 var CORE_TYPES = {}
 var BARRICADE_TYPES = {}
 var UNIT_TYPES = {}

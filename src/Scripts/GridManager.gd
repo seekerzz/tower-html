@@ -2,6 +2,7 @@ extends Node2D
 
 var TILE_SCENE = null
 const UNIT_SCENE = preload("res://src/Scenes/Game/Unit.tscn")
+const TREE_SCENE = preload("res://src/Scenes/Game/Tree.tscn")
 var BARRICADE_SCENE = null
 const GHOST_TILE_SCRIPT = preload("res://src/Scripts/UI/GhostTile.gd")
 const TILE_SIZE = 60
@@ -51,6 +52,7 @@ func _ready():
 		BARRICADE_SCENE = load("res://src/Scenes/Game/Barricade.tscn")
 	_init_astar()
 	create_initial_grid()
+	_setup_environment_decorations()
 	_create_map_boundaries()
 	# _generate_random_obstacles()
 
@@ -294,6 +296,42 @@ func _init_astar():
 			expansion_mode = false
 			clear_ghosts()
 		)
+
+func _setup_environment_decorations():
+	var config = Constants.ENVIRONMENT_CONFIG
+	var atlas_texture = load(config.tree_atlas_path)
+	if not atlas_texture:
+		printerr("Failed to load tree atlas: ", config.tree_atlas_path)
+		return # Or handle gracefully if file missing
+
+	var decoration_container = Node2D.new()
+	decoration_container.name = "EnvironmentDecorations"
+	decoration_container.z_index = 200
+	add_child(decoration_container)
+
+	var frame_width = atlas_texture.get_width() / config.atlas_columns
+	var frame_height = atlas_texture.get_height() / config.atlas_rows
+
+	for x in range(-5, 6):
+		for y in range(-5, 6):
+			if abs(x) == 5 or abs(y) == 5:
+				if randf() > config.fill_probability:
+					continue
+
+				var tree = TREE_SCENE.instantiate()
+				var col = randi() % int(config.atlas_columns)
+				var row = randi() % int(config.atlas_rows)
+				var region = Rect2(col * frame_width, row * frame_height, frame_width, frame_height)
+
+				var offset_x = randf_range(-config.random_offset_range, config.random_offset_range)
+				var offset_y = randf_range(-config.random_offset_range, config.random_offset_range)
+				var offset = Vector2(offset_x, offset_y)
+
+				var flip = randf() > 0.5
+
+				tree.position = Vector2(x * TILE_SIZE, y * TILE_SIZE)
+				tree.setup(atlas_texture, region, offset, flip)
+				decoration_container.add_child(tree)
 
 func create_initial_grid():
 	# Clear existing
