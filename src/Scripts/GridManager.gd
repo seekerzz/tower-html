@@ -56,6 +56,7 @@ func _ready():
 	create_initial_grid()
 	_create_map_boundaries()
 	_setup_tree_border()
+	_setup_plant_decorations()
 	_setup_border_visual()
 	# _generate_random_obstacles()
 
@@ -175,6 +176,89 @@ func _apply_jitter_to_path(points: PackedVector2Array, magnitude: float) -> Pack
 	new_points.append(new_points[0])
 
 	return new_points
+
+func _setup_plant_decorations(texture_path: String = Constants.PLANT_CONFIG.texture_path):
+	var config = Constants.PLANT_CONFIG
+	var exclusion_zone = config.exclusion_zone
+	var min_size = config.min_size
+	var max_size = config.max_size
+
+	# Create Plant Container
+	var plant_container = Node2D.new()
+	plant_container.name = "PlantContainer"
+	plant_container.z_index = -50
+	plant_container.y_sort_enabled = true
+	add_child(plant_container)
+
+	# Determine bounds
+	var bounds_rect = Rect2()
+	var main_game = GameManager.main_game
+	if main_game and main_game.background:
+		var bg = main_game.background
+		# Ensure we get global scale properly if nested, but background is child of main_game.
+		# However, grid_manager is also child of main_game (usually).
+		# We need local bounds relative to GridManager (which is at center 0,0 usually).
+		# Background is centered.
+		var tex_size = bg.texture.get_size()
+		var bg_scale = bg.scale
+		var w = tex_size.x * bg_scale.x
+		var h = tex_size.y * bg_scale.y
+		bounds_rect = Rect2(-w/2, -h/2, w, h)
+	else:
+		# Fallback to camera max visible range estimate or Map size * factor
+		var cam_w = 1280 # Default
+		var cam_h = 720
+		if main_game and main_game.camera:
+			# Estimate from zoom
+			var zoom = main_game.min_allowed_zoom
+			cam_w /= zoom.x
+			cam_h /= zoom.y
+
+		bounds_rect = Rect2(-cam_w/2, -cam_h/2, cam_w, cam_h)
+
+	var count = randi_range(config.min_count, config.max_count)
+
+	for i in range(count):
+		var attempts = 0
+		var pos = Vector2.ZERO
+		var valid = false
+
+		while attempts < 20:
+			attempts += 1
+			var x = randf_range(bounds_rect.position.x, bounds_rect.end.x)
+			var y = randf_range(bounds_rect.position.y, bounds_rect.end.y)
+
+			# Check exclusion zone
+			if abs(x) < exclusion_zone and abs(y) < exclusion_zone:
+				continue
+
+			pos = Vector2(x, y)
+			valid = true
+			break
+
+		if valid:
+			var sprite = Sprite2D.new()
+			sprite.texture = load(texture_path)
+			sprite.hframes = config.columns
+			sprite.vframes = config.rows
+			sprite.frame = randi() % (config.columns * config.rows)
+			sprite.flip_h = randf() > 0.5
+
+			# Calculate scale
+			# Texture single frame size
+			var frame_w = sprite.texture.get_width() / sprite.hframes
+			var frame_h = sprite.texture.get_height() / sprite.vframes
+			var frame_size = min(frame_w, frame_h) # Assume roughly square for scaling factor or use max?
+			# Use max dimension to fit within target size box
+			var target_size = randf_range(min_size, max_size)
+
+			# If frame_size is 0 avoid div by zero (unlikely)
+			if frame_size > 0:
+				var s = target_size / frame_size
+				sprite.scale = Vector2(s, s)
+
+			sprite.position = pos
+			plant_container.add_child(sprite)
 
 func _setup_tree_border():
 	print("Generating tree border (Refactored)...")
