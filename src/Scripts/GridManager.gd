@@ -16,6 +16,8 @@ var expansion_cost: int = 50 # Base cost
 var spawn_tiles: Array = [] # List of tiles (Vector2i) used as spawn points
 var active_territory_tiles: Array = [] # List of Tile instances that are unlocked or core
 
+@export var border_margin: float = 8.0
+
 # Interaction / Skill Targeting
 var placement_preview_cursor: Node2D = null
 var last_preview_frame: int = 0
@@ -54,6 +56,7 @@ func _ready():
 	create_initial_grid()
 	_create_map_boundaries()
 	_setup_tree_border()
+	_setup_border_visual()
 	# _generate_random_obstacles()
 
 func grid_to_local(grid_pos: Vector2i) -> Vector2:
@@ -61,6 +64,113 @@ func grid_to_local(grid_pos: Vector2i) -> Vector2:
 
 func local_to_grid(local_pos: Vector2) -> Vector2i:
 	return Vector2i(round(local_pos.x / TILE_SIZE), round(local_pos.y / TILE_SIZE))
+
+func _setup_border_visual():
+	var border_line = Line2D.new()
+	border_line.name = "BorderLine"
+	border_line.z_index = -10
+	border_line.width = 3.0
+	border_line.antialiased = true
+	border_line.default_color = Constants.COLORS.border_line
+	add_child(border_line)
+
+	var map_w = Constants.MAP_WIDTH * Constants.TILE_SIZE
+	var map_h = Constants.MAP_HEIGHT * Constants.TILE_SIZE
+
+	# Calculate bounds relative to (0,0)
+	var half_w = map_w / 2.0
+	var half_h = map_h / 2.0
+
+	var left = -half_w - border_margin
+	var right = half_w + border_margin
+	var top = -half_h - border_margin
+	var bottom = half_h + border_margin
+
+	var rect = Rect2(left, top, right - left, bottom - top)
+	var radius = 15.0 # Arbitrary visual radius for rounded corners
+
+	var points = _generate_rounded_rect_path(rect, radius)
+	points = _subdivide_path(points, 10.0)
+	points = _apply_jitter_to_path(points, 1.5)
+
+	border_line.points = points
+
+	# Width curve
+	var curve = Curve.new()
+	curve.add_point(Vector2(0, 1))
+	curve.add_point(Vector2(0.25, 0.9))
+	curve.add_point(Vector2(0.5, 1.2)) # Slight swell
+	curve.add_point(Vector2(0.75, 1.1))
+	curve.add_point(Vector2(1, 1))
+	border_line.width_curve = curve
+
+func _generate_rounded_rect_path(rect: Rect2, r: float) -> PackedVector2Array:
+	var points = PackedVector2Array()
+	var steps = 8 # Number of segments for corner
+
+	# Top Left Corner
+	var c_tl = rect.position + Vector2(r, r)
+	for i in range(steps + 1):
+		var angle = PI + (PI / 2.0 * i / steps)
+		points.append(c_tl + Vector2(cos(angle), sin(angle)) * r)
+
+	# Top Right Corner
+	var c_tr = rect.position + Vector2(rect.size.x - r, r)
+	for i in range(steps + 1):
+		var angle = 1.5 * PI + (PI / 2.0 * i / steps)
+		points.append(c_tr + Vector2(cos(angle), sin(angle)) * r)
+
+	# Bottom Right Corner
+	var c_br = rect.position + Vector2(rect.size.x - r, rect.size.y - r)
+	for i in range(steps + 1):
+		var angle = 0.0 + (PI / 2.0 * i / steps)
+		points.append(c_br + Vector2(cos(angle), sin(angle)) * r)
+
+	# Bottom Left Corner
+	var c_bl = rect.position + Vector2(r, rect.size.y - r)
+	for i in range(steps + 1):
+		var angle = 0.5 * PI + (PI / 2.0 * i / steps)
+		points.append(c_bl + Vector2(cos(angle), sin(angle)) * r)
+
+	# Close the loop
+	points.append(points[0])
+
+	return points
+
+func _subdivide_path(points: PackedVector2Array, min_segment_len: float) -> PackedVector2Array:
+	var new_points = PackedVector2Array()
+	for i in range(points.size() - 1):
+		var p1 = points[i]
+		var p2 = points[i+1]
+		var dist = p1.distance_to(p2)
+		var segments = ceil(dist / min_segment_len)
+
+		for j in range(segments):
+			var t = j / segments
+			new_points.append(p1.lerp(p2, t))
+
+	new_points.append(points[-1])
+	return new_points
+
+func _apply_jitter_to_path(points: PackedVector2Array, magnitude: float) -> PackedVector2Array:
+	var new_points = PackedVector2Array()
+	# Random seed for consistency if needed, but randf is fine.
+	for i in range(points.size()):
+		var p = points[i]
+
+		# Calculate Normal
+		var prev = points[(i - 1 + points.size()) % points.size()]
+		var next = points[(i + 1) % points.size()]
+		var tangent = (next - prev).normalized()
+		var normal = Vector2(-tangent.y, tangent.x)
+
+		var offset = normal * randf_range(-magnitude, magnitude)
+		new_points.append(p + offset)
+
+	# Ensure loop closure visually by copying start to end
+	new_points[-1] = new_points[0]
+
+	return new_points
 
 func _setup_tree_border():
 	print("Generating tree border (Refactored)...")
