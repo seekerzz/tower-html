@@ -179,98 +179,138 @@ func _apply_jitter_to_path(points: PackedVector2Array, magnitude: float) -> Pack
 func _setup_tree_border():
 	print("Generating tree border (Refactored)...")
 
-	# 1. Define Borders
-	# Map is centered at 0,0. Range -4 to 4 (Width 9).
-	# Borders are just outside: x=-5 (Left), x=5 (Right), y=-5 (Top), y=5 (Bottom).
-	# Length of border: The adjacent tiles are y=-4..4 (Length 9).
-	# We define start and direction.
-	var borders = {
-		"Left": {"start": Vector2i(-5, -4), "dir": Vector2i(0, 1), "length": 9, "fixed_x": -5, "axis": "y"},
-		"Right": {"start": Vector2i(5, -4), "dir": Vector2i(0, 1), "length": 9, "fixed_x": 5, "axis": "y"},
-		"Top": {"start": Vector2i(-4, -5), "dir": Vector2i(1, 0), "length": 9, "fixed_y": -5, "axis": "x"},
-		"Bottom": {"start": Vector2i(-4, 5), "dir": Vector2i(1, 0), "length": 9, "fixed_y": 5, "axis": "x"}
+	var T = float(Constants.TILE_SIZE)
+	# E_x, E_y: Edge coordinates. Map Width 9 -> 4.5 tiles from center.
+	var Ex = (Constants.MAP_WIDTH * T) / 2.0
+	var Ey = (Constants.MAP_HEIGHT * T) / 2.0
+
+	var O_max = T / 2.0
+	var G_max = T
+	var R_margin = T / 6.0
+
+	# 1. Define Boundaries based on requirements
+	# Note: User's "Top" is defined as Y in [Ey + R_margin, Ey + G_max] which is positive Y (Visual Bottom)
+	# We strictly follow the formulas provided.
+	var boundaries = {
+		"Top": {
+			# User Formula: Ey + R_margin to Ey + G_max. (Strict zero occlusion).
+			"y_range": Vector2(Ey + R_margin, Ey + G_max),
+			"x_range": Vector2(-Ex, Ex),
+			"axis": "x"
+		},
+		"Bottom": {
+			# Opposite side (Visual Top): -Ey.
+			# Occlusion O_max (overlap), Gap G_max.
+			"y_range": Vector2(-Ey - G_max, -Ey + O_max),
+			"x_range": Vector2(-Ex, Ex),
+			"axis": "x"
+		},
+		"Left": {
+			# Left side: -Ex.
+			"x_range": Vector2(-Ex - G_max, -Ex + O_max),
+			"y_range": Vector2(-Ey, Ey),
+			"axis": "y"
+		},
+		"Right": {
+			# Right side: Ex.
+			"x_range": Vector2(Ex - O_max, Ex + G_max),
+			"y_range": Vector2(-Ey, Ey),
+			"axis": "y"
+		}
 	}
 
-	# 2. Parameters
-	var total_trees = randi_range(3, 6)
-	var trees_to_place = []
+	# 2. Distribution Logic
+	# Total N in [4, 6]
+	var total_n = randi_range(4, 6)
+	var assigned_sides = ["Top", "Bottom", "Left", "Right"] # Mandatory: 1 per side
 
-	# Mandatory Quota
-	trees_to_place.append("Left")
-	trees_to_place.append("Right")
-	trees_to_place.append("Bottom")
+	# Remainder
+	var remainder = total_n - 4
+	var side_keys = ["Top", "Bottom", "Left", "Right"]
+	for i in range(remainder):
+		assigned_sides.append(side_keys.pick_random())
 
-	# Remaining Quota
-	var remaining_count = total_trees - 3
-	var all_sides = ["Left", "Right", "Top", "Bottom"]
-	for i in range(remaining_count):
-		trees_to_place.append(all_sides.pick_random())
+	# 3. Placement Loop
+	var placed_trees_rects = [] # Array[Rect2]
+	var occupied_grids = {} # Key: "x,y" (String)
 
-	# Tracking placed trees to avoid overlap
-	# We can store occupied grid positions on the borders
-	var occupied_positions = {} # Key: "x,y", Value: true
-
-	for side_name in trees_to_place:
-		var border = borders[side_name]
+	for side in assigned_sides:
+		var config = boundaries[side]
 		var placed = false
 		var attempts = 0
-		var max_attempts = 10
+		var max_attempts = 100
 
 		while !placed and attempts < max_attempts:
 			attempts += 1
 
-			# Width Constraints
-			var w = 0
-			if side_name == "Bottom":
-				w = 2
+			# Determine random size (Pixel scale)
+			# Assuming a variance in tree size. Let's say 1.5 to 2.5 tiles width.
+			# User specified W=H.
+			var w_tiles = randf_range(1.5, 2.5)
+			var size_px = w_tiles * T
+			var half_size = size_px / 2.0
+
+			# Pick Random Position
+			var pos_x = 0.0
+			var pos_y = 0.0
+
+			if config.axis == "x":
+				pos_x = randf_range(config.x_range.x, config.x_range.y)
+				pos_y = randf_range(config.y_range.x, config.y_range.y)
 			else:
-				w = randi_range(2, 4)
+				pos_x = randf_range(config.x_range.x, config.x_range.y)
+				pos_y = randf_range(config.y_range.x, config.y_range.y)
 
-			# Pick random position along the border
-			# Available length is 9. Valid indices are 0 to (9 - w).
-			var max_index = border.length - w
-			if max_index < 0:
-				print("Warning: Tree width too big for border")
+			var pos = Vector2(pos_x, pos_y)
+
+			# Constraint A: Corner Exclusion
+			# |x| > (Ex - T) AND |y| > (Ey - T)
+			if abs(pos.x) > (Ex - T) and abs(pos.y) > (Ey - T):
 				continue
 
-			var start_index = randi_range(0, max_index)
+			# Constraint B: Grid Uniqueness
+			# "Logically forbid placing two trees in the same 'chessboard grid'"
+			var grid_pos = local_to_grid(pos)
+			var grid_key = "%d,%d" % [grid_pos.x, grid_pos.y]
+			if occupied_grids.has(grid_key):
+				continue
 
-			# Check Overlap
-			var overlap = false
-			var candidate_tiles = []
-			for i in range(w):
-				var pos = border.start + border.dir * (start_index + i)
-				var key = "%d,%d" % [pos.x, pos.y]
-				if occupied_positions.has(key):
-					overlap = true
+			# Constraint C: Visual Overlap
+			# Calculate proposed Rect2.
+			# Tree anchor (global pos) is Bottom-Center.
+			# Rect Top-Left: (x - w/2, y - h)
+			# Rect Size: (w, h) where w=h=size_px
+			var candidate_rect = Rect2(pos.x - half_size, pos.y - size_px, size_px, size_px)
+
+			var overlap_fail = false
+			var self_area = size_px * size_px
+			# Overlap area limit: <= 1/3 of self area
+			var limit_area = self_area / 3.0
+
+			for other_rect in placed_trees_rects:
+				var intersection = candidate_rect.intersection(other_rect)
+				# If no intersection, intersection returns a Rect2 with 0 area usually or we check area
+				if intersection.get_area() > limit_area:
+					overlap_fail = true
 					break
-				candidate_tiles.append(pos)
 
-			if overlap:
+			if overlap_fail:
 				continue
 
-			# Place Tree
+			# Place Valid Tree
 			placed = true
-			for pos in candidate_tiles:
-				occupied_positions["%d,%d" % [pos.x, pos.y]] = true
+			occupied_grids[grid_key] = true
+			placed_trees_rects.append(candidate_rect)
 
 			var tree = TREE_SCENE.instantiate()
-			tree.setup(w)
-			tree.z_index = 200 # Visual requirement
 			add_child(tree)
+			tree.setup(size_px)
+			tree.position = pos
 
-			# Position Calculation
-			# The tree is anchored at the center of its width.
-			# grid_to_local gives center of tile.
-			# First tile pos:
-			var first_tile_grid = candidate_tiles[0]
-			var first_tile_world = grid_to_local(first_tile_grid)
-
-			# Offset logic from original code: "center offset = (w - 1) * 0.5"
-			var center_offset_tiles = (w - 1) * 0.5
-			var offset_world = Vector2(border.dir.x, border.dir.y) * center_offset_tiles * TILE_SIZE
-
-			tree.position = first_tile_world + offset_world
+			# Z-Index: Y smaller -> Z higher
+			# We pick a base Z (e.g., 4000) and subtract Y.
+			# If Y=300, Z=3700. If Y=-300, Z=4300.
+			tree.z_index = 4000 - int(pos.y)
 
 func _create_map_boundaries():
 	var border_body = StaticBody2D.new()
