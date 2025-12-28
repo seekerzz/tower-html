@@ -533,7 +533,8 @@ func check_traps(delta):
 
 func check_unit_interactions(delta):
 	if !GameManager.grid_manager: return
-	var tile_key = GameManager.grid_manager.get_tile_key(int(round(global_position.x / GameManager.grid_manager.TILE_SIZE)), int(round(global_position.y / GameManager.grid_manager.TILE_SIZE)))
+	var grid_pos = GameManager.grid_manager.local_to_grid(global_position)
+	var tile_key = GameManager.grid_manager.get_tile_key(grid_pos.x, grid_pos.y)
 	if GameManager.grid_manager.tiles.has(tile_key):
 		var tile = GameManager.grid_manager.tiles[tile_key]
 		var unit = tile.unit

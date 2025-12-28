@@ -56,62 +56,107 @@ func _ready():
 	_setup_tree_border()
 	# _generate_random_obstacles()
 
+func grid_to_local(grid_pos: Vector2i) -> Vector2:
+	return Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE)
+
+func local_to_grid(local_pos: Vector2) -> Vector2i:
+	return Vector2i(round(local_pos.x / TILE_SIZE), round(local_pos.y / TILE_SIZE))
+
 func _setup_tree_border():
-	print("Generating tree border...")
-	var sides = [
-		{"start": Vector2i(-4, -5), "dir": Vector2i(1, 0), "len": 9, "name": "Top"},
-		{"start": Vector2i(-4, 5), "dir": Vector2i(1, 0), "len": 9, "name": "Bottom"},
-		{"start": Vector2i(-5, -4), "dir": Vector2i(0, 1), "len": 9, "name": "Left"},
-		{"start": Vector2i(5, -4), "dir": Vector2i(0, 1), "len": 9, "name": "Right"}
-	]
+	print("Generating tree border (Refactored)...")
 
-	for side in sides:
-		var current_dist = 0
-		var total_width = 0
-		while current_dist < side.len:
-			var remaining = side.len - current_dist
-			var w = randi_range(1, 3)
-			if w > remaining:
-				w = remaining
+	# 1. Define Borders
+	# Map is centered at 0,0. Range -4 to 4 (Width 9).
+	# Borders are just outside: x=-5 (Left), x=5 (Right), y=-5 (Top), y=5 (Bottom).
+	# Length of border: The adjacent tiles are y=-4..4 (Length 9).
+	# We define start and direction.
+	var borders = {
+		"Left": {"start": Vector2i(-5, -4), "dir": Vector2i(0, 1), "length": 9, "fixed_x": -5, "axis": "y"},
+		"Right": {"start": Vector2i(5, -4), "dir": Vector2i(0, 1), "length": 9, "fixed_x": 5, "axis": "y"},
+		"Top": {"start": Vector2i(-4, -5), "dir": Vector2i(1, 0), "length": 9, "fixed_y": -5, "axis": "x"},
+		"Bottom": {"start": Vector2i(-4, 5), "dir": Vector2i(1, 0), "length": 9, "fixed_y": 5, "axis": "x"}
+	}
 
-			total_width += w
+	# 2. Parameters
+	var total_trees = randi_range(3, 6)
+	var trees_to_place = []
 
-			# Create Tree
+	# Mandatory Quota
+	trees_to_place.append("Left")
+	trees_to_place.append("Right")
+	trees_to_place.append("Bottom")
+
+	# Remaining Quota
+	var remaining_count = total_trees - 3
+	var all_sides = ["Left", "Right", "Top", "Bottom"]
+	for i in range(remaining_count):
+		trees_to_place.append(all_sides.pick_random())
+
+	# Tracking placed trees to avoid overlap
+	# We can store occupied grid positions on the borders
+	var occupied_positions = {} # Key: "x,y", Value: true
+
+	for side_name in trees_to_place:
+		var border = borders[side_name]
+		var placed = false
+		var attempts = 0
+		var max_attempts = 10
+
+		while !placed and attempts < max_attempts:
+			attempts += 1
+
+			# Width Constraints
+			var w = 0
+			if side_name == "Bottom":
+				w = 2
+			else:
+				w = randi_range(2, 4)
+
+			# Pick random position along the border
+			# Available length is 9. Valid indices are 0 to (9 - w).
+			var max_index = border.length - w
+			if max_index < 0:
+				print("Warning: Tree width too big for border")
+				continue
+
+			var start_index = randi_range(0, max_index)
+
+			# Check Overlap
+			var overlap = false
+			var candidate_tiles = []
+			for i in range(w):
+				var pos = border.start + border.dir * (start_index + i)
+				var key = "%d,%d" % [pos.x, pos.y]
+				if occupied_positions.has(key):
+					overlap = true
+					break
+				candidate_tiles.append(pos)
+
+			if overlap:
+				continue
+
+			# Place Tree
+			placed = true
+			for pos in candidate_tiles:
+				occupied_positions["%d,%d" % [pos.x, pos.y]] = true
+
 			var tree = TREE_SCENE.instantiate()
 			tree.setup(w)
+			tree.z_index = 200 # Visual requirement
 			add_child(tree)
 
 			# Position Calculation
-			# "x_start + (w-1) * 0.5" logic applied to direction
+			# The tree is anchored at the center of its width.
+			# grid_to_local gives center of tile.
+			# First tile pos:
+			var first_tile_grid = candidate_tiles[0]
+			var first_tile_world = grid_to_local(first_tile_grid)
 
-			var start_pos_grid = side.start + side.dir * current_dist
-			# This is the grid coordinate of the first tile occupied by the tree.
-
-			# The tree center should be offset by (w-1)/2.0 along direction from the first tile center.
+			# Offset logic from original code: "center offset = (w - 1) * 0.5"
 			var center_offset_tiles = (w - 1) * 0.5
+			var offset_world = Vector2(border.dir.x, border.dir.y) * center_offset_tiles * TILE_SIZE
 
-			# World Position
-			# GridManager tiles are at x * TILE_SIZE, y * TILE_SIZE
-			# So we take the start_pos_grid world pos and add the offset.
-
-			var start_world_pos = Vector2(start_pos_grid.x * TILE_SIZE, start_pos_grid.y * TILE_SIZE)
-			var offset_world = Vector2(side.dir.x, side.dir.y) * center_offset_tiles * TILE_SIZE
-
-			tree.position = start_world_pos + offset_world
-
-			current_dist += w
-
-		# print("Side ", side.name, " Total Width: ", total_width)
-		if total_width != 9:
-			printerr("Verification Failed: Side ", side.name, " width sum is ", total_width, " expected 9")
-
-	# Corners
-	var corners = [Vector2i(-5, -5), Vector2i(5, -5), Vector2i(-5, 5), Vector2i(5, 5)]
-	for corner in corners:
-		var tree = TREE_SCENE.instantiate()
-		tree.setup(1)
-		add_child(tree)
-		tree.position = Vector2(corner.x * TILE_SIZE, corner.y * TILE_SIZE)
+			tree.position = first_tile_world + offset_world
 
 func _create_map_boundaries():
 	var border_body = StaticBody2D.new()
@@ -172,7 +217,7 @@ func _process(_delta):
 		var mouse_pos = get_local_mouse_position()
 		var gx = round(mouse_pos.x / TILE_SIZE)
 		var gy = round(mouse_pos.y / TILE_SIZE)
-		skill_preview_node.position = Vector2(gx * TILE_SIZE, gy * TILE_SIZE)
+		skill_preview_node.position = grid_to_local(Vector2i(gx, gy))
 
 func _input(event):
 	match interaction_state:
@@ -435,7 +480,7 @@ func create_tile(x: int, y: int, type: String = "normal", state: String = "locke
 	# Explicitly call set_state to ensure visuals are updated
 	tile.set_state(state)
 
-	tile.position = Vector2(x * TILE_SIZE, y * TILE_SIZE)
+	tile.position = grid_to_local(Vector2i(x, y))
 	add_child(tile)
 	tiles[key] = tile
 
@@ -560,7 +605,8 @@ func get_nav_path(start_pos: Vector2, end_pos: Vector2) -> PackedVector2Array:
 func get_spawn_points() -> Array[Vector2]:
 	var points: Array[Vector2] = []
 	for tile_pos in spawn_tiles:
-		var local_pos = Vector2(tile_pos.x * TILE_SIZE, tile_pos.y * TILE_SIZE)
+		# Use grid_to_local
+		var local_pos = grid_to_local(tile_pos)
 		points.append(to_global(local_pos))
 	return points
 
@@ -568,7 +614,7 @@ func get_tile_key(x: int, y: int) -> String:
 	return "%d,%d" % [x, y]
 
 func get_world_pos_from_grid(grid_pos: Vector2i) -> Vector2:
-	return to_global(Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE))
+	return to_global(grid_to_local(grid_pos))
 
 # --- Unit Logic ---
 
@@ -590,7 +636,12 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 		return false
 
 	add_child(unit)
-	unit.position = tile.position + Vector2((w-1) * TILE_SIZE * 0.5, (h-1) * TILE_SIZE * 0.5)
+	# unit.position = tile.position + Vector2((w-1) * TILE_SIZE * 0.5, (h-1) * TILE_SIZE * 0.5)
+	# tile.position is already derived from grid_to_local(x,y).
+	# We can use grid_to_local directly on the tile, but tile.position is fine.
+	# To stay consistent with "using grid_to_local in place_unit", we can do:
+	unit.position = grid_to_local(Vector2i(x,y)) + Vector2((w-1) * TILE_SIZE * 0.5, (h-1) * TILE_SIZE * 0.5)
+
 	unit.start_position = unit.position
 	unit.grid_pos = Vector2i(x, y)
 
@@ -650,6 +701,11 @@ func enter_skill_targeting(unit: Node2D):
 		for y in range(-1, 2):
 			var rect = ColorRect.new()
 			rect.size = Vector2(TILE_SIZE, TILE_SIZE)
+			# Replaced manual Vector2 calculation with grid_to_local logic offset?
+			# Or just utilize TILE_SIZE. grid_to_local is for grid coordinates (integers).
+			# Here we are drawing relative to (0,0) of the preview node.
+			# But the preview node position is set using grid_to_local in _process.
+			# So local children offsets are fine to use TILE_SIZE directly.
 			rect.position = Vector2(x * TILE_SIZE, y * TILE_SIZE) - Vector2(TILE_SIZE/2.0, TILE_SIZE/2.0)
 			rect.color = Color(0, 1, 0, 0.4)
 			rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -749,7 +805,10 @@ func _spawn_interaction_highlight(grid_pos: Vector2i, color: Color = Color(1, 0.
 
 	highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(highlight)
-	highlight.position = Vector2(grid_pos.x * TILE_SIZE, grid_pos.y * TILE_SIZE) - Vector2(TILE_SIZE, TILE_SIZE) / 2
+
+	# Use grid_to_local
+	var local_pos = grid_to_local(grid_pos)
+	highlight.position = local_pos - Vector2(TILE_SIZE, TILE_SIZE) / 2
 	interaction_highlights.append(highlight)
 
 func _on_selection_overlay_draw():
@@ -946,7 +1005,9 @@ func _move_unit_internal(unit, new_x, new_y):
 	_set_tiles_occupied(new_x, new_y, w, h, unit)
 
 	var tile = tiles[get_tile_key(new_x, new_y)]
-	unit.position = tile.position + Vector2((w-1) * TILE_SIZE * 0.5, (h-1) * TILE_SIZE * 0.5)
+	# Use grid_to_local for unit position update
+	unit.position = grid_to_local(Vector2i(new_x, new_y)) + Vector2((w-1) * TILE_SIZE * 0.5, (h-1) * TILE_SIZE * 0.5)
+
 	unit.start_position = unit.position
 
 	# Clear old interaction target when moved
@@ -1132,7 +1193,11 @@ func spawn_expansion_ghosts():
 				var ghost = GHOST_TILE_SCRIPT.new()
 				add_child(ghost)
 				ghost.setup(tile.x, tile.y)
-				ghost.position = tile.position - (ghost.custom_minimum_size / 2)
+
+				# Use grid_to_local for ghost position
+				var local_pos = grid_to_local(Vector2i(tile.x, tile.y))
+				ghost.position = local_pos - (ghost.custom_minimum_size / 2)
+
 				# ghost.clicked.connect(on_ghost_clicked) # GhostTile calls grid_manager.on_ghost_clicked directly
 				ghost_tiles.append(ghost)
 
@@ -1170,7 +1235,9 @@ func on_ghost_clicked(x, y):
 			spawn_expansion_ghosts()
 	else:
 		# Feedback for not enough gold?
-		GameManager.spawn_floating_text(Vector2(x*TILE_SIZE, y*TILE_SIZE), "Need Gold!", Color.RED)
+		# Use grid_to_local
+		var world_pos = get_world_pos_from_grid(Vector2i(x,y))
+		GameManager.spawn_floating_text(world_pos, "Need Gold!", Color.RED)
 
 func get_closest_unlocked_tile(world_pos: Vector2) -> Node2D:
 	if active_territory_tiles.is_empty():
