@@ -2,6 +2,7 @@ extends Node2D
 
 var TILE_SCENE = null
 const UNIT_SCENE = preload("res://src/Scenes/Game/Unit.tscn")
+const TREE_SCENE = preload("res://src/Scenes/Game/Tree.tscn")
 var BARRICADE_SCENE = null
 const GHOST_TILE_SCRIPT = preload("res://src/Scripts/UI/GhostTile.gd")
 const TILE_SIZE = 60
@@ -51,8 +52,74 @@ func _ready():
 		BARRICADE_SCENE = load("res://src/Scenes/Game/Barricade.tscn")
 	_init_astar()
 	create_initial_grid()
+	_setup_tree_border()
 	_create_map_boundaries()
 	# _generate_random_obstacles()
+
+func _setup_tree_border():
+	# Coordinate range: [-4, 4] for board.
+	# Trees at max(|x|, |y|) = 5.
+	# Corners: (5, 5), (5, -5), (-5, 5), (-5, -5) fixed width 1.
+
+	# Place Corners
+	var corners = [
+		Vector2i(-5, -5), Vector2i(5, -5),
+		Vector2i(-5, 5), Vector2i(5, 5)
+	]
+
+	for corner in corners:
+		_spawn_tree_at(corner.x, corner.y, 1)
+
+	# Edges (length 9 each)
+	# Top: y = -5, x from -4 to 4
+	# Bottom: y = 5, x from -4 to 4
+	# Left: x = -5, y from -4 to 4
+	# Right: x = 5, y from -4 to 4
+
+	_fill_tree_edge_horizontal(-5, -4, 4) # Top
+	_fill_tree_edge_horizontal(5, -4, 4)  # Bottom
+	_fill_tree_edge_vertical(-5, -4, 4)   # Left
+	_fill_tree_edge_vertical(5, -4, 4)    # Right
+
+func _fill_tree_edge_horizontal(y: int, x_start: int, x_end: int):
+	var current_x = x_start
+	while current_x <= x_end:
+		var remaining = x_end - current_x + 1
+		var w = randi_range(1, 3)
+		if w > remaining:
+			w = remaining
+
+		# Center of the tree block
+		# x range: [current_x, current_x + w - 1]
+		# center x: current_x + (w - 1) * 0.5
+
+		var center_x = float(current_x) + float(w - 1) * 0.5
+		_spawn_tree_at_pos(Vector2(center_x * TILE_SIZE, y * TILE_SIZE), w)
+
+		current_x += w
+
+func _fill_tree_edge_vertical(x: int, y_start: int, y_end: int):
+	var current_y = y_start
+	while current_y <= y_end:
+		var remaining = y_end - current_y + 1
+		var w = randi_range(1, 3)
+		if w > remaining:
+			w = remaining
+
+		var center_y = float(current_y) + float(w - 1) * 0.5
+		_spawn_tree_at_pos(Vector2(x * TILE_SIZE, center_y * TILE_SIZE), w)
+
+		current_y += w
+
+func _spawn_tree_at(gx: int, gy: int, width: int):
+	var pos = Vector2(gx * TILE_SIZE, gy * TILE_SIZE)
+	_spawn_tree_at_pos(pos, width)
+
+func _spawn_tree_at_pos(pos: Vector2, width: int):
+	var tree = TREE_SCENE.instantiate()
+	add_child(tree)
+	tree.setup(width)
+	tree.position = pos
 
 func _create_map_boundaries():
 	var border_body = StaticBody2D.new()
