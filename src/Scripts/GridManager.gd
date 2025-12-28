@@ -2,6 +2,7 @@ extends Node2D
 
 var TILE_SCENE = null
 const UNIT_SCENE = preload("res://src/Scenes/Game/Unit.tscn")
+const TREE_SCENE = preload("res://src/Scenes/Game/Tree.tscn")
 var BARRICADE_SCENE = null
 const GHOST_TILE_SCRIPT = preload("res://src/Scripts/UI/GhostTile.gd")
 const TILE_SIZE = 60
@@ -53,6 +54,7 @@ func _ready():
 	create_initial_grid()
 	_create_map_boundaries()
 	# _generate_random_obstacles()
+	_setup_tree_border()
 
 func _create_map_boundaries():
 	var border_body = StaticBody2D.new()
@@ -303,6 +305,14 @@ func create_initial_grid():
 	spawn_tiles.clear()
 	active_territory_tiles.clear()
 
+	# Clear existing trees if any (though currently they are children of GridManager, so queue_free() GridManager would kill them, but re-initing grid might not clear them if they are not tracked)
+	# However, _setup_tree_border attaches them to GridManager. If we call create_initial_grid multiple times, we might stack trees.
+	# But typically GridManager is created once or cleared fully.
+	# If this function is called on restart, we should clear trees.
+	for child in get_children():
+		if child.name.begins_with("Tree_"):
+			child.queue_free()
+
 	var half_w = Constants.MAP_WIDTH / 2
 	var half_h = Constants.MAP_HEIGHT / 2
 
@@ -366,6 +376,51 @@ func create_initial_grid():
 			create_tile(x, y, type, state)
 
 	print("Total Spawn Tiles: ", spawn_tiles.size())
+
+func _setup_tree_border(theme_id: String = "default"):
+	var config = Constants.get_theme_config(theme_id)
+	var atlas_path = config.tree_atlas_path
+
+	if not ResourceLoader.exists(atlas_path):
+		print("Warning: Tree atlas not found at ", atlas_path)
+		return
+
+	var texture = load(atlas_path)
+	var cols = config.atlas_columns
+	var rows = config.atlas_rows
+
+	var frame_width = texture.get_width() / cols
+	var frame_height = texture.get_height() / rows
+
+	for x in range(-5, 6):
+		for y in range(-5, 6):
+			if abs(x) == 5 or abs(y) == 5:
+				var tree = TREE_SCENE.instantiate()
+				tree.name = "Tree_%d_%d" % [x, y]
+				add_child(tree)
+
+				# Position
+				var pos_x = x * TILE_SIZE
+				var pos_y = y * TILE_SIZE
+
+				# Random offset
+				var offset_range = config.random_offset_px
+				pos_x += randf_range(-offset_range, offset_range)
+				pos_y += randf_range(-offset_range, offset_range)
+
+				tree.position = Vector2(pos_x, pos_y)
+				tree.z_index = 200
+
+				# Random frame from atlas
+				var col = randi() % cols
+				var row = randi() % rows
+				var region = Rect2(col * frame_width, row * frame_height, frame_width, frame_height)
+
+				tree.setup(texture, region)
+
+				# Random flip
+				if randf() > 0.5:
+					tree.scale.x *= -1
 
 func create_tile(x: int, y: int, type: String = "normal", state: String = "locked_inner"):
 	var key = get_tile_key(x, y)
