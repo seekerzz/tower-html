@@ -26,7 +26,8 @@ const COLORS = {
 	"locked_inner": Color("#252535"),
 	"locked_outer": Color("#151520"),
 	"spawn_point": Color("#451515"),
-	"core": Color("#4a3045")
+	"core": Color("#4a3045"),
+	"border_line": Color("#4a4a58")
 }
 
 var CORE_TYPES = {}
