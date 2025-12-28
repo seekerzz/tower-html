@@ -34,3 +34,11 @@ var BARRICADE_TYPES = {}
 var UNIT_TYPES = {}
 var TRAITS = []
 var ENEMY_VARIANTS = {}
+
+const ENVIRONMENT_CONFIG = {
+	"tree_atlas_path": "res://assets/Textures/Environment/placeholder_trees.png",
+	"atlas_columns": 3,
+	"atlas_rows": 3,
+	"random_offset_range": 15.0,
+	"fill_probability": 1.0
+}
