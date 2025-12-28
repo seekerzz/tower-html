@@ -57,7 +57,20 @@ func _ready():
 	# _generate_random_obstacles()
 
 func _setup_tree_border():
-	print("Generating tree border...")
+	print("Generating tree border (Randomized)...")
+
+	# Create or get Tree Container
+	var tree_container = get_node_or_null("TreeContainer")
+	if not tree_container:
+		tree_container = Node2D.new()
+		tree_container.name = "TreeContainer"
+		tree_container.y_sort_enabled = true
+		add_child(tree_container)
+
+	# Clear existing trees if any (for safety/reload)
+	for child in tree_container.get_children():
+		child.queue_free()
+
 	var sides = [
 		{"start": Vector2i(-4, -5), "dir": Vector2i(1, 0), "len": 9, "name": "Top"},
 		{"start": Vector2i(-4, 5), "dir": Vector2i(1, 0), "len": 9, "name": "Bottom"},
@@ -65,53 +78,94 @@ func _setup_tree_border():
 		{"start": Vector2i(5, -4), "dir": Vector2i(0, 1), "len": 9, "name": "Right"}
 	]
 
-	for side in sides:
-		var current_dist = 0
-		var total_width = 0
-		while current_dist < side.len:
-			var remaining = side.len - current_dist
-			var w = randi_range(1, 3)
-			if w > remaining:
-				w = remaining
+	var occupied_positions = {} # Dictionary to track occupied grid positions
 
-			total_width += w
+	var total_trees = randi_range(2, 5)
+	print("Target tree count: ", total_trees)
 
-			# Create Tree
+	for i in range(total_trees):
+		var placed = false
+		for attempt in range(10):
+			# Pick random side
+			var side = sides.pick_random()
+
+			# Pick random width
+			var w = randi_range(2, 4)
+
+			# Ensure it fits in the side
+			if w > side.len:
+				continue
+
+			var max_offset = side.len - w
+			var start_offset = randi_range(0, max_offset)
+
+			# Check collision
+			var conflict = false
+			var current_check_positions = []
+			for k in range(w):
+				var pos = side.start + side.dir * (start_offset + k)
+				if occupied_positions.has(pos):
+					conflict = true
+					break
+				current_check_positions.append(pos)
+
+			if conflict:
+				continue
+
+			# Place Tree
+			for pos in current_check_positions:
+				occupied_positions[pos] = true
+
 			var tree = TREE_SCENE.instantiate()
+			tree_container.add_child(tree)
+
 			tree.setup(w)
-			add_child(tree)
 
-			# Position Calculation
-			# "x_start + (w-1) * 0.5" logic applied to direction
-
-			var start_pos_grid = side.start + side.dir * current_dist
-			# This is the grid coordinate of the first tile occupied by the tree.
-
-			# The tree center should be offset by (w-1)/2.0 along direction from the first tile center.
+			# Calculate Position
+			var start_grid_pos = side.start + side.dir * start_offset
 			var center_offset_tiles = (w - 1) * 0.5
-
-			# World Position
-			# GridManager tiles are at x * TILE_SIZE, y * TILE_SIZE
-			# So we take the start_pos_grid world pos and add the offset.
-
-			var start_world_pos = Vector2(start_pos_grid.x * TILE_SIZE, start_pos_grid.y * TILE_SIZE)
+			var start_world_pos = Vector2(start_grid_pos.x * TILE_SIZE, start_grid_pos.y * TILE_SIZE)
 			var offset_world = Vector2(side.dir.x, side.dir.y) * center_offset_tiles * TILE_SIZE
-
 			tree.position = start_world_pos + offset_world
 
-			current_dist += w
+			# Visual Randomization
+			var sprite = tree.get_node("Sprite2D")
+			var texture = sprite.texture
+			if texture:
+				var columns = Constants.ENVIRONMENT_CONFIG["tree_columns"]
+				if columns <= 0: columns = 1
+				var frame_width = texture.get_width() / float(columns)
+				if frame_width == 0: frame_width = 1.0
+				var base_scale = (Constants.TILE_SIZE * w) / frame_width
 
-		# print("Side ", side.name, " Total Width: ", total_width)
-		if total_width != 9:
-			printerr("Verification Failed: Side ", side.name, " width sum is ", total_width, " expected 9")
+				var random_s = randf_range(0.9, 1.1)
+				var final_scale = base_scale * random_s
+				tree.scale = Vector2(final_scale, final_scale)
 
-	# Corners
-	var corners = [Vector2i(-5, -5), Vector2i(5, -5), Vector2i(-5, 5), Vector2i(5, 5)]
-	for corner in corners:
-		var tree = TREE_SCENE.instantiate()
-		tree.setup(1)
-		add_child(tree)
-		tree.position = Vector2(corner.x * TILE_SIZE, corner.y * TILE_SIZE)
+				# Flip
+				sprite.flip_h = [true, false].pick_random()
+
+			# Z-Index reset for Y-sort
+			tree.z_index = 0
+
+			# Disable Interactions
+			_disable_interaction_recursive(tree)
+
+			placed = true
+			break
+
+		if not placed:
+			print("Could not place tree ", i, " after 10 attempts.")
+
+func _disable_interaction_recursive(node):
+	if node is CollisionShape2D or node is CollisionPolygon2D:
+		node.disabled = true
+
+	if node is Control:
+		node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	for child in node.get_children():
+		_disable_interaction_recursive(child)
 
 func _create_map_boundaries():
 	var border_body = StaticBody2D.new()
