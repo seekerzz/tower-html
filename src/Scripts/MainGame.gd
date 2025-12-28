@@ -139,6 +139,21 @@ func calculate_min_allowed_zoom():
 	min_allowed_zoom = Vector2(final_zoom, final_zoom)
 	# print("Calculated Min Allowed Zoom: ", min_allowed_zoom)
 
+	# Setup trees with calculated view bounds approx
+	# Viewport size divided by zoom gives world size
+	var world_w = viewport_size.x / final_zoom
+	var world_h = visible_height / final_zoom
+
+	# Convert to grid units (approx)
+	var gx = int(world_w / Constants.TILE_SIZE / 2) + 2 # Add buffer
+	var gy = int(world_h / Constants.TILE_SIZE / 2) + 2
+
+	# Ensure it covers at least requirement
+	gx = max(gx, 12)
+	gy = max(gy, 6)
+
+	grid_manager.setup_trees(Rect2i(-gx, -gy, gx * 2, gy * 2))
+
 func _unhandled_input(event):
 	if event is InputEventMouseMotion:
 		if event.button_mask == MOUSE_BUTTON_MASK_RIGHT:

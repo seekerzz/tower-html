@@ -39,6 +39,7 @@ var astar_grid: AStarGrid2D
 signal grid_updated
 
 func _ready():
+	y_sort_enabled = true
 	GameManager.grid_manager = self
 
 	selection_overlay = Node2D.new()
@@ -53,65 +54,78 @@ func _ready():
 	_init_astar()
 	create_initial_grid()
 	_create_map_boundaries()
-	_setup_tree_border()
 	# _generate_random_obstacles()
 
-func _setup_tree_border():
-	print("Generating tree border...")
-	var sides = [
-		{"start": Vector2i(-4, -5), "dir": Vector2i(1, 0), "len": 9, "name": "Top"},
-		{"start": Vector2i(-4, 5), "dir": Vector2i(1, 0), "len": 9, "name": "Bottom"},
-		{"start": Vector2i(-5, -4), "dir": Vector2i(0, 1), "len": 9, "name": "Left"},
-		{"start": Vector2i(5, -4), "dir": Vector2i(0, 1), "len": 9, "name": "Right"}
-	]
+func setup_trees(view_bounds: Rect2i):
+	var occupied_rects: Array[Rect2i] = []
+	# Initialize with board core area to prevent overlap
+	occupied_rects.append(Rect2i(-5, -5, 11, 11))
 
-	for side in sides:
-		var current_dist = 0
-		var total_width = 0
-		while current_dist < side.len:
-			var remaining = side.len - current_dist
-			var w = randi_range(1, 3)
-			if w > remaining:
-				w = remaining
+	# Phase 1: Border Trees
+	var num_border = randi_range(3, 5)
+	for i in range(num_border):
+		var attempts = 0
+		while attempts < 20:
+			attempts += 1
+			var tx = 0
+			var ty = 0
 
-			total_width += w
+			# Candidate coords: |x|=5 or |y|=5
+			if randi() % 2 == 0:
+				tx = 5 if randf() > 0.5 else -5
+				ty = randi_range(-5, 5) # Assuming along the border length
+			else:
+				ty = 5 if randf() > 0.5 else -5
+				tx = randi_range(-5, 5)
 
-			# Create Tree
-			var tree = TREE_SCENE.instantiate()
-			tree.setup(w)
-			add_child(tree)
+			# Occupancy: 5x5 centered
+			var rect = Rect2i(tx - 2, ty - 2, 5, 5)
 
-			# Position Calculation
-			# "x_start + (w-1) * 0.5" logic applied to direction
+			var overlap = false
+			for r in occupied_rects:
+				if r.intersects(rect):
+					overlap = true
+					break
 
-			var start_pos_grid = side.start + side.dir * current_dist
-			# This is the grid coordinate of the first tile occupied by the tree.
+			if not overlap:
+				var tree = TREE_SCENE.instantiate()
+				tree.setup(randi_range(2, 4))
+				add_child(tree)
+				tree.position = Vector2(tx * TILE_SIZE, ty * TILE_SIZE)
+				occupied_rects.append(rect)
+				break
 
-			# The tree center should be offset by (w-1)/2.0 along direction from the first tile center.
-			var center_offset_tiles = (w - 1) * 0.5
+	# Phase 2: Background Trees
+	var num_bg = randi_range(1, 4)
+	for i in range(num_bg):
+		var attempts = 0
+		while attempts < 20:
+			attempts += 1
+			var tx
+			# Range: 5 < |x| <= 12
+			if randf() > 0.5:
+				tx = randi_range(6, 12)
+			else:
+				tx = randi_range(-12, -6)
 
-			# World Position
-			# GridManager tiles are at x * TILE_SIZE, y * TILE_SIZE
-			# So we take the start_pos_grid world pos and add the offset.
+			# Range: |y| <= 6
+			var ty = randi_range(-6, 6)
 
-			var start_world_pos = Vector2(start_pos_grid.x * TILE_SIZE, start_pos_grid.y * TILE_SIZE)
-			var offset_world = Vector2(side.dir.x, side.dir.y) * center_offset_tiles * TILE_SIZE
+			var rect = Rect2i(tx - 2, ty - 2, 5, 5)
 
-			tree.position = start_world_pos + offset_world
+			var overlap = false
+			for r in occupied_rects:
+				if r.intersects(rect):
+					overlap = true
+					break
 
-			current_dist += w
-
-		# print("Side ", side.name, " Total Width: ", total_width)
-		if total_width != 9:
-			printerr("Verification Failed: Side ", side.name, " width sum is ", total_width, " expected 9")
-
-	# Corners
-	var corners = [Vector2i(-5, -5), Vector2i(5, -5), Vector2i(-5, 5), Vector2i(5, 5)]
-	for corner in corners:
-		var tree = TREE_SCENE.instantiate()
-		tree.setup(1)
-		add_child(tree)
-		tree.position = Vector2(corner.x * TILE_SIZE, corner.y * TILE_SIZE)
+			if not overlap:
+				var tree = TREE_SCENE.instantiate()
+				tree.setup(randi_range(1, 5))
+				add_child(tree)
+				tree.position = Vector2(tx * TILE_SIZE, ty * TILE_SIZE)
+				occupied_rects.append(rect)
+				break
 
 func _create_map_boundaries():
 	var border_body = StaticBody2D.new()

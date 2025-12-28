@@ -49,4 +49,19 @@ func setup(width_in_tiles: int):
 	if randf() > 0.5:
 		$Sprite2D.flip_h = true
 
-	z_index = 200
+	# z_index = 200 # Removed for Y-Sort
+
+	# Dynamic Collision
+	var area = Area2D.new()
+	area.name = "Area2D"
+	add_child(area)
+
+	var collision = CollisionShape2D.new()
+	collision.name = "CollisionShape2D"
+	var shape = RectangleShape2D.new()
+	shape.size = Vector2(5 * Constants.TILE_SIZE, 5 * Constants.TILE_SIZE)
+	collision.shape = shape
+	area.add_child(collision)
+
+func play_leaf_fx():
+	pass
