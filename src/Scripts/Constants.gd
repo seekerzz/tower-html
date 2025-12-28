@@ -34,3 +34,14 @@ var BARRICADE_TYPES = {}
 var UNIT_TYPES = {}
 var TRAITS = []
 var ENEMY_VARIANTS = {}
+
+const ENVIRONMENT_CONFIG = {
+	"tree_atlas_path": "res://assets/images/UI/tile_trees.png",
+	"atlas_columns": 3,
+	"atlas_rows": 3,
+	"random_offset_px": 15.0,
+	"scale_range": Vector2(0.9, 1.0)
+}
+
+static func get_theme_config(_theme_id: String = "default") -> Dictionary:
+	return ENVIRONMENT_CONFIG

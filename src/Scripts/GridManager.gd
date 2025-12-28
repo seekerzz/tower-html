@@ -2,6 +2,7 @@ extends Node2D
 
 var TILE_SCENE = null
 const UNIT_SCENE = preload("res://src/Scenes/Game/Unit.tscn")
+const TREE_SCENE = preload("res://src/Scenes/Game/Tree.tscn")
 var BARRICADE_SCENE = null
 const GHOST_TILE_SCRIPT = preload("res://src/Scripts/UI/GhostTile.gd")
 const TILE_SIZE = 60
@@ -53,6 +54,52 @@ func _ready():
 	create_initial_grid()
 	_create_map_boundaries()
 	# _generate_random_obstacles()
+
+func _setup_tree_border(theme_id: String = "default"):
+	var config = Constants.get_theme_config(theme_id)
+	var texture_path = config["tree_atlas_path"]
+
+	if not ResourceLoader.exists(texture_path):
+		print("WARNING: Tree atlas not found at: ", texture_path)
+		return
+
+	var texture = load(texture_path)
+	var cols = config["atlas_columns"]
+	var rows = config["atlas_rows"]
+	var frame_width = texture.get_width() / cols
+	var frame_height = texture.get_height() / rows
+
+	# Generate trees at outer border (max(|x|,|y|) == 5)
+	for x in range(-5, 6):
+		for y in range(-5, 6):
+			if abs(x) == 5 or abs(y) == 5:
+				var tree = TREE_SCENE.instantiate()
+				add_child(tree)
+
+				# Select random frame
+				var frame_idx = randi() % (cols * rows)
+				var region_x = (frame_idx % cols) * frame_width
+				var region_y = int(frame_idx / cols) * frame_height
+				var region = Rect2(region_x, region_y, frame_width, frame_height)
+
+				tree.setup(texture, region, TILE_SIZE)
+
+				# Position
+				var pos = Vector2(x * TILE_SIZE, y * TILE_SIZE)
+
+				# Random offset
+				var offset_range = config["random_offset_px"]
+				var random_offset = Vector2(
+					randf_range(-offset_range, offset_range),
+					randf_range(-offset_range, offset_range)
+				)
+				tree.position = pos + random_offset
+
+				# Random flip
+				if randf() > 0.5:
+					tree.set_flip_h(true)
+
+				tree.z_index = 200
 
 func _create_map_boundaries():
 	var border_body = StaticBody2D.new()
@@ -366,6 +413,8 @@ func create_initial_grid():
 			create_tile(x, y, type, state)
 
 	print("Total Spawn Tiles: ", spawn_tiles.size())
+
+	_setup_tree_border()
 
 func create_tile(x: int, y: int, type: String = "normal", state: String = "locked_inner"):
 	var key = get_tile_key(x, y)
