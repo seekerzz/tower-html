@@ -3,6 +3,7 @@ extends Node2D
 var TILE_SCENE = null
 const UNIT_SCENE = preload("res://src/Scenes/Game/Unit.tscn")
 const TREE_SCENE = preload("res://src/Scenes/Game/Tree.tscn")
+const ENVIRONMENT_DECORATION_SCENE = preload("res://src/Scenes/Game/EnvironmentDecoration.tscn")
 var BARRICADE_SCENE = null
 const GHOST_TILE_SCRIPT = preload("res://src/Scripts/UI/GhostTile.gd")
 const TILE_SIZE = 60
@@ -238,23 +239,24 @@ func _setup_plant_decorations(texture_path: String = Constants.PLANT_CONFIG.text
 			valid_pos = true
 
 		if valid_pos:
-			var sprite = Sprite2D.new()
-			sprite.texture = tex
-			sprite.hframes = Constants.PLANT_CONFIG.columns
-			sprite.vframes = Constants.PLANT_CONFIG.rows
-			sprite.frame = randi() % (sprite.hframes * sprite.vframes)
-			sprite.flip_h = randf() > 0.5
+			var decoration = ENVIRONMENT_DECORATION_SCENE.instantiate()
+			plant_container.add_child(decoration)
+
+			decoration.position = pos
+
+			var hframes = Constants.PLANT_CONFIG.columns
+			var vframes = Constants.PLANT_CONFIG.rows
+			var frame = randi() % (hframes * vframes)
+			var flip_h = randf() > 0.5
 
 			# Scale Calculation
 			var target_size = randf_range(Constants.PLANT_CONFIG.min_size, Constants.PLANT_CONFIG.max_size)
-			# Use single frame width for scaling reference
-			var frame_width = tex.get_width() / float(sprite.hframes)
+			var frame_width = tex.get_width() / float(hframes)
+			var scale_val = 1.0
 			if frame_width > 0:
-				var scale_val = target_size / frame_width
-				sprite.scale = Vector2(scale_val, scale_val)
+				scale_val = target_size / frame_width
 
-			sprite.position = pos
-			plant_container.add_child(sprite)
+			decoration.setup_visuals(tex, hframes, vframes, frame, flip_h, scale_val)
 
 func _setup_tree_border():
 	print("Generating tree border (Refactored)...")
@@ -417,6 +419,9 @@ func _create_map_boundaries():
 	border_body.add_child(right_shape)
 
 func _process(_delta):
+	# Update Global Shader Parameters for Environment Decorations
+	_update_environment_shader_globals()
+
 	if placement_preview_cursor and placement_preview_cursor.visible:
 		var dist = get_global_mouse_position().distance_to(placement_preview_cursor.global_position)
 		var frame_diff = Engine.get_process_frames() - last_preview_frame
@@ -433,6 +438,24 @@ func _process(_delta):
 		var gx = round(mouse_pos.x / TILE_SIZE)
 		var gy = round(mouse_pos.y / TILE_SIZE)
 		skill_preview_node.position = grid_to_local(Vector2i(gx, gy))
+
+func _update_environment_shader_globals():
+	var plant_container = get_node_or_null("PlantContainer")
+	if plant_container and plant_container.get_child_count() > 0:
+		# Get the first child to access the shared material
+		# Assuming all decorations use the same shared material resource
+		var first_deco = plant_container.get_child(0)
+		if first_deco.has_node("Sprite2D"):
+			var sprite = first_deco.get_node("Sprite2D")
+			var mat = sprite.material as ShaderMaterial
+			if mat:
+				var cam_pos = Vector2.ZERO
+				var cam = get_viewport().get_camera_2d()
+				if cam:
+					cam_pos = cam.global_position
+
+				# This updates the Resource, so it affects all instances using this material
+				mat.set_shader_parameter("camera_global_pos", cam_pos)
 
 func _input(event):
 	match interaction_state:
