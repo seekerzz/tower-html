@@ -41,6 +41,9 @@ signal grid_updated
 func _ready():
 	GameManager.grid_manager = self
 
+	# Enable Y-Sort on GridManager to sort Trees vs Units
+	self.y_sort_enabled = true
+
 	selection_overlay = Node2D.new()
 	selection_overlay.name = "SelectionOverlay"
 	selection_overlay.z_index = 100
@@ -57,61 +60,150 @@ func _ready():
 	# _generate_random_obstacles()
 
 func _setup_tree_border():
-	print("Generating tree border...")
-	var sides = [
-		{"start": Vector2i(-4, -5), "dir": Vector2i(1, 0), "len": 9, "name": "Top"},
-		{"start": Vector2i(-4, 5), "dir": Vector2i(1, 0), "len": 9, "name": "Bottom"},
-		{"start": Vector2i(-5, -4), "dir": Vector2i(0, 1), "len": 9, "name": "Left"},
-		{"start": Vector2i(5, -4), "dir": Vector2i(0, 1), "len": 9, "name": "Right"}
-	]
+	# Constraints definition
+	var constraints = {
+		"width_limits": {
+			"Bottom": {"min": 1, "max": 2},
+			"Top": {"min": 2, "max": 4},
+			"Left": {"min": 2, "max": 4},
+			"Right": {"min": 2, "max": 4}
+		},
+		"mandatory_sides": ["Left", "Bottom", "Right"]
+	}
 
-	for side in sides:
-		var current_dist = 0
-		var total_width = 0
-		while current_dist < side.len:
-			var remaining = side.len - current_dist
-			var w = randi_range(1, 3)
-			if w > remaining:
-				w = remaining
+	_spawn_border_decorations(TREE_SCENE, randi_range(3, 6), constraints)
 
-			total_width += w
+func _spawn_border_decorations(scene: PackedScene, total_count: int, constraints: Dictionary):
+	var available_sides = ["Top", "Bottom", "Left", "Right"]
+	var mandatory_sides = constraints.get("mandatory_sides", [])
+	var width_limits = constraints.get("width_limits", {})
 
-			# Create Tree
-			var tree = TREE_SCENE.instantiate()
-			tree.setup(w)
-			add_child(tree)
+	var sides_to_spawn = []
+	var placed_trees_count = 0
 
-			# Position Calculation
-			# "x_start + (w-1) * 0.5" logic applied to direction
+	# Ensure mandatory sides
+	for side in mandatory_sides:
+		sides_to_spawn.append(side)
+		placed_trees_count += 1
 
-			var start_pos_grid = side.start + side.dir * current_dist
-			# This is the grid coordinate of the first tile occupied by the tree.
+	# Fill remaining randomly
+	while placed_trees_count < total_count:
+		sides_to_spawn.append(available_sides.pick_random())
+		placed_trees_count += 1
 
-			# The tree center should be offset by (w-1)/2.0 along direction from the first tile center.
-			var center_offset_tiles = (w - 1) * 0.5
+	# Randomize order
+	sides_to_spawn.shuffle()
 
-			# World Position
-			# GridManager tiles are at x * TILE_SIZE, y * TILE_SIZE
-			# So we take the start_pos_grid world pos and add the offset.
+	# Track occupied slots for each side (indices 0 to 8)
+	var occupied_slots = {
+		"Top": [], "Bottom": [], "Left": [], "Right": []
+	}
 
-			var start_world_pos = Vector2(start_pos_grid.x * TILE_SIZE, start_pos_grid.y * TILE_SIZE)
-			var offset_world = Vector2(side.dir.x, side.dir.y) * center_offset_tiles * TILE_SIZE
+	# Side definitions (index range 0-8 corresponds to coordinates)
+	# Top: y = -5, x from -4 to 4 (len 9)
+	# Bottom: y = 5, x from -4 to 4 (len 9)
+	# Left: x = -5, y from -4 to 4 (len 9)
+	# Right: x = 5, y from -4 to 4 (len 9)
 
-			tree.position = start_world_pos + offset_world
+	# Base start positions for index 0
+	var side_configs = {
+		"Top": {"start": Vector2i(-4, -5), "dir": Vector2i(1, 0)},
+		"Bottom": {"start": Vector2i(-4, 5), "dir": Vector2i(1, 0)},
+		"Left": {"start": Vector2i(-5, -4), "dir": Vector2i(0, 1)},
+		"Right": {"start": Vector2i(5, -4), "dir": Vector2i(0, 1)}
+	}
 
-			current_dist += w
+	var side_length = 9
 
-		# print("Side ", side.name, " Total Width: ", total_width)
-		if total_width != 9:
-			printerr("Verification Failed: Side ", side.name, " width sum is ", total_width, " expected 9")
+	for side in sides_to_spawn:
+		var limits = width_limits.get(side, {"min": 2, "max": 4})
+		var target_w = randi_range(limits.min, limits.max)
 
-	# Corners
-	var corners = [Vector2i(-5, -5), Vector2i(5, -5), Vector2i(-5, 5), Vector2i(5, 5)]
-	for corner in corners:
-		var tree = TREE_SCENE.instantiate()
-		tree.setup(1)
-		add_child(tree)
-		tree.position = Vector2(corner.x * TILE_SIZE, corner.y * TILE_SIZE)
+		# Retry logic for placement
+		var placed = false
+		var w = target_w
+
+		while w >= 1 and not placed:
+			for attempt in range(10):
+				if side_length - w < 0:
+					break
+
+				var start_idx = randi_range(0, side_length - w)
+				var end_idx = start_idx + w - 1
+
+				# Check collision
+				var overlap = false
+				for occ in occupied_slots[side]:
+					# occ is [s, e]
+					if not (end_idx < occ[0] or start_idx > occ[1]):
+						overlap = true
+						break
+
+				if not overlap:
+					# Place
+					occupied_slots[side].append([start_idx, end_idx])
+					_instantiate_border_tree(scene, side, side_configs[side], start_idx, w)
+					placed = true
+					break
+
+			if placed:
+				break
+
+			w -= 1 # Width backoff
+
+func _instantiate_border_tree(scene: PackedScene, side: String, config: Dictionary, index: int, w: int):
+	var tree = scene.instantiate()
+
+	# Initial Setup
+	tree.setup(w)
+
+	# Visual Adjustments
+	tree.z_index = 0 # Let Y-Sort handle it
+
+	# Random Scale (0.9 to 1.1)
+	# setup(w) sets scale to something around 0.9-1.0 relative to tile size.
+	# We will multiply by a factor to achieve variety.
+	var random_scale_factor = randf_range(0.9, 1.1)
+	tree.scale *= random_scale_factor
+
+	# Random Flip
+	var sprite = tree.get_node("Sprite2D")
+	if sprite:
+		sprite.flip_h = (randf() > 0.5)
+
+	# Disable Interaction
+	# Remove CollisionShape2D if exists
+	_remove_collision_shapes(tree)
+
+	# Set Mouse Filter if possible (recursively or on known nodes)
+	_set_mouse_filter_ignore(tree)
+
+	add_child(tree)
+
+	# Position Calculation
+	# Grid pos of first tile
+	var start_pos_grid = config.start + config.dir * index
+
+	# Center offset in tiles
+	var center_offset_tiles = (w - 1) * 0.5
+
+	var start_world_pos = Vector2(start_pos_grid.x * TILE_SIZE, start_pos_grid.y * TILE_SIZE)
+	var offset_world = Vector2(config.dir.x, config.dir.y) * center_offset_tiles * TILE_SIZE
+
+	tree.position = start_world_pos + offset_world
+
+func _remove_collision_shapes(node: Node):
+	if node is CollisionShape2D or node is CollisionPolygon2D:
+		node.queue_free()
+	else:
+		for child in node.get_children():
+			_remove_collision_shapes(child)
+
+func _set_mouse_filter_ignore(node: Node):
+	if node is Control:
+		node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child in node.get_children():
+		_set_mouse_filter_ignore(child)
 
 func _create_map_boundaries():
 	var border_body = StaticBody2D.new()
@@ -162,7 +254,7 @@ func _process(_delta):
 		var frame_diff = Engine.get_process_frames() - last_preview_frame
 
 		if dist > 50.0 and frame_diff > 10:
-			print("[Debug] Hiding preview cursor. Dist: ", dist, " Frames: ", frame_diff)
+			# print("[Debug] Hiding preview cursor. Dist: ", dist, " Frames: ", frame_diff)
 			placement_preview_cursor.visible = false
 
 	if interaction_state == STATE_SELECTING_INTERACTION_TARGET:
@@ -193,7 +285,7 @@ func _handle_input_skill_targeting(event):
 			var gx = int(round(mouse_pos.x / TILE_SIZE))
 			var gy = int(round(mouse_pos.y / TILE_SIZE))
 
-			print("[DEBUG] GridManager._input: Global Mouse: ", mouse_pos_global, " Local Mouse: ", mouse_pos, " Grid: ", gx, ",", gy)
+			# print("[DEBUG] GridManager._input: Global Mouse: ", mouse_pos_global, " Local Mouse: ", mouse_pos, " Grid: ", gx, ",", gy)
 
 			if skill_source_unit and is_instance_valid(skill_source_unit):
 				skill_source_unit.execute_skill_at(Vector2i(gx, gy))
@@ -434,6 +526,9 @@ func create_tile(x: int, y: int, type: String = "normal", state: String = "locke
 	tile.setup(x, y, type)
 	# Explicitly call set_state to ensure visuals are updated
 	tile.set_state(state)
+
+	# Set Z-Index lower to be background
+	tile.z_index = -10
 
 	tile.position = Vector2(x * TILE_SIZE, y * TILE_SIZE)
 	add_child(tile)
