@@ -30,6 +30,7 @@ func setup(grid_x: int, grid_y: int, tile_type: String = "normal"):
 	if has_node("ColorRect"): $ColorRect.queue_free()
 	if has_node("VisualPanel"): $VisualPanel.queue_free()
 
+	z_index = -10
 	update_visuals()
 
 	# Add Drop Target

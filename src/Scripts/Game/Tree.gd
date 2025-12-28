@@ -31,7 +31,7 @@ func setup(width_in_tiles: int):
 	# Calculate Scale
 	# base_scale = (Constants.TILE_SIZE * width_in_tiles) / (texture_width / columns)
 	var base_scale = (Constants.TILE_SIZE * width_in_tiles) / frame_width
-	var final_scale = base_scale * randf_range(0.9, 1.0)
+	var final_scale = base_scale * randf_range(0.9, 1.1)
 
 	scale = Vector2(final_scale, final_scale)
 

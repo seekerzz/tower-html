@@ -53,65 +53,151 @@ func _ready():
 	_init_astar()
 	create_initial_grid()
 	_create_map_boundaries()
+
+	y_sort_enabled = true
 	_setup_tree_border()
 	# _generate_random_obstacles()
 
 func _setup_tree_border():
 	print("Generating tree border...")
-	var sides = [
-		{"start": Vector2i(-4, -5), "dir": Vector2i(1, 0), "len": 9, "name": "Top"},
-		{"start": Vector2i(-4, 5), "dir": Vector2i(1, 0), "len": 9, "name": "Bottom"},
-		{"start": Vector2i(-5, -4), "dir": Vector2i(0, 1), "len": 9, "name": "Left"},
-		{"start": Vector2i(5, -4), "dir": Vector2i(0, 1), "len": 9, "name": "Right"}
-	]
 
-	for side in sides:
-		var current_dist = 0
-		var total_width = 0
-		while current_dist < side.len:
-			var remaining = side.len - current_dist
-			var w = randi_range(1, 3)
-			if w > remaining:
-				w = remaining
+	var constraints = {
+		"sides": {
+			"Bottom": {"min_w": 1, "max_w": 2},
+			"Top": {"min_w": 2, "max_w": 4},
+			"Left": {"min_w": 2, "max_w": 4},
+			"Right": {"min_w": 2, "max_w": 4}
+		},
+		"side_defs": [
+			{"start": Vector2i(-4, -5), "dir": Vector2i(1, 0), "len": 9, "name": "Top"},
+			{"start": Vector2i(-4, 5), "dir": Vector2i(1, 0), "len": 9, "name": "Bottom"},
+			{"start": Vector2i(-5, -4), "dir": Vector2i(0, 1), "len": 9, "name": "Left"},
+			{"start": Vector2i(5, -4), "dir": Vector2i(0, 1), "len": 9, "name": "Right"}
+		]
+	}
 
-			total_width += w
+	_spawn_border_decorations(TREE_SCENE, randi_range(3, 6), constraints)
 
-			# Create Tree
-			var tree = TREE_SCENE.instantiate()
-			tree.setup(w)
-			add_child(tree)
+func _spawn_border_decorations(scene: PackedScene, total_count: int, constraints: Dictionary):
+	var occupied_slots = [] # List of occupied grid coordinates
+	var chosen_sides = []
 
-			# Position Calculation
-			# "x_start + (w-1) * 0.5" logic applied to direction
+	# Mandatory sides: Left, Bottom, Right
+	var mandatory = ["Left", "Bottom", "Right"]
+	chosen_sides.append_array(mandatory)
 
-			var start_pos_grid = side.start + side.dir * current_dist
-			# This is the grid coordinate of the first tile occupied by the tree.
+	# Pick random remaining sides to meet total_count
+	var side_defs = constraints["side_defs"]
+	var side_names = []
+	for s in side_defs: side_names.append(s["name"])
 
-			# The tree center should be offset by (w-1)/2.0 along direction from the first tile center.
-			var center_offset_tiles = (w - 1) * 0.5
+	while chosen_sides.size() < total_count:
+		chosen_sides.append(side_names.pick_random())
 
-			# World Position
-			# GridManager tiles are at x * TILE_SIZE, y * TILE_SIZE
-			# So we take the start_pos_grid world pos and add the offset.
+	# Shuffle implementation
+	chosen_sides.shuffle() # Using built-in shuffle if available or randomize manually
 
-			var start_world_pos = Vector2(start_pos_grid.x * TILE_SIZE, start_pos_grid.y * TILE_SIZE)
-			var offset_world = Vector2(side.dir.x, side.dir.y) * center_offset_tiles * TILE_SIZE
+	for side_name in chosen_sides:
+		# Find side def
+		var side_def = null
+		for s in side_defs:
+			if s["name"] == side_name:
+				side_def = s
+				break
 
-			tree.position = start_world_pos + offset_world
+		if not side_def: continue
 
-			current_dist += w
+		var limits = constraints["sides"][side_name]
+		var min_w = limits["min_w"]
+		var max_w = limits["max_w"]
 
-		# print("Side ", side.name, " Total Width: ", total_width)
-		if total_width != 9:
-			printerr("Verification Failed: Side ", side.name, " width sum is ", total_width, " expected 9")
+		var placed = false
+		var attempts = 0
 
-	# Corners
-	var corners = [Vector2i(-5, -5), Vector2i(5, -5), Vector2i(-5, 5), Vector2i(5, 5)]
-	for corner in corners:
-		var tree = TREE_SCENE.instantiate()
-		tree.setup(1)
-		add_child(tree)
-		tree.position = Vector2(corner.x * TILE_SIZE, corner.y * TILE_SIZE)
+		while !placed and attempts < 10:
+			attempts += 1
+			var w = randi_range(min_w, max_w)
+
+			# Backoff strategy: If failed too many times, maybe not applicable here directly
+			# The requirement says: "If try 10 times fail... decrease width... until w=1"
+			# So we try random placement 10 times with random width?
+			# Or we try 10 times, if fail, we decrease width and try again?
+			# "If random position conflict, retry (limit 10). Width fallback: if 10 tries fail due to space, decrease width..."
+			# Interpretation: Within the 10 tries, we might just be unlucky with position.
+			# But if we exhaust 10 tries, we assume it might be space issue?
+			# Actually simpler: Try to place with random width and pos. If conflict, retry.
+			# If we fail 10 times with *current* parameters (or random parameters), then reduce width constraint.
+
+			# Let's implement specific loop structure:
+			# Outer loop: Width reduction
+			# Inner loop: 10 placement attempts
+
+			placed = _try_place_tree_with_backoff(scene, side_def, min_w, max_w, occupied_slots)
+			if placed: break # Should be implicit by return value logic
+
+func _try_place_tree_with_backoff(scene, side_def, min_w, max_w, occupied_slots) -> bool:
+	# Try with random width in range first? The requirement says "Width fallback".
+	# This implies we start with desired random width, and if we can't place it, we reduce it.
+	# However, reducing a random number is vague.
+	# "Decrease this decoration's width (decrement until w=1)".
+	# Let's pick a target width first.
+	var target_w = randi_range(min_w, max_w)
+
+	while target_w >= 1:
+		for i in range(10): # 10 attempts
+			# Random position
+			# side len is 9. coordinate is 0..8 relative to start along dir.
+			# If width is w, valid start indices are 0 .. (len - w)
+			var max_start_idx = side_def["len"] - target_w
+			if max_start_idx < 0: break # Should not happen if w <= len
+
+			var start_dist = randi_range(0, max_start_idx)
+
+			# Check occupation
+			var conflict = false
+			var slots_needed = []
+			for k in range(target_w):
+				var grid_pos = side_def["start"] + side_def["dir"] * (start_dist + k)
+				if grid_pos in occupied_slots:
+					conflict = true
+					break
+				slots_needed.append(grid_pos)
+
+			if not conflict:
+				# Place it
+				var tree = scene.instantiate()
+				tree.setup(target_w)
+				tree.z_index = 0
+
+				# Visual Diversity: Random horizontal flip (Node level)
+				if randf() > 0.5:
+					tree.scale.x *= -1
+
+				# Note: Tree is a Node2D, so mouse_filter property does not exist.
+				# Disabling collision shapes handles the 'disable interaction' requirement for physics/clicks.
+
+				# Remove collision if any (strictly following requirements)
+				for child in tree.get_children():
+					if child is CollisionShape2D or child is CollisionPolygon2D:
+						child.disabled = true
+
+				add_child(tree)
+
+				# Position
+				var start_pos_grid = slots_needed[0]
+				var center_offset_tiles = (target_w - 1) * 0.5
+				var start_world_pos = Vector2(start_pos_grid.x * TILE_SIZE, start_pos_grid.y * TILE_SIZE)
+				var offset_world = Vector2(side_def["dir"].x, side_def["dir"].y) * center_offset_tiles * TILE_SIZE
+
+				tree.position = start_world_pos + offset_world
+
+				occupied_slots.append_array(slots_needed)
+				return true
+
+		# Failed 10 times at this width, decrement
+		target_w -= 1
+
+	return false
 
 func _create_map_boundaries():
 	var border_body = StaticBody2D.new()
