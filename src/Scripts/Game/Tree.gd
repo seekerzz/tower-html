@@ -49,4 +49,10 @@ func setup(width_in_tiles: int):
 	if randf() > 0.5:
 		$Sprite2D.flip_h = true
 
-	z_index = 200
+	if has_node("Area2D/CollisionShape2D"):
+		var shape = $Area2D/CollisionShape2D.shape
+		if shape is RectangleShape2D:
+			shape.size = Vector2(width_in_tiles * Constants.TILE_SIZE, width_in_tiles * Constants.TILE_SIZE)
+
+func play_leaf_fx():
+	pass

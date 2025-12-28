@@ -53,65 +53,96 @@ func _ready():
 	_init_astar()
 	create_initial_grid()
 	_create_map_boundaries()
-	_setup_tree_border()
+	y_sort_enabled = true
 	# _generate_random_obstacles()
 
-func _setup_tree_border():
-	print("Generating tree border...")
-	var sides = [
-		{"start": Vector2i(-4, -5), "dir": Vector2i(1, 0), "len": 9, "name": "Top"},
-		{"start": Vector2i(-4, 5), "dir": Vector2i(1, 0), "len": 9, "name": "Bottom"},
-		{"start": Vector2i(-5, -4), "dir": Vector2i(0, 1), "len": 9, "name": "Left"},
-		{"start": Vector2i(5, -4), "dir": Vector2i(0, 1), "len": 9, "name": "Right"}
-	]
+func setup_trees(view_bounds: Rect2i):
+	var occupied_rects: Array[Rect2i] = []
+	# Initialize occupied rects with core board area
+	# Core area is |x|<6, |y|<6, so from -5 to 5 inclusive.
+	# Rect2i(x, y, w, h). -5 to 5 is 11 tiles.
+	occupied_rects.append(Rect2i(-5, -5, 11, 11))
 
-	for side in sides:
-		var current_dist = 0
-		var total_width = 0
-		while current_dist < side.len:
-			var remaining = side.len - current_dist
-			var w = randi_range(1, 3)
-			if w > remaining:
-				w = remaining
+	# Phase 1: Border Trees
+	var border_tree_count = randi_range(3, 5)
+	for _i in range(border_tree_count):
+		# Randomly select a side on the perimeter |x|=5 or |y|=5
+		# The perimeter consists of points where x is -5 or 5, or y is -5 or 5.
+		# We need integer grid points.
+		# Valid range is typically within the view or just the border of the board?
+		# Instruction: "randomly select |x|=5 or |y|=5 line segments grid points"
+		# Let's assume the border of the 11x11 square (from -5 to 5).
 
-			total_width += w
+		var side = randi() % 4
+		var tx = 0
+		var ty = 0
 
-			# Create Tree
+		if side == 0: # Top (y = -5)
+			tx = randi_range(-5, 5)
+			ty = -5
+		elif side == 1: # Bottom (y = 5)
+			tx = randi_range(-5, 5)
+			ty = 5
+		elif side == 2: # Left (x = -5)
+			tx = -5
+			ty = randi_range(-5, 5)
+		else: # Right (x = 5)
+			tx = 5
+			ty = randi_range(-5, 5)
+
+		var tree_size = randi_range(2, 4)
+		var tree = TREE_SCENE.instantiate()
+		tree.setup(tree_size)
+		add_child(tree)
+
+		# Position: (grid_pos + (size-1)*0.5) * TILE_SIZE
+		var pos_offset = (float(tree_size) - 1.0) * 0.5
+		tree.position = Vector2(tx + pos_offset, ty + pos_offset) * TILE_SIZE
+
+		# No overlap check for border trees per instructions
+
+	# Phase 2: Background Trees
+	var bg_tree_count = randi_range(1, 4)
+	for _i in range(bg_tree_count):
+		var tree_size = randi_range(1, 5)
+		var valid_pos = false
+		var final_rect = Rect2i()
+
+		for _attempt in range(20):
+			# Horizontal 5 < |x| <= 12 -> x in [-12, -6] U [6, 12]
+			# Vertical |y| <= 6 -> y in [-6, 6]
+
+			var bx = 0
+			if randf() > 0.5:
+				bx = randi_range(6, 12)
+			else:
+				bx = randi_range(-12, -6)
+
+			var by = randi_range(-6, 6)
+
+			# Rect is bx, by, size, size
+			# This assumes the tree occupies [bx, bx+size) x [by, by+size)
+			var candidate = Rect2i(bx, by, tree_size, tree_size)
+
+			var overlap = false
+			for occupied in occupied_rects:
+				if candidate.intersects(occupied):
+					overlap = true
+					break
+
+			if not overlap:
+				valid_pos = true
+				final_rect = candidate
+				break
+
+		if valid_pos:
+			occupied_rects.append(final_rect)
 			var tree = TREE_SCENE.instantiate()
-			tree.setup(w)
+			tree.setup(tree_size)
 			add_child(tree)
 
-			# Position Calculation
-			# "x_start + (w-1) * 0.5" logic applied to direction
-
-			var start_pos_grid = side.start + side.dir * current_dist
-			# This is the grid coordinate of the first tile occupied by the tree.
-
-			# The tree center should be offset by (w-1)/2.0 along direction from the first tile center.
-			var center_offset_tiles = (w - 1) * 0.5
-
-			# World Position
-			# GridManager tiles are at x * TILE_SIZE, y * TILE_SIZE
-			# So we take the start_pos_grid world pos and add the offset.
-
-			var start_world_pos = Vector2(start_pos_grid.x * TILE_SIZE, start_pos_grid.y * TILE_SIZE)
-			var offset_world = Vector2(side.dir.x, side.dir.y) * center_offset_tiles * TILE_SIZE
-
-			tree.position = start_world_pos + offset_world
-
-			current_dist += w
-
-		# print("Side ", side.name, " Total Width: ", total_width)
-		if total_width != 9:
-			printerr("Verification Failed: Side ", side.name, " width sum is ", total_width, " expected 9")
-
-	# Corners
-	var corners = [Vector2i(-5, -5), Vector2i(5, -5), Vector2i(-5, 5), Vector2i(5, 5)]
-	for corner in corners:
-		var tree = TREE_SCENE.instantiate()
-		tree.setup(1)
-		add_child(tree)
-		tree.position = Vector2(corner.x * TILE_SIZE, corner.y * TILE_SIZE)
+			var pos_offset = (float(tree_size) - 1.0) * 0.5
+			tree.position = Vector2(final_rect.position.x + pos_offset, final_rect.position.y + pos_offset) * TILE_SIZE
 
 func _create_map_boundaries():
 	var border_body = StaticBody2D.new()

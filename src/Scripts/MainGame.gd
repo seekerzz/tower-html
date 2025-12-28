@@ -36,6 +36,14 @@ func _ready():
 	# Calculate min allowed zoom (maximum field of view)
 	calculate_min_allowed_zoom()
 
+	# Trigger tree generation
+	# View bounds calculation:
+	# Background trees spawn in horizontal 5 < |x| <= 12, vertical |y| <= 6
+	# So roughly covering -12 to 12 in X and -6 to 6 in Y
+	# We pass a rect covering this area.
+	var trees_view_rect = Rect2i(-12, -6, 24, 12)
+	grid_manager.setup_trees(trees_view_rect)
+
 	setup_background()
 
 	# Initial camera position will be set by zoom_to_fit_board later or we call it now to verify
