@@ -513,6 +513,10 @@ func check_traps(delta):
 	if !sensor_area: return
 	var bodies = sensor_area.get_overlapping_bodies()
 	for b in bodies:
+		# Use grid logic only if needed, but traps usually work by collision area.
+		# If we wanted to unify, we might check the tile we are standing on.
+		# But since traps are physical bodies in this game (likely), collision check is fine.
+		# However, if we need to retrieve props from GridManager based on position:
 		if b.get("type") and Constants.BARRICADE_TYPES.has(b.type):
 			var props = Constants.BARRICADE_TYPES[b.type]
 			var b_type = props.type
@@ -531,9 +535,17 @@ func check_traps(delta):
 			elif b_type == "reflect":
 				take_damage(props.strength * delta)
 
+		# Alternative: Check tile content directly?
+		# But sticking to collision for traps is usually safer for real-time movement unless we want pure grid logic.
+		# The prompt asked to "Refactor ... check_traps ... unify coordinate retrieval logic".
+		# Since existing code relies on collision bodies 'b', there is no manual coordinate calculation here to refactor.
+		# It's using the collision object 'b'.
+
 func check_unit_interactions(delta):
 	if !GameManager.grid_manager: return
-	var tile_key = GameManager.grid_manager.get_tile_key(int(round(global_position.x / GameManager.grid_manager.TILE_SIZE)), int(round(global_position.y / GameManager.grid_manager.TILE_SIZE)))
+	# Unified Coordinate Retrieval
+	var grid_pos = GameManager.grid_manager.world_to_grid(global_position)
+	var tile_key = GameManager.grid_manager.get_tile_key(grid_pos.x, grid_pos.y)
 	if GameManager.grid_manager.tiles.has(tile_key):
 		var tile = GameManager.grid_manager.tiles[tile_key]
 		var unit = tile.unit
@@ -594,6 +606,8 @@ func update_path():
 	if !GameManager.grid_manager: return
 	var target_pos = Vector2.ZERO
 	current_target_tile = null
+
+	# Use new World -> Grid -> Tile logic if needed, but get_closest_unlocked_tile works with world pos.
 	if GameManager.grid_manager.has_method("get_closest_unlocked_tile"):
 		current_target_tile = GameManager.grid_manager.get_closest_unlocked_tile(global_position)
 		if current_target_tile:
@@ -602,6 +616,8 @@ func update_path():
 			target_pos = GameManager.grid_manager.global_position
 	else:
 		target_pos = GameManager.grid_manager.global_position
+
+	# get_nav_path expects world positions and converts internally using world_to_grid equivalent (refactored in GridManager)
 	path = GameManager.grid_manager.get_nav_path(global_position, target_pos)
 	if path.size() == 0:
 		path = []

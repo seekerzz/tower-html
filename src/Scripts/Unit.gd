@@ -129,7 +129,8 @@ func _ensure_visual_hierarchy():
 
 	if unit_data and unit_data.has("size"):
 		var size_val = unit_data["size"]
-		var target_size = Vector2(size_val.x * Constants.TILE_SIZE - 4, size_val.y * Constants.TILE_SIZE - 4)
+		var size_pixels = GameManager.grid_manager.grid_to_local(Vector2i(size_val.x, size_val.y)) if GameManager.grid_manager else Vector2(size_val.x * 60, size_val.y * 60)
+		var target_size = Vector2(size_pixels.x - 4, size_pixels.y - 4)
 		highlight.size = target_size
 		highlight.position = -(target_size / 2)
 
@@ -392,13 +393,14 @@ func execute_skill_at(grid_pos: Vector2i):
 				"hide_visuals": false # Ensure visuals are shown for the field
 			}
 			# Need to convert grid_pos to world position for spawn
-			# Since execute_skill_effect usually handles this via GameManager -> CombatManager,
-			# but here we want to spawn a specific projectile with custom stats directly
-			# OR we rely on GameManager to handle "dragon" type if implemented there.
-			# The task says: "In execute_skill_at ... Call GameManager.combat_manager.spawn_projectile"
-
 			if GameManager.grid_manager:
-				var world_pos = GameManager.grid_manager.get_world_pos_from_grid(grid_pos)
+				# Use the new grid_to_local and then to_global (which is what grid_manager.get_world_pos_from_grid does,
+				# but we want to use the unified local conversion first).
+				# get_world_pos_from_grid was refactored to use grid_to_local internally, so calling it is fine.
+				# Or we can do:
+				var local_pos = GameManager.grid_manager.grid_to_local(grid_pos)
+				var world_pos = GameManager.grid_manager.to_global(local_pos)
+
 				# Spawn directly
 				if GameManager.combat_manager:
 					GameManager.combat_manager.spawn_projectile(self, world_pos, null, extra_stats)
@@ -512,7 +514,10 @@ func update_visuals():
 	
 	# Size update based on unit_data
 	var size = unit_data["size"]
-	var target_size = Vector2(size.x * Constants.TILE_SIZE - 4, size.y * Constants.TILE_SIZE - 4)
+	# Using grid_to_local for size calculation might be semantically weird if grid_to_local includes position offset logic,
+	# but currently it returns (x*T, y*T) which matches size calculation (width*T, height*T).
+	var size_pixels = GameManager.grid_manager.grid_to_local(Vector2i(size.x, size.y)) if GameManager.grid_manager else Vector2(size.x * 60, size.y * 60)
+	var target_size = Vector2(size_pixels.x - 4, size_pixels.y - 4)
 	var target_pos = -(target_size / 2) # Center inside parent (Unit node)
 
 	if tex_rect:
@@ -961,9 +966,15 @@ func _draw():
 
 	if _is_skill_highlight_active:
 		# Draw a thick outline
-		var size = Vector2(Constants.TILE_SIZE, Constants.TILE_SIZE)
+		var size = Vector2(60, 60)
+		if GameManager.grid_manager:
+			size = GameManager.grid_manager.grid_to_local(Vector2i(1, 1))
+
 		if unit_data and unit_data.has("size"):
-			size = Vector2(unit_data.size.x * Constants.TILE_SIZE, unit_data.size.y * Constants.TILE_SIZE)
+			if GameManager.grid_manager:
+				size = GameManager.grid_manager.grid_to_local(Vector2i(unit_data.size.x, unit_data.size.y))
+			else:
+				size = Vector2(unit_data.size.x * 60, unit_data.size.y * 60)
 
 		# Assuming pivot is center
 		var rect = Rect2(-size / 2, size)

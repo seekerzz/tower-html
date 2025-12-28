@@ -122,6 +122,10 @@ func setup_background():
 
 func calculate_min_allowed_zoom():
 	# Calculate zoom needed to see the battlefield when shop is open
+	# We can use GridManager if initialized, or fallback to Constants.
+	# Since GridManager might scale things (though TILE_SIZE is const), it's safe to use Constants for layout.
+	# But technically if we refactor GridManager to use dynamic tile size, we should ask GridManager.
+	# For now, Constants.TILE_SIZE is consistent with GridManager.TILE_SIZE
 	var map_width = Constants.MAP_WIDTH * Constants.TILE_SIZE
 	var map_height = Constants.MAP_HEIGHT * Constants.TILE_SIZE
 
