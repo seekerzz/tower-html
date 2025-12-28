@@ -34,3 +34,9 @@ var BARRICADE_TYPES = {}
 var UNIT_TYPES = {}
 var TRAITS = []
 var ENEMY_VARIANTS = {}
+
+const ENVIRONMENT_CONFIG = {
+	"tree_tile_set": "res://assets/images/UI/tile_trees.png",
+	"tree_columns": 6,
+	"tree_rows": 1
+}
