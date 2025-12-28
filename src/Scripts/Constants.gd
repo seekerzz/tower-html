@@ -7,6 +7,13 @@ const MAP_WIDTH = 9
 const MAP_HEIGHT = 9
 const CORE_ZONE_RADIUS = 2
 
+# Tree Generation & Placement Constants
+const O_MAX = TILE_SIZE / 2.0
+const G_MAX = TILE_SIZE
+const R_MARGIN = TILE_SIZE / 6.0
+const BOARD_EDGE_X = (MAP_WIDTH * TILE_SIZE) / 2.0
+const BOARD_EDGE_Y = (MAP_HEIGHT * TILE_SIZE) / 2.0
+
 const BASE_CORE_HP = 500
 
 const POISON_TICK_INTERVAL = 0.5
