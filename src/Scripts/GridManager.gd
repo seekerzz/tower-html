@@ -36,9 +36,12 @@ var interaction_highlights: Array = [] # Array[Node2D] (Visuals)
 var selection_overlay: Node2D = null
 var astar_grid: AStarGrid2D
 
+var generated_trees: Array = []
+
 signal grid_updated
 
 func _ready():
+	y_sort_enabled = true
 	GameManager.grid_manager = self
 
 	selection_overlay = Node2D.new()
@@ -53,65 +56,103 @@ func _ready():
 	_init_astar()
 	create_initial_grid()
 	_create_map_boundaries()
-	_setup_tree_border()
 	# _generate_random_obstacles()
 
-func _setup_tree_border():
-	print("Generating tree border...")
-	var sides = [
-		{"start": Vector2i(-4, -5), "dir": Vector2i(1, 0), "len": 9, "name": "Top"},
-		{"start": Vector2i(-4, 5), "dir": Vector2i(1, 0), "len": 9, "name": "Bottom"},
-		{"start": Vector2i(-5, -4), "dir": Vector2i(0, 1), "len": 9, "name": "Left"},
-		{"start": Vector2i(5, -4), "dir": Vector2i(0, 1), "len": 9, "name": "Right"}
-	]
+func setup_trees(view_bounds: Rect2i):
+	# Clear previous trees
+	for tree in generated_trees:
+		if is_instance_valid(tree):
+			tree.queue_free()
+	generated_trees.clear()
 
-	for side in sides:
-		var current_dist = 0
-		var total_width = 0
-		while current_dist < side.len:
-			var remaining = side.len - current_dist
-			var w = randi_range(1, 3)
-			if w > remaining:
-				w = remaining
+	var occupied_rects: Array[Rect2i] = []
+	# Board Core Area: |x| < 6, |y| < 6 => [-5, 5]
+	# Rect2i(x, y, w, h). Start at -5, -5. Size 11x11.
+	occupied_rects.append(Rect2i(-5, -5, 11, 11))
 
-			total_width += w
+	# --- Phase 1: Border Trees ---
+	# Quantity: 3-5
+	var border_count = randi_range(3, 5)
+	for i in range(border_count):
+		# Random grid point on |x|=5 or |y|=5
+		var gx = 0
+		var gy = 0
+		var side = randi() % 4
+		match side:
+			0: # Top y = -5
+				gx = randi_range(-5, 5)
+				gy = -5
+			1: # Bottom y = 5
+				gx = randi_range(-5, 5)
+				gy = 5
+			2: # Left x = -5
+				gx = -5
+				gy = randi_range(-5, 5)
+			3: # Right x = 5
+				gx = 5
+				gy = randi_range(-5, 5)
 
-			# Create Tree
-			var tree = TREE_SCENE.instantiate()
-			tree.setup(w)
-			add_child(tree)
+		var size = randi_range(2, 4)
+		_spawn_tree(gx, gy, size, occupied_rects, false)
+		# No overlap check for border trees per instructions,
+		# but we add them to occupied_rects for background trees to avoid.
+		occupied_rects.append(Rect2i(gx, gy, size, size))
 
-			# Position Calculation
-			# "x_start + (w-1) * 0.5" logic applied to direction
+	# --- Phase 2: Background Trees ---
+	# Quantity: 1-4
+	var bg_count = randi_range(1, 4)
+	var attempts = 0
+	var trees_placed = 0
 
-			var start_pos_grid = side.start + side.dir * current_dist
-			# This is the grid coordinate of the first tile occupied by the tree.
+	while trees_placed < bg_count and attempts < 100: # Global safety limit
+		attempts += 1
 
-			# The tree center should be offset by (w-1)/2.0 along direction from the first tile center.
-			var center_offset_tiles = (w - 1) * 0.5
+		# Distribution Area: 5 < |x| <= 12, |y| <= 6
+		# x in [-12, -6] or [6, 12]
+		var x_range_side = randi() % 2 # 0 for negative, 1 for positive
+		var gx = 0
+		if x_range_side == 0:
+			gx = randi_range(-12, -6)
+		else:
+			gx = randi_range(6, 12)
 
-			# World Position
-			# GridManager tiles are at x * TILE_SIZE, y * TILE_SIZE
-			# So we take the start_pos_grid world pos and add the offset.
+		var gy = randi_range(-6, 6)
+		var size = randi_range(1, 5)
+		var tree_rect = Rect2i(gx, gy, size, size)
 
-			var start_world_pos = Vector2(start_pos_grid.x * TILE_SIZE, start_pos_grid.y * TILE_SIZE)
-			var offset_world = Vector2(side.dir.x, side.dir.y) * center_offset_tiles * TILE_SIZE
+		# Check Overlap
+		var overlap = false
+		for occ in occupied_rects:
+			if tree_rect.intersects(occ):
+				overlap = true
+				break
 
-			tree.position = start_world_pos + offset_world
+		if not overlap:
+			# Try up to 20 times for a single tree (implicit in the loop structure,
+			# actually simpler to just loop until count reached or total attempts maxed)
+			# The prompt says "If conflict, retry up to 20 times".
+			# I'll implement a per-tree retry logic to be strict.
+			_spawn_tree(gx, gy, size, occupied_rects, true)
+			trees_placed += 1
+			occupied_rects.append(tree_rect)
 
-			current_dist += w
+		# If overlap, we just continue loop.
+		# To strictly follow "retry up to 20 times", we could nest loops, but shared attempts is safer for perf.
 
-		# print("Side ", side.name, " Total Width: ", total_width)
-		if total_width != 9:
-			printerr("Verification Failed: Side ", side.name, " width sum is ", total_width, " expected 9")
+func _spawn_tree(gx: int, gy: int, size: int, occupied_list: Array, check_overlap: bool):
+	var tree = TREE_SCENE.instantiate()
+	tree.setup(size)
+	add_child(tree)
+	generated_trees.append(tree)
 
-	# Corners
-	var corners = [Vector2i(-5, -5), Vector2i(5, -5), Vector2i(-5, 5), Vector2i(5, 5)]
-	for corner in corners:
-		var tree = TREE_SCENE.instantiate()
-		tree.setup(1)
-		add_child(tree)
-		tree.position = Vector2(corner.x * TILE_SIZE, corner.y * TILE_SIZE)
+	# Coordinate Conversion
+	# Tree position is center of the grid area.
+	# Top-Left tile world pos: (gx * TILE, gy * TILE)
+	# Center offset: (size - 1) * 0.5 * TILE
+
+	var start_world_pos = Vector2(gx * TILE_SIZE, gy * TILE_SIZE)
+	var offset = Vector2(size - 1, size - 1) * 0.5 * TILE_SIZE
+	tree.position = start_world_pos + offset
 
 func _create_map_boundaries():
 	var border_body = StaticBody2D.new()

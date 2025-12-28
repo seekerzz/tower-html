@@ -139,6 +139,19 @@ func calculate_min_allowed_zoom():
 	min_allowed_zoom = Vector2(final_zoom, final_zoom)
 	# print("Calculated Min Allowed Zoom: ", min_allowed_zoom)
 
+	# Calculate visible grid area in tiles for tree generation
+	var view_w_world = viewport_size.x / final_zoom
+	var view_h_world = viewport_size.y / final_zoom
+	var tiles_w = ceil(view_w_world / Constants.TILE_SIZE)
+	var tiles_h = ceil(view_h_world / Constants.TILE_SIZE)
+
+	# Pass this to GridManager (assuming centered view)
+	var half_w = int(tiles_w / 2) + 2 # Margin
+	var half_h = int(tiles_h / 2) + 2
+	var bounds = Rect2i(-half_w, -half_h, half_w * 2, half_h * 2)
+
+	grid_manager.setup_trees(bounds)
+
 func _unhandled_input(event):
 	if event is InputEventMouseMotion:
 		if event.button_mask == MOUSE_BUTTON_MASK_RIGHT:
