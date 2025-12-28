@@ -179,39 +179,36 @@ func _apply_jitter_to_path(points: PackedVector2Array, magnitude: float) -> Pack
 func _setup_tree_border():
 	print("Generating tree border (Refactored)...")
 
-	# 1. Define Borders
-	# Map is centered at 0,0. Range -4 to 4 (Width 9).
-	# Borders are just outside: x=-5 (Left), x=5 (Right), y=-5 (Top), y=5 (Bottom).
-	# Length of border: The adjacent tiles are y=-4..4 (Length 9).
-	# We define start and direction.
-	var borders = {
-		"Left": {"start": Vector2i(-5, -4), "dir": Vector2i(0, 1), "length": 9, "fixed_x": -5, "axis": "y"},
-		"Right": {"start": Vector2i(5, -4), "dir": Vector2i(0, 1), "length": 9, "fixed_x": 5, "axis": "y"},
-		"Top": {"start": Vector2i(-4, -5), "dir": Vector2i(1, 0), "length": 9, "fixed_y": -5, "axis": "x"},
-		"Bottom": {"start": Vector2i(-4, 5), "dir": Vector2i(1, 0), "length": 9, "fixed_y": 5, "axis": "x"}
-	}
+	# Constants
+	var T = Constants.TILE_SIZE
+	var M_w = Constants.MAP_WIDTH
+	var M_h = Constants.MAP_HEIGHT
+	var E_x = (M_w * T) / 2.0
+	var E_y = (M_h * T) / 2.0
+	var O_max = T / 2.0
+	var G_max = T
+	var R_margin = T / 6.0
+	var CornerLimitX = E_x - T
+	var CornerLimitY = E_y - T
 
-	# 2. Parameters
-	var total_trees = randi_range(3, 6)
+	# Total Trees
+	var total_trees = randi_range(4, 6)
+	var sides = ["Top", "Bottom", "Left", "Right"]
 	var trees_to_place = []
 
-	# Mandatory Quota
-	trees_to_place.append("Left")
-	trees_to_place.append("Right")
-	trees_to_place.append("Bottom")
+	# Mandatory: One per side
+	for side in sides:
+		trees_to_place.append(side)
 
-	# Remaining Quota
-	var remaining_count = total_trees - 3
-	var all_sides = ["Left", "Right", "Top", "Bottom"]
-	for i in range(remaining_count):
-		trees_to_place.append(all_sides.pick_random())
+	# Remaining: Random
+	var remaining = total_trees - 4
+	for i in range(remaining):
+		trees_to_place.append(sides.pick_random())
 
-	# Tracking placed trees to avoid overlap
-	# We can store occupied grid positions on the borders
-	var occupied_positions = {} # Key: "x,y", Value: true
+	var placed_trees = [] # Array of Dictionary {rect: Rect2, tree: Node2D}
+	var occupied_grid_cells = {} # Key "x,y" : true
 
-	for side_name in trees_to_place:
-		var border = borders[side_name]
+	for side in trees_to_place:
 		var placed = false
 		var attempts = 0
 		var max_attempts = 10
@@ -219,58 +216,115 @@ func _setup_tree_border():
 		while !placed and attempts < max_attempts:
 			attempts += 1
 
-			# Width Constraints
-			var w = 0
-			if side_name == "Bottom":
-				w = 2
-			else:
-				w = randi_range(2, 4)
-
-			# Pick random position along the border
-			# Available length is 9. Valid indices are 0 to (9 - w).
-			var max_index = border.length - w
-			if max_index < 0:
-				print("Warning: Tree width too big for border")
-				continue
-
-			var start_index = randi_range(0, max_index)
-
-			# Check Overlap
-			var overlap = false
-			var candidate_tiles = []
-			for i in range(w):
-				var pos = border.start + border.dir * (start_index + i)
-				var key = "%d,%d" % [pos.x, pos.y]
-				if occupied_positions.has(key):
-					overlap = true
-					break
-				candidate_tiles.append(pos)
-
-			if overlap:
-				continue
-
-			# Place Tree
-			placed = true
-			for pos in candidate_tiles:
-				occupied_positions["%d,%d" % [pos.x, pos.y]] = true
-
+			# Instantiate to get size (temporarily, will add if successful)
 			var tree = TREE_SCENE.instantiate()
-			tree.setup(w)
-			tree.z_index = 200 # Visual requirement
+			# Random width logic similar to before or just random factor passed to setup
+			var width_tiles = randi_range(2, 4)
+			tree.setup(width_tiles)
+			var size = tree.get_pixel_size()
+			var W = size.x
+			var H = size.y
+
+			var pos = Vector2.ZERO
+
+			# Generate Position based on Side Constraints
+			match side:
+				"Top":
+					# Prompt Logic: Y in [E_y + R_margin, E_y + G_max] (Prompt Y Up)
+					# Godot Logic: Y in [-E_y - G_max, -E_y - R_margin]
+					var y_min = -E_y - G_max
+					var y_max = -E_y - R_margin
+					var rand_y = randf_range(y_min, y_max)
+
+					# X random interval. To avoid corners, X needs to be within [-CornerLimitX, CornerLimitX]
+					# because Y is definitely > CornerLimitY (since E_y > E_y - T).
+					# Wait, Corner Exclusion: |x| > (E_x - T) AND |y| > (E_y - T)
+					# Here |y| >= E_y + R_margin > E_y - T. So Corner Condition depends on X.
+					# If we pick X in corner area, we must retry.
+					# So we can just pick X in full range and check, or pick safely.
+					# Picking safely is more efficient.
+					# Range for X: we want to allow overlap with board edge? Usually trees are along the border.
+					# Let's use range [-E_x, E_x] approximately.
+					var rand_x = randf_range(-E_x - G_max, E_x + G_max)
+					pos = Vector2(rand_x, rand_y)
+
+				"Bottom":
+					# Prompt Logic: Anchor Y in [-(E_y + H + G_max), -(E_y + H - O_max)] (Prompt Y Up)
+					# Godot Logic: Y in [E_y + H - O_max, E_y + H + G_max]
+					var y_min = E_y + H - O_max
+					var y_max = E_y + H + G_max
+					var rand_y = randf_range(y_min, y_max)
+
+					var rand_x = randf_range(-E_x - G_max, E_x + G_max)
+					pos = Vector2(rand_x, rand_y)
+
+				"Left":
+					# Prompt Logic: Edge enters board depth <= O_max.
+					# Godot X Range: [-E_x - W/2 - G_max, -E_x - W/2 + O_max]
+					# (Derived in thought process: RightEdge = X + W/2. RightEdge <= -E_x + O_max. RightEdge >= -E_x - G_max)
+					var x_min = -E_x - W/2.0 - G_max
+					var x_max = -E_x - W/2.0 + O_max
+					var rand_x = randf_range(x_min, x_max)
+
+					var rand_y = randf_range(-E_y - G_max, E_y + G_max)
+					pos = Vector2(rand_x, rand_y)
+
+				"Right":
+					# Godot X Range: [E_x + W/2 - O_max, E_x + W/2 + G_max]
+					var x_min = E_x + W/2.0 - O_max
+					var x_max = E_x + W/2.0 + G_max
+					var rand_x = randf_range(x_min, x_max)
+
+					var rand_y = randf_range(-E_y - G_max, E_y + G_max)
+					pos = Vector2(rand_x, rand_y)
+
+			# Corner Check
+			if abs(pos.x) > CornerLimitX and abs(pos.y) > CornerLimitY:
+				tree.queue_free()
+				continue # Retry
+
+			# Grid Uniqueness Check
+			# Logical grid position (T x T)
+			var grid_pos = local_to_grid(pos)
+			var grid_key = "%d,%d" % [grid_pos.x, grid_pos.y]
+			if occupied_grid_cells.has(grid_key):
+				tree.queue_free()
+				continue
+
+			# Overlap Check
+			# Tree Rect: (x - W/2, y - H, W, H) -> Based on Bottom-Center Anchor
+			# But Tree.gd setup sets Sprite position.y = -frame_height/2.
+			# Wait, Tree.gd: $Sprite2D.position.y = -frame_height / 2.0
+			# This means the Node Origin (0,0) is at the BOTTOM of the sprite.
+			# So the sprite rect is from (x - W/2, y - H) to (x + W/2, y).
+			var new_rect = Rect2(pos.x - W/2.0, pos.y - H, W, H)
+			var overlap_fail = false
+
+			for other in placed_trees:
+				var other_rect = other.rect
+				if new_rect.intersects(other_rect):
+					var intersection = new_rect.intersection(other_rect)
+					var area_int = intersection.get_area()
+					var area_new = new_rect.get_area()
+					if area_int > (area_new / 3.0):
+						overlap_fail = true
+						break
+
+			if overlap_fail:
+				tree.queue_free()
+				continue
+
+			# Success
+			tree.position = pos
 			add_child(tree)
+			tree.update_z_index()
 
-			# Position Calculation
-			# The tree is anchored at the center of its width.
-			# grid_to_local gives center of tile.
-			# First tile pos:
-			var first_tile_grid = candidate_tiles[0]
-			var first_tile_world = grid_to_local(first_tile_grid)
+			placed_trees.append({"rect": new_rect, "tree": tree})
+			occupied_grid_cells[grid_key] = true
+			placed = true
 
-			# Offset logic from original code: "center offset = (w - 1) * 0.5"
-			var center_offset_tiles = (w - 1) * 0.5
-			var offset_world = Vector2(border.dir.x, border.dir.y) * center_offset_tiles * TILE_SIZE
-
-			tree.position = first_tile_world + offset_world
+		if !placed:
+			print("Failed to place tree on side: ", side)
 
 func _create_map_boundaries():
 	var border_body = StaticBody2D.new()
