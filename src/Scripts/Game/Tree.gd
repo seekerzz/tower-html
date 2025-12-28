@@ -1,5 +1,8 @@
 extends Node2D
 
+var actual_width: float = 0.0
+var actual_height: float = 0.0
+
 func setup(width_in_tiles: int):
 	var config = Constants.ENVIRONMENT_CONFIG
 	var texture_path = config["tree_tile_set"]
@@ -23,9 +26,13 @@ func setup(width_in_tiles: int):
 	if frame_width == 0:
 		frame_width = 1.0
 
+	var rows = config.get("tree_rows", 1)
+	if rows <= 0: rows = 1
+	var frame_height = texture_height / float(rows)
+
 	# Set up sprite frame
 	$Sprite2D.hframes = columns
-	$Sprite2D.vframes = config.get("tree_rows", 1)
+	$Sprite2D.vframes = rows
 	$Sprite2D.frame = randi() % columns
 
 	# Calculate Scale
@@ -35,12 +42,13 @@ func setup(width_in_tiles: int):
 
 	scale = Vector2(final_scale, final_scale)
 
+	actual_width = frame_width * final_scale
+	actual_height = frame_height * final_scale
+
 	# Alignment
 	# Sprite2D bottom aligned to origin.
 	# If centered=true (default), origin is center of sprite.
 	# We want bottom of sprite at (0,0) of the Tree node.
-	# The height of the sprite is texture_height / rows
-	var frame_height = texture_height / float($Sprite2D.vframes)
 
 	# Move sprite up by half its height so its bottom is at 0
 	$Sprite2D.position.y = -frame_height / 2.0
@@ -49,4 +57,9 @@ func setup(width_in_tiles: int):
 	if randf() > 0.5:
 		$Sprite2D.flip_h = true
 
-	z_index = 200
+	# Z-Index will be set by GridManager based on Y position
+	# But we can also update it dynamically if position changes
+	z_index = int(position.y)
+
+func get_actual_size() -> Vector2:
+	return Vector2(actual_width, actual_height)

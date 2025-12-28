@@ -1,6 +1,10 @@
 extends Node
 
 const TILE_SIZE = 60
+const O_MAX = TILE_SIZE / 2.0
+const G_MAX = TILE_SIZE
+const R_MARGIN = TILE_SIZE / 6.0
+
 const BENCH_SIZE = 8
 
 const MAP_WIDTH = 9
