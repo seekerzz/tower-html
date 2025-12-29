@@ -11,6 +11,7 @@ extends Node2D
 
 # Random seeds
 var sway_phase: float = 0.0
+var _last_zoom: Vector2 = Vector2.ONE
 
 func _ready():
 	# Randomize sway phase
@@ -71,6 +72,8 @@ func _process(_delta):
 	# Camera global pos is updated by GridManager to avoid redundant updates.
 	# We just need to ensure scale is updated if zoom changes.
 
-	# Optimization: Only update if zoom changed?
-	# For now, update every frame to be safe with dynamic camera
-	_update_global_scale()
+	if GameManager.grid_manager and GameManager.grid_manager.get_viewport():
+		var cam = GameManager.grid_manager.get_viewport().get_camera_2d()
+		if cam and cam.zoom != _last_zoom:
+			_last_zoom = cam.zoom
+			_update_global_scale()
