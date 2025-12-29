@@ -90,22 +90,23 @@ void fragment() {
 
 	if (col.a < 1.0) {
 		// Sample neighbors to see if we are close to an opaque pixel
-		// Use a few samples for smoothness
-		float steps = 8.0;
+		// Use more samples for smoothness and averaging
+		float steps = 32.0;
+		float alpha_accum = 0.0;
+
 		for (float i = 0.0; i < steps; i++) {
 			float angle = i * 6.28318 / steps;
 			vec2 offset = vec2(cos(angle), sin(angle)) * width * pixel_size;
-			alpha_max = max(alpha_max, texture(TEXTURE, UV + offset).a);
+			alpha_accum += texture(TEXTURE, UV + offset).a;
 		}
 
-		// If we found an opaque neighbor, draw outline
-		// Smoothstep for anti-aliasing feel
-		if (alpha_max > 0.0) {
-			// Mix outline based on how close we are to the opaque pixel (approximated by alpha_max)
-			// And keep the original color's alpha if it exists (for semi-transparent pixels)
-			float outline_alpha = alpha_max;
-			// If the original pixel has some alpha, we blend.
-			// Ideally: result = mix(outline, texture, texture.a)
+		float alpha_avg = alpha_accum / steps;
+
+		// If we found any opaque neighbors
+		if (alpha_avg > 0.0) {
+			// Smoothstep for anti-aliasing feel based on average alpha coverage
+			// Adjust thresholds to control sharpness vs softness
+			float outline_alpha = smoothstep(0.0, 0.5, alpha_avg);
 
 			vec4 outline = outline_color;
 			outline.a *= outline_alpha;
