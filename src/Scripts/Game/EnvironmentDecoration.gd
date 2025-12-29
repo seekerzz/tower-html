@@ -3,7 +3,7 @@ extends Node2D
 @onready var sprite: Sprite2D = $Sprite2D
 
 # Configurable properties
-@export var sway_intensity: float = 10.0
+@export var sway_intensity: float = 3.0
 @export var sway_speed: float = 1.0
 @export var parallax_factor: float = 0.02
 @export var outline_width: float = 1.0
@@ -11,6 +11,7 @@ extends Node2D
 
 # Random seeds
 var sway_phase: float = 0.0
+var _last_zoom: Vector2 = Vector2.ZERO
 
 func _ready():
 	# Randomize sway phase
@@ -54,23 +55,30 @@ func setup_visuals(texture: Texture2D, hframes: int, vframes: int, frame_idx: in
 
 	# We need to pass this scale to the shader for outline compensation.
 	# Since this node is scaled, the sprite inherits it.
+	# Reset _last_zoom to ensure process loop also syncs if needed, though explicit call handles it.
+	_last_zoom = Vector2.ZERO
 	_update_global_scale()
 
 func _update_global_scale():
 	if not is_inside_tree(): return
-	var zoom = Vector2(1,1)
-	if GameManager.grid_manager and GameManager.grid_manager.get_viewport():
-		var cam = GameManager.grid_manager.get_viewport().get_camera_2d()
-		if cam:
-			zoom = cam.zoom
+
+	# Current zoom
+	var zoom = _get_camera_zoom()
 
 	var total_scale = global_scale * zoom
 	sprite.set_instance_shader_parameter("global_scale", total_scale)
 
+func _get_camera_zoom() -> Vector2:
+	if GameManager.grid_manager and GameManager.grid_manager.get_viewport():
+		var cam = GameManager.grid_manager.get_viewport().get_camera_2d()
+		if cam:
+			return cam.zoom
+	return Vector2(1, 1)
+
 func _process(_delta):
 	# Camera global pos is updated by GridManager to avoid redundant updates.
 	# We just need to ensure scale is updated if zoom changes.
-
-	# Optimization: Only update if zoom changed?
-	# For now, update every frame to be safe with dynamic camera
-	_update_global_scale()
+	var current_zoom = _get_camera_zoom()
+	if current_zoom != _last_zoom:
+		_last_zoom = current_zoom
+		_update_global_scale()

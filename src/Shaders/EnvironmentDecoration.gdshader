@@ -8,7 +8,7 @@ uniform vec2 camera_global_pos = vec2(0.0);
 instance uniform vec4 outline_color : source_color = vec4(0.1, 0.1, 0.1, 1.0);
 instance uniform vec2 global_scale = vec2(1.0, 1.0); // Passed from script to compensate outline width
 instance uniform float sway_phase = 0.0;
-instance uniform float sway_intensity : hint_range(0.0, 50.0) = 10.0;
+instance uniform float sway_intensity : hint_range(0.0, 20.0) = 3.0;
 instance uniform float sway_speed : hint_range(0.0, 5.0) = 1.0;
 instance uniform float parallax_factor : hint_range(-0.1, 0.1) = 0.02;
 
@@ -40,7 +40,8 @@ void vertex() {
 	// Better: The user asked for sway based on height.
 	// "Root (UV.y close to 1.0) stays still".
 
-	float sway = sin(TIME * sway_speed + sway_phase) * sway_intensity * (dist_from_root * 0.05); // scaling factor arbitrary
+	// Use pow for non-linear sway (concentrated at top) and reduced coefficient
+	float sway = sin(TIME * sway_speed + sway_phase) * sway_intensity * pow(dist_from_root * 0.01, 2.0);
 
 	// Apply sway to X
 	VERTEX.x += sway;
@@ -91,7 +92,7 @@ void fragment() {
 	if (col.a < 1.0) {
 		// Sample neighbors to see if we are close to an opaque pixel
 		// Use a few samples for smoothness
-		float steps = 8.0;
+		float steps = 16.0;
 		for (float i = 0.0; i < steps; i++) {
 			float angle = i * 6.28318 / steps;
 			vec2 offset = vec2(cos(angle), sin(angle)) * width * pixel_size;
@@ -103,7 +104,7 @@ void fragment() {
 		if (alpha_max > 0.0) {
 			// Mix outline based on how close we are to the opaque pixel (approximated by alpha_max)
 			// And keep the original color's alpha if it exists (for semi-transparent pixels)
-			float outline_alpha = alpha_max;
+			float outline_alpha = smoothstep(0.0, 1.0, alpha_max);
 			// If the original pixel has some alpha, we blend.
 			// Ideally: result = mix(outline, texture, texture.a)
 
