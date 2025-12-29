@@ -1,6 +1,12 @@
 extends Node2D
 
 var _scaled_size: Vector2 = Vector2.ZERO
+var flexibility: float = 0.5
+var _impact_tween: Tween
+
+func _ready():
+	if GameManager:
+		GameManager.world_impact.connect(_on_world_impact)
 
 func setup(width_in_tiles: int):
 	var config = Constants.ENVIRONMENT_CONFIG
@@ -44,6 +50,14 @@ func setup(width_in_tiles: int):
 	# Calculate and store actual pixel size
 	_scaled_size = Vector2(frame_width * final_scale, frame_height * final_scale)
 
+	# Set shader parameters for tree
+	$Sprite2D.set_instance_shader_parameter("global_scale", Vector2(final_scale, final_scale))
+	$Sprite2D.set_instance_shader_parameter("sway_phase", randf_range(0.0, 6.28))
+	$Sprite2D.set_instance_shader_parameter("sway_intensity", 5.0)
+	$Sprite2D.set_instance_shader_parameter("sway_speed", 0.5)
+	$Sprite2D.set_instance_shader_parameter("impact_offset", Vector2.ZERO)
+	$Sprite2D.set_instance_shader_parameter("outline_color", Color(0.12, 0.12, 0.12, 1.0))
+
 	# Alignment
 	# Sprite2D bottom aligned to origin.
 	# If centered=true (default), origin is center of sprite.
@@ -69,3 +83,26 @@ func update_z_index():
 	# The prompt requested "Inverse Logic" (Small Y -> Large Z) likely assuming Y-Up coordinates.
 	# To achieve the correct visual result in Godot, we use Standard Logic (Large Y -> Large Z).
 	z_index = int(global_position.y)
+
+func _on_world_impact(direction: Vector2, strength: float):
+	if _impact_tween and _impact_tween.is_valid():
+		_impact_tween.kill()
+
+	_impact_tween = create_tween()
+
+	# Tree flexibility is lower (0.5)
+	var target_offset = direction * strength * flexibility * 0.1
+
+	_impact_tween.tween_method(
+		func(val): $Sprite2D.set_instance_shader_parameter("impact_offset", val),
+		Vector2.ZERO,
+		target_offset,
+		0.1
+	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+	_impact_tween.tween_method(
+		func(val): $Sprite2D.set_instance_shader_parameter("impact_offset", val),
+		target_offset,
+		Vector2.ZERO,
+		1.5
+	).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)

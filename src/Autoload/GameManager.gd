@@ -13,6 +13,8 @@ signal ftext_spawn_requested(pos, value, color, direction)
 signal show_tooltip(data, stats, buffs, pos)
 signal hide_tooltip()
 
+signal world_impact(direction: Vector2, strength: float)
+
 var core_type: String = "cornucopia"
 var food: float = 1000.0
 var max_food: float = 2000.0
@@ -421,6 +423,11 @@ func add_resource(type: String, amount: float):
 		gold += int(amount)
 
 	resource_changed.emit()
+
+func trigger_impact(direction: Vector2, strength: float):
+	if main_game and main_game.has_method("apply_impulse_shake"):
+		main_game.apply_impulse_shake(direction, strength * 2.0)
+	world_impact.emit(direction, strength)
 
 func spawn_floating_text(pos: Vector2, value: String, type_or_color: Variant, direction: Vector2 = Vector2.ZERO):
 	var color = Color.WHITE

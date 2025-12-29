@@ -11,6 +11,7 @@ instance uniform float sway_phase = 0.0;
 instance uniform float sway_intensity : hint_range(0.0, 50.0) = 5.0;
 instance uniform float sway_speed : hint_range(0.0, 5.0) = 1.0;
 instance uniform float parallax_factor : hint_range(-0.1, 0.1) = 0.02;
+instance uniform vec2 impact_offset = vec2(0.0);
 
 void vertex() {
 	// Wind Sway
@@ -45,6 +46,9 @@ void vertex() {
 
 	// Apply sway to X
 	VERTEX.x += sway;
+
+	// Apply Impact Offset (weighted by height/dist_from_root)
+	VERTEX.xy += impact_offset * dist_from_root;
 
 	// Parallax
 	// Move VERTEX based on camera position relative to the object.
