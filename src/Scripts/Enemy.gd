@@ -348,19 +348,13 @@ func handle_collisions(delta):
 				# Heavy Impact
 				if impact > HEAVY_IMPACT_THRESHOLD:
 					# GameManager.trigger_hit_stop(0.1)
-					if GameManager.main_game:
-						GameManager.main_game.apply_impulse_shake(velocity.normalized() * -1.0, 5.0) # Shake in direction of impact (opposite to bounce?) or direction of hit?
-						# If we hit wall, we want shake in direction of impact.
-						# But we just zeroed velocity. We should use previous momentum direction or simply normalized knockback before zeroing.
-						# But we don't have it easily here since we zeroed it.
-						# Actually we have `momentum` calculated earlier, but not direction.
-						# Let's assume we shake 'screen' roughly.
-						# Ref says "apply_impulse_shake(direction, strength)".
-						# Direction should be into the wall.
-						# Since we are colliding, we can get collision normal.
-						# collision.get_normal() points OUT of wall.
-						# So impulse should be -normal.
-						GameManager.main_game.apply_impulse_shake(-collision.get_normal(), 2.0)
+					var impact_dir = -collision.get_normal()
+					# Normalize impact strength.
+					# HEAVY_IMPACT_THRESHOLD is 50. Let's map 50->0.5, 200->2.0?
+					# Or just 0-1 range for shader.
+					# Let's assume max reasonable impact is around 300.
+					var norm_strength = clamp(impact / 100.0, 0.0, 3.0)
+					GameManager.trigger_impact(impact_dir, norm_strength)
 
 				apply_physics_stagger(1.5)
 

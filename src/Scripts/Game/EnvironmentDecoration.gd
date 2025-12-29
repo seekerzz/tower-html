@@ -9,11 +9,18 @@ extends Node2D
 @export var outline_width: float = 1.0
 @export var outline_color: Color = Color(0.12, 0.12, 0.12, 1.0)
 
+var flexibility: float = 1.8 # Default to high (Flowers/Plants)
+
 # Random seeds
 var sway_phase: float = 0.0
 var _last_zoom: Vector2 = Vector2.ONE
 
+var impact_tween: Tween
+
 func _ready():
+	# Connect global impact
+	GameManager.world_impact.connect(_on_world_impact)
+
 	# Randomize sway phase
 	sway_phase = randf_range(0.0, 6.28)
 
@@ -41,6 +48,33 @@ func _ready():
 
 	# Initial update
 	_update_global_scale()
+
+func _on_world_impact(direction: Vector2, strength: float):
+	if impact_tween and impact_tween.is_valid():
+		impact_tween.kill()
+
+	impact_tween = create_tween()
+
+	# Phase 1: Quick Impact
+	var target_offset = direction * strength * flexibility
+
+	# Pass impact_offset as shader parameter (instance uniform)
+	# Note: GDScript set_instance_shader_parameter
+
+	impact_tween.tween_method(
+		func(val): sprite.set_instance_shader_parameter("impact_offset", val),
+		Vector2.ZERO,
+		target_offset,
+		0.1
+	).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+
+	# Phase 2: Recovery with Elasticity
+	impact_tween.tween_method(
+		func(val): sprite.set_instance_shader_parameter("impact_offset", val),
+		target_offset,
+		Vector2.ZERO,
+		1.5
+	).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 
 func setup_visuals(texture: Texture2D, hframes: int, vframes: int, frame_idx: int, flip_h: bool, scale_val: float):
 	sprite.texture = texture
