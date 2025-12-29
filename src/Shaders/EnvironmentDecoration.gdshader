@@ -7,6 +7,7 @@ uniform vec2 camera_global_pos = vec2(0.0);
 // Instance Uniforms for variation
 instance uniform vec4 outline_color : source_color = vec4(0.1, 0.1, 0.1, 1.0);
 instance uniform vec2 global_scale = vec2(1.0, 1.0); // Passed from script to compensate outline width
+instance uniform vec2 impact_offset = vec2(0.0);
 instance uniform float sway_phase = 0.0;
 instance uniform float sway_intensity : hint_range(0.0, 50.0) = 5.0;
 instance uniform float sway_speed : hint_range(0.0, 5.0) = 1.0;
@@ -45,6 +46,10 @@ void vertex() {
 
 	// Apply sway to X
 	VERTEX.x += sway;
+
+	// Apply Impact Offset
+	// Weighted by dist_from_root to pin the bottom
+	VERTEX.xy += impact_offset * dist_from_root;
 
 	// Parallax
 	// Move VERTEX based on camera position relative to the object.

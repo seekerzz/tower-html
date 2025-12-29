@@ -9,6 +9,7 @@ signal unit_purchased(unit_data)
 signal unit_sold(amount)
 signal skill_activated(unit)
 signal damage_dealt(unit, amount)
+signal world_impact(direction: Vector2, strength: float)
 signal ftext_spawn_requested(pos, value, color, direction)
 signal show_tooltip(data, stats, buffs, pos)
 signal hide_tooltip()
@@ -421,6 +422,14 @@ func add_resource(type: String, amount: float):
 		gold += int(amount)
 
 	resource_changed.emit()
+
+func trigger_impact(direction: Vector2, strength: float):
+	if main_game:
+		# Shake camera via MainGame
+		main_game.apply_impulse_shake(direction, strength * 5.0)
+
+	# Notify environment
+	world_impact.emit(direction, strength)
 
 func spawn_floating_text(pos: Vector2, value: String, type_or_color: Variant, direction: Vector2 = Vector2.ZERO):
 	var color = Color.WHITE

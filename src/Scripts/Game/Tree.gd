@@ -1,8 +1,55 @@
 extends Node2D
 
 var _scaled_size: Vector2 = Vector2.ZERO
+var impact_tween: Tween
+var flexibility: float = 0.5 # Low for trees
+
+func _ready():
+	GameManager.world_impact.connect(_on_world_impact)
+
+func _on_world_impact(direction: Vector2, strength: float):
+	if impact_tween and impact_tween.is_valid():
+		impact_tween.kill()
+
+	impact_tween = create_tween()
+
+	# Phase 1: Quick Impact
+	# Trees are stiff, less sway
+	var target_offset = direction * strength * flexibility
+
+	impact_tween.tween_method(
+		func(val): $Sprite2D.set_instance_shader_parameter("impact_offset", val),
+		Vector2.ZERO,
+		target_offset,
+		0.15
+	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+	# Phase 2: Recovery (Slower/Heavier for trees)
+	impact_tween.tween_method(
+		func(val): $Sprite2D.set_instance_shader_parameter("impact_offset", val),
+		target_offset,
+		Vector2.ZERO,
+		2.0
+	).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 
 func setup(width_in_tiles: int):
+	# Apply EnvironmentDecoration Material to allow shader effects if not present
+	# We load the shader resource manually to ensure it matches
+	var shader = load("res://src/Shaders/EnvironmentDecoration.gdshader")
+	if not $Sprite2D.material:
+		var mat = ShaderMaterial.new()
+		mat.shader = shader
+		$Sprite2D.material = mat
+
+		# Set defaults
+		mat.set_shader_parameter("sway_intensity", 3.0) # Less sway for trees
+		mat.set_shader_parameter("sway_speed", 0.5)
+		# Initialize instance uniforms
+		$Sprite2D.set_instance_shader_parameter("impact_offset", Vector2.ZERO)
+		$Sprite2D.set_instance_shader_parameter("sway_phase", randf() * 6.28)
+		$Sprite2D.set_instance_shader_parameter("global_scale", Vector2.ONE)
+
+
 	var config = Constants.ENVIRONMENT_CONFIG
 	var texture_path = config["tree_tile_set"]
 	var columns = config["tree_columns"]
