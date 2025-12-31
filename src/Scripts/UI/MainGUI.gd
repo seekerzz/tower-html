@@ -34,6 +34,11 @@ var shop_node: Control = null
 var combat_gold_label: Label
 
 func _ready():
+	# Remove FoodBar if it exists
+	var food_bar_node = $TopLeftPanel.get_node_or_null("FoodBar")
+	if food_bar_node:
+		food_bar_node.queue_free()
+
 	# 1. 布局核心修复：强制重置侧边栏锚点为全高模式
 	_fix_sidebar_anchors()
 	
