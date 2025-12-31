@@ -29,9 +29,16 @@ var visual_node: Node2D = null
 var is_fading: bool = false
 
 # Dragon Breath State
-enum State { MOVING, HOVERING }
+enum State { MOVING, HOVERING, OUTBOUND, RETURNING }
 var state = State.MOVING
 var dragon_breath_timer: float = 0.0
+
+# Boomerang vars
+var start_pos_boomerang: Vector2 = Vector2.ZERO
+var target_pos_boomerang: Vector2 = Vector2.ZERO
+var boomerang_progress: float = 0.0
+var max_offset_boomerang: float = 0.0
+var boomerang_duration: float = 1.0 # Will adjust based on distance/speed
 
 const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
 
@@ -93,6 +100,24 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 		elif stats.get("angle") != null:
 			rotation = stats.get("angle")
 
+	if type == "boomerang":
+		state = State.OUTBOUND
+		start_pos_boomerang = start_pos
+		if target_node:
+			target_pos_boomerang = target_node.global_position
+		else:
+			target_pos_boomerang = start_pos + Vector2.RIGHT * 250.0 # Fallback
+
+		var dist = start_pos.distance_to(target_pos_boomerang)
+		max_offset_boomerang = dist * 0.3
+		boomerang_duration = max(dist / speed, 0.1) # Prevent div by zero
+		boomerang_progress = 0.0
+		pierce = 9999 # High pierce
+
+		# Register projectile to source unit if monkey
+		if source_unit and source_unit.type_key == "monkey":
+			source_unit.current_projectile = self
+
 	# Visual Separation
 	if has_node("Sprite2D"):
 		visual_node = get_node("Sprite2D")
@@ -136,6 +161,8 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 		_setup_simple_visual(Color.YELLOW, "triangle")
 	elif type == "pollen":
 		_setup_simple_visual(Color.PINK, "star")
+	elif type == "boomerang":
+		_setup_simple_visual(Color.BROWN, "boomerang")
 	elif type == "lightning":
 		# Keep lightning if it was handled elsewhere or add simple visual
 		_setup_simple_visual(Color.CYAN, "line")
@@ -177,6 +204,10 @@ func _process(delta):
 	# Dragon Breath Logic
 	if type == "dragon_breath":
 		_process_dragon_breath(delta)
+		return
+
+	if type == "boomerang":
+		_process_boomerang(delta)
 		return
 
 	# Black Hole Logic
@@ -258,6 +289,40 @@ func _process_black_hole(delta):
 			else:
 				# Direct position modification (works on top of physics for control effects)
 				enemy.global_position += force_vector
+
+func _process_boomerang(delta):
+	if state == State.OUTBOUND:
+		boomerang_progress += delta / boomerang_duration
+
+		if boomerang_progress >= 1.0:
+			boomerang_progress = 1.0
+			state = State.RETURNING
+
+		var t = boomerang_progress
+		# Linear interpolation
+		var current_linear_pos = start_pos_boomerang.lerp(target_pos_boomerang, t)
+
+		# Perpendicular Offset
+		var dir = (target_pos_boomerang - start_pos_boomerang).normalized()
+		var perp = Vector2(-dir.y, dir.x)
+		var offset_mag = max_offset_boomerang * 4 * t * (1 - t)
+
+		position = current_linear_pos + perp * offset_mag
+		rotation += delta * 15.0 # Spin
+
+	elif state == State.RETURNING:
+		if !is_instance_valid(source_unit):
+			queue_free()
+			return
+
+		var dir = (source_unit.global_position - global_position).normalized()
+		position += dir * speed * delta
+		rotation += delta * 15.0 # Spin
+
+		if global_position.distance_to(source_unit.global_position) < 20.0:
+			if source_unit.has_method("catch_projectile"):
+				source_unit.catch_projectile()
+			queue_free()
 
 func _process_dragon_breath(delta):
 	if state == State.MOVING:
@@ -474,6 +539,12 @@ func _setup_simple_visual(color, shape):
 			Vector2(0, 6), Vector2(-2, 2),
 			Vector2(-6, 0), Vector2(-2, -2),
 			Vector2(0, -6), Vector2(2, -2)
+		])
+	elif shape == "boomerang":
+		# L shape or V shape
+		points = PackedVector2Array([
+			Vector2(0, 0), Vector2(8, -4),
+			Vector2(4, 0), Vector2(8, 4)
 		])
 	else:
 		# Box

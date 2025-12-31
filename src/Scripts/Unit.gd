@@ -35,6 +35,9 @@ var split_count: int = 0
 
 var guaranteed_crit_stacks: int = 0
 
+# Monkey Mechanics
+var current_projectile: Area2D = null
+
 # Parrot Mechanics
 var ammo_queue: Array = []
 var max_ammo: int = 0
@@ -292,6 +295,14 @@ func update_parrot_range():
 		range_val = min_range
 	else:
 		range_val = 0.0
+
+func catch_projectile():
+	current_projectile = null
+	cooldown = 0.1 # Small delay to prevent instant re-fire glitches, or allow immediate? 0 is fine.
+	# The prompt implies it returns to hand, then can attack.
+	# We can assume atk_speed regulates the next shot, but since 'cooldown' counts down...
+	# If we want immediate attack, set cooldown close to 0.
+	# However, usually there's a catch animation or something. I'll set it to 0.
 
 func capture_bullet(bullet_snapshot: Dictionary):
 	if type_key != "parrot": return
@@ -731,7 +742,16 @@ func _process_combat(delta):
 	var combat_manager = GameManager.combat_manager
 	if !combat_manager: return
 
-	var target = combat_manager.find_nearest_enemy(global_position, range_val)
+	# Monkey Logic: Check if boomerang is out
+	if type_key == "monkey" and is_instance_valid(current_projectile):
+		return
+
+	var target = null
+	if type_key == "monkey":
+		target = combat_manager.find_farthest_enemy(global_position, range_val)
+	else:
+		target = combat_manager.find_nearest_enemy(global_position, range_val)
+
 	if target:
 		# Consume Resources
 		if attack_cost_mana > 0:
