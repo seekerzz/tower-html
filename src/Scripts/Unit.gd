@@ -731,7 +731,12 @@ func _process_combat(delta):
 	var combat_manager = GameManager.combat_manager
 	if !combat_manager: return
 
-	var target = combat_manager.find_nearest_enemy(global_position, range_val)
+	var target = null
+	if type_key == "monkey":
+		target = _find_furthest_enemy(range_val)
+	else:
+		target = combat_manager.find_nearest_enemy(global_position, range_val)
+
 	if target:
 		# Consume Resources
 		if attack_cost_mana > 0:
@@ -771,7 +776,23 @@ func _process_combat(delta):
 					var angle = start_angle + (i * step)
 					combat_manager.spawn_projectile(self, global_position, target, {"angle": angle})
 			else:
-				combat_manager.spawn_projectile(self, global_position, target)
+				if type_key == "monkey":
+					combat_manager.spawn_projectile(self, global_position, target, {"type": "boomerang", "is_monkey_attack": true})
+				else:
+					combat_manager.spawn_projectile(self, global_position, target)
+
+func _find_furthest_enemy(max_range: float):
+	var furthest = null
+	var max_dist = -1.0
+	var enemies = get_tree().get_nodes_in_group("enemies")
+
+	for enemy in enemies:
+		var dist = global_position.distance_to(enemy.global_position)
+		if dist <= max_range:
+			if dist > max_dist:
+				max_dist = dist
+				furthest = enemy
+	return furthest
 
 func _spawn_meteor_at_random_enemy():
 	var combat_manager = GameManager.combat_manager

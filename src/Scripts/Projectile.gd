@@ -33,14 +33,25 @@ enum State { MOVING, HOVERING }
 var state = State.MOVING
 var dragon_breath_timer: float = 0.0
 
+# Boomerang State
+enum BoomerangPhase { OUTBOUND, RETURNING }
+var boomerang_phase = BoomerangPhase.OUTBOUND
+var arc_direction: int = 1
+var boomerang_target_pos: Vector2 = Vector2.ZERO
+var start_pos: Vector2 = Vector2.ZERO
+var curve_height: float = 100.0
+var boomerang_total_dist: float = 0.0
+var boomerang_timer: float = 0.0
+var boomerang_duration: float = 0.0
+
 const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
 
 func _ready():
 	if not body_entered.is_connected(_on_body_entered):
 		body_entered.connect(_on_body_entered)
 
-func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = {}):
-	position = start_pos
+func setup(init_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = {}):
+	position = init_pos
 	target = target_node
 	damage = dmg
 	speed = proj_speed
@@ -98,6 +109,36 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 		visual_node = get_node("Sprite2D")
 	elif has_node("Polygon2D"):
 		visual_node = get_node("Polygon2D")
+
+	if type == "boomerang":
+		start_pos = init_pos
+		arc_direction = 1 if randf() > 0.5 else -1
+
+		# Calculate Behind Target Point
+		if target and is_instance_valid(target):
+			var dir_to_target = (target.global_position - start_pos).normalized()
+			boomerang_target_pos = target.global_position + dir_to_target * 80.0
+		elif stats.get("angle") != null:
+			# Fallback if no target but angle exists (rare for this logic)
+			var ang = stats.get("angle")
+			var dir = Vector2.RIGHT.rotated(ang)
+			boomerang_target_pos = start_pos + dir * 400.0 # Arbitrary distance
+		else:
+			# Fallback if absolutely nothing
+			boomerang_target_pos = start_pos + Vector2(100, 0)
+
+		boomerang_total_dist = start_pos.distance_to(boomerang_target_pos)
+		# Calculate duration based on speed
+		boomerang_duration = boomerang_total_dist / speed
+		if boomerang_duration <= 0: boomerang_duration = 0.5
+
+		boomerang_timer = 0.0
+		boomerang_phase = BoomerangPhase.OUTBOUND
+
+		# Set high pierce to prevent early destruction
+		pierce = 100
+
+		_setup_simple_visual(Color("8B4513"), "triangle") # Use triangle or similar
 
 	if type == "black_hole_field":
 		_setup_black_hole_field()
@@ -184,6 +225,12 @@ func _process(delta):
 		_process_black_hole(delta)
 		# fallthrough to life check
 
+	# Boomerang Logic
+	if type == "boomerang":
+		_process_boomerang(delta)
+		# Boomerang manages its own life/fade
+		return
+
 	life -= delta
 	if life <= 0:
 		fade_out()
@@ -222,6 +269,76 @@ func _process(delta):
 	# Visual Rotation (Spin)
 	if visual_node:
 		visual_node.rotation += delta * 15.0
+
+func _process_boomerang(delta):
+	# Spin visual
+	if visual_node:
+		visual_node.rotation += delta * 20.0 * arc_direction
+
+	if boomerang_phase == BoomerangPhase.OUTBOUND:
+		boomerang_timer += delta
+		var progress = boomerang_timer / boomerang_duration
+
+		# Clamp progress
+		if progress >= 1.0:
+			progress = 1.0
+			boomerang_phase = BoomerangPhase.RETURNING
+			boomerang_timer = 0.0 # Reset for returning phase if needed, or track differently
+
+		# Linear interpolation
+		var current_linear_pos = start_pos.lerp(boomerang_target_pos, progress)
+
+		# Arc offset
+		# Perpendicular vector to the line (start -> target)
+		var dir_vec = (boomerang_target_pos - start_pos).normalized()
+		var perp_vec = Vector2(-dir_vec.y, dir_vec.x) # Left normal
+
+		# Sin wave arc: Max at 0.5
+		var offset_mag = sin(progress * PI) * curve_height * arc_direction
+		var offset = perp_vec * offset_mag
+
+		global_position = current_linear_pos + offset
+
+		# Update rotation to face movement direction approximately?
+		# Boomerang spins, so maybe not needed, but for hitbox orientation if it mattered.
+
+	elif boomerang_phase == BoomerangPhase.RETURNING:
+		if not is_instance_valid(source_unit):
+			fade_out()
+			return
+
+		var target_pos = source_unit.global_position
+
+		# Move towards source with reverse arc
+		var dist = global_position.distance_to(target_pos)
+
+		if dist < 10.0:
+			# Caught/Finished
+			queue_free()
+			return
+
+		var move_vec = (target_pos - global_position).normalized() * speed * delta
+
+		# Add curve
+		# Calculate vector to source
+		var to_source = target_pos - global_position
+		var dist_full = to_source.length()
+
+		# We want a curve that decays as we get closer.
+		# Apply a force perpendicular to velocity?
+		# Or simply modify position explicitly.
+
+		# Simple approach: Move towards target, but add perpendicular drift
+		# Drift should be opposite to initial arc_direction
+		var drift_dir = Vector2(-move_vec.y, move_vec.x).normalized() # Perpendicular
+
+		# Drift strength based on distance (less drift as we get closer)
+		# And keep the "winding" direction.
+		# Outbound used +arc_direction. Returning uses -arc_direction.
+		var drift_strength = 200.0 * -arc_direction * (min(dist, 200.0) / 200.0)
+
+		# Apply velocity
+		global_position += move_vec + (drift_dir * drift_strength * delta)
 
 func _process_black_hole(delta):
 	var pull_radius = stats.get("skillRadius", 150.0)
@@ -304,6 +421,12 @@ func _handle_hit(target_node):
 	if is_fading: return
 	if type == "dragon_breath": return
 	if type == "black_hole_field": return # Black hole doesn't hit/destroy on contact, it pulls
+
+	if type == "boomerang" and boomerang_phase == BoomerangPhase.OUTBOUND:
+		if target_node == target:
+			var progress = boomerang_timer / boomerang_duration
+			if progress < 0.8:
+				return # Don't hit main target until behind
 
 	if target_node.is_in_group("enemies"):
 		if shared_hit_list_ref != null and target_node in shared_hit_list_ref: return
