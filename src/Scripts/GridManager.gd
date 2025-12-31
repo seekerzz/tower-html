@@ -549,16 +549,10 @@ func can_place_item_at(grid_pos: Vector2i, item_id: String) -> bool:
 	var tile = tiles[key]
 
 	if "trap" in item_id or item_id == "poison_trap" or item_id == "fang_trap":
-		# 1. Not on spawn tiles
-		if spawn_tiles.has(grid_pos): return false
-		# 2. No obstacles
+		# Only check obstacles and units as per requirements
 		if obstacles.has(grid_pos): return false
-		# 3. No units
 		if tile.unit != null: return false
 		if tile.occupied_by != Vector2i.ZERO: return false
-
-		# 4. Restriction: Cannot place on Core or Unlocked Core Area
-		if is_in_core_zone(grid_pos) and tile.state == "unlocked": return false
 
 		return true
 
@@ -760,15 +754,7 @@ func _generate_random_obstacles():
 
 		_spawn_barricade(tile, type_key)
 
-		# Check connectivity
-		if not is_path_clear_from_spawns_to_core():
-			# Undo
-			var grid_pos = Vector2i(tile.x, tile.y)
-			var obstacle = obstacles[grid_pos]
-			remove_obstacle(obstacle)
-			obstacle.queue_free()
-		else:
-			placed_count += 1
+		placed_count += 1
 
 func is_path_clear_from_spawns_to_core() -> bool:
 	var core_pos = Vector2i(0, 0) # Assumes core is at 0,0
