@@ -100,6 +100,10 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 		# Ensure high pierce for boomerang as requested
 		pierce = max(pierce, 99)
 
+		# Register projectile to source unit for blocking logic
+		if source_unit and "current_projectile" in source_unit:
+			source_unit.current_projectile = self
+
 	if stats.has("is_meteor"):
 		is_meteor_falling = true
 		meteor_target = stats["ground_pos"]
@@ -303,42 +307,27 @@ func _process_boomerang(delta):
 		var dest = source_unit.global_position
 		var dist_to_dest = position.distance_to(dest)
 
-		if dist_to_dest < 10.0:
-			fade_out() # Caught
+		if dist_to_dest < 20.0:
+			# Caught!
+			if source_unit.has_method("catch_projectile"):
+				source_unit.catch_projectile()
+			fade_out()
 			return
 
 		var dir = (dest - position).normalized()
 
-		# Curved return logic?
-		# "In return path apply a reverse arc offset (-arc_direction). Decay offset as distance shrinks."
-		# This is tricky because we are moving dynamically towards a moving target.
-		# Simple approach: Standard movement towards target + perpendicular force/offset.
+		# "Figure-8 / Heart-shape": Reverse arc offset
+		# We add a vector perpendicular to the direct path to 'dest'.
+		# Direction is -arc_direction.
+		# Magnitude decays as we get closer (dist_to_dest).
 
-		# Let's try to maintain a "current offset" that decays.
-		# Or simpler: Just curve towards it using steering?
-		# The prompt says: "Calculate vector to source_unit. Apply reverse arc offset... Decay offset to 0."
-
-		# Implementation: Just modify the velocity vector.
-		# Standard direction is `dir`.
-		# We add a perpendicular component.
-
-		# Perpendicular to `dir`.
 		var perp = Vector2(-dir.y, dir.x) * (-arc_direction)
 
-		# Strength depends on distance? Far away = more curve?
-		# Or we can just use steering behavior to make it arc.
-		# But request specific logic: "Apply offset... decay to 0".
+		# Heuristic for "Nice Curve":
+		# Strong offset when far, zero when close.
+		# Clamp deviation so it doesn't spiral.
+		var deviation_strength = clamp(dist_to_dest / 150.0, 0.0, 1.5)
 
-		# Let's approximate:
-		# We simply move towards target, but we add a side-ways drift that reduces over time.
-		# Or use a fake "progress" based on distance.
-
-		# Let's do a steering approach which naturally creates arcs if we adjust the 'ideal' vector.
-		# Ideal vector = straight to target.
-		# We want to deviate.
-
-		# Deviation amount:
-		var deviation_strength = min(dist_to_dest / 200.0, 1.0) * 2.0 # Max deviation when far
 		var move_vec = (dir + perp * deviation_strength).normalized()
 
 		position += move_vec * speed * delta
@@ -429,13 +418,7 @@ func _handle_hit(target_node):
 
 		# Boomerang Optimization: Avoid early collision with main target
 		if type == "boomerang" and boomerang_state == BoomerangState.OUTBOUND:
-			if boomerang_progress < 0.8:
-				# Check if this is the main target we are flying towards (behind)
-				# We don't have a direct reference to "main target" easily unless we stored it.
-				# Unit.gd passed target_pos.
-				# But let's assume if it's ANY enemy in the way before we loop around, we might want to ignore?
-				# The prompt says: "Avoid triggering collision with TARGET early... suggested progress > 0.8".
-				# This implies we should skip hit if progress < 0.8 AND it is the intended target.
+			if boomerang_progress < 0.7:
 				if target != null and target_node == target:
 					return
 

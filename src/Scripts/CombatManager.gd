@@ -248,6 +248,19 @@ func find_nearest_enemy(pos: Vector2, range_val: float):
 
 	return nearest
 
+func find_farthest_enemy(pos: Vector2, range_val: float):
+	var farthest = null
+	var max_dist = 0.0
+
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		var dist = pos.distance_to(enemy.global_position)
+		if dist <= range_val:
+			if dist > max_dist:
+				max_dist = dist
+				farthest = enemy
+
+	return farthest
+
 func perform_lightning_attack(source_unit, start_pos, target, chain_left, hit_list = null):
 	if hit_list == null: hit_list = []
 	if !is_instance_valid(target): return

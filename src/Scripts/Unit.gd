@@ -56,6 +56,8 @@ var is_hovered: bool = false
 var focus_target: Node2D = null
 var focus_stacks: int = 0
 
+var current_projectile = null
+
 # Skill Logic
 var skill_active_timer: float = 0.0
 var _skill_interval_timer: float = 0.0
@@ -273,6 +275,15 @@ func reset_stats():
 		update_parrot_range()
 
 	update_visuals()
+
+func catch_projectile():
+	current_projectile = null
+	cooldown = atk_speed * GameManager.get_stat_modifier("attack_interval")
+	# Maybe small visual flash or scale effect?
+	if visual_holder:
+		var tween = create_tween()
+		tween.tween_property(visual_holder, "scale", Vector2(1.2, 0.8), 0.1)
+		tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.1)
 
 func update_parrot_range():
 	if type_key != "parrot": return
@@ -677,16 +688,20 @@ func _process_combat(delta):
 
 	# Monkey Special Attack Logic
 	if type_key == "monkey":
+		if is_instance_valid(current_projectile): return # Block if projectile is out and valid
+
 		var combat_manager = GameManager.combat_manager
 		if !combat_manager: return
 
 		# Find furthest enemy within range (Locking onto furthest)
-		var target = _find_furthest_enemy_in_range(range_val)
+		var target = combat_manager.find_farthest_enemy(global_position, range_val)
 
 		if target:
 			if attack_cost_mana > 0: GameManager.consume_resource("mana", attack_cost_mana)
 
-			cooldown = atk_speed * GameManager.get_stat_modifier("attack_interval")
+			# Cooldown is handled by return, but we set a safety or just infinite until return.
+			cooldown = 999.0
+
 			play_attack_anim(unit_data.attackType, target.global_position)
 
 			var extra_stats = {
@@ -794,20 +809,6 @@ func _process_combat(delta):
 					combat_manager.spawn_projectile(self, global_position, target, {"angle": angle})
 			else:
 				combat_manager.spawn_projectile(self, global_position, target)
-
-func _find_furthest_enemy_in_range(radius: float):
-	var enemies = get_tree().get_nodes_in_group("enemies")
-	var furthest = null
-	var max_dist = 0.0
-
-	for enemy in enemies:
-		var dist = global_position.distance_to(enemy.global_position)
-		if dist <= radius:
-			if dist > max_dist:
-				max_dist = dist
-				furthest = enemy
-
-	return furthest
 
 func _spawn_meteor_at_random_enemy():
 	var combat_manager = GameManager.combat_manager
