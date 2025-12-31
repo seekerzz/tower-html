@@ -742,6 +742,16 @@ func _process_combat(delta):
 
 		play_attack_anim(unit_data.attackType, target.global_position)
 
+		if type_key == "monkey":
+			var extra_stats = {
+				"is_boomerang": true,
+				"pierce": 100, # Handled in projectile setup but good to be explicit
+				"source_pos": global_position,
+				"target_pos": target.global_position
+			}
+			combat_manager.spawn_projectile(self, global_position, target, extra_stats)
+			return
+
 		if unit_data.attackType == "melee":
 			await get_tree().create_timer(ANIM_WINDUP_TIME).timeout
 			if is_instance_valid(self) and is_instance_valid(target):
