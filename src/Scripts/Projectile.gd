@@ -13,6 +13,14 @@ var effects: Dictionary = {}
 var is_meteor_falling: bool = false
 var meteor_target: Vector2 = Vector2.ZERO
 
+# Boomerang Logic
+enum BoomerangState { OUTBOUND, RETURNING }
+var boomerang_state = BoomerangState.OUTBOUND
+var boomerang_target_pos: Vector2 = Vector2.ZERO
+var boomerang_arc_direction: int = 1 # 1 or -1
+var boomerang_progress: float = 0.0
+var boomerang_start_pos: Vector2 = Vector2.ZERO
+
 # Storage for all stats
 var stats: Dictionary = {}
 
@@ -66,6 +74,21 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 	if stats.has("shared_hit_list"):
 		shared_hit_list_ref = stats.get("shared_hit_list")
 
+	if type == "boomerang":
+		boomerang_state = BoomerangState.OUTBOUND
+		boomerang_start_pos = position
+		if target and is_instance_valid(target):
+			var dir = (target.global_position - position).normalized()
+			# Target behind enemy (80px)
+			boomerang_target_pos = target.global_position + dir * 80.0
+		else:
+			# Fallback if no target (shouldn't happen for monkey primary fire)
+			boomerang_target_pos = position + Vector2.RIGHT * 250.0
+
+		boomerang_arc_direction = 1 if randf() > 0.5 else -1
+		speed = 600.0 # Adjust speed as needed
+		life = 5.0 # Ensure enough life for return
+
 	if stats.has("is_meteor"):
 		is_meteor_falling = true
 		meteor_target = stats["ground_pos"]
@@ -87,7 +110,7 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 		rotation = (meteor_target - position).angle()
 
 	# Initial rotation
-	if not is_meteor_falling:
+	if not is_meteor_falling and type != "boomerang":
 		if target and is_instance_valid(target):
 			look_at(target.global_position)
 		elif stats.get("angle") != null:
@@ -139,6 +162,8 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 	elif type == "lightning":
 		# Keep lightning if it was handled elsewhere or add simple visual
 		_setup_simple_visual(Color.CYAN, "line")
+	elif type == "boomerang":
+		_setup_simple_visual(Color("CD853F"), "boomerang") # Peru/Brownish color
 
 func fade_out():
 	if is_fading: return
@@ -172,6 +197,11 @@ func _process(delta):
 			return
 
 		position += Vector2.RIGHT.rotated(rotation) * speed * delta
+		return
+
+	# Boomerang Logic
+	if type == "boomerang":
+		_process_boomerang(delta)
 		return
 
 	# Dragon Breath Logic
@@ -222,6 +252,148 @@ func _process(delta):
 	# Visual Rotation (Spin)
 	if visual_node:
 		visual_node.rotation += delta * 15.0
+
+func _process_boomerang(delta):
+	if boomerang_state == BoomerangState.OUTBOUND:
+		# Calculate distance to target
+		var total_dist = boomerang_start_pos.distance_to(boomerang_target_pos)
+		if total_dist < 1.0: total_dist = 1.0
+
+		# Move towards target linearly first to update progress?
+		# No, we need to control position explicitly based on progress or move towards target and add offset.
+
+		# Let's move projectile towards target pos
+		var dir = (boomerang_target_pos - position).normalized()
+		var dist_to_target = position.distance_to(boomerang_target_pos)
+
+		var move_dist = speed * delta
+
+		# Simple approach: Move linearly, but visual position is offset?
+		# Or update actual position with curve.
+		# Let's update actual position so collisions work on the curve.
+
+		# We need a progress 0->1.
+		# progress = 1 - (current_dist / total_dist)
+		# But we are moving.
+
+		# Vector math approach:
+		# Move towards target
+		position += dir * move_dist
+
+		# Calculate progress based on distance covered from start
+		var dist_covered = boomerang_start_pos.distance_to(position)
+		var progress = clamp(dist_covered / total_dist, 0.0, 1.0)
+		boomerang_progress = progress
+
+		# Apply perpendicular offset
+		# We need a baseline line (Start -> Target)
+		# Project current position onto that line to get "linear pos", then add offset.
+		# But since we modify position, next frame "position" is already offset.
+		# So we should track "linear_position" separately or calculate offset from the line.
+
+		# Better: Track a "virtual linear position" and calculate actual position every frame.
+		# But we don't have persistent state for virtual pos easily without adding vars.
+		# Let's try adding `virtual_pos` or assume `position` movement is the driver.
+
+		# Alternative: Add a force perpendicular to velocity?
+		# Or simply:
+		# Offset = sin(progress * PI) * arc_height * arc_direction
+		# We need to know the baseline vector at this frame.
+
+		# Let's use the property that we know Start and Target.
+		# We can calculate where we "should" be linearly based on time, then add offset.
+		# But speed is constant.
+
+		# Re-implementation:
+		# We need `boomerang_current_linear_pos`
+		if !get_meta("boomerang_linear_pos", null):
+			set_meta("boomerang_linear_pos", position)
+
+		var linear_pos = get_meta("boomerang_linear_pos")
+		var linear_dir = (boomerang_target_pos - linear_pos).normalized()
+		var step = linear_dir * speed * delta
+
+		if linear_pos.distance_to(boomerang_target_pos) <= step.length():
+			linear_pos = boomerang_target_pos
+			boomerang_state = BoomerangState.RETURNING
+		else:
+			linear_pos += step
+
+		set_meta("boomerang_linear_pos", linear_pos)
+
+		# Calculate Offset
+		var current_progress = boomerang_start_pos.distance_to(linear_pos) / total_dist
+		boomerang_progress = current_progress
+
+		var arc_height = 100.0
+		var offset_mag = sin(current_progress * PI) * arc_height * boomerang_arc_direction
+
+		# Perpendicular vector
+		var baseline_dir = (boomerang_target_pos - boomerang_start_pos).normalized()
+		var perp = Vector2(-baseline_dir.y, baseline_dir.x)
+
+		position = linear_pos + perp * offset_mag
+		rotation += delta * 20.0 * boomerang_arc_direction
+
+	elif boomerang_state == BoomerangState.RETURNING:
+		if !is_instance_valid(source_unit):
+			fade_out()
+			return
+
+		var target_pos = source_unit.global_position
+		var dir = (target_pos - position).normalized()
+		var dist = position.distance_to(target_pos)
+
+		if dist < 20.0:
+			if source_unit.has_method("catch_projectile"):
+				source_unit.catch_projectile()
+			queue_free()
+			return
+
+		# Add curve to return path too?
+		# "Reversed curve... 8 shape or heart"
+		# To do this, we need to curve in the opposite way relative to the line of sight.
+		# But simple homing + offset might be tricky.
+		# Let's just do homing with a side force/velocity.
+
+		# Or use the same sin wave logic but "reverse"?
+		# The return trip is dynamic because source moves.
+		# Let's just add a perpendicular velocity component that decays?
+		# Or simply steer towards it.
+
+		# Let's try adding a perp offset based on distance?
+		# offset = sin(dist_factor * PI) ...
+
+		# Simpler: Curve steering.
+		# We want to approach from the "other side".
+		# If we went "Right" (arc_dir 1), we are on the Right of the line.
+		# We want to swing back.
+
+		# Let's just move directly for now, maybe add a bit of curve.
+		# Ref says: "Anti-direction arc... visual 8 shape"
+
+		# Let's stick to direct homing for robustness, or add a slight curve force.
+		var cross_product = dir.cross(Vector2.RIGHT.rotated(rotation))
+		# Just standard homing is fine, maybe slightly curved trajectory naturally happens if we keep momentum?
+		# But this script updates position directly.
+
+		# Let's add an offset based on time?
+		# position += dir * speed * delta
+
+		# To make an '8', if we went out curving Right, we are now "Left" of the return line?
+		# Actually, if we are at Target (Behind enemy), and Monkey is at Start.
+		# If we curved Right (relative to Outbound Dir), we are "Right" of the straight line.
+		# To return, we are starting from that offset position.
+		# If we just go straight home, we trace a triangle/leaf shape.
+		# To make an 8, we need to cross the center line.
+
+		# Let's just use direct movement for reliability as requested "Returning: ... real time tracking".
+		# "Apply inverse arc offset" might mean adding a perpendicular vector that fades.
+
+		var perp = Vector2(-dir.y, dir.x) * boomerang_arc_direction * -1.0 # Invert direction
+		# Add some curve
+		position += (dir * speed + perp * 200.0) * delta
+		rotation -= delta * 20.0 * boomerang_arc_direction
 
 func _process_black_hole(delta):
 	var pull_radius = stats.get("skillRadius", 150.0)
@@ -304,6 +476,12 @@ func _handle_hit(target_node):
 	if is_fading: return
 	if type == "dragon_breath": return
 	if type == "black_hole_field": return # Black hole doesn't hit/destroy on contact, it pulls
+
+	# Boomerang Hit Logic
+	if type == "boomerang":
+		if boomerang_state == BoomerangState.OUTBOUND and boomerang_progress < 0.7:
+			return # Don't hit yet (绕后 logic)
+		# Allow hit if > 0.7 or Returning
 
 	if target_node.is_in_group("enemies"):
 		if shared_hit_list_ref != null and target_node in shared_hit_list_ref: return
@@ -474,6 +652,14 @@ func _setup_simple_visual(color, shape):
 			Vector2(0, 6), Vector2(-2, 2),
 			Vector2(-6, 0), Vector2(-2, -2),
 			Vector2(0, -6), Vector2(2, -2)
+		])
+	elif shape == "boomerang":
+		# V shape
+		points = PackedVector2Array([
+			Vector2(0, -8), Vector2(4, -4),
+			Vector2(0, 0), Vector2(4, 4),
+			Vector2(0, 8), Vector2(-4, 4),
+			Vector2(-2, 0), Vector2(-4, -4)
 		])
 	else:
 		# Box

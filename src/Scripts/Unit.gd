@@ -63,6 +63,8 @@ var original_atk_speed: float = 0.0
 var _is_skill_highlight_active: bool = false
 var _highlight_color: Color = Color.WHITE
 
+var current_projectile = null # For monkey boomerang logic
+
 var connection_overlay: Node2D = null
 
 const ANIM_WINDUP_TIME: float = 0.15
@@ -307,6 +309,14 @@ func capture_bullet(bullet_snapshot: Dictionary):
 		var tween = create_tween()
 		tween.tween_property(visual_holder, "scale", Vector2(1.1, 1.1), 0.1)
 		tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.1)
+
+func catch_projectile():
+	current_projectile = null
+	# Reset cooldown slightly to allow immediate re-evaluation but respect atk speed?
+	# Requirement says: "resets attack cooldown" (meaning ready to fire) or just allows next shot.
+	# "catch_projectile() ... clear reference and reset attack cooldown."
+	# If we set cooldown = 0, it attacks immediately next frame.
+	cooldown = 0.0
 
 func calculate_damage_against(target_node: Node2D) -> float:
 	var final_damage = damage
@@ -731,7 +741,16 @@ func _process_combat(delta):
 	var combat_manager = GameManager.combat_manager
 	if !combat_manager: return
 
-	var target = combat_manager.find_nearest_enemy(global_position, range_val)
+	# Monkey Logic: Wait for boomerang return
+	if type_key == "monkey" and current_projectile != null and is_instance_valid(current_projectile):
+		return
+
+	var target = null
+	if type_key == "monkey":
+		target = combat_manager.find_farthest_enemy(global_position, range_val)
+	else:
+		target = combat_manager.find_nearest_enemy(global_position, range_val)
+
 	if target:
 		# Consume Resources
 		if attack_cost_mana > 0:
