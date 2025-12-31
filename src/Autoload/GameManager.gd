@@ -15,8 +15,6 @@ signal show_tooltip(data, stats, buffs, pos)
 signal hide_tooltip()
 
 var core_type: String = "cornucopia"
-var food: float = 1000.0
-var max_food: float = 2000.0
 var mana: float = 500.0
 var max_mana: float = 1000.0
 var gold: int = 150
@@ -26,7 +24,6 @@ var core_health: float = 1000.0
 var max_core_health: float = 1000.0
 var damage_multiplier: float = 1.0
 
-var base_food_rate: float = 50.0
 var base_mana_rate: float = 10.0
 
 var materials: Dictionary = {
@@ -120,10 +117,9 @@ func _on_wave_started():
 func use_item_effect(item_id: String, target_unit = null) -> bool:
 	match item_id:
 		"rice_ear":
-			food += max_food * 0.5
-			if food > max_food: food = max_food
+			mana = min(max_mana, mana + max_mana * 0.5)
 			resource_changed.emit()
-			spawn_floating_text(Vector2(0, 0), "Food +50%", Color.YELLOW)
+			spawn_floating_text(Vector2(0, 0), "Mana +50%", Color.CYAN)
 			return true
 		"moon_water":
 			var heal_amount = moonwell_pool
@@ -209,8 +205,6 @@ func get_stat_modifier(stat_type: String, context: Dictionary = {}) -> float:
 	return modifier
 
 func update_resources(delta):
-	if food < max_food:
-		food = min(max_food, food + base_food_rate * delta)
 	if mana < max_mana:
 		mana = min(max_mana, mana + base_mana_rate * delta)
 	resource_changed.emit()
@@ -244,7 +238,6 @@ func _finish_wave_process():
 	gold += 20 + (wave * 5)
 
 	# Restore resources
-	food = max_food
 	mana = max_mana
 
 	wave_ended.emit()
@@ -385,7 +378,6 @@ func add_gold(amount: int):
 
 func activate_cheat():
 	gold += 1000
-	food = max_food
 	mana = max_mana
 
 	for key in materials:
@@ -393,9 +385,7 @@ func activate_cheat():
 
 	resource_changed.emit()
 func check_resource(type: String, amount: float) -> bool:
-	if type == "food":
-		return food >= amount
-	elif type == "mana":
+	if type == "mana":
 		return mana >= amount
 	return true
 
@@ -405,18 +395,14 @@ func consume_resource(type: String, amount: float) -> bool:
 
 	if !check_resource(type, amount): return false
 
-	if type == "food":
-		food -= amount
-	elif type == "mana":
+	if type == "mana":
 		mana -= amount
 
 	resource_changed.emit()
 	return true
 
 func add_resource(type: String, amount: float):
-	if type == "food":
-		food = min(max_food, food + amount)
-	elif type == "mana":
+	if type == "mana":
 		mana = min(max_mana, mana + amount)
 	elif type == "gold":
 		gold += int(amount)

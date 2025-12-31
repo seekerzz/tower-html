@@ -6,7 +6,6 @@ signal sacrifice_requested
 @onready var food_bar = $TopLeftPanel/FoodBar
 @onready var mana_bar = $TopLeftPanel/ManaBar
 @onready var hp_label = $TopLeftPanel/HPBar/Label
-@onready var food_label = $TopLeftPanel/FoodBar/Label
 @onready var mana_label = $TopLeftPanel/ManaBar/Label
 @onready var wave_label = $Panel/WaveLabel
 @onready var stats_container = $DamageStats/ScrollContainer/VBoxContainer
@@ -185,7 +184,7 @@ func _setup_stats_panel():
 func _update_hud_visibility():
 	var is_combat = GameManager.is_wave_active
 	hp_bar.visible = is_combat
-	food_bar.visible = is_combat
+	if food_bar: food_bar.visible = false # Always hide food bar
 	mana_bar.visible = is_combat
 	if damage_stats_panel:
 		damage_stats_panel.visible = !is_combat
@@ -221,9 +220,6 @@ func _setup_ui_styles():
 	var hp_fill = StyleBoxFlat.new()
 	hp_fill.bg_color = UIConstants.BAR_COLORS.hp
 	hp_fill.set_corner_radius_all(radius)
-	var food_fill = StyleBoxFlat.new()
-	food_fill.bg_color = UIConstants.BAR_COLORS.food
-	food_fill.set_corner_radius_all(radius)
 	var mana_fill = StyleBoxFlat.new()
 	mana_fill.bg_color = UIConstants.BAR_COLORS.mana
 	mana_fill.set_corner_radius_all(radius)
@@ -234,14 +230,11 @@ func _setup_ui_styles():
 	if hp_bar:
 		hp_bar.add_theme_stylebox_override("background", bg_style)
 		hp_bar.add_theme_stylebox_override("fill", hp_fill)
-	if food_bar:
-		food_bar.add_theme_stylebox_override("background", bg_style)
-		food_bar.add_theme_stylebox_override("fill", food_fill)
 	if mana_bar:
 		mana_bar.add_theme_stylebox_override("background", bg_style)
 		mana_bar.add_theme_stylebox_override("fill", mana_fill)
 
-	var labels = [hp_label, food_label, mana_label]
+	var labels = [hp_label, mana_label]
 	for label in labels:
 		if label:
 			label.add_theme_constant_override("outline_size", 4)
@@ -288,11 +281,9 @@ func update_ui():
 	var target_hp = (GameManager.core_health / GameManager.max_core_health) * 100
 	create_tween().tween_property(hp_bar, "value", target_hp, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
-	food_bar.value = (GameManager.food / GameManager.max_food) * 100
 	mana_bar.value = (GameManager.mana / GameManager.max_mana) * 100
 
 	hp_label.text = "❤️ %d/%d" % [int(GameManager.core_health), int(GameManager.max_core_health)]
-	food_label.text = "🌽 %d/%d" % [int(GameManager.food), int(GameManager.max_food)]
 	mana_label.text = "💧 %d/%d" % [int(GameManager.mana), int(GameManager.max_mana)]
 	wave_label.text = "Wave %d" % GameManager.wave
 	if combat_gold_label:

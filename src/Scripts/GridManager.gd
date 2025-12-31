@@ -1261,6 +1261,11 @@ func _move_unit_internal(unit, new_x, new_y):
 func can_devour(eater, food) -> bool:
 	if food.unit_data.has("isFood") and food.unit_data.isFood:
 		return true
+	# Also allow devouring units that produce mana (formerly food producers like plant)
+	# This preserves the logic where plant (sunflower) was devourable as a resource source if desired.
+	# However, standard devour logic usually targets "meat" or special food units.
+	# If plant is now just mana producer, it might still be valid fodder.
+	# But strictly following "remove food system", isFood check remains on "meat" unit which I kept.
 	return false
 
 func can_swap(unit_a, unit_b) -> bool:

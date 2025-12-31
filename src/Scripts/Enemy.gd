@@ -710,7 +710,7 @@ func die():
 				GameManager.add_gold(1)
 				GameManager.spawn_floating_text(global_position, "+1💰 (Recycle)", Color.GOLD, last_hit_direction)
 	GameManager.spawn_floating_text(global_position, "+1💰", Color.YELLOW, last_hit_direction)
-	GameManager.food += 2
+	GameManager.mana = min(GameManager.max_mana, GameManager.mana + 2)
 	queue_free()
 
 func _trigger_burn_explosion():

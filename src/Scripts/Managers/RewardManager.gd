@@ -191,7 +191,6 @@ func _apply_immediate_effects(id: String):
 				gm.damage_multiplier += 0.1
 				gm.resource_changed.emit()
 			"rapid_expansion":
-				gm.base_food_rate *= 1.1
 				gm.base_mana_rate *= 1.1
 				gm.resource_changed.emit()
 			"ammo_improvement":
