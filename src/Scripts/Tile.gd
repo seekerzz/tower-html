@@ -30,6 +30,11 @@ func setup(grid_x: int, grid_y: int, tile_type: String = "normal"):
 	if has_node("ColorRect"): $ColorRect.queue_free()
 	if has_node("VisualPanel"): $VisualPanel.queue_free()
 
+	if !has_node("CoreSprite"):
+		var cs = Sprite2D.new()
+		cs.name = "CoreSprite"
+		add_child(cs)
+
 	update_visuals()
 
 	# Add Drop Target
@@ -42,6 +47,12 @@ func set_state(new_state: String):
 	state = new_state
 	update_visuals()
 
+func _adjust_sprite_scale(sprite: Sprite2D, target_size: float):
+	if sprite.texture:
+		var frame_width = sprite.texture.get_width() / sprite.hframes
+		var scale_factor = target_size / max(frame_width, 1.0)
+		sprite.scale = Vector2(scale_factor, scale_factor)
+
 func update_visuals():
 	var bs = get_node_or_null("BaseSprite")
 	if !bs: return
@@ -49,40 +60,51 @@ func update_visuals():
 	bs.visible = true
 	bs.modulate = Color.WHITE
 
+	var cs = get_node_or_null("CoreSprite")
+	if cs: cs.visible = false
+
 	if state == "spawn":
 		bs.texture = TEXTURE_SPAWN
 		bs.hframes = 5
 		bs.vframes = 5
 		bs.frame = random_frame_index
-
-		# Scale to fit TILE_SIZE (60)
-		if bs.texture:
-			var frame_width = bs.texture.get_width() / bs.hframes
-			var scale_factor = 60.0 / max(frame_width, 1.0)
-			bs.scale = Vector2(scale_factor, scale_factor)
+		_adjust_sprite_scale(bs, 60.0)
 
 	elif state == "unlocked" or type == "core":
 		bs.texture = TEXTURE_SHEET
 		bs.hframes = 5
 		bs.vframes = 5
 		bs.frame = random_frame_index
-
-		# Scale to fit TILE_SIZE (60)
-		if bs.texture:
-			var frame_width = bs.texture.get_width() / bs.hframes
-			var scale_factor = 60.0 / max(frame_width, 1.0)
-			bs.scale = Vector2(scale_factor, scale_factor)
+		_adjust_sprite_scale(bs, 60.0)
 
 	elif "locked" in state:
 		bs.visible = false
 		bs.texture = null
 
 	if type == "core":
-		if has_node("Label"):
-			$Label.text = "Core"
+		var core_key = GameManager.core_type
+		var icon = AssetLoader.get_core_icon(core_key)
+
+		if icon:
+			if cs:
+				cs.visible = true
+				cs.texture = icon
+				cs.hframes = 1
+				cs.vframes = 1
+				_adjust_sprite_scale(cs, 60.0)
+			if has_node("Label"):
+				$Label.visible = false
+		else:
+			if has_node("Label"):
+				$Label.visible = true
+				var core_name = "Core"
+				if GameManager.data_manager and GameManager.data_manager.data.has("CORE_TYPES") and GameManager.data_manager.data["CORE_TYPES"].has(core_key):
+					core_name = GameManager.data_manager.data["CORE_TYPES"][core_key].get("name", "Core")
+				$Label.text = core_name
 	else:
 		if has_node("Label"):
 			$Label.text = ""
+			$Label.visible = true
 
 func set_grid_visible(visible_state: bool):
 	var b = get_node_or_null("Border")
