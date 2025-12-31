@@ -675,6 +675,28 @@ func _process_combat(delta):
 
 	if !can_afford: return
 
+	# Monkey Special Attack Logic
+	if type_key == "monkey":
+		var combat_manager = GameManager.combat_manager
+		if !combat_manager: return
+
+		# Find furthest enemy within range (Locking onto furthest)
+		var target = _find_furthest_enemy_in_range(range_val)
+
+		if target:
+			if attack_cost_mana > 0: GameManager.consume_resource("mana", attack_cost_mana)
+
+			cooldown = atk_speed * GameManager.get_stat_modifier("attack_interval")
+			play_attack_anim(unit_data.attackType, target.global_position)
+
+			var extra_stats = {
+				"target_pos": target.global_position,
+				"start_pos": global_position
+			}
+			combat_manager.spawn_projectile(self, global_position, target, extra_stats)
+
+		return
+
 	# Parrot Attack Logic
 	if type_key == "parrot":
 		if !is_discharging:
@@ -772,6 +794,20 @@ func _process_combat(delta):
 					combat_manager.spawn_projectile(self, global_position, target, {"angle": angle})
 			else:
 				combat_manager.spawn_projectile(self, global_position, target)
+
+func _find_furthest_enemy_in_range(radius: float):
+	var enemies = get_tree().get_nodes_in_group("enemies")
+	var furthest = null
+	var max_dist = 0.0
+
+	for enemy in enemies:
+		var dist = global_position.distance_to(enemy.global_position)
+		if dist <= radius:
+			if dist > max_dist:
+				max_dist = dist
+				furthest = enemy
+
+	return furthest
 
 func _spawn_meteor_at_random_enemy():
 	var combat_manager = GameManager.combat_manager

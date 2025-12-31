@@ -33,6 +33,14 @@ enum State { MOVING, HOVERING }
 var state = State.MOVING
 var dragon_breath_timer: float = 0.0
 
+# Boomerang / Monkey Projectile State
+enum BoomerangState { OUTBOUND, RETURNING }
+var boomerang_state = BoomerangState.OUTBOUND
+var arc_direction: int = 1
+var start_pos_boomerang: Vector2 = Vector2.ZERO
+var target_pos_boomerang: Vector2 = Vector2.ZERO
+var boomerang_progress: float = 0.0
+
 const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
 
 func _ready():
@@ -66,6 +74,32 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 	if stats.has("shared_hit_list"):
 		shared_hit_list_ref = stats.get("shared_hit_list")
 
+	# Boomerang Setup for Monkey (assuming "banana" or generic projectile for monkey with specific stats)
+	# Or check if source is monkey?
+	# The plan said to use the stats passed from Unit.gd.
+	if source_unit and source_unit.type_key == "monkey":
+		type = "boomerang" # Override type if needed for logic handling
+		arc_direction = 1 if randf() < 0.5 else -1
+		if stats.has("start_pos"):
+			start_pos_boomerang = stats["start_pos"]
+		else:
+			start_pos_boomerang = start_pos
+
+		if stats.has("target_pos"):
+			# Calculate point 80px behind target
+			var t_pos = stats["target_pos"]
+			var dir_to_target = (t_pos - start_pos_boomerang).normalized()
+			target_pos_boomerang = t_pos + dir_to_target * 80.0
+		else:
+			# Fallback if no target pos provided
+			target_pos_boomerang = start_pos + Vector2(100, 0)
+
+		boomerang_progress = 0.0
+		# Increase life to ensure return trip completes
+		life = 3.0
+		# Ensure high pierce for boomerang as requested
+		pierce = max(pierce, 99)
+
 	if stats.has("is_meteor"):
 		is_meteor_falling = true
 		meteor_target = stats["ground_pos"]
@@ -87,7 +121,7 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 		rotation = (meteor_target - position).angle()
 
 	# Initial rotation
-	if not is_meteor_falling:
+	if not is_meteor_falling and type != "boomerang":
 		if target and is_instance_valid(target):
 			look_at(target.global_position)
 		elif stats.get("angle") != null:
@@ -139,6 +173,8 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 	elif type == "lightning":
 		# Keep lightning if it was handled elsewhere or add simple visual
 		_setup_simple_visual(Color.CYAN, "line")
+	elif type == "boomerang":
+		_setup_simple_visual(Color.YELLOW, "boomerang") # Using "boomerang" shape hint
 
 func fade_out():
 	if is_fading: return
@@ -160,6 +196,12 @@ func fade_out():
 
 func _process(delta):
 	if is_fading: return
+
+	if type == "boomerang":
+		_process_boomerang(delta)
+		# Spin visual
+		if visual_node: visual_node.rotation += delta * 20.0
+		return
 
 	if is_meteor_falling:
 		if is_instance_valid(target):
@@ -222,6 +264,84 @@ func _process(delta):
 	# Visual Rotation (Spin)
 	if visual_node:
 		visual_node.rotation += delta * 15.0
+
+func _process_boomerang(delta):
+	if boomerang_state == BoomerangState.OUTBOUND:
+		# Calculate distance to cover
+		var total_dist = start_pos_boomerang.distance_to(target_pos_boomerang)
+		if total_dist < 1.0: total_dist = 1.0
+
+		# Move based on speed
+		var step = speed * delta
+		boomerang_progress += step / total_dist
+
+		if boomerang_progress >= 1.0:
+			boomerang_progress = 1.0
+			boomerang_state = BoomerangState.RETURNING
+			# Snap to end point
+			position = target_pos_boomerang
+		else:
+			# Interpolate
+			var current_base = start_pos_boomerang.lerp(target_pos_boomerang, boomerang_progress)
+
+			# Arc Offset
+			# Max offset at 0.5. Simple parabola: 4 * x * (1-x)
+			var arc_height = 100.0 # Height of arc in pixels
+			var offset_mag = arc_height * 4.0 * boomerang_progress * (1.0 - boomerang_progress)
+
+			var dir_vector = (target_pos_boomerang - start_pos_boomerang).normalized()
+			var perp_vector = Vector2(-dir_vector.y, dir_vector.x) * arc_direction
+
+			position = current_base + perp_vector * offset_mag
+
+	elif boomerang_state == BoomerangState.RETURNING:
+		# Move back to source unit
+		if !is_instance_valid(source_unit):
+			fade_out()
+			return
+
+		var dest = source_unit.global_position
+		var dist_to_dest = position.distance_to(dest)
+
+		if dist_to_dest < 10.0:
+			fade_out() # Caught
+			return
+
+		var dir = (dest - position).normalized()
+
+		# Curved return logic?
+		# "In return path apply a reverse arc offset (-arc_direction). Decay offset as distance shrinks."
+		# This is tricky because we are moving dynamically towards a moving target.
+		# Simple approach: Standard movement towards target + perpendicular force/offset.
+
+		# Let's try to maintain a "current offset" that decays.
+		# Or simpler: Just curve towards it using steering?
+		# The prompt says: "Calculate vector to source_unit. Apply reverse arc offset... Decay offset to 0."
+
+		# Implementation: Just modify the velocity vector.
+		# Standard direction is `dir`.
+		# We add a perpendicular component.
+
+		# Perpendicular to `dir`.
+		var perp = Vector2(-dir.y, dir.x) * (-arc_direction)
+
+		# Strength depends on distance? Far away = more curve?
+		# Or we can just use steering behavior to make it arc.
+		# But request specific logic: "Apply offset... decay to 0".
+
+		# Let's approximate:
+		# We simply move towards target, but we add a side-ways drift that reduces over time.
+		# Or use a fake "progress" based on distance.
+
+		# Let's do a steering approach which naturally creates arcs if we adjust the 'ideal' vector.
+		# Ideal vector = straight to target.
+		# We want to deviate.
+
+		# Deviation amount:
+		var deviation_strength = min(dist_to_dest / 200.0, 1.0) * 2.0 # Max deviation when far
+		var move_vec = (dir + perp * deviation_strength).normalized()
+
+		position += move_vec * speed * delta
 
 func _process_black_hole(delta):
 	var pull_radius = stats.get("skillRadius", 150.0)
@@ -306,6 +426,19 @@ func _handle_hit(target_node):
 	if type == "black_hole_field": return # Black hole doesn't hit/destroy on contact, it pulls
 
 	if target_node.is_in_group("enemies"):
+
+		# Boomerang Optimization: Avoid early collision with main target
+		if type == "boomerang" and boomerang_state == BoomerangState.OUTBOUND:
+			if boomerang_progress < 0.8:
+				# Check if this is the main target we are flying towards (behind)
+				# We don't have a direct reference to "main target" easily unless we stored it.
+				# Unit.gd passed target_pos.
+				# But let's assume if it's ANY enemy in the way before we loop around, we might want to ignore?
+				# The prompt says: "Avoid triggering collision with TARGET early... suggested progress > 0.8".
+				# This implies we should skip hit if progress < 0.8 AND it is the intended target.
+				if target != null and target_node == target:
+					return
+
 		if shared_hit_list_ref != null and target_node in shared_hit_list_ref: return
 		if target_node in hit_list: return
 
@@ -474,6 +607,18 @@ func _setup_simple_visual(color, shape):
 			Vector2(0, 6), Vector2(-2, 2),
 			Vector2(-6, 0), Vector2(-2, -2),
 			Vector2(0, -6), Vector2(2, -2)
+		])
+	elif shape == "boomerang":
+		# V-shape
+		points = PackedVector2Array([
+			Vector2(0, -8),
+			Vector2(4, -4),
+			Vector2(0, 0),
+			Vector2(4, 4),
+			Vector2(0, 8),
+			Vector2(-4, 4),
+			Vector2(-2, 0),
+			Vector2(-4, -4)
 		])
 	else:
 		# Box
