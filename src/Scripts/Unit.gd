@@ -14,7 +14,6 @@ var unit_data: Dictionary
 var damage: float
 var range_val: float
 var atk_speed: float
-var attack_cost_food: float = 0.0
 var attack_cost_mana: float = 0.0
 var skill_mana_cost: float = 30.0
 
@@ -28,7 +27,6 @@ var visual_holder: Node2D = null
 # Keeping this for compatibility if other scripts access it, though it was local-ish before
 var visual_node: CanvasItem = null
 
-var is_starving: bool = false
 var is_no_mana: bool = false
 var crit_rate: float = 0.0
 var crit_dmg: float = 1.5
@@ -247,7 +245,6 @@ func reset_stats():
 	crit_dmg = unit_data.get("crit_dmg", 1.5)
 
 	# Costs
-	attack_cost_food = unit_data.get("foodCost", 1.0)
 	attack_cost_mana = unit_data.get("manaCost", 0.0)
 	skill_mana_cost = unit_data.get("skillCost", 30.0)
 
@@ -618,8 +615,8 @@ func _process(delta):
 
 			GameManager.add_resource(p_type, p_amt)
 
-			var icon = "🌽" if p_type == "food" else "💎"
-			var color = Color.YELLOW if p_type == "food" else Color.CYAN
+			var icon = "💎"
+			var color = Color.CYAN
 			GameManager.spawn_floating_text(global_position, "+%d%s" % [p_amt, icon], color)
 
 			production_timer = 1.0
@@ -653,9 +650,7 @@ func _process(delta):
 		skill_cooldown -= delta
 
 	# Visual State
-	if is_starving:
-		modulate = Color(0.5, 0.5, 0.5, 1.0)
-	elif is_no_mana and unit_data.has("skill"):
+	if is_no_mana and unit_data.has("skill"):
 		modulate = Color(0.7, 0.7, 1.0, 1.0)
 	else:
 		modulate = Color.WHITE
@@ -670,13 +665,6 @@ func _process_combat(delta):
 
 	# Resource Check
 	var can_afford = true
-
-	if attack_cost_food > 0:
-		if !GameManager.check_resource("food", attack_cost_food):
-			is_starving = true
-			can_afford = false
-		else:
-			is_starving = false
 
 	if attack_cost_mana > 0:
 		if !GameManager.check_resource("mana", attack_cost_mana):
@@ -708,7 +696,6 @@ func _process_combat(delta):
 				var target = combat_manager.find_nearest_enemy(global_position, range_val)
 				if target:
 					# Consume Resources (Parrot is 0 cost but good to keep structure)
-					if attack_cost_food > 0: GameManager.consume_resource("food", attack_cost_food)
 					if attack_cost_mana > 0: GameManager.consume_resource("mana", attack_cost_mana)
 
 					cooldown = atk_speed
@@ -747,8 +734,6 @@ func _process_combat(delta):
 	var target = combat_manager.find_nearest_enemy(global_position, range_val)
 	if target:
 		# Consume Resources
-		if attack_cost_food > 0:
-			GameManager.consume_resource("food", attack_cost_food)
 		if attack_cost_mana > 0:
 			GameManager.consume_resource("mana", attack_cost_mana)
 

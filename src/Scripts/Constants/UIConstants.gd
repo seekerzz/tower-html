@@ -12,8 +12,7 @@ const COLORS = {
 
 const BAR_COLORS = {
     "hp": Color(0.8, 0.1, 0.1),
-    "mana": Color(0.2, 0.4, 1.0),
-    "food": Color(1.0, 0.84, 0.0)
+    "mana": Color(0.2, 0.4, 1.0)
 }
 
 const CARD_SIZE = {
