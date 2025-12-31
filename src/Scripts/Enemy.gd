@@ -9,6 +9,7 @@ var slow_timer: float = 0.0
 var freeze_timer: float = 0.0
 var stun_timer: float = 0.0
 var effects = { "burn": 0.0, "poison": 0.0 }
+var _env_cooldowns = {} # Trap Instance ID -> Cooldown Timer
 
 var poison_stacks: int = 0
 var poison_power: float = 0.0
@@ -50,50 +51,26 @@ var is_stationary: bool = false
 var last_hit_direction: Vector2 = Vector2.ZERO
 
 # Physics Constants
-const WALL_SLAM_FACTOR = 0.5 # Damage multiplier when hitting wall
-const HEAVY_IMPACT_THRESHOLD = 50.0 # Threshold for hit stop
-const TRANSFER_RATE = 0.8 # Momentum transfer rate
+const WALL_SLAM_FACTOR = 0.5
+const HEAVY_IMPACT_THRESHOLD = 50.0
+const TRANSFER_RATE = 0.8
 var sensor_area: Area2D = null
 
-# Mass (approximated by resistance or defined data)
+# Mass
 var mass: float = 1.0
 
 func _ready():
 	add_to_group("enemies")
-	# CharacterBody2D collision setup
-	collision_layer = 2 # Enemy Layer
-	collision_mask = 3  # Wall (1) + Enemy (2) ? Actually usually avoid self-collision or soft-collision.
-	# User Requirements: "撞其他敌人：动量传递（击飞受害者）"
-	# So we need to collide with enemies.
-	# But if we use move_and_slide, collisions with other CharacterBodies are handled if they are in the mask.
-
-	collision_mask = 1 | 2 # Wall (1) + Enemy (2)
-
-	# Create Sensor Area for Trap Detection (Layer 2 Traps are not physical walls usually)
-	# Traps should be in Layer ? In the prompt plan: "Layer 2 (Traps)".
-	# Wait, Enemies are Layer 2?
-	# "设置 SensorArea 的 Collision Mask 包含 Layer 2 (Traps)."
-	# If Enemies are Layer 2, then Traps should be another layer or use Area2D with different collision bits.
-	# Standard Godot Layer 1: World/Walls. Layer 2: Enemies. Layer 3: Traps/Projectiles?
-	# The plan said: "key settings: ... boundaries Layer 1".
-	# Plan said: "Enemy ... SensorArea ... Collision Mask include Layer 2 (Traps)."
-	# Wait, if Enemy is Layer 2, and Traps are Layer 2... they share layer?
-	# Let's check Constants or assume we use masks properly.
-	# But if I follow the plan strictly: "SensorArea ... Collision Mask 包含 Layer 2 (Traps)"
-	# This implies Traps are on Layer 2.
+	collision_layer = 2
+	collision_mask = 1 | 2
 
 	sensor_area = Area2D.new()
 	sensor_area.name = "SensorArea"
 	sensor_area.collision_layer = 0
-	sensor_area.collision_mask = 2 | 4 # Assuming traps might be 2 or 4. If traps are 2, and enemy is 2, it works.
-	# But better be safe and check all.
-	# Actually, existing code: "collision_mask = 3 # Layer 1 (Walls) + Layer 2 (Traps)"
-	# So Traps seem to be Layer 2. Enemies were Area2D before.
-	# So Enemies are also likely Layer 2? Or they were just Areas checking Layer 2.
+	sensor_area.collision_mask = 2 | 4
 
 	add_child(sensor_area)
 
-	# Duplicate collision shape for sensor
 	var col_shape = get_node_or_null("CollisionShape2D")
 	if col_shape:
 		var new_shape = col_shape.duplicate()
@@ -103,9 +80,14 @@ func _ready():
 	_set_ignore_mouse_recursive(self)
 
 func _set_ignore_mouse_recursive(node: Node):
+	node.set_process_input(false)
+	node.set_process_unhandled_input(false)
+	if node is CollisionObject2D:
+		node.input_pickable = false
+	if node is Control:
+		node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
 	for child in node.get_children():
-		if child is Control:
-			child.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_set_ignore_mouse_recursive(child)
 
 func setup(key: String, wave: int):
@@ -118,7 +100,6 @@ func setup(key: String, wave: int):
 
 	speed = (40 + (wave * 2)) * enemy_data.spdMod
 
-	# Initialize special properties
 	stationary_timer = enemy_data.get("stationary_time", 0.0)
 	boss_skill = enemy_data.get("boss_skill", "")
 	is_suicide = enemy_data.get("is_suicide", false)
@@ -194,24 +175,28 @@ func _draw():
 func _physics_process(delta):
 	if !GameManager.is_wave_active: return
 
+	# Update Environmental Cooldowns
+	var finished_cooldowns = []
+	for trap_id in _env_cooldowns:
+		_env_cooldowns[trap_id] -= delta
+		if _env_cooldowns[trap_id] <= 0:
+			finished_cooldowns.append(trap_id)
+
+	for id in finished_cooldowns:
+		_env_cooldowns.erase(id)
+
 	# Process Timers and Effects
 	_process_effects(delta)
 
-	# Prioritize Knockback (Physics) over Stun (AI)
 	var is_knockback = knockback_velocity.length() > 10.0
 
 	if is_knockback:
-		if stun_timer > 0:
-			print("[Check] Unit is Stunned BUT Moving! Velocity: ", knockback_velocity.length())
-
 		velocity = knockback_velocity
 		knockback_velocity = knockback_velocity.move_toward(Vector2.ZERO, 500.0 * delta)
 		move_and_slide()
-		# Handle Collisions while in knockback
 		handle_collisions(delta)
 		return
 
-	# If not being knocked back, check for stun/freeze
 	if stun_timer > 0:
 		velocity = velocity.move_toward(Vector2.ZERO, 500 * delta)
 		move_and_slide()
@@ -220,59 +205,69 @@ func _physics_process(delta):
 	if freeze_timer > 0:
 		return
 
-	# Movement Logic
 	var desired_velocity = Vector2.ZERO
 
-	if false: # Placeholder for old else block structure
-		pass
-	else:
-		# Normal Movement
-		check_traps(delta)
-		check_unit_interactions(delta)
+	check_unit_interactions(delta)
 
-		# Stationary Logic
-		if is_stationary:
-			stationary_timer -= delta
-			skill_cd_timer -= delta
-			if stationary_timer <= 0:
-				is_stationary = false
-			else:
-				if boss_skill != "" and skill_cd_timer <= 0:
-					perform_boss_skill(boss_skill)
-					skill_cd_timer = 2.0
-				return
-
-		# Attack Logic
-		if is_attacking_base:
-			attack_base_logic(delta)
-			# Stop moving if attacking base
-			velocity = Vector2.ZERO
-		elif attacking_wall and is_instance_valid(attacking_wall):
-			attack_wall_logic(delta)
-			velocity = Vector2.ZERO
+	if is_stationary:
+		stationary_timer -= delta
+		skill_cd_timer -= delta
+		if stationary_timer <= 0:
+			is_stationary = false
 		else:
-			if attacking_wall != null:
-				attacking_wall = null
+			if boss_skill != "" and skill_cd_timer <= 0:
+				perform_boss_skill(boss_skill)
+				skill_cd_timer = 2.0
+			return
 
-			# Update Navigation
-			nav_timer -= delta
-			if nav_timer <= 0:
-				update_path()
-				nav_timer = 0.5
+	if is_attacking_base:
+		attack_base_logic(delta)
+		velocity = Vector2.ZERO
+	elif attacking_wall and is_instance_valid(attacking_wall):
+		attack_wall_logic(delta)
+		velocity = Vector2.ZERO
+	else:
+		if attacking_wall != null:
+			attacking_wall = null
 
-			# Calculate move direction
-			desired_velocity = calculate_move_velocity()
+		nav_timer -= delta
+		if nav_timer <= 0:
+			update_path()
+			nav_timer = 0.5
 
-			# Suicide Logic
-			if is_suicide:
-				check_suicide_collision()
+		desired_velocity = calculate_move_velocity()
 
-			velocity = desired_velocity
+		if is_suicide:
+			check_suicide_collision()
+
+		velocity = desired_velocity
 
 	move_and_slide()
-
-	# Handle Collisions
 	handle_collisions(delta)
+
+func handle_environmental_impact(trap_node):
+	var trap_id = trap_node.get_instance_id()
+
+	if _env_cooldowns.has(trap_id) and _env_cooldowns[trap_id] > 0:
+		return
+
+	if not trap_node.props: return
+	var type = trap_node.props.get("type")
+
+	if type == "reflect":
+		take_damage(trap_node.props.get("strength", 10.0), trap_node, "physical")
+		# Reflect is usually instant collision, so maybe minimal CD or driven by body_entered which fires once per enter.
+		# But if triggered from process, we need CD.
+		_env_cooldowns[trap_id] = 0.5
+	elif type == "poison":
+		apply_poison(null, 1, 3.0)
+		_env_cooldowns[trap_id] = 0.5
+	elif type == "slow":
+		slow_timer = 0.1 # Continually refresh while in area
+		# No cooldown needed for continuous effect, or very short one
+
+	if trap_node.has_method("spawn_splash_effect"):
+		trap_node.spawn_splash_effect(global_position)
 
 func _process_effects(delta):
 	if has_node("BurnParticles"): $BurnParticles.emitting = (effects.burn > 0)
@@ -282,7 +277,6 @@ func _process_effects(delta):
 
 	if effects.burn > 0:
 		effects.burn -= delta
-		# Heat accum logic simplified for brevity/safety in overwrite
 
 	if effects.poison > 0:
 		effects.poison -= delta
@@ -323,69 +317,47 @@ func handle_collisions(delta):
 		var collision = get_slide_collision(i)
 		var collider = collision.get_collider()
 
-		# Only process impactful collisions if we have significant knockback/momentum
 		var momentum = knockback_velocity.length() * mass
-		# Actually, since we already moved, velocity might be zeroed by wall slide?
-		# move_and_slide preserves velocity along wall.
-		# If we hit a wall head on, the velocity component into the wall is lost.
-		# But we stored `knockback_velocity` variable separately and apply it to `velocity` in physics process.
 
-		if knockback_velocity.length() > 50.0: # Threshold for physics interaction
+		if knockback_velocity.length() > 50.0:
 			if collider is StaticBody2D or (collider is TileMap) or (collider.get_class() == "StaticBody2D"):
-				# Hit Wall/Boundary
 				var impact = momentum
-
-				# Stop
 				knockback_velocity = Vector2.ZERO
 				velocity = Vector2.ZERO
 
-				# Damage Self
 				var dmg = impact * WALL_SLAM_FACTOR
 				if dmg > 1:
 					take_damage(dmg, null, "physical", null, 0)
 					GameManager.spawn_floating_text(global_position, "Slam!", Color.GRAY)
 
-				# Heavy Impact
 				if impact > HEAVY_IMPACT_THRESHOLD:
-					# GameManager.trigger_hit_stop(0.1)
 					var impact_dir = -collision.get_normal()
-					# Normalize impact strength.
-					# HEAVY_IMPACT_THRESHOLD is 50. Let's map 50->0.5, 200->2.0?
-					# Or just 0-1 range for shader.
-					# Let's assume max reasonable impact is around 300.
 					var norm_strength = clamp(impact / 100.0, 0.0, 3.0)
 					GameManager.trigger_impact(impact_dir, norm_strength)
 
 				apply_physics_stagger(1.5)
 
 			elif collider is CharacterBody2D and collider.is_in_group("enemies"):
-				# Hit another enemy
 				var target = collider
 				if target.has_method("apply_physics_stagger"):
-					# Calculate mass ratio
 					var t_mass = 1.0
 					if "mass" in target: t_mass = target.mass
 
 					var ratio = mass / t_mass
 
-					# Transfer Momentum
 					if "knockback_velocity" in target:
 						target.knockback_velocity = knockback_velocity * ratio * TRANSFER_RATE
 
-					# Conditional Stagger based on mass
 					if mass > t_mass * 1.5:
 						target.apply_physics_stagger(1.0)
 
-					# Stagger Self if hitting big object?
 					if t_mass > mass * 2:
 						apply_physics_stagger(0.5)
-						knockback_velocity = -knockback_velocity * 0.5 # Bounce back
+						knockback_velocity = -knockback_velocity * 0.5
 					else:
-						# Slow down self
 						knockback_velocity = knockback_velocity * 0.5
 
 func calculate_move_velocity() -> Vector2:
-	# Same path following logic
 	var target_pos = GameManager.grid_manager.global_position
 	if current_target_tile and is_instance_valid(current_target_tile):
 		target_pos = current_target_tile.global_position
@@ -404,10 +376,7 @@ func calculate_move_velocity() -> Vector2:
 
 	if path.size() == 0:
 		direction = (GameManager.grid_manager.global_position - global_position).normalized()
-		# Wall logic... (simplified for CharacterBody, let move_and_slide handle basic blockage,
-		# but we need to attack walls if blocked)
 
-		# Simple raycast for wall attack
 		var space_state = get_world_2d().direct_space_state
 		var query = PhysicsRayQueryParameters2D.create(global_position, global_position + direction * 40)
 		query.collision_mask = 1
@@ -421,10 +390,9 @@ func calculate_move_velocity() -> Vector2:
 	temp_speed_mod = 1.0
 	if slow_timer > 0: temp_speed_mod = 0.5
 
-	# Check attack range again (move this logic here or keep in process?)
 	if current_target_tile and is_instance_valid(current_target_tile):
 		var d = global_position.distance_to(current_target_tile.global_position)
-		var attack_range = enemy_data.radius + 10.0 # Dynamic range + margin
+		var attack_range = enemy_data.radius + 10.0
 		if d < attack_range:
 			is_attacking_base = true
 			return Vector2.ZERO
@@ -438,9 +406,6 @@ func apply_physics_stagger(duration: float):
 		wobble_scale = Vector2.ONE
 
 	apply_stun(duration)
-
-# ... [Keep previous helper methods like apply_poison, apply_stun, take_damage etc] ...
-# Since I am using overwrite, I must include ALL existing methods.
 
 func apply_poison(source_unit, stacks_added, duration):
 	if poison_stacks == 0:
@@ -503,28 +468,6 @@ func apply_freeze(duration: float):
 	freeze_timer = duration
 	GameManager.spawn_floating_text(global_position, "Frozen!", Color.CYAN)
 
-func check_traps(delta):
-	if !sensor_area: return
-	var bodies = sensor_area.get_overlapping_bodies()
-	for b in bodies:
-		if b.get("type") and Constants.BARRICADE_TYPES.has(b.type):
-			var props = Constants.BARRICADE_TYPES[b.type]
-			var b_type = props.type
-			if b_type == "slow":
-				temp_speed_mod = 0.5
-			elif b_type == "poison":
-				effects.poison = 1.0
-				poison_trap_timer -= delta
-				if poison_trap_timer <= 0:
-					poison_trap_timer = Constants.POISON_TRAP_INTERVAL
-					if poison_stacks > 0:
-						poison_stacks = floor(poison_stacks * Constants.POISON_TRAP_MULTIPLIER)
-						poison_power = poison_power * Constants.POISON_TRAP_MULTIPLIER
-					else:
-						apply_poison(null, 1, 3.0)
-			elif b_type == "reflect":
-				take_damage(props.strength * delta)
-
 func check_unit_interactions(delta):
 	if !GameManager.grid_manager: return
 	var grid_pos = GameManager.grid_manager.local_to_grid(global_position)
@@ -561,7 +504,6 @@ func attack_wall_logic(delta):
 		attack_timer = 1.0
 
 func attack_base_logic(delta):
-	# Dynamic Range Check - Break attack if pushed away
 	var target_pos = GameManager.grid_manager.global_position
 	if current_target_tile and is_instance_valid(current_target_tile):
 		target_pos = current_target_tile.global_position
@@ -569,7 +511,7 @@ func attack_base_logic(delta):
 	var dist = global_position.distance_to(target_pos)
 	var attack_range = enemy_data.radius + 10.0
 
-	if dist > attack_range * 1.5: # Tolerance to prevent flickering
+	if dist > attack_range * 1.5:
 		is_attacking_base = false
 		return
 
@@ -686,7 +628,6 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 	if hit_source and is_instance_valid(hit_source) and "speed" in hit_source:
 		hit_dir = Vector2.RIGHT.rotated(hit_source.rotation)
 	last_hit_direction = hit_dir
-	print("Source: ", hit_source.name if hit_source else "Null", " | Dir: ", hit_dir)
 	if kb_force > 0:
 		var applied_force = kb_force / max(0.1, knockback_resistance)
 		knockback_velocity += hit_dir * applied_force
