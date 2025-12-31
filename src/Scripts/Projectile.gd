@@ -13,6 +13,15 @@ var effects: Dictionary = {}
 var is_meteor_falling: bool = false
 var meteor_target: Vector2 = Vector2.ZERO
 
+# Boomerang Logic
+var is_boomerang: bool = false
+var arc_direction: int = 1
+var boomerang_progress: float = 0.0
+var boomerang_start_pos: Vector2
+var boomerang_target_pos: Vector2
+var boomerang_phase: int = 0 # 0: Outbound, 1: Return
+var boomerang_curve_height: float = 150.0
+
 # Storage for all stats
 var stats: Dictionary = {}
 
@@ -86,8 +95,23 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 		speed = 1200.0
 		rotation = (meteor_target - position).angle()
 
+	if stats.get("is_boomerang", false):
+		is_boomerang = true
+		pierce = 100 # High penetration
+		arc_direction = 1 if randf() < 0.5 else -1
+		boomerang_start_pos = start_pos
+
+		# Target point set to 80 pixels behind the enemy
+		if target and is_instance_valid(target):
+			# Use target's global position at launch
+			var dir = (target.global_position - start_pos).normalized()
+			boomerang_target_pos = target.global_position + dir * 80.0
+		else:
+			# Fallback if no target (shouldn't happen for aimed shot)
+			boomerang_target_pos = start_pos + Vector2.RIGHT.rotated(rotation) * 300.0
+
 	# Initial rotation
-	if not is_meteor_falling:
+	if not is_meteor_falling and not is_boomerang:
 		if target and is_instance_valid(target):
 			look_at(target.global_position)
 		elif stats.get("angle") != null:
@@ -160,6 +184,10 @@ func fade_out():
 
 func _process(delta):
 	if is_fading: return
+
+	if is_boomerang:
+		_process_boomerang(delta)
+		return
 
 	if is_meteor_falling:
 		if is_instance_valid(target):
@@ -259,6 +287,69 @@ func _process_black_hole(delta):
 				# Direct position modification (works on top of physics for control effects)
 				enemy.global_position += force_vector
 
+func _process_boomerang(delta):
+	if boomerang_phase == 0:
+		# Outbound - Flanking/Behind-the-back
+		var dist_total = boomerang_start_pos.distance_to(boomerang_target_pos)
+		if dist_total > 0:
+			boomerang_progress += (speed * delta) / dist_total
+		else:
+			boomerang_progress = 1.0
+
+		if boomerang_progress >= 1.0:
+			boomerang_progress = 1.0
+			boomerang_phase = 1 # Switch to Return
+			# We are now at target pos (approx)
+
+		var t = boomerang_progress
+		# Linear interpolation for base
+		var current_base = boomerang_start_pos.lerp(boomerang_target_pos, t)
+
+		# Orthogonal Offset
+		var dir_vec = (boomerang_target_pos - boomerang_start_pos).normalized()
+		var normal = Vector2(-dir_vec.y, dir_vec.x) * arc_direction
+
+		# Sinusoidal arc: Max at 0.5, 0 at 0 and 1
+		var offset_val = sin(t * PI) * boomerang_curve_height
+
+		var new_pos = current_base + normal * offset_val
+
+		# Rotation: Look at next position (derivative approx)
+		# Or just look at target? No, look along path.
+		rotation = (new_pos - position).angle()
+		position = new_pos
+
+	else:
+		# Phase 2: Returning
+		if is_instance_valid(source_unit):
+			var target_pos = source_unit.global_position
+			var dist = position.distance_to(target_pos)
+
+			if dist < 15.0:
+				queue_free()
+				return
+
+			# Calculate real-time vector
+			var dir_to_source = (target_pos - position).normalized()
+
+			# Apply arc offset opposite to OUTBOUND (-arc_direction)
+			# "Decays to 0 as distance shortens"
+
+			var lateral_dir = Vector2(-dir_to_source.y, dir_to_source.x) * (-arc_direction)
+
+			# Curve factor: stronger when far, weaker when close
+			# Let's say max curve when distance is large (e.g. 300+)
+			var curve_strength = clamp(dist / 300.0, 0.0, 1.0) * 1.5
+
+			# Combine forward and lateral
+			var move_dir = (dir_to_source + lateral_dir * curve_strength).normalized()
+
+			rotation = move_dir.angle()
+			position += move_dir * speed * delta
+		else:
+			# Source died/gone
+			fade_out()
+
 func _process_dragon_breath(delta):
 	if state == State.MOVING:
 		life -= delta
@@ -304,6 +395,10 @@ func _handle_hit(target_node):
 	if is_fading: return
 	if type == "dragon_breath": return
 	if type == "black_hole_field": return # Black hole doesn't hit/destroy on contact, it pulls
+
+	# Boomerang Optimization: Avoid premature collision
+	if is_boomerang and boomerang_phase == 0 and boomerang_progress < 0.8:
+		return
 
 	if target_node.is_in_group("enemies"):
 		if shared_hit_list_ref != null and target_node in shared_hit_list_ref: return
