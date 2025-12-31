@@ -29,9 +29,17 @@ var visual_node: Node2D = null
 var is_fading: bool = false
 
 # Dragon Breath State
-enum State { MOVING, HOVERING }
+enum State { MOVING, HOVERING, OUTBOUND, RETURNING }
 var state = State.MOVING
 var dragon_breath_timer: float = 0.0
+
+# Boomerang
+var boomerang_start_pos: Vector2 = Vector2.ZERO
+var boomerang_target_pos: Vector2 = Vector2.ZERO
+var boomerang_max_offset: float = 0.0
+var boomerang_progress: float = 0.0
+var boomerang_duration: float = 0.0
+var boomerang_returned: bool = false
 
 const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
 
@@ -93,6 +101,30 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 		elif stats.get("angle") != null:
 			rotation = stats.get("angle")
 
+	# Boomerang Setup
+	if type == "boomerang":
+		state = State.OUTBOUND
+		boomerang_start_pos = position
+		boomerang_target_pos = target.global_position if is_instance_valid(target) else (position + Vector2.RIGHT * 250)
+		var dist = boomerang_start_pos.distance_to(boomerang_target_pos)
+
+		# Offset param
+		boomerang_max_offset = dist * 0.3 # 30% of range
+
+		# Duration based on speed
+		# Speed is usually pixels/sec.
+		# Total path is slightly longer than dist, but approximation is fine.
+		boomerang_duration = dist / speed
+		boomerang_progress = 0.0
+
+		# Determine side for curve?
+		# Let's say it curves "left" or "right" relative to direction.
+		# "Offset is perpendicular".
+		# If we want alternating curves, we could add random sign, but prompt implies standard curve.
+		# Let's check: "Offset = MaxOffset * 4 * Progress * (1 - Progress)"
+		# We need a perpendicular vector.
+		pass
+
 	# Visual Separation
 	if has_node("Sprite2D"):
 		visual_node = get_node("Sprite2D")
@@ -128,6 +160,8 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 		_setup_roar()
 	elif type == "dragon_breath":
 		_setup_dragon_breath()
+	elif type == "boomerang":
+		_setup_simple_visual(Color("CD853F"), "boomerang") # Peru/Brownish
 	elif type == "pinecone":
 		_setup_simple_visual(Color("8B4513"), "circle") # Brown circle
 	elif type == "ink":
@@ -172,6 +206,13 @@ func _process(delta):
 			return
 
 		position += Vector2.RIGHT.rotated(rotation) * speed * delta
+		return
+
+	# Boomerang Logic
+	if type == "boomerang":
+		_process_boomerang(delta)
+		# Update rotation for visual spin
+		if visual_node: visual_node.rotation += delta * 20.0
 		return
 
 	# Dragon Breath Logic
@@ -294,6 +335,40 @@ func _process_dragon_breath(delta):
 				enemy.global_position += pull_dir * 100.0 * delta # Pull speed
 				enemy.take_damage(damage * delta, source_unit, damage_type) # DoT
 
+func _process_boomerang(delta):
+	if state == State.OUTBOUND:
+		boomerang_progress += delta / boomerang_duration
+
+		if boomerang_progress >= 1.0:
+			boomerang_progress = 1.0
+			state = State.RETURNING
+			# Reset hit list so it can hit enemies on return?
+			# Usually boomerangs hit on way out and back.
+			hit_list.clear()
+
+		# Calculate position
+		var linear_pos = boomerang_start_pos.lerp(boomerang_target_pos, boomerang_progress)
+		var dir_vec = (boomerang_target_pos - boomerang_start_pos).normalized()
+		var perp_vec = Vector2(-dir_vec.y, dir_vec.x) # Left perpendicular
+
+		var offset_mag = boomerang_max_offset * 4 * boomerang_progress * (1 - boomerang_progress)
+		position = linear_pos + perp_vec * offset_mag
+
+	elif state == State.RETURNING:
+		# Fly towards source_unit
+		if !is_instance_valid(source_unit):
+			fade_out()
+			return
+
+		var dir = (source_unit.global_position - position).normalized()
+		position += dir * speed * delta
+
+		var dist = position.distance_to(source_unit.global_position)
+		if dist < 20.0:
+			if source_unit.has_method("catch_projectile"):
+				source_unit.catch_projectile()
+			queue_free()
+
 func _on_body_entered(body):
 	_handle_hit(body)
 
@@ -307,7 +382,9 @@ func _handle_hit(target_node):
 
 	if target_node.is_in_group("enemies"):
 		if shared_hit_list_ref != null and target_node in shared_hit_list_ref: return
-		if target_node in hit_list: return
+		# Boomerang allows hitting multiple enemies, but normally one hit per enemy per "pass"
+		if type == "boomerang" and target_node in hit_list: return
+		if type != "boomerang" and target_node in hit_list: return
 
 		# Apply Damage
 		var final_damage_type = damage_type
@@ -379,6 +456,10 @@ func _handle_hit(target_node):
 		if not bounced:
 			if type == "roar":
 				pass
+			elif type == "boomerang":
+				# Infinite pierce essentially, or very high.
+				# Do nothing, just continue.
+				_spawn_hit_visual(target_node.global_position)
 			elif pierce > 0:
 				pierce -= 1
 			else:
@@ -474,6 +555,17 @@ func _setup_simple_visual(color, shape):
 			Vector2(0, 6), Vector2(-2, 2),
 			Vector2(-6, 0), Vector2(-2, -2),
 			Vector2(0, -6), Vector2(2, -2)
+		])
+	elif shape == "boomerang":
+		# V shape
+		points = PackedVector2Array([
+			Vector2(0, -8), Vector2(4, -4), Vector2(0, 0), Vector2(-4, -4)
+		])
+		# Actually a curve V
+		points = PackedVector2Array([
+			Vector2(0, -8), Vector2(3, -2), Vector2(8, 0),
+			Vector2(3, 2), Vector2(0, 8),
+			Vector2(-2, 2), Vector2(0, 0), Vector2(-2, -2)
 		])
 	else:
 		# Box

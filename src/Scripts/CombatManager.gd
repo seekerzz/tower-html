@@ -248,6 +248,18 @@ func find_nearest_enemy(pos: Vector2, range_val: float):
 
 	return nearest
 
+func find_farthest_enemy(pos: Vector2, range_val: float):
+	var farthest = null
+	var max_dist = 0.0
+
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		var dist = pos.distance_to(enemy.global_position)
+		if dist <= range_val and dist > max_dist:
+			max_dist = dist
+			farthest = enemy
+
+	return farthest
+
 func perform_lightning_attack(source_unit, start_pos, target, chain_left, hit_list = null):
 	if hit_list == null: hit_list = []
 	if !is_instance_valid(target): return
@@ -286,7 +298,7 @@ func find_nearest_enemy_excluding(pos: Vector2, range_val: float, exclude_list: 
 	return nearest
 
 func spawn_projectile(source_unit, pos, target, extra_stats = {}):
-	_spawn_single_projectile(source_unit, pos, target, extra_stats)
+	return _spawn_single_projectile(source_unit, pos, target, extra_stats)
 
 func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	# FIX: Shotgun logic - force straight flight by removing target
@@ -393,6 +405,8 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 				for neighbor in neighbors:
 					if neighbor.type_key == "parrot":
 						neighbor.capture_bullet(snapshot)
+
+	return proj
 
 func queue_burn_explosion(pos: Vector2, damage: float, source: Node2D):
 	explosion_queue.append({ "pos": pos, "damage": damage, "source": source })

@@ -41,6 +41,9 @@ var max_ammo: int = 0
 var mimicked_bullet_timer: float = 0.0
 var is_discharging: bool = false
 
+# Monkey Mechanics
+var current_projectile = null
+
 # Grid
 var grid_pos: Vector2i = Vector2i.ZERO
 var start_position: Vector2 = Vector2.ZERO
@@ -307,6 +310,13 @@ func capture_bullet(bullet_snapshot: Dictionary):
 		var tween = create_tween()
 		tween.tween_property(visual_holder, "scale", Vector2(1.1, 1.1), 0.1)
 		tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.1)
+
+func catch_projectile():
+	current_projectile = null
+	# Reset cooldown or allow immediate attack?
+	# Prompt says: "After recovery, monkey cannot attack". Wait, "Before recovery monkey cannot attack".
+	# So after recovery, it can attack.
+	cooldown = 0.0
 
 func calculate_damage_against(target_node: Node2D) -> float:
 	var final_damage = damage
@@ -731,7 +741,16 @@ func _process_combat(delta):
 	var combat_manager = GameManager.combat_manager
 	if !combat_manager: return
 
-	var target = combat_manager.find_nearest_enemy(global_position, range_val)
+	# Monkey Logic: Skip if waiting for projectile
+	if type_key == "monkey" and is_instance_valid(current_projectile):
+		return
+
+	var target = null
+	if type_key == "monkey":
+		target = combat_manager.find_farthest_enemy(global_position, range_val)
+	else:
+		target = combat_manager.find_nearest_enemy(global_position, range_val)
+
 	if target:
 		# Consume Resources
 		if attack_cost_mana > 0:
@@ -771,7 +790,9 @@ func _process_combat(delta):
 					var angle = start_angle + (i * step)
 					combat_manager.spawn_projectile(self, global_position, target, {"angle": angle})
 			else:
-				combat_manager.spawn_projectile(self, global_position, target)
+				var proj = combat_manager.spawn_projectile(self, global_position, target)
+				if type_key == "monkey" and is_instance_valid(proj):
+					current_projectile = proj
 
 func _spawn_meteor_at_random_enemy():
 	var combat_manager = GameManager.combat_manager
