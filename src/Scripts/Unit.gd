@@ -685,7 +685,6 @@ func _process_combat(delta):
 	elif unit_data.attackType == "melee":
 		if target: _do_melee_attack(target)
 	elif unit_data.attackType == "mimic":
-		# Fallback mimic if not parrot?
 		if target: _do_mimic_attack(target, combat_manager)
 	else:
 		if target: _do_standard_ranged_attack(target)
@@ -699,37 +698,38 @@ func _do_mimic_attack(target, combat_manager):
 
 	if is_discharging:
 		if ammo_queue.size() > 0:
-			if target:
-				# Re-check target each shot as in original logic
-				var aim_target = combat_manager.find_nearest_enemy(global_position, range_val)
-				if aim_target:
-					if attack_cost_mana > 0: GameManager.consume_resource("mana", attack_cost_mana)
-					cooldown = atk_speed
+			# For mimic, we might want to keep firing if we started, or re-acquire?
+			# Original logic re-acquires.
+			var aim_target = target
+			if !aim_target or !is_instance_valid(aim_target):
+				aim_target = combat_manager.find_nearest_enemy(global_position, range_val)
 
-					var bullet_data = ammo_queue.pop_front()
-					play_attack_anim("ranged", aim_target.global_position)
+			if aim_target:
+				if attack_cost_mana > 0: GameManager.consume_resource("mana", attack_cost_mana)
+				cooldown = atk_speed
 
-					var extra = bullet_data.duplicate()
-					extra["mimic_damage"] = bullet_data.get("damage", 10.0)
-					extra["proj_override"] = bullet_data.get("type", "pinecone")
+				var bullet_data = ammo_queue.pop_front()
+				play_attack_anim("ranged", aim_target.global_position)
 
-					combat_manager.spawn_projectile(self, global_position, aim_target, extra)
-			else:
-				# No target in range, pause discharging
-				pass
+				var extra = bullet_data.duplicate()
+				extra["mimic_damage"] = bullet_data.get("damage", 10.0)
+				extra["proj_override"] = bullet_data.get("type", "pinecone")
+
+				combat_manager.spawn_projectile(self, global_position, aim_target, extra)
 		else:
 			is_discharging = false
 
 func _do_bow_attack(target, on_release_callback: Callable = Callable()):
+	# Capture target position immediately (Blind Fire)
+	var target_last_pos = target.global_position
+
 	if attack_cost_mana > 0:
 		GameManager.consume_resource("mana", attack_cost_mana)
 
-	# Calculate duration: dynamic but reasonable
 	var anim_duration = clamp(atk_speed * 0.8, 0.1, 0.6)
-
 	cooldown = atk_speed * GameManager.get_stat_modifier("attack_interval")
 
-	play_attack_anim("bow", target.global_position, anim_duration)
+	play_attack_anim("bow", target_last_pos, anim_duration)
 
 	# Wait for Pull
 	var pull_time = anim_duration * 0.6
@@ -737,24 +737,68 @@ func _do_bow_attack(target, on_release_callback: Callable = Callable()):
 
 	if !is_instance_valid(self): return
 
+	# Fire!
 	if on_release_callback.is_valid():
-		on_release_callback.call()
+		# Pass last pos to callback
+		on_release_callback.call(target_last_pos)
 	else:
 		# Default (Bee)
-		if is_instance_valid(target) and GameManager.combat_manager:
-			GameManager.combat_manager.spawn_projectile(self, global_position, target)
+		if GameManager.combat_manager:
+			if is_instance_valid(target):
+				GameManager.combat_manager.spawn_projectile(self, global_position, target)
+			else:
+				# Target dead, use last pos
+				var angle = (target_last_pos - global_position).angle()
+				GameManager.combat_manager.spawn_projectile(self, global_position, null, {"angle": angle})
 
 func _do_melee_attack(target):
+	var target_last_pos = target.global_position
+
 	if attack_cost_mana > 0:
 		GameManager.consume_resource("mana", attack_cost_mana)
 
 	cooldown = atk_speed * GameManager.get_stat_modifier("attack_interval")
 
-	play_attack_anim("melee", target.global_position)
+	play_attack_anim("melee", target_last_pos)
 
 	await get_tree().create_timer(ANIM_WINDUP_TIME).timeout
-	if is_instance_valid(self) and is_instance_valid(target):
+	if !is_instance_valid(self): return
+
+	# Melee usually requires valid target to hit? Or spawns projectile?
+	# Implementation spawns projectiles.
+	if is_instance_valid(target):
 		_spawn_melee_projectiles(target)
+	else:
+		# Blind fire melee swing towards last pos
+		_spawn_melee_projectiles_blind(target_last_pos)
+
+func _spawn_melee_projectiles_blind(target_pos: Vector2):
+	var combat_manager = GameManager.combat_manager
+	if !combat_manager: return
+
+	var swing_hit_list = []
+	var attack_dir = (target_pos - global_position).normalized()
+
+	var proj_speed = 600.0
+	var proj_life = (range_val + 30.0) / proj_speed
+	var count = 5
+	var spread = PI / 2.0
+
+	var base_angle = attack_dir.angle()
+	var start_angle = base_angle - spread / 2.0
+	var step = spread / max(1, count - 1)
+
+	for i in range(count):
+		var angle = start_angle + (i * step)
+		var stats = {
+			"pierce": 100,
+			"hide_visuals": true,
+			"life": proj_life,
+			"angle": angle,
+			"speed": proj_speed,
+			"shared_hit_list": swing_hit_list
+		}
+		combat_manager.spawn_projectile(self, global_position, null, stats)
 
 func _do_standard_ranged_attack(target):
 	var combat_manager = GameManager.combat_manager
@@ -794,11 +838,9 @@ func _do_standard_ranged_attack(target):
 func _handle_peacock_attack(target, combat_manager):
 	# Peacock: 3 attacks then 1 recall
 	if attack_counter >= 3:
-		# RECALL ACTION (Can run without target, usually checks feathers existence)
 		cooldown = atk_speed * GameManager.get_stat_modifier("attack_interval")
 		attack_counter = 0
 
-		# Visual scale effect for recall
 		if visual_holder:
 			var tween = create_tween()
 			tween.tween_property(visual_holder, "scale", Vector2(1.3, 1.3), 0.1)
@@ -811,8 +853,8 @@ func _handle_peacock_attack(target, combat_manager):
 
 	elif target:
 		# SHOOT ACTION with Bow Animation
-		var spawn_logic = func():
-			if !is_instance_valid(target) or !is_instance_valid(combat_manager): return
+		var spawn_logic = func(saved_target_pos: Vector2):
+			if !is_instance_valid(combat_manager): return
 
 			var extra_shots = 0
 			var multi_chance = 0.0
@@ -824,20 +866,34 @@ func _handle_peacock_attack(target, combat_manager):
 			if multi_chance > 0.0 and randf() < multi_chance:
 				extra_shots += 1
 
+			# Determine target or angle
+			var use_target = null
+			var base_angle = 0.0
+
+			if is_instance_valid(target):
+				use_target = target
+				base_angle = (target.global_position - global_position).angle()
+			else:
+				base_angle = (saved_target_pos - global_position).angle()
+				# use_target remains null
+
 			# Fire Primary Feather
-			var proj = combat_manager.spawn_projectile(self, global_position, target)
+			var proj_args = {}
+			if !use_target:
+				proj_args["angle"] = base_angle
+
+			var proj = combat_manager.spawn_projectile(self, global_position, use_target, proj_args)
 			if proj and is_instance_valid(proj):
 				feather_refs.append(proj)
 
 			# Fire Extra Shots
 			if extra_shots > 0:
-				var base_angle = (target.global_position - global_position).angle()
 				var spread_angle = 0.2
 				var angles = [base_angle - spread_angle, base_angle + spread_angle]
 
 				for i in range(extra_shots):
 					var angle_mod = angles[i % 2]
-					var extra_proj = combat_manager.spawn_projectile(self, global_position, target, {"angle": angle_mod})
+					var extra_proj = combat_manager.spawn_projectile(self, global_position, use_target, {"angle": angle_mod})
 					if extra_proj and is_instance_valid(extra_proj):
 						feather_refs.append(extra_proj)
 
