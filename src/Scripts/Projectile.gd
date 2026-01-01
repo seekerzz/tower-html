@@ -459,8 +459,24 @@ func _process_quill(delta):
 		var dir = (target_pos - global_position).normalized()
 		var dist = global_position.distance_to(target_pos)
 
+		var motion = dir * speed * delta
+
+		# Anti-tunneling: Raycast check for high speed return
+		var space_state = get_world_2d().direct_space_state
+		var query = PhysicsRayQueryParameters2D.create(global_position, global_position + motion)
+		query.collide_with_areas = true
+		query.collide_with_bodies = true
+		query.collision_mask = collision_mask
+		query.exclude = [self]
+
+		var result = space_state.intersect_ray(query)
+		if result:
+			var collider = result.collider
+			if collider and is_instance_valid(collider) and collider.is_in_group("enemies"):
+				_handle_hit(collider)
+
 		rotation = dir.angle()
-		position += dir * speed * delta
+		position += motion
 
 		if dist < 10.0:
 			queue_free()
