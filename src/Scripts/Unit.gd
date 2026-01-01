@@ -24,14 +24,13 @@ var max_production_timer: float = 1.0
 
 # Visual Holder for animations and structure
 var visual_holder: Node2D = null
-# Keeping this for compatibility if other scripts access it, though it was local-ish before
-var visual_node: CanvasItem = null
 
 var is_no_mana: bool = false
 var crit_rate: float = 0.0
 var crit_dmg: float = 1.5
 var bounce_count: int = 0
 var split_count: int = 0
+var multi_shot_chance: float = 0.0
 
 var guaranteed_crit_stacks: int = 0
 
@@ -260,12 +259,8 @@ func reset_stats():
 		var mechs = stats["mechanics"]
 		if mechs.has("crit_rate_bonus"):
 			crit_rate += mechs["crit_rate_bonus"]
-		# Add other mechanics here
-		# e.g. multi_shot_chance is handled in combat/projectile logic,
-		# so we might need to store it or apply it to a variable if Unit.gd handles shooting.
-		# Unit.gd doesn't seem to fire projectiles directly, usually CombatManager or Projectile.gd?
-		# Wait, Unit.gd doesn't have attack logic loop in _process?
-		# Ah, CombatManager handles attacks. We need to expose stats for CombatManager.
+		if mechs.has("multi_shot_chance"):
+			multi_shot_chance = mechs["multi_shot_chance"]
 
 	bounce_count = 0
 	split_count = 0
@@ -819,14 +814,8 @@ func _handle_porcupine_attack(target, combat_manager):
 
 		# Check Multi-shot Chance (Level 3 or Buffs)
 		var extra_shots = 0
-		var multi_chance = 0.0
 
-		# Level 3 mechanic
-		if unit_data.has("levels") and unit_data["levels"].has(str(level)):
-			var mech = unit_data["levels"][str(level)].get("mechanics", {})
-			multi_chance = mech.get("multi_shot_chance", 0.0)
-
-		if multi_chance > 0.0 and randf() < multi_chance:
+		if multi_shot_chance > 0.0 and randf() < multi_shot_chance:
 			extra_shots += 1
 
 		# Fire Primary Quill
