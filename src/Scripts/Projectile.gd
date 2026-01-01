@@ -192,10 +192,8 @@ func _process(delta):
 	# Quill Logic
 	if type == "quill":
 		_process_quill(delta)
-		if state == State.STUCK:
-			return # Don't do standard movement or life check if stuck (managed by unit or infinite life until recall)
-		if state == State.RETURNING:
-			return # Handled in _process_quill
+		# Process quill handles all states including MOVING, so we always return to avoid double movement
+		return
 
 	# Black Hole Logic
 	if type == "black_hole_field":
@@ -339,8 +337,9 @@ func _handle_hit(target_node):
 			if pull_str > 0:
 				var dir = (source_unit.global_position - target_node.global_position).normalized()
 				# Pull enemy
-				target_node.global_position += dir * (pull_str * get_process_delta_time())
-				# Or better, apply force if enemy has it, but direct position mod is requested
+				# Apply a significant tug since this is a one-shot hit event
+				# Using a fixed time-slice equivalent (e.g. 0.1s) to make the pull noticeable
+				target_node.global_position += dir * (pull_str * 0.05)
 
 		# Apply Damage
 		var final_damage_type = damage_type
@@ -490,9 +489,11 @@ func _become_stuck():
 	t.tween_callback(dust.queue_free)
 
 func recall():
-	if state != State.STUCK: return
+	if state != State.STUCK and state != State.MOVING: return
 
 	state = State.RETURNING
+	# If recalling from mid-air, ensure we use base speed * 2, not potentially modified speed
+	# Assuming 'speed' is the flight speed.
 	speed *= 2.0
 	hit_list.clear() # Reset hit list so we can hit enemies on way back
 	set_deferred("monitoring", true)
