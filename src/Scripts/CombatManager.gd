@@ -286,7 +286,7 @@ func find_nearest_enemy_excluding(pos: Vector2, range_val: float, exclude_list: 
 	return nearest
 
 func spawn_projectile(source_unit, pos, target, extra_stats = {}):
-	_spawn_single_projectile(source_unit, pos, target, extra_stats)
+	return _spawn_single_projectile(source_unit, pos, target, extra_stats)
 
 func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	# FIX: Shotgun logic - force straight flight by removing target
@@ -393,6 +393,8 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 				for neighbor in neighbors:
 					if neighbor.type_key == "parrot":
 						neighbor.capture_bullet(snapshot)
+
+	return proj
 
 func queue_burn_explosion(pos: Vector2, damage: float, source: Node2D):
 	explosion_queue.append({ "pos": pos, "damage": damage, "source": source })
