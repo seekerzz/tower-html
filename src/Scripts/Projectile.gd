@@ -33,9 +33,9 @@ enum State { MOVING, HOVERING, STUCK, RETURNING }
 var state = State.MOVING
 var dragon_breath_timer: float = 0.0
 
-# Quill State
-var quill_original_target_pos: Vector2 = Vector2.ZERO
-var quill_stuck_pos: Vector2 = Vector2.ZERO
+# Feather State
+var feather_original_target_pos: Vector2 = Vector2.ZERO
+var feather_stuck_pos: Vector2 = Vector2.ZERO
 
 const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
 
@@ -96,8 +96,8 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 	if not is_meteor_falling:
 		if target and is_instance_valid(target):
 			look_at(target.global_position)
-		if type == "quill":
-			quill_original_target_pos = target.global_position
+		if type == "feather":
+			feather_original_target_pos = target.global_position
 		elif stats.get("angle") != null:
 			rotation = stats.get("angle")
 
@@ -142,15 +142,15 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 		_setup_simple_visual(Color.BLACK, "blob")
 	elif type == "pollen":
 		_setup_simple_visual(Color.PINK, "star")
-	elif type == "quill":
-		_setup_quill()
+	elif type == "feather":
+		_setup_feather()
 	elif type == "lightning":
 		# Keep lightning if it was handled elsewhere or add simple visual
 		_setup_simple_visual(Color.CYAN, "line")
 
 func fade_out():
 	if is_fading: return
-	if state == State.STUCK: return # Stuck quills don't fade out by time alone usually, but we need life check
+	if state == State.STUCK: return # Stuck feathers don't fade out by time alone usually, but we need life check
 
 	is_fading = true
 
@@ -189,13 +189,13 @@ func _process(delta):
 		_process_dragon_breath(delta)
 		return
 
-	# Quill Logic
-	if type == "quill":
-		_process_quill(delta)
+	# Feather Logic
+	if type == "feather":
+		_process_feather(delta)
 		if state != State.RETURNING:
 			return
 
-		# Destroy condition for returning quill
+		# Destroy condition for returning feather
 		if state == State.RETURNING and source_unit and is_instance_valid(source_unit):
 			if global_position.distance_to(source_unit.global_position) < 15.0:
 				queue_free()
@@ -313,14 +313,14 @@ func _handle_hit(target_node):
 	if is_fading: return
 	if type == "dragon_breath": return
 	if type == "black_hole_field": return # Black hole doesn't hit/destroy on contact, it pulls
-	if type == "quill" and state == State.STUCK: return
+	if type == "feather" and state == State.STUCK: return
 
 	if target_node.is_in_group("enemies"):
 		if shared_hit_list_ref != null and target_node in shared_hit_list_ref: return
 		if target_node in hit_list: return
 
-		# Quill Return Logic (Pull)
-		if type == "quill" and state == State.RETURNING:
+		# Feather Return Logic (Pull)
+		if type == "feather" and state == State.RETURNING:
 			var pull_str = 0.0
 			if source_unit and source_unit.unit_data.has("levels"):
 				var lvl_stats = source_unit.unit_data["levels"][str(source_unit.level)]
@@ -412,11 +412,11 @@ func _handle_hit(target_node):
 
 				# Final Hit - Spawn visual and destroy
 				_spawn_hit_visual(target_node.global_position)
-				if type != "quill": # Quills don't die on hit, they pass through until Stuck logic handles them (or if they hit during return)
+				if type != "feather": # Feathers don't die on hit, they pass through until Stuck logic handles them (or if they hit during return)
 					print("Projectile hit final: ", type, " -> queue_free")
 					queue_free()
 
-func _process_quill(delta):
+func _process_feather(delta):
 	# Orphan Check
 	if (state == State.STUCK or state == State.RETURNING or state == State.MOVING) and (!source_unit or !is_instance_valid(source_unit)):
 		queue_free()
@@ -431,7 +431,7 @@ func _process_quill(delta):
 		# Check if passed target
 		if source_unit and is_instance_valid(source_unit):
 			var start_pos = source_unit.global_position
-			var to_target = quill_original_target_pos - start_pos
+			var to_target = feather_original_target_pos - start_pos
 			var to_current = global_position - start_pos
 			var projected_dist = to_current.dot(to_target.normalized())
 			var target_dist = to_target.length()
@@ -440,11 +440,12 @@ func _process_quill(delta):
 				_become_stuck()
 		else:
 			# Fallback if source died
-			if global_position.distance_to(quill_original_target_pos) < 10.0:
+			if global_position.distance_to(feather_original_target_pos) < 10.0:
 				_become_stuck()
 
 
 func _become_stuck():
+	feather_stuck_pos = position
 	state = State.STUCK
 	set_deferred("monitoring", false)
 
@@ -490,7 +491,7 @@ func recall():
 	if visual_node:
 		visual_node.modulate = Color.RED # Highlight return
 
-func _setup_quill():
+func _setup_feather():
 	if visual_node: visual_node.hide()
 
 	# Increase collision size
@@ -501,18 +502,34 @@ func _setup_quill():
 		new_shape.radius = 12.0
 		collision_shape.shape = new_shape
 
-	# Thin sharp triangle
+	# Feather shape (modified from quill)
 	var poly = Polygon2D.new()
-	poly.polygon = PackedVector2Array([Vector2(10, 0), Vector2(-10, -3), Vector2(-10, 3)])
-	poly.color = Color.DARK_GRAY
+	# More leaf/feather like
+	poly.polygon = PackedVector2Array([
+		Vector2(12, 0),
+		Vector2(4, -4),
+		Vector2(-10, -3),
+		Vector2(-8, 0),
+		Vector2(-10, 3),
+		Vector2(4, 4)
+	])
+	poly.color = Color("00CED1") # Dark Turquoise for peacock feather
 
 	var line = Line2D.new()
-	line.points = PackedVector2Array([Vector2(-10, 0), Vector2(10, 0)])
-	line.width = 1.0
-	line.default_color = Color.WHITE
+	line.points = PackedVector2Array([Vector2(-10, 0), Vector2(12, 0)])
+	line.width = 1.5
+	line.default_color = Color.GOLD # Golden shaft
+
+	# Eye of the feather
+	var eye = Polygon2D.new()
+	eye.polygon = PackedVector2Array([
+		Vector2(6, 0), Vector2(9, -2), Vector2(11, 0), Vector2(9, 2)
+	])
+	eye.color = Color("191970") # Midnight Blue
 
 	add_child(poly)
 	add_child(line)
+	add_child(eye)
 
 func _spawn_hit_visual(pos: Vector2):
 	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
