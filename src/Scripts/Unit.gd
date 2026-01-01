@@ -24,8 +24,6 @@ var max_production_timer: float = 1.0
 
 # Visual Holder for animations and structure
 var visual_holder: Node2D = null
-# Keeping this for compatibility if other scripts access it, though it was local-ish before
-var visual_node: CanvasItem = null
 
 var is_no_mana: bool = false
 var crit_rate: float = 0.0
@@ -146,6 +144,8 @@ func setup(key: String):
 	unit_data = Constants.UNIT_TYPES[key].duplicate()
 	# reset_stats will handle reading stats from levels
 	reset_stats()
+	# Initialize production timer
+	production_timer = max_production_timer
 	update_visuals()
 
 	# Preserve interaction target if reloading/upgrading?
@@ -153,24 +153,6 @@ func setup(key: String):
 	# If we upgrade (merge), we might need to copy it, but merge creates new unit or modifies existing?
 	# Merge in GridManager: target_unit.merge_with(temp_unit). Unit instance persists.
 	# So interaction_target_pos is preserved in target_unit.
-
-	# --- Merged Logic Start ---
-	if unit_data.has("produce"):
-		production_timer = 1.0
-		max_production_timer = 1.0
-
-	if unit_data.has("production_type") and unit_data["production_type"] == "item":
-		max_production_timer = unit_data.get("production_interval", 5.0)
-		production_timer = max_production_timer
-
-	# Cow Healing logic setup - Removed implicit setup here, handled in _process or logic
-	if unit_data.has("skill") and unit_data.skill == "milk_aura":
-		production_timer = 5.0 # Keep this for PASSIVE healing if any, or just skill logic?
-		max_production_timer = 5.0
-		# Original Unit.gd had a passive milk_aura logic: "Cow Milk Aura Logic" block in _process
-		# The new requirements say: "If Cow and skill active: ... extra call GameManager.damage_core(-200 * delta)"
-		# It seems the passive "milk_aura" (every 5s heal 50) is still there unless I remove it?
-		# The prompt didn't say to remove the passive.
 
 	start_breathe_anim()
 
@@ -219,7 +201,9 @@ func reset_stats():
 	damage = stats.get("damage", unit_data.get("damage", 0))
 
 	# Update production interval from mechanics if available
-	if unit_data.has("production_type") and unit_data["production_type"] == "item":
+	if unit_data.has("produce"):
+		max_production_timer = 1.0
+	elif unit_data.has("production_type") and unit_data["production_type"] == "item":
 		var base_interval = unit_data.get("production_interval", 5.0)
 		var new_interval = base_interval
 
@@ -227,8 +211,8 @@ func reset_stats():
 			new_interval = stats["mechanics"]["production_interval"]
 
 		max_production_timer = new_interval
-		# Do not reset current timer to avoid exploit/punishment on upgrade,
-		# but ensure it's not above new max if we want to be strict.
+	elif unit_data.has("skill") and unit_data.skill == "milk_aura":
+		max_production_timer = 5.0
 
 	# Handle hp: if max_hp changes, should we heal?
 	# For now, just set max_hp. Current HP handling is done by GameManager (Core Health) or Barricades.
