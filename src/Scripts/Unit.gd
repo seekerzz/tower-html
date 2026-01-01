@@ -67,14 +67,6 @@ var connection_overlay: Node2D = null
 var attack_counter: int = 0
 var feather_refs: Array = []
 
-const ANIM_WINDUP_TIME: float = 0.15
-const ANIM_STRIKE_TIME: float = 0.05
-const ANIM_RECOVERY_TIME: float = 0.2
-const ANIM_WINDUP_DIST: float = 8.0
-const ANIM_STRIKE_DIST: float = 20.0
-const ANIM_WINDUP_SCALE: Vector2 = Vector2(1.15, 0.85)
-const ANIM_STRIKE_SCALE: Vector2 = Vector2(0.85, 1.15)
-
 const MAX_LEVEL = 3
 const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 
@@ -761,7 +753,7 @@ func _do_melee_attack(target):
 
 	play_attack_anim("melee", target_last_pos)
 
-	await get_tree().create_timer(ANIM_WINDUP_TIME).timeout
+	await get_tree().create_timer(Constants.ANIM_WINDUP_TIME).timeout
 	if !is_instance_valid(self): return
 
 	# Melee usually requires valid target to hit? Or spawns projectile?
@@ -926,21 +918,21 @@ func play_attack_anim(attack_type: String, target_pos: Vector2, duration: float 
 		var original_pos = Vector2.ZERO
 
 		# Phase 1: Windup
-		attack_tween.tween_property(visual_holder, "position", -dir * ANIM_WINDUP_DIST, ANIM_WINDUP_TIME)\
+		attack_tween.tween_property(visual_holder, "position", -dir * Constants.ANIM_WINDUP_DIST, Constants.ANIM_WINDUP_TIME)\
 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		attack_tween.parallel().tween_property(visual_holder, "scale", ANIM_WINDUP_SCALE, ANIM_WINDUP_TIME)\
+		attack_tween.parallel().tween_property(visual_holder, "scale", Constants.ANIM_WINDUP_SCALE, Constants.ANIM_WINDUP_TIME)\
 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 		# Phase 2: Strike
-		attack_tween.tween_property(visual_holder, "position", dir * ANIM_STRIKE_DIST, ANIM_STRIKE_TIME)\
+		attack_tween.tween_property(visual_holder, "position", dir * Constants.ANIM_STRIKE_DIST, Constants.ANIM_STRIKE_TIME)\
 			.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
-		attack_tween.parallel().tween_property(visual_holder, "scale", ANIM_STRIKE_SCALE, ANIM_STRIKE_TIME)\
+		attack_tween.parallel().tween_property(visual_holder, "scale", Constants.ANIM_STRIKE_SCALE, Constants.ANIM_STRIKE_TIME)\
 			.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
 
 		# Phase 3: Recovery
-		attack_tween.tween_property(visual_holder, "position", original_pos, ANIM_RECOVERY_TIME)\
+		attack_tween.tween_property(visual_holder, "position", original_pos, Constants.ANIM_RECOVERY_TIME)\
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		attack_tween.parallel().tween_property(visual_holder, "scale", Vector2.ONE, ANIM_RECOVERY_TIME)\
+		attack_tween.parallel().tween_property(visual_holder, "scale", Vector2.ONE, Constants.ANIM_RECOVERY_TIME)\
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 	elif attack_type == "bow":

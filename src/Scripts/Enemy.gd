@@ -69,18 +69,7 @@ func _ready():
 	collision_mask = 1 | 2
 
 	input_pickable = false
-	_set_ignore_mouse_recursive(self)
-
-func _set_ignore_mouse_recursive(node: Node):
-	node.set_process_input(false)
-	node.set_process_unhandled_input(false)
-	if node is CollisionObject2D:
-		node.input_pickable = false
-	if node is Control:
-		node.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	for child in node.get_children():
-		_set_ignore_mouse_recursive(child)
+	GameManager._set_ignore_mouse_recursive(self)
 
 func setup(key: String, wave: int):
 	type_key = key
@@ -250,22 +239,42 @@ func _physics_process(delta):
 	handle_collisions(delta)
 
 func _should_attack_base() -> bool:
-	if current_target_tile and is_instance_valid(current_target_tile):
-		var d = global_position.distance_to(current_target_tile.global_position)
-		var attack_range = enemy_data.radius + 10.0
-		if d < attack_range:
+	# If ranged, check distance to Core directly if we want to shoot core.
+	# But original logic uses current_target_tile which is a path node.
+	# For ranged enemies, we want to stop when within range of the CORE, not just the tile.
+	# However, update_path() targets the core or closest tile.
+	var target_pos = GameManager.grid_manager.global_position
+
+	if enemy_data.get("attackType") == "ranged":
+		var dist = global_position.distance_to(target_pos)
+		var range_val = enemy_data.get("range", 200.0)
+		if dist < range_val:
 			return true
+	else:
+		# Melee logic: close to next tile (which leads to core)
+		if current_target_tile and is_instance_valid(current_target_tile):
+			var d = global_position.distance_to(current_target_tile.global_position)
+			var attack_range = enemy_data.radius + 10.0
+			if d < attack_range:
+				return true
 	return false
 
 func _should_stop_attacking_base() -> bool:
 	var target_pos = GameManager.grid_manager.global_position
-	if current_target_tile and is_instance_valid(current_target_tile):
-		target_pos = current_target_tile.global_position
 
-	var dist = global_position.distance_to(target_pos)
-	var attack_range = enemy_data.radius + 10.0
+	if enemy_data.get("attackType") == "ranged":
+		var dist = global_position.distance_to(target_pos)
+		var range_val = enemy_data.get("range", 200.0)
+		# Hysteresis
+		return dist > range_val * 1.1
+	else:
+		if current_target_tile and is_instance_valid(current_target_tile):
+			target_pos = current_target_tile.global_position
 
-	return dist > attack_range * 1.5
+		var dist = global_position.distance_to(target_pos)
+		var attack_range = enemy_data.radius + 10.0
+
+		return dist > attack_range * 1.5
 
 func handle_environmental_impact(trap_node):
 	var trap_id = trap_node.get_instance_id()
@@ -549,13 +558,35 @@ func attack_base_logic(delta):
 	if base_attack_timer <= 0:
 		base_attack_timer = 1.0 / enemy_data.atkSpeed
 
-		play_attack_animation(target_pos, func():
-			GameManager.damage_core(enemy_data.dmg)
-			if current_target_tile and not is_instance_valid(current_target_tile):
-				state = State.MOVE
-				current_target_tile = null
-				update_path()
-		)
+		if enemy_data.get("attackType") == "ranged":
+			play_attack_animation(target_pos, func():
+				# Ranged Attack Logic
+				if GameManager.combat_manager:
+					var proj_type = enemy_data.get("proj", "pinecone")
+					# Ranged enemies aim at Core center
+					var core_pos = GameManager.grid_manager.global_position
+
+					var stats = {
+						"damageType": "physical", # Enemies usually physical?
+						"source": self
+					}
+					GameManager.combat_manager.spawn_projectile(self, global_position, null, {
+						"target_pos": core_pos,
+						"type": proj_type,
+						"damage": enemy_data.dmg,
+						"speed": enemy_data.get("projectileSpeed", 300.0),
+						"damageType": "physical" # Or from data
+					})
+			)
+		else:
+			# Melee Attack Logic
+			play_attack_animation(target_pos, func():
+				GameManager.damage_core(enemy_data.dmg)
+				if current_target_tile and not is_instance_valid(current_target_tile):
+					state = State.MOVE
+					current_target_tile = null
+					update_path()
+			)
 
 func update_path():
 	if !GameManager.grid_manager: return
@@ -578,32 +609,77 @@ func update_path():
 			path_index = 1
 
 func play_attack_animation(target_pos: Vector2, hit_callback: Callable = Callable()):
-	if anim_tween and anim_tween.is_valid(): return
+	if anim_tween and anim_tween.is_valid():
+		anim_tween.kill()
 
 	anim_tween = create_tween()
 	var original_pos = global_position
 	var diff = target_pos - original_pos
 	var direction = diff.normalized()
-	var retreat_pos = original_pos - direction * 15.0
-	var squash_scale = Vector2(0.8, 0.8)
-	anim_tween.set_parallel(true)
-	anim_tween.tween_property(self, "global_position", retreat_pos, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	anim_tween.tween_property(self, "wobble_scale", squash_scale, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	anim_tween.set_parallel(false)
-	var strike_scale = Vector2(1.3, 1.3)
-	anim_tween.set_parallel(true)
-	anim_tween.tween_property(self, "global_position", target_pos - direction * 5.0, 0.1).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
-	anim_tween.tween_property(self, "wobble_scale", strike_scale, 0.1)
-	anim_tween.set_parallel(false)
-	anim_tween.tween_callback(func():
-		spawn_slash_effect(target_pos)
-		if hit_callback.is_valid():
-			hit_callback.call()
-	)
-	anim_tween.set_parallel(true)
-	anim_tween.tween_property(self, "global_position", original_pos, 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	anim_tween.tween_property(self, "wobble_scale", Vector2.ONE, 0.15)
-	anim_tween.set_parallel(false)
+
+	var anim_type = "melee"
+	if enemy_data.get("attackType") == "ranged":
+		anim_type = enemy_data.get("rangedAnimType", "recoil")
+
+	if anim_type == "melee":
+		# Melee: Windup -> Strike -> Recovery (Unified with Unit.gd)
+		# Phase 1: Windup
+		anim_tween.set_parallel(true)
+		anim_tween.tween_property(self, "global_position", original_pos - direction * Constants.ANIM_WINDUP_DIST, Constants.ANIM_WINDUP_TIME)\
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		anim_tween.tween_property(self, "wobble_scale", Constants.ANIM_WINDUP_SCALE, Constants.ANIM_WINDUP_TIME)\
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		anim_tween.set_parallel(false)
+
+		# Phase 2: Strike
+		anim_tween.set_parallel(true)
+		anim_tween.tween_property(self, "global_position", original_pos + direction * Constants.ANIM_STRIKE_DIST, Constants.ANIM_STRIKE_TIME)\
+			.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+		anim_tween.tween_property(self, "wobble_scale", Constants.ANIM_STRIKE_SCALE, Constants.ANIM_STRIKE_TIME)\
+			.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+		anim_tween.set_parallel(false)
+
+		# Callback on impact
+		anim_tween.tween_callback(func():
+			spawn_slash_effect(target_pos)
+			if hit_callback.is_valid():
+				hit_callback.call()
+		)
+
+		# Phase 3: Recovery
+		anim_tween.set_parallel(true)
+		anim_tween.tween_property(self, "global_position", original_pos, Constants.ANIM_RECOVERY_TIME)\
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		anim_tween.tween_property(self, "wobble_scale", Vector2.ONE, Constants.ANIM_RECOVERY_TIME)\
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		anim_tween.set_parallel(false)
+
+	elif anim_type == "recoil":
+		# Ranged Recoil: Scale 0.8 -> 1.0
+		anim_tween.tween_callback(func():
+			if hit_callback.is_valid():
+				hit_callback.call()
+		)
+		anim_tween.tween_property(self, "wobble_scale", Vector2(0.8, 0.8), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		anim_tween.tween_property(self, "wobble_scale", Vector2.ONE, 0.2)
+		# Ensure position reset if it was modified
+		anim_tween.parallel().tween_property(self, "global_position", original_pos, 0.1)
+
+	elif anim_type == "lunge":
+		# Ranged Lunge: Small forward dash -> Fire -> Return
+		# Lunge forward
+		anim_tween.tween_property(self, "global_position", original_pos + direction * 10.0, 0.15)\
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+		# Fire callback
+		anim_tween.tween_callback(func():
+			if hit_callback.is_valid():
+				hit_callback.call()
+		)
+
+		# Return
+		anim_tween.tween_property(self, "global_position", original_pos, 0.2)\
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 func spawn_slash_effect(pos: Vector2):
 	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
