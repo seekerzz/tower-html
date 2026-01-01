@@ -16,6 +16,15 @@ const POISON_TRAP_MULTIPLIER = 1.1
 const POISON_TRAP_INTERVAL = 1.0
 const POISON_VISUAL_SATURATION_STACKS = 50
 
+# Animation Constants
+const ANIM_WINDUP_TIME: float = 0.15
+const ANIM_STRIKE_TIME: float = 0.05
+const ANIM_RECOVERY_TIME: float = 0.2
+const ANIM_WINDUP_DIST: float = 8.0
+const ANIM_STRIKE_DIST: float = 20.0
+const ANIM_WINDUP_SCALE: Vector2 = Vector2(1.15, 0.85)
+const ANIM_STRIKE_SCALE: Vector2 = Vector2(0.85, 1.15)
+
 const COLORS = {
 	"bg": Color("#1a1a2e"),
 	"grid": Color("#303045"),
