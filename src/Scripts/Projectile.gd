@@ -96,9 +96,18 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 	if not is_meteor_falling:
 		if target and is_instance_valid(target):
 			look_at(target.global_position)
+
 		if type == "feather":
-			feather_original_target_pos = target.global_position
-		elif stats.get("angle") != null:
+			if target and is_instance_valid(target):
+				feather_original_target_pos = target.global_position
+			elif stats.has("target_pos"):
+				feather_original_target_pos = stats.target_pos
+			else:
+				# Fallback if no target and no pos given: fly straight for range
+				var r = stats.get("range", 1000.0) # unit range not passed in stats usually?
+				feather_original_target_pos = position + Vector2.RIGHT.rotated(rotation) * r
+
+		if stats.get("angle") != null:
 			rotation = stats.get("angle")
 
 	# Visual Separation

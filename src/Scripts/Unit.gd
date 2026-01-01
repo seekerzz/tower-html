@@ -749,7 +749,7 @@ func _do_bow_attack(target, on_release_callback: Callable = Callable()):
 			else:
 				# Target dead, use last pos
 				var angle = (target_last_pos - global_position).angle()
-				GameManager.combat_manager.spawn_projectile(self, global_position, null, {"angle": angle})
+				GameManager.combat_manager.spawn_projectile(self, global_position, null, {"angle": angle, "target_pos": target_last_pos})
 
 func _do_melee_attack(target):
 	var target_last_pos = target.global_position
@@ -881,6 +881,7 @@ func _handle_peacock_attack(target, combat_manager):
 			var proj_args = {}
 			if !use_target:
 				proj_args["angle"] = base_angle
+				proj_args["target_pos"] = saved_target_pos
 
 			var proj = combat_manager.spawn_projectile(self, global_position, use_target, proj_args)
 			if proj and is_instance_valid(proj):
@@ -893,7 +894,18 @@ func _handle_peacock_attack(target, combat_manager):
 
 				for i in range(extra_shots):
 					var angle_mod = angles[i % 2]
-					var extra_proj = combat_manager.spawn_projectile(self, global_position, use_target, {"angle": angle_mod})
+					# Calculate approximate target pos for extra shots? Or just angle.
+					# Feathers need target pos to stick.
+					# For extra shots, they just fly angled. If they stick, they need a pos.
+					# Let's synthesize a target pos based on angle and distance to main target.
+					var dist = global_position.distance_to(saved_target_pos)
+					var extra_target_pos = global_position + Vector2.RIGHT.rotated(angle_mod) * dist
+
+					var extra_args = {"angle": angle_mod}
+					if !use_target:
+						extra_args["target_pos"] = extra_target_pos
+
+					var extra_proj = combat_manager.spawn_projectile(self, global_position, use_target, extra_args)
 					if extra_proj and is_instance_valid(extra_proj):
 						feather_refs.append(extra_proj)
 
