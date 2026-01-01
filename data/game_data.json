@@ -1454,7 +1454,12 @@
 			"dmg": 50,
 			"atkSpeed": 1.0,
 			"drop": "mucus",
-			"dropRate": 0.5
+			"dropRate": 0.5,
+			"anim_config": {
+				"style": "squash",
+				"amplitude": 0.2,
+				"base_freq": 4.0
+			}
 		},
 		"poison": {
 			"name": "毒怪",
@@ -1468,7 +1473,12 @@
 			"dmg": 80,
 			"atkSpeed": 1.0,
 			"drop": "poison",
-			"dropRate": 0.4
+			"dropRate": 0.4,
+			"anim_config": {
+				"style": "squash",
+				"amplitude": 0.25,
+				"base_freq": 3.5
+			}
 		},
 		"wolf": {
 			"name": "狼群",
@@ -1482,7 +1492,12 @@
 			"dmg": 120,
 			"atkSpeed": 0.8,
 			"drop": "fang",
-			"dropRate": 0.3
+			"dropRate": 0.3,
+			"anim_config": {
+				"style": "bob",
+				"amplitude": 4.0,
+				"base_freq": 10.0
+			}
 		},
 		"treant": {
 			"name": "树人",
@@ -1496,7 +1511,12 @@
 			"dmg": 200,
 			"atkSpeed": 2.0,
 			"drop": "wood",
-			"dropRate": 0.6
+			"dropRate": 0.6,
+			"anim_config": {
+				"style": "stiff",
+				"amplitude": 0.05,
+				"base_freq": 2.0
+			}
 		},
 		"yeti": {
 			"name": "雪怪",
@@ -1510,7 +1530,12 @@
 			"dmg": 250,
 			"atkSpeed": 2.0,
 			"drop": "snow",
-			"dropRate": 0.5
+			"dropRate": 0.5,
+			"anim_config": {
+				"style": "stiff",
+				"amplitude": 0.08,
+				"base_freq": 2.5
+			}
 		},
 		"golem": {
 			"name": "石头人",
@@ -1524,7 +1549,12 @@
 			"dmg": 300,
 			"atkSpeed": 2.5,
 			"drop": "stone",
-			"dropRate": 0.5
+			"dropRate": 0.5,
+			"anim_config": {
+				"style": "stiff",
+				"amplitude": 0.05,
+				"base_freq": 2.0
+			}
 		},
 		"shooter": {
 			"name": "投矛手",
@@ -1539,7 +1569,12 @@
 			"atkSpeed": 2.0,
 			"projectileSpeed": 150,
 			"drop": "wood",
-			"dropRate": 0.3
+			"dropRate": 0.3,
+			"anim_config": {
+				"style": "stiff",
+				"amplitude": 0.05,
+				"base_freq": 4.0
+			}
 		},
 		"boss": {
 			"name": "虚空领主",
@@ -1553,7 +1588,12 @@
 			"dmg": 500,
 			"atkSpeed": 3.0,
 			"drop": "stone",
-			"dropRate": 1.0
+			"dropRate": 1.0,
+			"anim_config": {
+				"style": "float",
+				"amplitude": 0.1,
+				"base_freq": 1.5
+			}
 		},
 		"minion": {
 			"name": "鼠小兵",
@@ -1567,7 +1607,12 @@
 			"dmg": 20,
 			"atkSpeed": 1.0,
 			"drop": "mana",
-			"dropRate": 0.2
+			"dropRate": 0.2,
+			"anim_config": {
+				"style": "bob",
+				"amplitude": 2.0,
+				"base_freq": 12.0
+			}
 		},
 		"bullet_entity": {
 			"name": "滚地雷鼠",
@@ -1582,7 +1627,12 @@
 			"atkSpeed": 10.0,
 			"drop": "none",
 			"dropRate": 0.0,
-			"is_suicide": true
+			"is_suicide": true,
+			"anim_config": {
+				"style": "squash",
+				"amplitude": 0.3,
+				"base_freq": 15.0
+			}
 		},
 		"summoner": {
 			"name": "鼠祭司",
@@ -1598,7 +1648,12 @@
 			"drop": "magic_dust",
 			"dropRate": 1.0,
 			"stationary_time": 8.0,
-			"boss_skill": "summon"
+			"boss_skill": "summon",
+			"anim_config": {
+				"style": "float",
+				"amplitude": 0.08,
+				"base_freq": 2.0
+			}
 		},
 		"ranger": {
 			"name": "鼠弩车",
@@ -1614,7 +1669,12 @@
 			"drop": "wood",
 			"dropRate": 1.0,
 			"stationary_time": 5.0,
-			"boss_skill": "shoot_enemy"
+			"boss_skill": "shoot_enemy",
+			"anim_config": {
+				"style": "stiff",
+				"amplitude": 0.05,
+				"base_freq": 3.0
+			}
 		},
 		"tank": {
 			"name": "鼠将军",
@@ -1629,7 +1689,12 @@
 			"atkSpeed": 1.2,
 			"drop": "iron",
 			"dropRate": 1.0,
-			"stationary_time": 0.0
+			"stationary_time": 0.0,
+			"anim_config": {
+				"style": "stiff",
+				"amplitude": 0.03,
+				"base_freq": 2.0
+			}
 		}
 	}
 }

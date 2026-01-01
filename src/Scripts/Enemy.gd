@@ -28,6 +28,12 @@ var burn_tick_timer: float = 0.0
 var temp_speed_mod: float = 1.0
 
 var wobble_scale = Vector2.ONE
+var visual_offset = Vector2.ZERO
+var visual_rotation = 0.0
+
+var anim_time: float = 0.0
+var anim_config: Dictionary = {}
+var base_speed: float = 40.0 # Default fallback
 
 var path: PackedVector2Array = []
 var nav_timer: float = 0.0
@@ -79,12 +85,17 @@ func _set_ignore_mouse_recursive(node: Node):
 func setup(key: String, wave: int):
 	type_key = key
 	enemy_data = Constants.ENEMY_VARIANTS[key]
+	anim_config = enemy_data.get("anim_config", {})
 
 	var base_hp = 100 + (wave * 80)
 	hp = base_hp * enemy_data.hpMod
 	max_hp = hp
 
+	# Store the initial speed calculation as base_speed reference for animation freq
+	# But actually the requirement says (speed * temp_speed_mod) / base_speed.
+	# If we assume base_speed is just the initial speed of this unit type for this wave:
 	speed = (40 + (wave * 2)) * enemy_data.spdMod
+	base_speed = speed
 
 	stationary_timer = enemy_data.get("stationary_time", 0.0)
 	boss_skill = enemy_data.get("boss_skill", "")
@@ -143,7 +154,7 @@ func update_visuals():
 	queue_redraw()
 
 func _draw():
-	draw_set_transform(Vector2.ZERO, 0.0, wobble_scale)
+	draw_set_transform(visual_offset, visual_rotation, wobble_scale)
 	var color = enemy_data.color
 	if hit_flash_timer > 0:
 		color = Color.WHITE
@@ -173,6 +184,7 @@ func _physics_process(delta):
 
 	# Process Timers and Effects
 	_process_effects(delta)
+	_update_animation(delta)
 
 	var is_knockback = knockback_velocity.length() > 10.0
 
@@ -300,13 +312,14 @@ func _process_effects(delta):
 		var t = clamp(float(poison_stacks) / Constants.POISON_VISUAL_SATURATION_STACKS, 0.0, 1.0)
 		modulate = Color.WHITE.lerp(Color(0.2, 1.0, 0.2), t)
 
-	var is_animating = (anim_tween and anim_tween.is_valid())
-	if !is_animating:
-		var time = Time.get_ticks_msec() * 0.005
-		wobble_scale = Vector2(1.0 + sin(time) * 0.1, 1.0 + cos(time) * 0.1)
-
-	if has_node("Label"): $Label.scale = wobble_scale
-	if has_node("TextureRect"): $TextureRect.scale = wobble_scale
+	if has_node("Label"):
+		$Label.scale = wobble_scale
+		$Label.position = -$Label.size / 2 + visual_offset
+		$Label.rotation = visual_rotation
+	if has_node("TextureRect"):
+		$TextureRect.scale = wobble_scale
+		$TextureRect.position = -$TextureRect.size / 2 + visual_offset
+		$TextureRect.rotation = visual_rotation
 
 	if hit_flash_timer > 0:
 		hit_flash_timer -= delta
@@ -318,6 +331,63 @@ func _process_effects(delta):
 		modulate = Color(0.5, 0.5, 1.0)
 	else:
 		if poison_stacks == 0: modulate = Color.WHITE
+
+func _update_animation(delta):
+	# Skip if attack animation is playing
+	if anim_tween and anim_tween.is_valid():
+		return
+
+	if anim_config.is_empty():
+		return
+
+	var style = anim_config.get("style", "squash")
+	var amp = anim_config.get("amplitude", 0.1)
+	var freq = anim_config.get("base_freq", 1.0)
+
+	# Avoid division by zero
+	var effective_speed = speed
+	if effective_speed < 1.0: effective_speed = 1.0
+
+	# Dynamic frequency scaling: freq * (current_speed / base_speed)
+	# If stationary (speed=0 in theory, but here speed is stat), use temp_speed_mod
+	var speed_factor = (speed * temp_speed_mod) / max(1.0, base_speed)
+
+	anim_time += delta * freq * speed_factor * 2.0 # * 2.0 PI factor approximation or just speed up
+
+	match style:
+		"squash":
+			# Squash & Stretch
+			var s = sin(anim_time)
+			var y_scale = 1.0 + s * amp
+			var x_scale = 1.0
+			if y_scale > 0.01:
+				x_scale = 1.0 / y_scale
+			wobble_scale = Vector2(x_scale, y_scale)
+			visual_offset = Vector2.ZERO
+			visual_rotation = 0.0
+
+		"bob":
+			# Vertical bobbing
+			var s = abs(sin(anim_time)) # Bob up and down (bounce)
+			visual_offset = Vector2(0, -s * amp)
+			wobble_scale = Vector2.ONE
+			visual_rotation = 0.0
+
+		"float":
+			# Breathing / Floating
+			var s = sin(anim_time)
+			wobble_scale = Vector2.ONE * (1.0 + s * amp)
+			visual_offset = Vector2.ZERO
+			visual_rotation = 0.0
+
+		"stiff":
+			# Rotation wobble
+			var s = sin(anim_time)
+			visual_rotation = s * amp
+			wobble_scale = Vector2.ONE
+			visual_offset = Vector2.ZERO
+
+	queue_redraw()
 
 func handle_collisions(delta):
 	var count = get_slide_collision_count()
