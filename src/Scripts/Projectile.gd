@@ -33,6 +33,16 @@ enum State { MOVING, HOVERING }
 var state = State.MOVING
 var dragon_breath_timer: float = 0.0
 
+# Boomerang Logic
+enum TravelState { LINEAR_OUT, ARC_STRIKE, LINEAR_RETURN }
+var travel_state = TravelState.LINEAR_OUT
+var boomerang_target_pos: Vector2 = Vector2.ZERO
+var boomerang_arc_center: Vector2 = Vector2.ZERO
+var boomerang_arc_radius: float = 0.0
+var boomerang_arc_angle: float = 0.0
+var boomerang_arc_speed: float = 5.0 # Radians per second? Or derived from speed.
+var boomerang_start_angle: float = 0.0
+
 const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
 
 func _ready():
@@ -106,6 +116,10 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 		if stats.has("duration"):
 			life = stats["duration"]
 
+	# Boomerang Setup
+	if type == "boomerang":
+		_setup_boomerang()
+
 	if stats.get("hide_visuals", false):
 		if visual_node: visual_node.hide()
 		if has_node("ColorRect"): get_node("ColorRect").hide()
@@ -136,9 +150,39 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 		_setup_simple_visual(Color.YELLOW, "triangle")
 	elif type == "pollen":
 		_setup_simple_visual(Color.PINK, "star")
+	elif type == "boomerang":
+		_setup_simple_visual(Color.BROWN, "boomerang")
 	elif type == "lightning":
 		# Keep lightning if it was handled elsewhere or add simple visual
 		_setup_simple_visual(Color.CYAN, "line")
+
+func _setup_boomerang():
+	# Calculate target point and offset
+	if !is_instance_valid(target):
+		# Fallback if no target
+		boomerang_target_pos = position + Vector2.RIGHT * 200.0
+	else:
+		boomerang_target_pos = target.global_position
+
+	# Phase 1: Offset Linear
+	# Calculate offset based on range/distance. Further = less angle to look smoother?
+	# Or fixed offset. Task says: "Offset angle dynamic... further range = smaller angle".
+	var dist = position.distance_to(boomerang_target_pos)
+	var dir_to_target = (boomerang_target_pos - position).normalized()
+
+	# Max offset at close range, min at max range.
+	# Let's say max range is 300.
+	# Angle offset: 30 degrees (PI/6) at 0 dist -> 5 degrees at 300 dist.
+	var offset_angle = lerp(PI/4, PI/12, min(dist / 300.0, 1.0))
+
+	# Pick side (random or fixed?) "Side" implies Left or Right. Let's pick Random sign.
+	var side = 1 if randf() > 0.5 else -1
+	var shoot_dir = dir_to_target.rotated(offset_angle * side)
+
+	# "Pre-aim point": Just fly in this direction.
+	rotation = shoot_dir.angle()
+
+	travel_state = TravelState.LINEAR_OUT
 
 func fade_out():
 	if is_fading: return
@@ -177,6 +221,14 @@ func _process(delta):
 	# Dragon Breath Logic
 	if type == "dragon_breath":
 		_process_dragon_breath(delta)
+		return
+
+	if type == "boomerang":
+		_process_boomerang(delta)
+		# Boomerang manages its own life/return, but fallback life check just in case
+		life -= delta * 0.2 # Slow life drain just as failsafe
+		if life <= 0:
+			fade_out()
 		return
 
 	# Black Hole Logic
@@ -305,6 +357,10 @@ func _handle_hit(target_node):
 	if type == "dragon_breath": return
 	if type == "black_hole_field": return # Black hole doesn't hit/destroy on contact, it pulls
 
+	if type == "boomerang":
+		if travel_state == TravelState.LINEAR_OUT:
+			return # No hit in phase 1
+
 	if target_node.is_in_group("enemies"):
 		if shared_hit_list_ref != null and target_node in shared_hit_list_ref: return
 		if target_node in hit_list: return
@@ -387,8 +443,119 @@ func _handle_hit(target_node):
 
 				# Final Hit - Spawn visual and destroy
 				_spawn_hit_visual(target_node.global_position)
+
+				if type == "boomerang":
+					# Boomerang special logic: Do not destroy. Return instead.
+					if travel_state != TravelState.LINEAR_RETURN:
+						travel_state = TravelState.LINEAR_RETURN
+						# Optional: Clear hit list to hit source? No.
+						# Reset hit list to allow hitting other enemies on return path?
+						# Logic implies one hit per enemy usually, but return path might hit new enemies.
+						# But if we hit ONE enemy and return immediately, we shouldn't destroy.
+					return
+
 				print("Projectile hit final: ", type, " -> queue_free")
 				queue_free()
+
+func _process_boomerang(delta):
+	if visual_node: visual_node.rotation += delta * 20.0 # Fast spin
+
+	match travel_state:
+		TravelState.LINEAR_OUT:
+			# Move straight
+			position += Vector2.RIGHT.rotated(rotation) * speed * delta
+
+			# Check transition to ARC_STRIKE
+			# Condition: Distance to target < Threshold (20% of range or fixed)
+			# Or we passed the target projection?
+			# Task says: "When bullet distance to target < Threshold ... switch".
+			if is_instance_valid(target):
+				var dist = position.distance_to(target.global_position)
+				# Dynamic threshold based on range or fixed.
+				# Let's use 20% of max range? Or 50px?
+				# If range is ~200, 20% is 40.
+				if dist < 40.0:
+					_start_boomerang_arc()
+			else:
+				# Target died? Go to return? Or finish linear move then return?
+				# Let's switch to return if target lost in phase 1.
+				# Or simulate arc around last known pos?
+				travel_state = TravelState.LINEAR_RETURN
+
+		TravelState.ARC_STRIKE:
+			# Arc movement: rotate around boomerang_arc_center
+			boomerang_arc_angle += boomerang_arc_speed * delta
+
+			# Calculate new pos
+			var new_pos = boomerang_arc_center + Vector2(cos(boomerang_arc_angle), sin(boomerang_arc_angle)) * boomerang_arc_radius
+			position = new_pos
+
+			# Check for arc completion (180 degrees / PI)
+			# We start at boomerang_start_angle. We end at boomerang_start_angle + PI (or - PI depending on dir).
+			# Let's track angle covered.
+			var angle_diff = abs(boomerang_arc_angle - boomerang_start_angle)
+			if angle_diff >= PI:
+				travel_state = TravelState.LINEAR_RETURN
+				# Reset hit list to allow hitting same enemy on return? usually boomerang hits once per pass
+				# hit_list.clear()
+
+		TravelState.LINEAR_RETURN:
+			if is_instance_valid(source_unit):
+				var dir = (source_unit.global_position - position).normalized()
+				position += dir * speed * delta
+
+				if position.distance_to(source_unit.global_position) < 20.0:
+					if source_unit.has_method("catch_projectile"):
+						source_unit.catch_projectile()
+					# catch_projectile usually destroys the bullet ref or we destroy it here.
+					# But if we destroy it here, we should ensure Unit knows.
+					# Unit logic does: current_projectile.queue_free() -> set to null.
+					# So we don't need to call queue_free() here if Unit does it.
+					# But to be safe if Unit implementation changes:
+					if is_instance_valid(self):
+						queue_free()
+			else:
+				# Source died
+				fade_out()
+
+func _start_boomerang_arc():
+	travel_state = TravelState.ARC_STRIKE
+
+	if !is_instance_valid(target):
+		travel_state = TravelState.LINEAR_RETURN
+		return
+
+	# Calculate geometry
+	# Current pos is P1. Target is T.
+	# We want to arc 180 degrees around T? "Circle with enemy as center".
+	# Radius = distance from T to P1.
+
+	boomerang_arc_center = target.global_position
+	var diff = position - boomerang_arc_center
+	boomerang_arc_radius = diff.length()
+	boomerang_start_angle = diff.angle()
+	boomerang_arc_angle = boomerang_start_angle
+
+	# Determine direction of arc (CW or CCW) to go "behind"
+	# We want to go "behind".
+	# If we are to the "side", we just continue the circle.
+	# Let's choose direction based on approach.
+	# Speed = angular velocity = LinearSpeed / Radius
+	# Ensure direction matches velocity?
+	# Current velocity vector vs tangent.
+	var current_vel = Vector2.RIGHT.rotated(rotation)
+	var tangent_cw = Vector2(diff.y, -diff.x).normalized() # Tangent for CW
+	# dot product to see if we are moving roughly CW or CCW
+	if current_vel.dot(tangent_cw) > 0:
+		# Moving CW-ish
+		boomerang_arc_speed = -speed / max(1.0, boomerang_arc_radius) # Negative for CW in standard math? No, angle decreases?
+		# Wait, standard unit circle: CCW is positive.
+		# CW tangent is (y, -x). CCW is (-y, x).
+		# If we move CW, angle should decrease?
+		# Let's test sign.
+		boomerang_arc_speed = - (speed / max(1.0, boomerang_arc_radius))
+	else:
+		boomerang_arc_speed = (speed / max(1.0, boomerang_arc_radius))
 
 func _spawn_hit_visual(pos: Vector2):
 	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
@@ -411,6 +578,9 @@ func _spawn_hit_visual(pos: Vector2):
 	elif type == "pollen":
 		shape = "star"
 		col = Color.PINK
+	elif type == "boomerang":
+		shape = "slash"
+		col = Color.WHITE
 	else:
 		# Fallback defaults
 		shape = "slash"
@@ -474,6 +644,22 @@ func _setup_simple_visual(color, shape):
 			Vector2(0, 6), Vector2(-2, 2),
 			Vector2(-6, 0), Vector2(-2, -2),
 			Vector2(0, -6), Vector2(2, -2)
+		])
+	elif shape == "boomerang":
+		# V-shape
+		points = PackedVector2Array([
+			Vector2(0, -8), Vector2(4, -4),
+			Vector2(0, 0), Vector2(-4, -4)
+		])
+		# Actually a better boomerang shape:
+		points = PackedVector2Array([
+			Vector2(8, -8), Vector2(2, -2), Vector2(-8, 8),
+			Vector2(-2, 2), Vector2(2, 2)
+		])
+		# Simple V
+		points = PackedVector2Array([
+			Vector2(8, -4), Vector2(0, 0), Vector2(8, 4),
+			Vector2(4, 0)
 		])
 	else:
 		# Box

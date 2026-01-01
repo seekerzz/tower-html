@@ -41,6 +41,9 @@ var max_ammo: int = 0
 var mimicked_bullet_timer: float = 0.0
 var is_discharging: bool = false
 
+# Monkey Mechanics
+var current_projectile = null # Holds the boomerang instance
+
 # Grid
 var grid_pos: Vector2i = Vector2i.ZERO
 var start_position: Vector2 = Vector2.ZERO
@@ -731,7 +734,18 @@ func _process_combat(delta):
 	var combat_manager = GameManager.combat_manager
 	if !combat_manager: return
 
-	var target = combat_manager.find_nearest_enemy(global_position, range_val)
+	# Monkey Logic: Attack Locking
+	if type_key == "monkey":
+		if is_instance_valid(current_projectile):
+			return # Wait for boomerang return
+
+	var target = null
+	if type_key == "monkey":
+		# Monkey Strategy: Farthest Target
+		target = _find_farthest_enemy(range_val)
+	else:
+		target = combat_manager.find_nearest_enemy(global_position, range_val)
+
 	if target:
 		# Consume Resources
 		if attack_cost_mana > 0:
@@ -753,6 +767,11 @@ func _process_combat(delta):
 		elif unit_data.attackType == "mimic":
 			# Handled above
 			pass
+		elif type_key == "monkey":
+			# Monkey Boomerang
+			var proj = combat_manager.spawn_projectile(self, global_position, target)
+			if proj:
+				current_projectile = proj
 		else:
 			# Check for Multi-shot (projCount)
 			var proj_count = unit_data.get("projCount", 1)
@@ -772,6 +791,33 @@ func _process_combat(delta):
 					combat_manager.spawn_projectile(self, global_position, target, {"angle": angle})
 			else:
 				combat_manager.spawn_projectile(self, global_position, target)
+
+func _find_farthest_enemy(radius: float):
+	var enemies = get_tree().get_nodes_in_group("enemies")
+	var farthest = null
+	var max_dist = -1.0
+
+	for enemy in enemies:
+		var dist = global_position.distance_to(enemy.global_position)
+		if dist <= radius:
+			if dist > max_dist:
+				max_dist = dist
+				farthest = enemy
+	return farthest
+
+func catch_projectile():
+	if is_instance_valid(current_projectile):
+		current_projectile.queue_free()
+		current_projectile = null
+		# Reset cooldown or allow immediate attack?
+		# Task says: "Attacks frequency strictly limited by boomerang return status".
+		# Meaning once returned, if cooldown is over, can attack again.
+		# Cooldown was set on fire. If return takes longer than cooldown, it waits.
+		# If return is faster, it waits for cooldown.
+		# But "Strictly limited by return status" implies we might want to reset cooldown?
+		# "only allow firing when current_projectile is empty AND cooldown ended".
+		# So existing logic covers it.
+		GameManager.spawn_floating_text(global_position, "Catch!", Color.GREEN)
 
 func _spawn_meteor_at_random_enemy():
 	var combat_manager = GameManager.combat_manager
