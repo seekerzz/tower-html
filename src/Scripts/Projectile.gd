@@ -96,10 +96,17 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 	if not is_meteor_falling:
 		if target and is_instance_valid(target):
 			look_at(target.global_position)
-		if type == "feather":
-			feather_original_target_pos = target.global_position
 		elif stats.get("angle") != null:
 			rotation = stats.get("angle")
+
+		if type == "feather":
+			if target and is_instance_valid(target):
+				feather_original_target_pos = target.global_position
+			elif stats.has("target_pos"):
+				feather_original_target_pos = stats.target_pos
+			else:
+				# Fallback if neither target nor target_pos provided (should not happen with correct blind fire)
+				feather_original_target_pos = position + Vector2.RIGHT.rotated(rotation) * 200.0
 
 	# Visual Separation
 	if has_node("Sprite2D"):
