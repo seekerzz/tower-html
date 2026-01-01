@@ -289,14 +289,24 @@ func spawn_projectile(source_unit, pos, target, extra_stats = {}):
 	return _spawn_single_projectile(source_unit, pos, target, extra_stats)
 
 func _spawn_single_projectile(source_unit, pos, target, extra_stats):
+	# Identify data source (Unit vs Enemy)
+	var data = {}
+	if "unit_data" in source_unit:
+		data = source_unit.unit_data
+	elif "enemy_data" in source_unit:
+		data = source_unit.enemy_data
+	elif source_unit is MeteorSource:
+		data = source_unit.unit_data # MeteorSource has dummy unit_data
+
 	# FIX: Shotgun logic - force straight flight by removing target
-	if source_unit.unit_data.get("proj") == "ink" or extra_stats.has("angle"):
+	if data.get("proj") == "ink" or extra_stats.has("angle"):
 		target = null
 
 	var proj = PROJECTILE_SCENE.instantiate()
 
 	# Crit Calculation
-	var is_critical = randf() < source_unit.crit_rate
+	var crit_rate = source_unit.get("crit_rate") if source_unit.get("crit_rate") != null else 0.0
+	var is_critical = randf() < crit_rate
 
 	if source_unit.get("guaranteed_crit_stacks") and source_unit.guaranteed_crit_stacks > 0:
 		is_critical = true
@@ -306,20 +316,28 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	var base_dmg = 0.0
 	if extra_stats.has("mimic_damage"):
 		base_dmg = extra_stats.mimic_damage
+	elif extra_stats.has("damage"): # Explicit damage override (used by Enemy.gd)
+		base_dmg = extra_stats.damage
 	else:
-		base_dmg = source_unit.calculate_damage_against(target) if target else source_unit.damage
+		if source_unit.has_method("calculate_damage_against"):
+			base_dmg = source_unit.calculate_damage_against(target) if target else source_unit.damage
+		elif "damage" in source_unit:
+			base_dmg = source_unit.damage
+		else:
+			base_dmg = data.get("damage", 10.0)
 
 	var final_damage = base_dmg
 	if is_critical:
-		final_damage *= source_unit.crit_dmg
+		var crit_dmg = source_unit.get("crit_dmg") if source_unit.get("crit_dmg") != null else 1.5
+		final_damage *= crit_dmg
 
-	# Gather stats from unit data + active buffs
+	# Gather stats from unit/enemy data + active buffs
 	var stats = {
-		"pierce": source_unit.unit_data.get("pierce", 0),
-		"bounce": source_unit.unit_data.get("bounce", 0),
-		"split": source_unit.unit_data.get("split", 0),
-		"chain": source_unit.unit_data.get("chain", 0),
-		"damageType": source_unit.unit_data.get("damageType", "physical"),
+		"pierce": data.get("pierce", 0),
+		"bounce": data.get("bounce", 0),
+		"split": data.get("split", 0),
+		"chain": data.get("chain", 0),
+		"damageType": data.get("damageType", "physical"),
 		"is_critical": is_critical
 	}
 
@@ -334,13 +352,13 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 
 	# Check native unit traits/attributes if they have intrinsic effects (Optional, based on task)
 	# But Task says "fire" buff or attribute.
-	if source_unit.unit_data.get("buffProvider") == "fire": # Although Torch doesn't shoot usually
+	if data.get("buffProvider") == "fire": # Although Torch doesn't shoot usually
 		effects["burn"] = 3.0
-	if source_unit.unit_data.get("buffProvider") == "poison":
+	if data.get("buffProvider") == "poison":
 		effects["poison"] = 5.0
 
 	# New Traits Logic
-	var unit_trait = source_unit.unit_data.get("trait")
+	var unit_trait = data.get("trait")
 	if unit_trait == "poison_touch":
 		effects["poison"] = 5.0 # Accumulates
 	elif unit_trait == "slow":
@@ -355,11 +373,12 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	stats.source = source_unit
 
 	# Determine Projectile Type
-	var proj_type = source_unit.unit_data.get("proj", "melee")
+	# Use 'type' from extra_stats if present (Enemy logic passes it there), otherwise fallback to data
+	var proj_type = extra_stats.get("type", data.get("proj", "melee"))
 	if extra_stats.has("proj_override"):
 		proj_type = extra_stats.proj_override
 
-	var proj_speed = stats.get("speed", source_unit.unit_data.get("projectile_speed", 400.0))
+	var proj_speed = stats.get("speed", data.get("projectile_speed", 400.0))
 	proj.setup(pos, target, final_damage, proj_speed, proj_type, stats)
 	add_child(proj)
 

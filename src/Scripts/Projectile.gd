@@ -96,6 +96,9 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 	if not is_meteor_falling:
 		if target and is_instance_valid(target):
 			look_at(target.global_position)
+		elif stats.has("target_pos"):
+			# If no target but explicit target position (e.g. ranged enemy shooting core)
+			look_at(stats.target_pos)
 
 		if type == "feather":
 			if target and is_instance_valid(target):
