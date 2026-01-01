@@ -42,6 +42,8 @@ const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
 func _ready():
 	if not body_entered.is_connected(_on_body_entered):
 		body_entered.connect(_on_body_entered)
+	if not area_entered.is_connected(_handle_hit):
+		area_entered.connect(_handle_hit)
 
 func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = {}):
 	position = start_pos
@@ -138,11 +140,11 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 		_setup_simple_visual(Color("8B4513"), "circle") # Brown circle
 	elif type == "ink":
 		_setup_simple_visual(Color.BLACK, "blob")
-	elif type == "stinger":
-		_setup_simple_visual(Color.YELLOW, "triangle")
 	elif type == "pollen":
 		_setup_simple_visual(Color.PINK, "star")
 	elif type == "quill":
+		# Extend life for quills to ensure they can be recalled
+		life = 10.0
 		_setup_quill()
 	elif type == "lightning":
 		# Keep lightning if it was handled elsewhere or add simple visual
@@ -189,11 +191,18 @@ func _process(delta):
 		_process_dragon_breath(delta)
 		return
 
-	# Quill Logic
-	if type == "quill":
-		_process_quill(delta)
-		# Process quill handles all states including MOVING, so we always return to avoid double movement
-		return
+	# Quill Logic (Returning check)
+	if type == "quill" and state == State.RETURNING:
+		# Standard movement handles the position update towards target (source_unit)
+		# We just need to check arrival
+		if target and is_instance_valid(target):
+			if global_position.distance_to(target.global_position) < 15.0:
+				queue_free()
+				return
+		else:
+			# Source died
+			queue_free()
+			return
 
 	# Black Hole Logic
 	if type == "black_hole_field":
@@ -212,19 +221,6 @@ func _process(delta):
 		if has_node("WaveLine"):
 			var line = get_node("WaveLine")
 			line.width += delta * 15.0
-
-	# Roar Logic
-	if type == "roar":
-		scale += Vector2(delta, delta) * speed * 0.01
-		modulate.a = max(0, modulate.a - delta * 0.8)
-		# No movement for roar, it expands from center (or source) usually,
-		# but if it's a projectile, it might move.
-		# If it acts like a wave, we expand it. If it moves like a projectile, we move it.
-		# Ref implies it's a "projectile" replacement for Cannon, so it likely moves?
-		# Or Cannon was "swarm_wave" which expands.
-		# "Roar" sounds like it expands. "Cannon" desc was "swarm_wave".
-		# Let's assume it expands like swarm_wave but looks different.
-		pass
 
 	var direction = Vector2.RIGHT.rotated(rotation)
 
@@ -312,9 +308,6 @@ func _process_dragon_breath(delta):
 
 func _on_body_entered(body):
 	_handle_hit(body)
-
-func _on_area_2d_area_entered(area):
-	_handle_hit(area)
 
 func _handle_hit(target_node):
 	if is_fading: return
@@ -423,98 +416,33 @@ func _handle_hit(target_node):
 					print("Projectile hit final: ", type, " -> queue_free")
 					queue_free()
 
-func _process_quill(delta):
-	# Orphan Check
-	if (state == State.STUCK or state == State.RETURNING or state == State.MOVING) and (!source_unit or !is_instance_valid(source_unit)):
-		queue_free()
-		return
-
-	if state == State.MOVING:
-		var direction = Vector2.RIGHT.rotated(rotation)
-
-		# Move
-		position += direction * speed * delta
-
-		# Check if passed target
-		if source_unit and is_instance_valid(source_unit):
-			var start_pos = source_unit.global_position
-			var to_target = quill_original_target_pos - start_pos
-			var to_current = global_position - start_pos
-			var projected_dist = to_current.dot(to_target.normalized())
-			var target_dist = to_target.length()
-
-			if projected_dist >= target_dist + 40.0:
-				_become_stuck()
-		else:
-			# Fallback if source died
-			if global_position.distance_to(quill_original_target_pos) < 10.0:
-				_become_stuck()
-
-	elif state == State.RETURNING:
-		if !source_unit or !is_instance_valid(source_unit):
-			queue_free()
-			return
-
-		var target_pos = source_unit.global_position
-		var dir = (target_pos - global_position).normalized()
-		var dist = global_position.distance_to(target_pos)
-
-		var motion = dir * speed * delta
-
-		# Anti-tunneling: Raycast check for high speed return
-		var space_state = get_world_2d().direct_space_state
-		var query = PhysicsRayQueryParameters2D.create(global_position, global_position + motion)
-		query.collide_with_areas = true
-		query.collide_with_bodies = true
-		query.collision_mask = collision_mask
-		query.exclude = [self]
-
-		var result = space_state.intersect_ray(query)
-		if result:
-			var collider = result.collider
-			if collider and is_instance_valid(collider) and collider.is_in_group("enemies"):
-				_handle_hit(collider)
-
-		rotation = dir.angle()
-		position += motion
-
-		if dist < 10.0:
-			queue_free()
-
-func _become_stuck():
-	state = State.STUCK
-	set_deferred("monitoring", false)
-
-	# Visual Shake
-	if visual_node:
-		var tween = create_tween()
-		var base_rot = rotation
-		tween.tween_property(visual_node, "rotation", base_rot + 0.2, 0.05)
-		tween.tween_property(visual_node, "rotation", base_rot - 0.2, 0.05)
-		tween.tween_property(visual_node, "rotation", base_rot, 0.05)
-
-	# Dust Particles (simple square for now or load effect)
-	var dust = Polygon2D.new()
-	dust.polygon = PackedVector2Array([Vector2(-2,-2), Vector2(2,-2), Vector2(2,2), Vector2(-2,2)])
-	dust.color = Color(0.6, 0.6, 0.6, 0.5)
-	dust.position = Vector2.ZERO
-	add_child(dust)
-	var t = create_tween()
-	t.tween_property(dust, "scale", Vector2(2,2), 0.3)
-	t.parallel().tween_property(dust, "modulate:a", 0.0, 0.3)
-	t.tween_callback(dust.queue_free)
-
 func recall():
-	if state != State.STUCK and state != State.MOVING: return
+	# Allow recall from MOVING as well
+	if state == State.RETURNING: return
 
 	state = State.RETURNING
-	# If recalling from mid-air, ensure we use base speed * 2, not potentially modified speed
-	# Assuming 'speed' is the flight speed.
-	speed *= 2.0
-	hit_list.clear() # Reset hit list so we can hit enemies on way back
+
+	# Target becomes source (return to owner)
+	target = source_unit
+
+	# Increase speed for return if desired
+	speed = 800.0 # Or speed * 2.0
+
+	# Ensure it penetrates everything on way back
+	pierce = 999
+
+	# Clear hit list to hit enemies again
+	hit_list.clear()
+	if shared_hit_list_ref != null:
+		# If shared list exists, we might not want to clear it if other quills share it?
+		# But 'hit_list' is local. shared is for swing. Quills usually don't use shared list unless specified.
+		# Assuming safe to just clear local hit_list which blocks re-hits.
+		pass
+
+	# Re-enable collision
 	set_deferred("monitoring", true)
 
-	# Visual update?
+	# Visual update
 	if visual_node:
 		visual_node.modulate = Color.RED # Highlight return
 
