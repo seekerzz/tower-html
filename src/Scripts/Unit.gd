@@ -24,8 +24,6 @@ var max_production_timer: float = 1.0
 
 # Visual Holder for animations and structure
 var visual_holder: Node2D = null
-# Keeping this for compatibility if other scripts access it, though it was local-ish before
-var visual_node: CanvasItem = null
 
 var is_no_mana: bool = false
 var crit_rate: float = 0.0
@@ -144,33 +142,13 @@ func setup(key: String):
 	_ensure_visual_hierarchy()
 	type_key = key
 	unit_data = Constants.UNIT_TYPES[key].duplicate()
-	# reset_stats will handle reading stats from levels
+	# reset_stats will handle reading stats from levels and initializing production timers
 	reset_stats()
+
+	# Initialize production timer to max (assuming we start fresh)
+	production_timer = max_production_timer
+
 	update_visuals()
-
-	# Preserve interaction target if reloading/upgrading?
-	# Actually setup is called on creation.
-	# If we upgrade (merge), we might need to copy it, but merge creates new unit or modifies existing?
-	# Merge in GridManager: target_unit.merge_with(temp_unit). Unit instance persists.
-	# So interaction_target_pos is preserved in target_unit.
-
-	# --- Merged Logic Start ---
-	if unit_data.has("produce"):
-		production_timer = 1.0
-		max_production_timer = 1.0
-
-	if unit_data.has("production_type") and unit_data["production_type"] == "item":
-		max_production_timer = unit_data.get("production_interval", 5.0)
-		production_timer = max_production_timer
-
-	# Cow Healing logic setup - Removed implicit setup here, handled in _process or logic
-	if unit_data.has("skill") and unit_data.skill == "milk_aura":
-		production_timer = 5.0 # Keep this for PASSIVE healing if any, or just skill logic?
-		max_production_timer = 5.0
-		# Original Unit.gd had a passive milk_aura logic: "Cow Milk Aura Logic" block in _process
-		# The new requirements say: "If Cow and skill active: ... extra call GameManager.damage_core(-200 * delta)"
-		# It seems the passive "milk_aura" (every 5s heal 50) is still there unless I remove it?
-		# The prompt didn't say to remove the passive.
 
 	start_breathe_anim()
 
@@ -178,7 +156,6 @@ func setup(key: String):
 	drag_handler.set_script(DRAG_HANDLER_SCRIPT)
 	add_child(drag_handler)
 	drag_handler.setup(self)
-	# --- Merged Logic End ---
 
 func take_damage(amount: float, source_enemy = null):
 	# Handle Reflect (Hedgehog)
@@ -217,6 +194,13 @@ func reset_stats():
 
 	# Load core stats
 	damage = stats.get("damage", unit_data.get("damage", 0))
+
+	# Production Defaults
+	if unit_data.has("produce"):
+		max_production_timer = 1.0
+
+	if unit_data.has("skill") and unit_data.skill == "milk_aura":
+		max_production_timer = 5.0
 
 	# Update production interval from mechanics if available
 	if unit_data.has("production_type") and unit_data["production_type"] == "item":
