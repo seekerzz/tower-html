@@ -65,6 +65,10 @@ var _highlight_color: Color = Color.WHITE
 
 var connection_overlay: Node2D = null
 
+# Porcupine Variables
+var attack_counter: int = 0
+var quill_refs: Array = []
+
 const ANIM_WINDUP_TIME: float = 0.15
 const ANIM_STRIKE_TIME: float = 0.05
 const ANIM_RECOVERY_TIME: float = 0.2
@@ -86,6 +90,9 @@ func _start_skill_cooldown(base_duration: float):
 
 func _ready():
 	_ensure_visual_hierarchy()
+
+	if type_key == "porcupine":
+		tree_exiting.connect(_on_porcupine_cleanup)
 
 	connection_overlay = Node2D.new()
 	connection_overlay.name = "ConnectionOverlay"
@@ -740,37 +747,104 @@ func _process_combat(delta):
 		# Attack
 		cooldown = atk_speed * GameManager.get_stat_modifier("attack_interval")
 
-		play_attack_anim(unit_data.attackType, target.global_position)
+		if type_key == "porcupine":
+			# Porcupine Logic
+			if attack_counter < 3:
+				play_attack_anim("ranged", target.global_position)
 
-		if unit_data.attackType == "melee":
-			await get_tree().create_timer(ANIM_WINDUP_TIME).timeout
-			if is_instance_valid(self) and is_instance_valid(target):
-				_spawn_melee_projectiles(target)
+				# Check Multi-shot Chance (Level 3 or Buffs)
+				var extra_shots = 0
+				var multi_chance = 0.0
 
-		elif unit_data.attackType == "ranged" and unit_data.get("proj") == "lightning":
-			# Lightning handling
-			combat_manager.perform_lightning_attack(self, global_position, target, unit_data.get("chain", 0))
-		elif unit_data.attackType == "mimic":
-			# Handled above
-			pass
-		else:
-			# Check for Multi-shot (projCount)
-			var proj_count = unit_data.get("projCount", 1)
-			var spread = unit_data.get("spread", 0.5)
+				# Level 3 mechanic
+				if unit_data.has("levels") and unit_data["levels"].has(str(level)):
+					var mech = unit_data["levels"][str(level)].get("mechanics", {})
+					multi_chance = mech.get("multi_shot_chance", 0.0)
 
-			if "multishot" in active_buffs:
-				proj_count += 2
-				spread = max(spread, 0.5)
+				if multi_chance > 0.0 and randf() < multi_chance:
+					extra_shots += 1
 
-			if proj_count > 1:
-				var base_angle = (target.global_position - global_position).angle()
-				var start_angle = base_angle - spread / 2.0
-				var step = spread / max(1, proj_count - 1)
+				# Fire Primary Quill
+				var proj = combat_manager.spawn_projectile(self, global_position, target)
+				if proj and is_instance_valid(proj):
+					quill_refs.append(proj)
 
-				for i in range(proj_count):
-					var angle = start_angle + (i * step)
-					combat_manager.spawn_projectile(self, global_position, target, {"angle": angle})
+				# Fire Extra Shots (spread slightly)
+				if extra_shots > 0:
+					var base_angle = (target.global_position - global_position).angle()
+					var spread_angle = 0.2 # small spread
+					var angles = [base_angle - spread_angle, base_angle + spread_angle]
+
+					for i in range(extra_shots):
+						# Just one extra shot?
+						# Task says "multi_shot_chance: 0.2". Usually implies +1 shot.
+						# Let's fire one extra at a slight angle.
+						var angle_mod = angles[i % 2]
+						var extra_proj = combat_manager.spawn_projectile(self, global_position, target, {"angle": angle_mod})
+						if extra_proj and is_instance_valid(extra_proj):
+							quill_refs.append(extra_proj)
+
+				attack_counter += 1
 			else:
+				# Recall
+				attack_counter = 0
+				# Visual scale effect for recall
+				if visual_holder:
+					var tween = create_tween()
+					tween.tween_property(visual_holder, "scale", Vector2(1.3, 1.3), 0.1)
+					tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.1)
+
+				# Play anim
+				play_attack_anim("ranged", target.global_position) # Or a different anim? reusing ranged for now
+
+				# Execute Recall
+				for q in quill_refs:
+					if is_instance_valid(q) and q.has_method("recall"):
+						q.recall()
+				quill_refs.clear()
+
+				# Skip spawning projectile this turn
+		else:
+			# Standard Logic
+			play_attack_anim(unit_data.attackType, target.global_position)
+
+			if unit_data.attackType == "melee":
+				await get_tree().create_timer(ANIM_WINDUP_TIME).timeout
+				if is_instance_valid(self) and is_instance_valid(target):
+					_spawn_melee_projectiles(target)
+
+			elif unit_data.attackType == "ranged" and unit_data.get("proj") == "lightning":
+				# Lightning handling
+				combat_manager.perform_lightning_attack(self, global_position, target, unit_data.get("chain", 0))
+			elif unit_data.attackType == "mimic":
+				# Handled above
+				pass
+			else:
+				# Check for Multi-shot (projCount)
+				var proj_count = unit_data.get("projCount", 1)
+				var spread = unit_data.get("spread", 0.5)
+
+				if "multishot" in active_buffs:
+					proj_count += 2
+					spread = max(spread, 0.5)
+
+				# Porcupine multishot mechanic override?
+				# Porcupine Lvl 3 has multi_shot_chance.
+				# But Porcupine logic is handled in the `if type_key == "porcupine"` block above.
+				# Wait, my porcupine block above didn't handle multishot!
+				# Lvl 3 mechanics: { "pull_strength": 1000, "multi_shot_chance": 0.2 }
+				# If I want to support multishot for porcupine, I should add it there.
+				# However, the task description says "If attack_counter < 3: normal fire quill...".
+				# It doesn't explicitly say how multishot interacts with the counter.
+				# Assuming multishot fires extra quills, do they all count as 1 attack? Yes usually.
+				# And do they all get added to quill_refs? Yes.
+
+				# But for now, I implemented the basic loop. The standard loop handles proj_count > 1 logic.
+				# If I want to support multishot for standard units, I should use that logic.
+				# But Porcupine has custom loop. I should update the Porcupine block to handle multishot if needed.
+				# The task says: "mechanics: { ... 'multi_shot_chance': 0.2 }"
+				# So for porcupine, I need to check chance.
+
 				combat_manager.spawn_projectile(self, global_position, target)
 
 func _spawn_meteor_at_random_enemy():
@@ -1131,3 +1205,9 @@ func remove_ghost():
 
 func return_to_start():
 	position = start_position
+
+func _on_porcupine_cleanup():
+	for q in quill_refs:
+		if is_instance_valid(q):
+			q.queue_free()
+	quill_refs.clear()

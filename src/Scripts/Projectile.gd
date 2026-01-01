@@ -29,9 +29,13 @@ var visual_node: Node2D = null
 var is_fading: bool = false
 
 # Dragon Breath State
-enum State { MOVING, HOVERING }
+enum State { MOVING, HOVERING, STUCK, RETURNING }
 var state = State.MOVING
 var dragon_breath_timer: float = 0.0
+
+# Quill State
+var quill_original_target_pos: Vector2 = Vector2.ZERO
+var quill_stuck_pos: Vector2 = Vector2.ZERO
 
 const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
 
@@ -90,6 +94,8 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 	if not is_meteor_falling:
 		if target and is_instance_valid(target):
 			look_at(target.global_position)
+		if type == "quill":
+			quill_original_target_pos = target.global_position
 		elif stats.get("angle") != null:
 			rotation = stats.get("angle")
 
@@ -136,12 +142,16 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 		_setup_simple_visual(Color.YELLOW, "triangle")
 	elif type == "pollen":
 		_setup_simple_visual(Color.PINK, "star")
+	elif type == "quill":
+		_setup_quill()
 	elif type == "lightning":
 		# Keep lightning if it was handled elsewhere or add simple visual
 		_setup_simple_visual(Color.CYAN, "line")
 
 func fade_out():
 	if is_fading: return
+	if state == State.STUCK: return # Stuck quills don't fade out by time alone usually, but we need life check
+
 	is_fading = true
 
 	# Disable collision to stop interacting
@@ -178,6 +188,14 @@ func _process(delta):
 	if type == "dragon_breath":
 		_process_dragon_breath(delta)
 		return
+
+	# Quill Logic
+	if type == "quill":
+		_process_quill(delta)
+		if state == State.STUCK:
+			return # Don't do standard movement or life check if stuck (managed by unit or infinite life until recall)
+		if state == State.RETURNING:
+			return # Handled in _process_quill
 
 	# Black Hole Logic
 	if type == "black_hole_field":
@@ -304,10 +322,25 @@ func _handle_hit(target_node):
 	if is_fading: return
 	if type == "dragon_breath": return
 	if type == "black_hole_field": return # Black hole doesn't hit/destroy on contact, it pulls
+	if type == "quill" and state == State.STUCK: return
 
 	if target_node.is_in_group("enemies"):
 		if shared_hit_list_ref != null and target_node in shared_hit_list_ref: return
 		if target_node in hit_list: return
+
+		# Quill Return Logic (Pull)
+		if type == "quill" and state == State.RETURNING:
+			var pull_str = 0.0
+			if source_unit and source_unit.unit_data.has("levels"):
+				var lvl_stats = source_unit.unit_data["levels"][str(source_unit.level)]
+				if lvl_stats.has("mechanics"):
+					pull_str = lvl_stats["mechanics"].get("pull_strength", 0.0)
+
+			if pull_str > 0:
+				var dir = (source_unit.global_position - target_node.global_position).normalized()
+				# Pull enemy
+				target_node.global_position += dir * (pull_str * get_process_delta_time())
+				# Or better, apply force if enemy has it, but direct position mod is requested
 
 		# Apply Damage
 		var final_damage_type = damage_type
@@ -387,8 +420,102 @@ func _handle_hit(target_node):
 
 				# Final Hit - Spawn visual and destroy
 				_spawn_hit_visual(target_node.global_position)
-				print("Projectile hit final: ", type, " -> queue_free")
-				queue_free()
+				if type != "quill": # Quills don't die on hit, they pass through until Stuck logic handles them (or if they hit during return)
+					print("Projectile hit final: ", type, " -> queue_free")
+					queue_free()
+
+func _process_quill(delta):
+	# Orphan Check
+	if (state == State.STUCK or state == State.RETURNING or state == State.MOVING) and (!source_unit or !is_instance_valid(source_unit)):
+		queue_free()
+		return
+
+	if state == State.MOVING:
+		var direction = Vector2.RIGHT.rotated(rotation)
+
+		# Move
+		position += direction * speed * delta
+
+		# Check if passed target
+		if source_unit and is_instance_valid(source_unit):
+			var start_pos = source_unit.global_position
+			var to_target = quill_original_target_pos - start_pos
+			var to_current = global_position - start_pos
+			var projected_dist = to_current.dot(to_target.normalized())
+			var target_dist = to_target.length()
+
+			if projected_dist >= target_dist + 40.0:
+				_become_stuck()
+		else:
+			# Fallback if source died
+			if global_position.distance_to(quill_original_target_pos) < 10.0:
+				_become_stuck()
+
+	elif state == State.RETURNING:
+		if !source_unit or !is_instance_valid(source_unit):
+			queue_free()
+			return
+
+		var target_pos = source_unit.global_position
+		var dir = (target_pos - global_position).normalized()
+		var dist = global_position.distance_to(target_pos)
+
+		rotation = dir.angle()
+		position += dir * speed * delta
+
+		if dist < 10.0:
+			queue_free()
+
+func _become_stuck():
+	state = State.STUCK
+	set_deferred("monitoring", false)
+
+	# Visual Shake
+	if visual_node:
+		var tween = create_tween()
+		var base_rot = rotation
+		tween.tween_property(visual_node, "rotation", base_rot + 0.2, 0.05)
+		tween.tween_property(visual_node, "rotation", base_rot - 0.2, 0.05)
+		tween.tween_property(visual_node, "rotation", base_rot, 0.05)
+
+	# Dust Particles (simple square for now or load effect)
+	var dust = Polygon2D.new()
+	dust.polygon = PackedVector2Array([Vector2(-2,-2), Vector2(2,-2), Vector2(2,2), Vector2(-2,2)])
+	dust.color = Color(0.6, 0.6, 0.6, 0.5)
+	dust.position = Vector2.ZERO
+	add_child(dust)
+	var t = create_tween()
+	t.tween_property(dust, "scale", Vector2(2,2), 0.3)
+	t.parallel().tween_property(dust, "modulate:a", 0.0, 0.3)
+	t.tween_callback(dust.queue_free)
+
+func recall():
+	if state != State.STUCK: return
+
+	state = State.RETURNING
+	speed *= 2.0
+	hit_list.clear() # Reset hit list so we can hit enemies on way back
+	set_deferred("monitoring", true)
+
+	# Visual update?
+	if visual_node:
+		visual_node.modulate = Color.RED # Highlight return
+
+func _setup_quill():
+	if visual_node: visual_node.hide()
+
+	# Thin sharp triangle
+	var poly = Polygon2D.new()
+	poly.polygon = PackedVector2Array([Vector2(10, 0), Vector2(-10, -3), Vector2(-10, 3)])
+	poly.color = Color.DARK_GRAY
+
+	var line = Line2D.new()
+	line.points = PackedVector2Array([Vector2(-10, 0), Vector2(10, 0)])
+	line.width = 1.0
+	line.default_color = Color.WHITE
+
+	add_child(poly)
+	add_child(line)
 
 func _spawn_hit_visual(pos: Vector2):
 	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
