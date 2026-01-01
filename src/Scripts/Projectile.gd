@@ -29,9 +29,13 @@ var visual_node: Node2D = null
 var is_fading: bool = false
 
 # Dragon Breath State
-enum State { MOVING, HOVERING }
+enum State { MOVING, HOVERING, STUCK, RETURNING }
 var state = State.MOVING
 var dragon_breath_timer: float = 0.0
+
+# Quill State
+var quill_target_pos: Vector2 = Vector2.ZERO
+var quill_stuck_timer: float = 0.0
 
 const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
 
@@ -174,6 +178,11 @@ func _process(delta):
 		position += Vector2.RIGHT.rotated(rotation) * speed * delta
 		return
 
+	# Quill Logic
+	if type == "quill":
+		_process_quill(delta)
+		return
+
 	# Dragon Breath Logic
 	if type == "dragon_breath":
 		_process_dragon_breath(delta)
@@ -220,8 +229,107 @@ func _process(delta):
 	position += direction * speed * delta
 
 	# Visual Rotation (Spin)
-	if visual_node:
+	if visual_node and type != "quill":
 		visual_node.rotation += delta * 15.0
+
+func _process_quill(delta):
+	if state == State.MOVING:
+		life -= delta
+		if life <= 0:
+			fade_out()
+			return
+
+		var direction = Vector2.RIGHT.rotated(rotation)
+
+		if is_instance_valid(target):
+			quill_target_pos = target.global_position
+			var target_dir = (quill_target_pos - global_position).normalized()
+			direction = target_dir
+			rotation = direction.angle()
+
+		# Move
+		position += direction * speed * delta
+
+		# Check if passed target by 40px
+		# We need to know where we started or where the target was.
+		# Ideally we track distance. But simple check: if distance to target is small, we continue for a bit?
+		# Or if we hit something?
+		# Task says: "pass through target enemy 40 pixels then stop".
+		# This implies it pierces the target.
+		# So on hit, we don't destroy immediately if it's the target?
+		# Actually, Projectile logic handles hit in _on_body_entered.
+		# We should modify _handle_hit to not queue_free if type is quill and it hasn't stuck yet.
+		# And in _process, if we are "past" the target?
+		# Let's simplify: It flies towards target pos + extra 40px direction.
+
+		# Better approach: In Setup, set target to a position beyond the unit.
+		# But target moves.
+		# Let's use distance check.
+
+		if quill_target_pos != Vector2.ZERO:
+			var dist = global_position.distance_to(quill_target_pos)
+			# This is tricky because as we approach, dist decreases, then increases as we pass.
+			# Dot product check?
+			var to_target = quill_target_pos - global_position
+			if to_target.dot(direction) < 0: # Passed the target
+				if dist > 40.0:
+					_become_stuck()
+
+	elif state == State.STUCK:
+		# Tremble animation done in _become_stuck via Tween
+		pass
+
+	elif state == State.RETURNING:
+		if !source_unit or !is_instance_valid(source_unit):
+			queue_free()
+			return
+
+		var target_pos = source_unit.global_position
+		var dir = (target_pos - global_position).normalized()
+		rotation = dir.angle()
+
+		position += dir * (speed * 2.0) * delta
+
+		# Pull Logic: Check collisions along path
+		# We enabled monitoring in recall()
+		# _on_body_entered handles hits. We need to apply pull there.
+
+		if global_position.distance_to(target_pos) < 10.0:
+			queue_free()
+
+func _become_stuck():
+	state = State.STUCK
+	set_deferred("monitoring", false)
+
+	# Visuals
+	if visual_node:
+		var tween = create_tween()
+		tween.tween_property(visual_node, "rotation", rotation + deg_to_rad(randf_range(-10, 10)), 0.1)
+		tween.tween_property(visual_node, "rotation", rotation, 0.1)
+		tween.set_loops(3) # Tremble a few times
+
+	# Dust particles
+	var dust = load("res://src/Scenes/Effects/Dust.tscn")
+	if dust:
+		var d = dust.instantiate()
+		get_parent().add_child(d)
+		d.global_position = global_position
+
+func recall():
+	if state != State.STUCK: return
+	state = State.RETURNING
+	set_deferred("monitoring", true)
+
+	# Reset hit list to damage again on return
+	hit_list.clear()
+	if shared_hit_list_ref != null:
+		shared_hit_list_ref.clear()
+
+	# Visual effect
+	if visual_node:
+		var tween = create_tween()
+		tween.tween_property(visual_node, "scale", Vector2(1.5, 0.5), 0.1)
+		tween.tween_property(visual_node, "scale", Vector2(1.0, 1.0), 0.1)
 
 func _process_black_hole(delta):
 	var pull_radius = stats.get("skillRadius", 150.0)
@@ -305,6 +413,11 @@ func _handle_hit(target_node):
 	if type == "dragon_breath": return
 	if type == "black_hole_field": return # Black hole doesn't hit/destroy on contact, it pulls
 
+	# Quill Logic: While moving (first pass), pierce through everything until stuck
+	if type == "quill" and state == State.MOVING:
+		# Pierce implicitly. Don't destroy.
+		pass
+
 	if target_node.is_in_group("enemies"):
 		if shared_hit_list_ref != null and target_node in shared_hit_list_ref: return
 		if target_node in hit_list: return
@@ -321,6 +434,19 @@ func _handle_hit(target_node):
 			kb_force *= 2.0 # Extra knockback for roar
 		if type == "snowball":
 			kb_force *= 1.5
+
+		# Quill Pull Logic (Returning)
+		if type == "quill" and state == State.RETURNING:
+			kb_force = 0 # No knockback, pull instead
+			var pull_str = 600.0
+			if stats.has("mechanics") and stats["mechanics"].has("pull_strength"):
+				pull_str = stats["mechanics"]["pull_strength"]
+
+			if source_unit and is_instance_valid(source_unit):
+				var pull_dir = (source_unit.global_position - target_node.global_position).normalized()
+				# Apply instant displacement or force?
+				# Task: "modify enemy coordinate ... pull to porcupine direction"
+				target_node.global_position += pull_dir * (pull_str * get_process_delta_time())
 
 		if target_node.has_method("take_damage"):
 			target_node.take_damage(damage, source_unit, final_damage_type, self, kb_force)
@@ -379,6 +505,10 @@ func _handle_hit(target_node):
 		if not bounced:
 			if type == "roar":
 				pass
+			elif type == "quill":
+				# Quills pierce everything while moving (infinite pierce essentially until stuck)
+				# Do NOT queue_free
+				_spawn_hit_visual(target_node.global_position)
 			elif pierce > 0:
 				pierce -= 1
 			else:

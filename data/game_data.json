@@ -991,6 +991,54 @@
 			},
 			"type_key": "hedgehog"
 		},
+		"porcupine": {
+			"name": "豪猪",
+			"icon": "🦔",
+			"size": [
+				1,
+				1
+			],
+			"range": 300,
+			"atkSpeed": 1.2,
+			"manaCost": 0,
+			"attackType": "ranged",
+			"proj": "quill",
+			"damageType": "physical",
+			"max_quills": 3,
+			"crit_rate": 0.1,
+			"crit_dmg": 1.5,
+			"levels": {
+				"1": {
+					"damage": 60,
+					"hp": 200,
+					"cost": 40,
+					"desc": "远程: 发射尖刺, 4次回收拉扯",
+					"mechanics": {
+						"pull_strength": 400
+					}
+				},
+				"2": {
+					"damage": 90,
+					"hp": 300,
+					"cost": 80,
+					"desc": "远程: 发射尖刺, 4次回收拉扯",
+					"mechanics": {
+						"pull_strength": 600
+					}
+				},
+				"3": {
+					"damage": 135,
+					"hp": 450,
+					"cost": 160,
+					"desc": "远程: 发射尖刺, 4次回收拉扯",
+					"mechanics": {
+						"pull_strength": 1000,
+						"multi_shot_chance": 0.2
+					}
+				}
+			},
+			"type_key": "porcupine"
+		},
 		"iron_turtle": {
 			"name": "铁甲龟",
 			"icon": "🐢🛡️",

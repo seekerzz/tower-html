@@ -35,6 +35,10 @@ var split_count: int = 0
 
 var guaranteed_crit_stacks: int = 0
 
+# Porcupine Mechanics
+var attack_counter: int = 0
+var quill_refs: Array = []
+
 # Parrot Mechanics
 var ammo_queue: Array = []
 var max_ammo: int = 0
@@ -739,6 +743,37 @@ func _process_combat(delta):
 
 		# Attack
 		cooldown = atk_speed * GameManager.get_stat_modifier("attack_interval")
+
+		# Porcupine Logic
+		if type_key == "porcupine":
+			if attack_counter < 3:
+				play_attack_anim(unit_data.attackType, target.global_position)
+				var proj = combat_manager.spawn_projectile(self, global_position, target)
+				if is_instance_valid(proj):
+					quill_refs.append(proj)
+				attack_counter += 1
+			else:
+				# Recall Phase
+				# Don't spawn, just recall
+				play_attack_anim("recall", target.global_position) # Custom anim or reuse ranged
+
+				# Filter invalid refs
+				quill_refs = quill_refs.filter(func(q): return is_instance_valid(q))
+				for quill in quill_refs:
+					if quill.has_method("recall"):
+						quill.recall()
+
+				# Reset
+				attack_counter = 0
+				quill_refs.clear()
+
+				# Visual Effect on Unit
+				if visual_holder:
+					var tween = create_tween()
+					tween.tween_property(visual_holder, "scale", Vector2(1.3, 1.3), 0.1)
+					tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.2)
+
+			return
 
 		play_attack_anim(unit_data.attackType, target.global_position)
 
