@@ -41,6 +41,9 @@ var max_ammo: int = 0
 var mimicked_bullet_timer: float = 0.0
 var is_discharging: bool = false
 
+# Monkey Mechanics
+var current_projectile = null # Holds the boomerang
+
 # Grid
 var grid_pos: Vector2i = Vector2i.ZERO
 var start_position: Vector2 = Vector2.ZERO
@@ -273,6 +276,19 @@ func reset_stats():
 		update_parrot_range()
 
 	update_visuals()
+
+func catch_projectile():
+	if is_instance_valid(current_projectile):
+		current_projectile.queue_free()
+	current_projectile = null
+	cooldown = 0.0 # Ready to fire again, or keep partial cooldown?
+	# "仅当 current_projectile 为空且攻击冷却结束时才允许射击"
+	# So clearing it allows firing if cooldown is also ready.
+	# We might not want to reset cooldown if it's already 0, but usually boomerang return TAKES time,
+	# so cooldown might have expired.
+	# If we want to ensure rate limit, we depend on atk_speed.
+	# But if boomerang takes long to return, atk_speed is irrelevant as we wait for return.
+	# So we just clear the projectile ref.
 
 func update_parrot_range():
 	if type_key != "parrot": return
@@ -727,11 +743,22 @@ func _process_combat(delta):
 
 		return # Parrot handles its own flow
 
+	# Monkey Attack Logic
+	if type_key == "monkey":
+		# Only attack if no projectile is out
+		if is_instance_valid(current_projectile):
+			return # Wait for return
+
 	# Find target
 	var combat_manager = GameManager.combat_manager
 	if !combat_manager: return
 
-	var target = combat_manager.find_nearest_enemy(global_position, range_val)
+	var target = null
+	if type_key == "monkey":
+		target = combat_manager.find_farthest_enemy(global_position, range_val)
+	else:
+		target = combat_manager.find_nearest_enemy(global_position, range_val)
+
 	if target:
 		# Consume Resources
 		if attack_cost_mana > 0:
@@ -753,6 +780,11 @@ func _process_combat(delta):
 		elif unit_data.attackType == "mimic":
 			# Handled above
 			pass
+		elif type_key == "monkey":
+			# Monkey Boomerang
+			var proj = combat_manager.spawn_projectile(self, global_position, target)
+			if proj:
+				current_projectile = proj
 		else:
 			# Check for Multi-shot (projCount)
 			var proj_count = unit_data.get("projCount", 1)

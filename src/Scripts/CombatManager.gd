@@ -248,6 +248,19 @@ func find_nearest_enemy(pos: Vector2, range_val: float):
 
 	return nearest
 
+func find_farthest_enemy(pos: Vector2, range_val: float):
+	var farthest = null
+	var max_dist = -1.0
+
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		var dist = pos.distance_to(enemy.global_position)
+		if dist <= range_val:
+			if dist > max_dist:
+				max_dist = dist
+				farthest = enemy
+
+	return farthest
+
 func perform_lightning_attack(source_unit, start_pos, target, chain_left, hit_list = null):
 	if hit_list == null: hit_list = []
 	if !is_instance_valid(target): return
@@ -286,7 +299,7 @@ func find_nearest_enemy_excluding(pos: Vector2, range_val: float, exclude_list: 
 	return nearest
 
 func spawn_projectile(source_unit, pos, target, extra_stats = {}):
-	_spawn_single_projectile(source_unit, pos, target, extra_stats)
+	return _spawn_single_projectile(source_unit, pos, target, extra_stats)
 
 func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	# FIX: Shotgun logic - force straight flight by removing target
@@ -362,6 +375,7 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	var proj_speed = stats.get("speed", source_unit.unit_data.get("projectile_speed", 400.0))
 	proj.setup(pos, target, final_damage, proj_speed, proj_type, stats)
 	add_child(proj)
+	return proj
 
 	# --- Parrot Logic: Feed Neighbors ---
 	# Only feed if this is NOT a mimicked shot (prevent loops)

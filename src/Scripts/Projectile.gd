@@ -33,6 +33,18 @@ enum State { MOVING, HOVERING }
 var state = State.MOVING
 var dragon_breath_timer: float = 0.0
 
+# Boomerang Logic
+enum TravelState { LINEAR_OUT, ARC_STRIKE, LINEAR_RETURN }
+var travel_state = TravelState.LINEAR_OUT
+var boomerang_target_pos: Vector2
+var boomerang_arc_center: Vector2
+var boomerang_arc_radius: float
+var boomerang_arc_angle: float = 0.0
+var boomerang_arc_speed: float
+var boomerang_start_angle: float
+var boomerang_total_arc: float = PI # 180 degrees
+var boomerang_phase_time: float = 0.0
+
 const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
 
 func _ready():
@@ -93,6 +105,9 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 		elif stats.get("angle") != null:
 			rotation = stats.get("angle")
 
+	if type == "boomerang":
+		_setup_boomerang()
+
 	# Visual Separation
 	if has_node("Sprite2D"):
 		visual_node = get_node("Sprite2D")
@@ -139,6 +154,8 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 	elif type == "lightning":
 		# Keep lightning if it was handled elsewhere or add simple visual
 		_setup_simple_visual(Color.CYAN, "line")
+	elif type == "boomerang":
+		_setup_simple_visual(Color("CD853F"), "boomerang") # Peru/Wood color
 
 func fade_out():
 	if is_fading: return
@@ -177,6 +194,13 @@ func _process(delta):
 	# Dragon Breath Logic
 	if type == "dragon_breath":
 		_process_dragon_breath(delta)
+		return
+
+	if type == "boomerang":
+		_process_boomerang(delta)
+		# Spin visual
+		if visual_node:
+			visual_node.rotation += delta * 20.0
 		return
 
 	# Black Hole Logic
@@ -305,6 +329,10 @@ func _handle_hit(target_node):
 	if type == "dragon_breath": return
 	if type == "black_hole_field": return # Black hole doesn't hit/destroy on contact, it pulls
 
+	if type == "boomerang":
+		if travel_state == TravelState.LINEAR_OUT:
+			return # Ignore collisions in OUT phase
+
 	if target_node.is_in_group("enemies"):
 		if shared_hit_list_ref != null and target_node in shared_hit_list_ref: return
 		if target_node in hit_list: return
@@ -387,8 +415,14 @@ func _handle_hit(target_node):
 
 				# Final Hit - Spawn visual and destroy
 				_spawn_hit_visual(target_node.global_position)
-				print("Projectile hit final: ", type, " -> queue_free")
-				queue_free()
+				if type != "boomerang":
+					print("Projectile hit final: ", type, " -> queue_free")
+					queue_free()
+				else:
+					# Boomerang passes through, but maybe trigger return immediately?
+					# Requirement: "Third Stage ... Hit enemy OR complete arc ... direct linear return"
+					# So if we hit, we switch to return.
+					travel_state = TravelState.LINEAR_RETURN
 
 func _spawn_hit_visual(pos: Vector2):
 	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
@@ -474,6 +508,12 @@ func _setup_simple_visual(color, shape):
 			Vector2(0, 6), Vector2(-2, 2),
 			Vector2(-6, 0), Vector2(-2, -2),
 			Vector2(0, -6), Vector2(2, -2)
+		])
+	elif shape == "boomerang":
+		# V-shape
+		points = PackedVector2Array([
+			Vector2(0, -8), Vector2(4, -4), Vector2(0, 0), Vector2(4, 4), Vector2(0, 8),
+			Vector2(-4, 4), Vector2(-2, 0), Vector2(-4, -4)
 		])
 	else:
 		# Box
@@ -698,3 +738,153 @@ func _setup_dragon_breath():
 	poly.polygon = PackedVector2Array(pts)
 	poly.color = Color(1.0, 0.4, 0.0, 0.7) # Orange
 	add_child(poly)
+
+func _setup_boomerang():
+	if !is_instance_valid(target) and !stats.has("target_pos"):
+		fade_out()
+		return
+
+	var target_pos = target.global_position if is_instance_valid(target) else stats.get("target_pos", position + Vector2.RIGHT * 100)
+	var start_pos = position
+	var dist = start_pos.distance_to(target_pos)
+
+	# Adjust target pos: "Aim offset from enemy" (Linear Out)
+	# Requirement: "偏角应根据射程动态调整（建议：射程越远，偏角越小）"
+	# Max range ~ 250 -> small angle (e.g., 15 deg). Close range -> large angle (e.g., 45 deg)
+	var max_range = 250.0
+	var offset_angle_deg = lerp(45.0, 15.0, clamp(dist / max_range, 0.0, 1.0))
+	var offset_angle = deg_to_rad(offset_angle_deg)
+
+	# Direction to target
+	var dir_to_target = (target_pos - start_pos).normalized()
+	# Rotate dir by offset to get linear path direction (pick Left or Right side randomly? or fixed?)
+	# Let's say we offset to the "Left" relative to target, so we curve "Right" around them.
+	# Or just pick one.
+	var linear_dir = dir_to_target.rotated(-offset_angle)
+
+	# Calculate "Pre-aim point" for Linear Phase
+	# This point should be somewhere "to the side" of the target.
+	# Actually, the logic says: "Linear out ... approach target ... then Arc Strike".
+	# The arc starts when "distance to target < threshold".
+	# So we just fly generally towards the target but offset.
+
+	boomerang_target_pos = target_pos # We track the actual target pos to check distance
+
+	# Set velocity direction for Linear Out
+	rotation = linear_dir.angle()
+
+	# Initialize state
+	travel_state = TravelState.LINEAR_OUT
+
+func _process_boomerang(delta):
+	# Update target pos if valid
+	if is_instance_valid(target):
+		boomerang_target_pos = target.global_position
+
+	match travel_state:
+		TravelState.LINEAR_OUT:
+			# Fly linear
+			position += Vector2.RIGHT.rotated(rotation) * speed * delta
+
+			# Check transition to ARC_STRIKE
+			# "Trigger: dist to target < threshold (e.g. 20% of range)"
+			# We can approximate range by distance from source? Or just use fixed 50-60px?
+			# 20% of 220 is 44. Let's use 50.
+			var dist = position.distance_to(boomerang_target_pos)
+			if dist < 60.0:
+				_start_arc_strike()
+
+		TravelState.ARC_STRIKE:
+			# Move along arc
+			# We rotate around boomerang_arc_center
+			boomerang_phase_time += delta
+			var angle_covered = boomerang_arc_speed * boomerang_phase_time
+
+			if abs(angle_covered) >= abs(boomerang_total_arc):
+				travel_state = TravelState.LINEAR_RETURN
+				return
+
+			var current_angle = boomerang_start_angle + angle_covered
+			position = boomerang_arc_center + Vector2(cos(current_angle), sin(current_angle)) * boomerang_arc_radius
+
+			# Maintain rotation visual (facing movement direction)
+			# Tangent: perpendicular to radius
+			# If speed is positive (CW?), tangent is angle + 90?
+			# d(cos)/dt = -sin, d(sin)/dt = cos.
+			var tangent = current_angle + (PI/2 if boomerang_arc_speed > 0 else -PI/2)
+			rotation = tangent
+
+		TravelState.LINEAR_RETURN:
+			if !is_instance_valid(source_unit):
+				queue_free()
+				return
+
+			var return_pos = source_unit.global_position
+			var dist = position.distance_to(return_pos)
+
+			if dist < 20.0:
+				source_unit.catch_projectile()
+				queue_free()
+				return
+
+			# Home in
+			var dir = (return_pos - position).normalized()
+			rotation = dir.angle()
+			position += dir * speed * 1.5 * delta # Faster return?
+
+func _start_arc_strike():
+	travel_state = TravelState.ARC_STRIKE
+
+	# Calculate Arc parameters
+	# We want to arc 180 degrees to get behind the enemy.
+	# Current pos is "start of arc".
+	# Target is "boomerang_target_pos".
+	# We want center such that we circle target?
+	# "With enemy as center, arc 180 degrees to behind".
+	# So Center = boomerang_target_pos.
+	# Radius = distance(pos, target)
+
+	boomerang_arc_center = boomerang_target_pos
+	boomerang_arc_radius = position.distance_to(boomerang_arc_center)
+
+	# Start Angle
+	var offset_vector = position - boomerang_arc_center
+	boomerang_start_angle = offset_vector.angle()
+
+	# We need to decide direction (CW or CCW).
+	# We came from an offset angle.
+	# If we offset "Left" (negative angle) relative to direct line, we are "Left" of target.
+	# To go "Behind", we should continue curving?
+	# If we are at -45 deg (Top Left relative to Right facing), and we want to go to 180 (Back).
+	# Shortest path or "Cut Through"?
+	# Requirement: "Traverse 180 degree semi-circle to back".
+	# If we are "Left", we should go "CCW" to get back? Or "CW"?
+	# Actually, usually boomerang goes "Out Left, Curves Right (CW), returns".
+	# Let's assume CW (positive angle change in screen coords? No, Y is down in Godot. Right is 0, Down is 90. CW is +).
+
+	# Let's determine direction based on velocity vs target vector.
+	# Cross product 2D?
+	var current_vel = Vector2.RIGHT.rotated(rotation)
+	var to_center = (boomerang_arc_center - position).normalized()
+	# cross = vel.x * center.y - vel.y * center.x ...
+	var cross = current_vel.cross(to_center)
+
+	# If cross > 0, Center is "Right" of Vel. We should turn Right (CW).
+	# If cross < 0, Center is "Left" of Vel. We should turn Left (CCW).
+
+	boomerang_total_arc = PI # 180 deg
+	var dir_sign = 1.0
+	if cross < 0:
+		dir_sign = -1.0 # Turn Left (CCW)
+	else:
+		dir_sign = 1.0 # Turn Right (CW)
+
+	boomerang_total_arc *= dir_sign
+
+	# Calculate Arc Speed (Angular Velocity)
+	# v = r * w => w = v / r
+	# Maintain linear speed 'speed'
+	boomerang_arc_speed = speed / max(1.0, boomerang_arc_radius)
+	boomerang_arc_speed *= dir_sign
+
+	boomerang_phase_time = 0.0
