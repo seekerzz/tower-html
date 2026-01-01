@@ -164,18 +164,27 @@ func _setup_boomerang():
 	else:
 		boomerang_target_pos = target.global_position
 
-	# Phase 1: Offset Linear
-	# Calculate offset based on range/distance. Further = less angle to look smoother?
-	# Or fixed offset. Task says: "Offset angle dynamic... further range = smaller angle".
 	var dist = position.distance_to(boomerang_target_pos)
 	var dir_to_target = (boomerang_target_pos - position).normalized()
 
-	# Max offset at close range, min at max range.
-	# Let's say max range is 300.
-	# Angle offset: 30 degrees (PI/6) at 0 dist -> 5 degrees at 300 dist.
-	var offset_angle = lerp(PI/4, PI/12, min(dist / 300.0, 1.0))
+	# Define a target arc radius. This is the radius we will circle around the enemy.
+	# It must be larger than enemy hitbox to avoid instant collision, but close enough for visual effect.
+	# Let's use 30.0 as a base, dynamic with distance if needed.
+	boomerang_arc_radius = 30.0
 
-	# Pick side (random or fixed?) "Side" implies Left or Right. Let's pick Random sign.
+	# Calculate offset angle to ensure tangent entry.
+	# sin(theta) = Radius / Hypotenuse (Dist).
+	# theta = asin(Radius / Dist).
+	var offset_angle = 0.0
+	if dist > boomerang_arc_radius:
+		offset_angle = asin(boomerang_arc_radius / dist)
+	else:
+		# Too close? Just fly straight or offset slightly.
+		offset_angle = 0.0
+		# If we are inside radius, we should probably start arc immediately?
+		# Handled in process loop.
+
+	# Pick side (random or fixed?)
 	var side = 1 if randf() > 0.5 else -1
 	var shoot_dir = dir_to_target.rotated(offset_angle * side)
 
@@ -466,15 +475,13 @@ func _process_boomerang(delta):
 			position += Vector2.RIGHT.rotated(rotation) * speed * delta
 
 			# Check transition to ARC_STRIKE
-			# Condition: Distance to target < Threshold (20% of range or fixed)
-			# Or we passed the target projection?
-			# Task says: "When bullet distance to target < Threshold ... switch".
+			# Condition: Distance to target < Threshold.
+			# Threshold should match our pre-calculated arc radius + epsilon buffer.
+			# We aimed for tangent at radius 30.0. So when dist <= 30.0 (plus buffer), we switch.
 			if is_instance_valid(target):
 				var dist = position.distance_to(target.global_position)
-				# Dynamic threshold based on range or fixed.
-				# Let's use 20% of max range? Or 50px?
-				# If range is ~200, 20% is 40.
-				if dist < 40.0:
+				var threshold = boomerang_arc_radius + 5.0 # Buffer to ensure we catch it
+				if dist <= threshold:
 					_start_boomerang_arc()
 			else:
 				# Target died? Go to return? Or finish linear move then return?
@@ -546,16 +553,25 @@ func _start_boomerang_arc():
 	var current_vel = Vector2.RIGHT.rotated(rotation)
 	var tangent_cw = Vector2(diff.y, -diff.x).normalized() # Tangent for CW
 	# dot product to see if we are moving roughly CW or CCW
+
+	# Correct Angular Speed calculation: w = v / r
+	var w = speed / max(1.0, boomerang_arc_radius)
+
 	if current_vel.dot(tangent_cw) > 0:
 		# Moving CW-ish
-		boomerang_arc_speed = -speed / max(1.0, boomerang_arc_radius) # Negative for CW in standard math? No, angle decreases?
-		# Wait, standard unit circle: CCW is positive.
-		# CW tangent is (y, -x). CCW is (-y, x).
-		# If we move CW, angle should decrease?
-		# Let's test sign.
-		boomerang_arc_speed = - (speed / max(1.0, boomerang_arc_radius))
+		boomerang_arc_speed = w
+		# Wait, CW increases angle? No, CW decreases angle (if standard coord).
+		# Tangent CW at (r,0) is (0, -1) -> Angle 0 -> -epsilon.
+		# So CW implies Negative Angular Speed.
+		# My tangent check logic:
+		# tangent_cw = (y, -x). Normalized.
+		# If we align with this, we want to go CW.
+		boomerang_arc_speed = w # Wait, let's verify visual.
+		# If I just use 'w', angle increases (CCW).
+		# If aligned with CW tangent, I should use '-w'.
+		boomerang_arc_speed = -w
 	else:
-		boomerang_arc_speed = (speed / max(1.0, boomerang_arc_radius))
+		boomerang_arc_speed = w
 
 func _spawn_hit_visual(pos: Vector2):
 	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
