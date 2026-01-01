@@ -655,129 +655,147 @@ func _process_combat(delta):
 	if !unit_data.has("attackType") or unit_data.attackType == "none":
 		return
 
-	# Resource Check
-	var can_afford = true
-
+	# Resource Check (Pre-check)
 	if attack_cost_mana > 0:
 		if !GameManager.check_resource("mana", attack_cost_mana):
 			is_no_mana = true
-			can_afford = false
+			return
 		else:
 			is_no_mana = false
-
-	if !can_afford: return
-
-	# Parrot Attack Logic
-	if type_key == "parrot":
-		if !is_discharging:
-			# Check Start Condition: Full Ammo AND Enemy in Range
-			if ammo_queue.size() >= max_ammo:
-				var combat_manager = GameManager.combat_manager
-				if !combat_manager: return
-				var target = combat_manager.find_nearest_enemy(global_position, range_val)
-				if target:
-					is_discharging = true
-
-		# Discharge Logic
-		if is_discharging:
-			if ammo_queue.size() > 0:
-				var combat_manager = GameManager.combat_manager
-				if !combat_manager: return
-
-				# Re-check target each shot (turning)
-				var target = combat_manager.find_nearest_enemy(global_position, range_val)
-				if target:
-					# Consume Resources (Parrot is 0 cost but good to keep structure)
-					if attack_cost_mana > 0: GameManager.consume_resource("mana", attack_cost_mana)
-
-					cooldown = atk_speed
-
-					# Fire one bullet from queue
-					var bullet_data = ammo_queue.pop_front()
-
-					# Re-orient for each shot
-					play_attack_anim("ranged", target.global_position)
-
-					var extra = bullet_data.duplicate()
-					extra["mimic_damage"] = bullet_data.get("damage", 10.0)
-					extra["proj_override"] = bullet_data.get("type", "pinecone")
-
-					combat_manager.spawn_projectile(self, global_position, target, extra)
-				else:
-					# Lost target mid-burst?
-					# Option A: Stop discharging. Option B: Wait.
-					# Requirement: "Parrot will not attack... until regaining range".
-					# But if it started discharging, should it stop?
-					# "If neighbor removed ... range 0 ... parrot stops attacking".
-					# So yes, if no target found (range 0 or no enemies), we pause or stop.
-					# But we are in "is_discharging" mode. We should probably keep trying until empty if we want to dump?
-					# Or just wait. Cooldown won't be set if we don't fire.
-					pass
-			else:
-				# Empty
-				is_discharging = false
-
-		return # Parrot handles its own flow
 
 	# Find target
 	var combat_manager = GameManager.combat_manager
 	if !combat_manager: return
 
+	# Delegate to specific handlers
+	if type_key == "parrot":
+		# Parrot finds its own target usually to check range, but standard behavior is fine to integrate
+		var target = combat_manager.find_nearest_enemy(global_position, range_val)
+		_do_mimic_attack(target, combat_manager)
+		return
+
+	# Common Target Logic
 	var target = combat_manager.find_nearest_enemy(global_position, range_val)
+	if !target and type_key != "peacock": return # Peacock might need to recall without target? Checked in handler.
 
 	if type_key == "peacock":
 		_handle_peacock_attack(target, combat_manager)
+	elif type_key == "bee":
+		if target: _do_bow_attack(target)
+	elif unit_data.attackType == "melee":
+		if target: _do_melee_attack(target)
+	elif unit_data.attackType == "mimic":
+		# Fallback mimic if not parrot?
+		if target: _do_mimic_attack(target, combat_manager)
+	else:
+		if target: _do_standard_ranged_attack(target)
+
+func _do_mimic_attack(target, combat_manager):
+	if !is_discharging:
+		# Check Start Condition: Full Ammo AND Enemy in Range
+		if ammo_queue.size() >= max_ammo:
+			if target:
+				is_discharging = true
+
+	if is_discharging:
+		if ammo_queue.size() > 0:
+			if target:
+				# Re-check target each shot as in original logic
+				var aim_target = combat_manager.find_nearest_enemy(global_position, range_val)
+				if aim_target:
+					if attack_cost_mana > 0: GameManager.consume_resource("mana", attack_cost_mana)
+					cooldown = atk_speed
+
+					var bullet_data = ammo_queue.pop_front()
+					play_attack_anim("ranged", aim_target.global_position)
+
+					var extra = bullet_data.duplicate()
+					extra["mimic_damage"] = bullet_data.get("damage", 10.0)
+					extra["proj_override"] = bullet_data.get("type", "pinecone")
+
+					combat_manager.spawn_projectile(self, global_position, aim_target, extra)
+			else:
+				# No target in range, pause discharging
+				pass
+		else:
+			is_discharging = false
+
+func _do_bow_attack(target, on_release_callback: Callable = Callable()):
+	if attack_cost_mana > 0:
+		GameManager.consume_resource("mana", attack_cost_mana)
+
+	# Calculate duration: dynamic but reasonable
+	var anim_duration = clamp(atk_speed * 0.8, 0.1, 0.6)
+
+	cooldown = atk_speed * GameManager.get_stat_modifier("attack_interval")
+
+	play_attack_anim("bow", target.global_position, anim_duration)
+
+	# Wait for Pull
+	var pull_time = anim_duration * 0.6
+	await get_tree().create_timer(pull_time).timeout
+
+	if !is_instance_valid(self): return
+
+	if on_release_callback.is_valid():
+		on_release_callback.call()
+	else:
+		# Default (Bee)
+		if is_instance_valid(target) and GameManager.combat_manager:
+			GameManager.combat_manager.spawn_projectile(self, global_position, target)
+
+func _do_melee_attack(target):
+	if attack_cost_mana > 0:
+		GameManager.consume_resource("mana", attack_cost_mana)
+
+	cooldown = atk_speed * GameManager.get_stat_modifier("attack_interval")
+
+	play_attack_anim("melee", target.global_position)
+
+	await get_tree().create_timer(ANIM_WINDUP_TIME).timeout
+	if is_instance_valid(self) and is_instance_valid(target):
+		_spawn_melee_projectiles(target)
+
+func _do_standard_ranged_attack(target):
+	var combat_manager = GameManager.combat_manager
+	if !combat_manager: return
+
+	if attack_cost_mana > 0:
+		GameManager.consume_resource("mana", attack_cost_mana)
+
+	cooldown = atk_speed * GameManager.get_stat_modifier("attack_interval")
+
+	if unit_data.get("proj") == "lightning":
+		play_attack_anim("lightning", target.global_position)
+		combat_manager.perform_lightning_attack(self, global_position, target, unit_data.get("chain", 0))
 		return
 
-	if target:
-		# Consume Resources
-		if attack_cost_mana > 0:
-			GameManager.consume_resource("mana", attack_cost_mana)
+	play_attack_anim("ranged", target.global_position)
 
-		# Attack
-		cooldown = atk_speed * GameManager.get_stat_modifier("attack_interval")
+	# Multi-shot logic
+	var proj_count = unit_data.get("projCount", 1)
+	var spread = unit_data.get("spread", 0.5)
 
-		# Standard Logic
-		play_attack_anim(unit_data.attackType, target.global_position)
+	if "multishot" in active_buffs:
+		proj_count += 2
+		spread = max(spread, 0.5)
 
-		if unit_data.attackType == "melee":
-			await get_tree().create_timer(ANIM_WINDUP_TIME).timeout
-			if is_instance_valid(self) and is_instance_valid(target):
-				_spawn_melee_projectiles(target)
+	if proj_count == 1:
+		combat_manager.spawn_projectile(self, global_position, target)
+	else:
+		var base_angle = (target.global_position - global_position).angle()
+		var start_angle = base_angle - spread / 2.0
+		var step = spread / max(1, proj_count - 1)
 
-		elif unit_data.attackType == "ranged" and unit_data.get("proj") == "lightning":
-			# Lightning handling
-			combat_manager.perform_lightning_attack(self, global_position, target, unit_data.get("chain", 0))
-		elif unit_data.attackType == "mimic":
-			# Handled above
-			pass
-		else:
-			# Check for Multi-shot (projCount)
-			var proj_count = unit_data.get("projCount", 1)
-			var spread = unit_data.get("spread", 0.5)
-
-			if "multishot" in active_buffs:
-				proj_count += 2
-				spread = max(spread, 0.5)
-
-			# Calculate angles for multi-shot
-			if proj_count == 1:
-				combat_manager.spawn_projectile(self, global_position, target)
-			else:
-				var base_angle = (target.global_position - global_position).angle()
-				var start_angle = base_angle - spread / 2.0
-				var step = spread / max(1, proj_count - 1)
-
-				for i in range(proj_count):
-					var angle = start_angle + (i * step)
-					combat_manager.spawn_projectile(self, global_position, target, {"angle": angle})
+		for i in range(proj_count):
+			var angle = start_angle + (i * step)
+			combat_manager.spawn_projectile(self, global_position, target, {"angle": angle})
 
 func _handle_peacock_attack(target, combat_manager):
 	# Peacock: 3 attacks then 1 recall
 	if attack_counter >= 3:
-		# RECALL ACTION (Can run without target)
+		# RECALL ACTION (Can run without target, usually checks feathers existence)
 		cooldown = atk_speed * GameManager.get_stat_modifier("attack_interval")
-
 		attack_counter = 0
 
 		# Visual scale effect for recall
@@ -786,51 +804,109 @@ func _handle_peacock_attack(target, combat_manager):
 			tween.tween_property(visual_holder, "scale", Vector2(1.3, 1.3), 0.1)
 			tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.1)
 
-		# Execute Recall
 		for q in feather_refs:
 			if is_instance_valid(q) and q.has_method("recall"):
 				q.recall()
 		feather_refs.clear()
 
 	elif target:
-		# SHOOT ACTION (Needs target)
-		if attack_cost_mana > 0:
-			GameManager.consume_resource("mana", attack_cost_mana)
+		# SHOOT ACTION with Bow Animation
+		var spawn_logic = func():
+			if !is_instance_valid(target) or !is_instance_valid(combat_manager): return
 
-		cooldown = atk_speed * GameManager.get_stat_modifier("attack_interval")
+			var extra_shots = 0
+			var multi_chance = 0.0
 
-		play_attack_anim("ranged", target.global_position)
+			if unit_data.has("levels") and unit_data["levels"].has(str(level)):
+				var mech = unit_data["levels"][str(level)].get("mechanics", {})
+				multi_chance = mech.get("multi_shot_chance", 0.0)
 
-		# Check Multi-shot Chance (Level 3 or Buffs)
-		var extra_shots = 0
-		var multi_chance = 0.0
+			if multi_chance > 0.0 and randf() < multi_chance:
+				extra_shots += 1
 
-		# Level 3 mechanic
-		if unit_data.has("levels") and unit_data["levels"].has(str(level)):
-			var mech = unit_data["levels"][str(level)].get("mechanics", {})
-			multi_chance = mech.get("multi_shot_chance", 0.0)
+			# Fire Primary Feather
+			var proj = combat_manager.spawn_projectile(self, global_position, target)
+			if proj and is_instance_valid(proj):
+				feather_refs.append(proj)
 
-		if multi_chance > 0.0 and randf() < multi_chance:
-			extra_shots += 1
+			# Fire Extra Shots
+			if extra_shots > 0:
+				var base_angle = (target.global_position - global_position).angle()
+				var spread_angle = 0.2
+				var angles = [base_angle - spread_angle, base_angle + spread_angle]
 
-		# Fire Primary Feather
-		var proj = combat_manager.spawn_projectile(self, global_position, target)
-		if proj and is_instance_valid(proj):
-			feather_refs.append(proj)
+				for i in range(extra_shots):
+					var angle_mod = angles[i % 2]
+					var extra_proj = combat_manager.spawn_projectile(self, global_position, target, {"angle": angle_mod})
+					if extra_proj and is_instance_valid(extra_proj):
+						feather_refs.append(extra_proj)
 
-		# Fire Extra Shots (spread slightly)
-		if extra_shots > 0:
-			var base_angle = (target.global_position - global_position).angle()
-			var spread_angle = 0.2 # small spread
-			var angles = [base_angle - spread_angle, base_angle + spread_angle]
+			attack_counter += 1
 
-			for i in range(extra_shots):
-				var angle_mod = angles[i % 2]
-				var extra_proj = combat_manager.spawn_projectile(self, global_position, target, {"angle": angle_mod})
-				if extra_proj and is_instance_valid(extra_proj):
-					feather_refs.append(extra_proj)
+		_do_bow_attack(target, spawn_logic)
 
-		attack_counter += 1
+func play_attack_anim(attack_type: String, target_pos: Vector2, duration: float = -1.0):
+	if !visual_holder: return
+
+	if breathe_tween: breathe_tween.kill()
+	if attack_tween: attack_tween.kill()
+
+	attack_tween = create_tween()
+
+	if attack_type == "melee":
+		var dir = (target_pos - global_position).normalized()
+		var original_pos = Vector2.ZERO
+
+		# Phase 1: Windup
+		attack_tween.tween_property(visual_holder, "position", -dir * ANIM_WINDUP_DIST, ANIM_WINDUP_TIME)\
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		attack_tween.parallel().tween_property(visual_holder, "scale", ANIM_WINDUP_SCALE, ANIM_WINDUP_TIME)\
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+		# Phase 2: Strike
+		attack_tween.tween_property(visual_holder, "position", dir * ANIM_STRIKE_DIST, ANIM_STRIKE_TIME)\
+			.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+		attack_tween.parallel().tween_property(visual_holder, "scale", ANIM_STRIKE_SCALE, ANIM_STRIKE_TIME)\
+			.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+
+		# Phase 3: Recovery
+		attack_tween.tween_property(visual_holder, "position", original_pos, ANIM_RECOVERY_TIME)\
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		attack_tween.parallel().tween_property(visual_holder, "scale", Vector2.ONE, ANIM_RECOVERY_TIME)\
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+	elif attack_type == "bow":
+		var total_time = duration if duration > 0 else 0.5
+		var pull_time = total_time * 0.6
+		var recover_time = total_time * 0.3
+
+		var dir = (target_pos - global_position).normalized()
+
+		# Phase 1: Pull
+		attack_tween.tween_property(visual_holder, "position", -dir * 10.0, pull_time)\
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		attack_tween.parallel().tween_property(visual_holder, "scale", Vector2(0.8, 1.2), pull_time)\
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+		# Phase 2: Snap
+		attack_tween.tween_callback(func():
+			visual_holder.position = Vector2.ZERO
+			visual_holder.scale = Vector2.ONE
+		)
+
+		# Phase 3: Recovery
+		attack_tween.tween_property(visual_holder, "scale", Vector2(1.1, 0.9), recover_time * 0.5)\
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		attack_tween.tween_property(visual_holder, "scale", Vector2.ONE, recover_time * 0.5)
+
+	elif attack_type == "ranged" or attack_type == "lightning":
+		# Recoil
+		attack_tween.tween_property(visual_holder, "scale", Vector2(0.8, 0.8), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		attack_tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.2)
+		# Reset position in parallel just in case
+		attack_tween.parallel().tween_property(visual_holder, "position", Vector2.ZERO, 0.3)
+
+	attack_tween.finished.connect(func(): start_breathe_anim())
 
 func _spawn_meteor_at_random_enemy():
 	var combat_manager = GameManager.combat_manager
@@ -902,44 +978,6 @@ func start_breathe_anim():
 	breathe_tween.tween_property(visual_holder, "scale", Vector2(1.05, 1.05), 1.0).set_trans(Tween.TRANS_SINE)
 	breathe_tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 1.0).set_trans(Tween.TRANS_SINE)
 
-func play_attack_anim(attack_type: String, target_pos: Vector2):
-	if !visual_holder: return
-
-	if breathe_tween: breathe_tween.kill()
-	if attack_tween: attack_tween.kill()
-
-	attack_tween = create_tween()
-
-	if attack_type == "melee":
-		var dir = (target_pos - global_position).normalized()
-		var original_pos = Vector2.ZERO
-
-		# Phase 1: Windup
-		attack_tween.tween_property(visual_holder, "position", -dir * ANIM_WINDUP_DIST, ANIM_WINDUP_TIME)\
-			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		attack_tween.parallel().tween_property(visual_holder, "scale", ANIM_WINDUP_SCALE, ANIM_WINDUP_TIME)\
-			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-
-		# Phase 2: Strike
-		attack_tween.tween_property(visual_holder, "position", dir * ANIM_STRIKE_DIST, ANIM_STRIKE_TIME)\
-			.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
-		attack_tween.parallel().tween_property(visual_holder, "scale", ANIM_STRIKE_SCALE, ANIM_STRIKE_TIME)\
-			.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
-
-		# Phase 3: Recovery
-		attack_tween.tween_property(visual_holder, "position", original_pos, ANIM_RECOVERY_TIME)\
-			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		attack_tween.parallel().tween_property(visual_holder, "scale", Vector2.ONE, ANIM_RECOVERY_TIME)\
-			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
-	elif attack_type == "ranged" or attack_type == "lightning":
-		# Recoil
-		attack_tween.tween_property(visual_holder, "scale", Vector2(0.8, 0.8), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		attack_tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.2)
-		# Reset position in parallel just in case
-		attack_tween.parallel().tween_property(visual_holder, "position", Vector2.ZERO, 0.3)
-
-	attack_tween.finished.connect(func(): start_breathe_anim())
 
 func can_merge_with(other_unit) -> bool:
 	if other_unit == null: return false
