@@ -1,5 +1,8 @@
 extends CharacterBody2D
 
+enum State { MOVE, ATTACK_BASE, STUNNED }
+var state: State = State.MOVE
+
 var type_key: String
 var hp: float
 var max_hp: float
@@ -22,8 +25,6 @@ var heat_accumulation: float = 0.0
 var hit_flash_timer: float = 0.0
 var burn_tick_timer: float = 0.0
 
-var attack_timer: float = 0.0
-var attacking_wall: Node = null
 var temp_speed_mod: float = 1.0
 
 var wobble_scale = Vector2.ONE
@@ -33,10 +34,8 @@ var nav_timer: float = 0.0
 var path_index: int = 0
 
 var current_target_tile: Node2D = null
-var is_attacking_base: bool = false
 var base_attack_timer: float = 0.0
 
-var is_playing_attack_anim: bool = false
 var anim_tween: Tween
 
 var knockback_velocity: Vector2 = Vector2.ZERO
@@ -54,7 +53,6 @@ var last_hit_direction: Vector2 = Vector2.ZERO
 const WALL_SLAM_FACTOR = 0.5
 const HEAVY_IMPACT_THRESHOLD = 50.0
 const TRANSFER_RATE = 0.8
-var sensor_area: Area2D = null
 
 # Mass
 var mass: float = 1.0
@@ -63,18 +61,6 @@ func _ready():
 	add_to_group("enemies")
 	collision_layer = 2
 	collision_mask = 1 | 2
-
-	sensor_area = Area2D.new()
-	sensor_area.name = "SensorArea"
-	sensor_area.collision_layer = 0
-	sensor_area.collision_mask = 2 | 4
-
-	add_child(sensor_area)
-
-	var col_shape = get_node_or_null("CollisionShape2D")
-	if col_shape:
-		var new_shape = col_shape.duplicate()
-		sensor_area.add_child(new_shape)
 
 	input_pickable = false
 	_set_ignore_mouse_recursive(self)
@@ -198,14 +184,12 @@ func _physics_process(delta):
 		return
 
 	if stun_timer > 0:
-		velocity = velocity.move_toward(Vector2.ZERO, 500 * delta)
-		move_and_slide()
-		return
+		state = State.STUNNED
+	elif state == State.STUNNED:
+		state = State.MOVE
 
 	if freeze_timer > 0:
 		return
-
-	var desired_velocity = Vector2.ZERO
 
 	check_unit_interactions(delta)
 
@@ -220,30 +204,56 @@ func _physics_process(delta):
 				skill_cd_timer = 2.0
 			return
 
-	if is_attacking_base:
-		attack_base_logic(delta)
-		velocity = Vector2.ZERO
-	elif attacking_wall and is_instance_valid(attacking_wall):
-		attack_wall_logic(delta)
-		velocity = Vector2.ZERO
-	else:
-		if attacking_wall != null:
-			attacking_wall = null
+	if is_suicide:
+		check_suicide_collision()
 
-		nav_timer -= delta
-		if nav_timer <= 0:
-			update_path()
-			nav_timer = 0.5
+	match state:
+		State.STUNNED:
+			velocity = velocity.move_toward(Vector2.ZERO, 500 * delta)
+			move_and_slide()
 
-		desired_velocity = calculate_move_velocity()
+		State.MOVE:
+			nav_timer -= delta
+			if nav_timer <= 0:
+				update_path()
+				nav_timer = 0.5
 
-		if is_suicide:
-			check_suicide_collision()
+			var desired_velocity = calculate_move_velocity()
 
-		velocity = desired_velocity
+			# Check transition to Attack Base
+			if _should_attack_base():
+				state = State.ATTACK_BASE
+				velocity = Vector2.ZERO
+			else:
+				velocity = desired_velocity
+				move_and_slide()
 
-	move_and_slide()
+		State.ATTACK_BASE:
+			if _should_stop_attacking_base():
+				state = State.MOVE
+			else:
+				attack_base_logic(delta)
+				velocity = Vector2.ZERO
+
 	handle_collisions(delta)
+
+func _should_attack_base() -> bool:
+	if current_target_tile and is_instance_valid(current_target_tile):
+		var d = global_position.distance_to(current_target_tile.global_position)
+		var attack_range = enemy_data.radius + 10.0
+		if d < attack_range:
+			return true
+	return false
+
+func _should_stop_attacking_base() -> bool:
+	var target_pos = GameManager.grid_manager.global_position
+	if current_target_tile and is_instance_valid(current_target_tile):
+		target_pos = current_target_tile.global_position
+
+	var dist = global_position.distance_to(target_pos)
+	var attack_range = enemy_data.radius + 10.0
+
+	return dist > attack_range * 1.5
 
 func handle_environmental_impact(trap_node):
 	var trap_id = trap_node.get_instance_id()
@@ -256,15 +266,12 @@ func handle_environmental_impact(trap_node):
 
 	if type == "reflect":
 		take_damage(trap_node.props.get("strength", 10.0), trap_node, "physical")
-		# Reflect is usually instant collision, so maybe minimal CD or driven by body_entered which fires once per enter.
-		# But if triggered from process, we need CD.
 		_env_cooldowns[trap_id] = 0.5
 	elif type == "poison":
 		apply_poison(null, 1, 3.0)
 		_env_cooldowns[trap_id] = 0.5
 	elif type == "slow":
 		slow_timer = 0.1 # Continually refresh while in area
-		# No cooldown needed for continuous effect, or very short one
 
 	if trap_node.has_method("spawn_splash_effect"):
 		trap_node.spawn_splash_effect(global_position)
@@ -293,7 +300,8 @@ func _process_effects(delta):
 		var t = clamp(float(poison_stacks) / Constants.POISON_VISUAL_SATURATION_STACKS, 0.0, 1.0)
 		modulate = Color.WHITE.lerp(Color(0.2, 1.0, 0.2), t)
 
-	if !is_playing_attack_anim:
+	var is_animating = (anim_tween and anim_tween.is_valid())
+	if !is_animating:
 		var time = Time.get_ticks_msec() * 0.005
 		wobble_scale = Vector2(1.0 + sin(time) * 0.1, 1.0 + cos(time) * 0.1)
 
@@ -374,35 +382,14 @@ func calculate_move_velocity() -> Vector2:
 
 	var direction = (target_pos - global_position).normalized()
 
-	if path.size() == 0:
-		direction = (GameManager.grid_manager.global_position - global_position).normalized()
-
-		var space_state = get_world_2d().direct_space_state
-		var query = PhysicsRayQueryParameters2D.create(global_position, global_position + direction * 40)
-		query.collision_mask = 1
-		var result = space_state.intersect_ray(query)
-		if result:
-			var collider = result.collider
-			if is_blocking_wall(collider):
-				start_attacking(collider)
-				return Vector2.ZERO
-
 	temp_speed_mod = 1.0
 	if slow_timer > 0: temp_speed_mod = 0.5
-
-	if current_target_tile and is_instance_valid(current_target_tile):
-		var d = global_position.distance_to(current_target_tile.global_position)
-		var attack_range = enemy_data.radius + 10.0
-		if d < attack_range:
-			is_attacking_base = true
-			return Vector2.ZERO
 
 	return direction * speed * temp_speed_mod
 
 func apply_physics_stagger(duration: float):
-	if is_playing_attack_anim:
-		if anim_tween: anim_tween.kill()
-		is_playing_attack_anim = false
+	if anim_tween and anim_tween.is_valid():
+		anim_tween.kill()
 		wobble_scale = Vector2.ONE
 
 	apply_stun(duration)
@@ -421,24 +408,13 @@ func apply_poison(source_unit, stacks_added, duration):
 		poison_power += damage_increment
 
 func check_suicide_collision():
-	if sensor_area:
-		var bodies = sensor_area.get_overlapping_bodies()
-		for b in bodies:
-			if is_blocking_wall(b):
-				explode_suicide(b)
-				return
-
 	if GameManager.grid_manager:
 		var core_dist = global_position.distance_to(GameManager.grid_manager.global_position)
 		if core_dist < 40.0:
 			explode_suicide(null)
 
 func explode_suicide(target_wall):
-	if target_wall and is_instance_valid(target_wall):
-		if target_wall.has_method("take_damage"):
-			target_wall.take_damage(enemy_data.dmg, self)
-	else:
-		GameManager.damage_core(enemy_data.dmg)
+	GameManager.damage_core(enemy_data.dmg)
 	GameManager.spawn_floating_text(global_position, "BOOM!", Color.RED)
 	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
 	get_parent().add_child(effect)
@@ -494,26 +470,10 @@ func _trigger_rabbit_interaction(unit):
 		unit.play_attack_anim("melee", global_position)
 		unit.take_damage(enemy_data.dmg, self)
 
-func attack_wall_logic(delta):
-	attack_timer -= delta
-	if attack_timer <= 0:
-		if is_instance_valid(attacking_wall):
-			play_attack_animation(attacking_wall.global_position)
-		else:
-			attacking_wall = null
-		attack_timer = 1.0
-
 func attack_base_logic(delta):
 	var target_pos = GameManager.grid_manager.global_position
 	if current_target_tile and is_instance_valid(current_target_tile):
 		target_pos = current_target_tile.global_position
-
-	var dist = global_position.distance_to(target_pos)
-	var attack_range = enemy_data.radius + 10.0
-
-	if dist > attack_range * 1.5:
-		is_attacking_base = false
-		return
 
 	base_attack_timer -= delta
 	if base_attack_timer <= 0:
@@ -522,7 +482,7 @@ func attack_base_logic(delta):
 		play_attack_animation(target_pos, func():
 			GameManager.damage_core(enemy_data.dmg)
 			if current_target_tile and not is_instance_valid(current_target_tile):
-				is_attacking_base = false
+				state = State.MOVE
 				current_target_tile = null
 				update_path()
 		)
@@ -547,16 +507,9 @@ func update_path():
 		if path.size() > 0 and global_position.distance_to(path[0]) < 10:
 			path_index = 1
 
-func start_attacking(wall):
-	if wall.get("props") and wall.props.get("immune"): return
-	if attacking_wall != wall:
-		attacking_wall = wall
-		attack_timer = 0.5
-
 func play_attack_animation(target_pos: Vector2, hit_callback: Callable = Callable()):
-	if is_playing_attack_anim: return
-	is_playing_attack_anim = true
-	if anim_tween and anim_tween.is_valid(): anim_tween.kill()
+	if anim_tween and anim_tween.is_valid(): return
+
 	anim_tween = create_tween()
 	var original_pos = global_position
 	var diff = target_pos - original_pos
@@ -576,17 +529,11 @@ func play_attack_animation(target_pos: Vector2, hit_callback: Callable = Callabl
 		spawn_slash_effect(target_pos)
 		if hit_callback.is_valid():
 			hit_callback.call()
-		if attacking_wall and is_instance_valid(attacking_wall) and !hit_callback.is_valid():
-			if attacking_wall.has_method("take_damage"):
-				attacking_wall.take_damage(enemy_data.dmg, self)
-			else:
-				attacking_wall.take_damage(enemy_data.dmg)
 	)
 	anim_tween.set_parallel(true)
 	anim_tween.tween_property(self, "global_position", original_pos, 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	anim_tween.tween_property(self, "wobble_scale", Vector2.ONE, 0.15)
 	anim_tween.set_parallel(false)
-	anim_tween.tween_callback(func(): is_playing_attack_anim = false)
 
 func spawn_slash_effect(pos: Vector2):
 	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
@@ -607,12 +554,6 @@ func spawn_slash_effect(pos: Vector2):
 	if randf() > 0.5: col = Color(1.0, 0.8, 0.8)
 	effect.configure(shape, col)
 	effect.play()
-
-func is_blocking_wall(node):
-	if node.get("type") and Constants.BARRICADE_TYPES.has(node.type):
-		var b_type = Constants.BARRICADE_TYPES[node.type].type
-		return b_type == "block" or b_type == "freeze"
-	return false
 
 func is_trap(node):
 	if node.get("type") and Constants.BARRICADE_TYPES.has(node.type):
