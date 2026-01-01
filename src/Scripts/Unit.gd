@@ -65,7 +65,7 @@ var connection_overlay: Node2D = null
 
 # Porcupine Variables
 var attack_counter: int = 0
-var quill_refs: Array = []
+var feather_refs: Array = []
 
 const ANIM_WINDUP_TIME: float = 0.15
 const ANIM_STRIKE_TIME: float = 0.05
@@ -89,8 +89,8 @@ func _start_skill_cooldown(base_duration: float):
 func _ready():
 	_ensure_visual_hierarchy()
 
-	if type_key == "porcupine":
-		tree_exiting.connect(_on_porcupine_cleanup)
+	if type_key == "peacock":
+		tree_exiting.connect(_on_peacock_cleanup)
 
 	connection_overlay = Node2D.new()
 	connection_overlay.name = "ConnectionOverlay"
@@ -255,7 +255,7 @@ func reset_stats():
 	split_count = 0
 	active_buffs.clear()
 	buff_sources.clear()
-	quill_refs.clear()
+	feather_refs.clear()
 
 	# Artifact Effects
 	if GameManager.reward_manager and "focus_fire" in GameManager.reward_manager.acquired_artifacts:
@@ -725,8 +725,8 @@ func _process_combat(delta):
 
 	var target = combat_manager.find_nearest_enemy(global_position, range_val)
 
-	if type_key == "porcupine":
-		_handle_porcupine_attack(target, combat_manager)
+	if type_key == "peacock":
+		_handle_peacock_attack(target, combat_manager)
 		return
 
 	if target:
@@ -772,8 +772,8 @@ func _process_combat(delta):
 					var angle = start_angle + (i * step)
 					combat_manager.spawn_projectile(self, global_position, target, {"angle": angle})
 
-func _handle_porcupine_attack(target, combat_manager):
-	# Porcupine: 3 attacks then 1 recall
+func _handle_peacock_attack(target, combat_manager):
+	# Peacock: 3 attacks then 1 recall
 	if attack_counter >= 3:
 		# RECALL ACTION (Can run without target)
 		cooldown = atk_speed * GameManager.get_stat_modifier("attack_interval")
@@ -787,10 +787,10 @@ func _handle_porcupine_attack(target, combat_manager):
 			tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.1)
 
 		# Execute Recall
-		for q in quill_refs:
+		for q in feather_refs:
 			if is_instance_valid(q) and q.has_method("recall"):
 				q.recall()
-		quill_refs.clear()
+		feather_refs.clear()
 
 	elif target:
 		# SHOOT ACTION (Needs target)
@@ -813,10 +813,10 @@ func _handle_porcupine_attack(target, combat_manager):
 		if multi_chance > 0.0 and randf() < multi_chance:
 			extra_shots += 1
 
-		# Fire Primary Quill
+		# Fire Primary Feather
 		var proj = combat_manager.spawn_projectile(self, global_position, target)
 		if proj and is_instance_valid(proj):
-			quill_refs.append(proj)
+			feather_refs.append(proj)
 
 		# Fire Extra Shots (spread slightly)
 		if extra_shots > 0:
@@ -828,7 +828,7 @@ func _handle_porcupine_attack(target, combat_manager):
 				var angle_mod = angles[i % 2]
 				var extra_proj = combat_manager.spawn_projectile(self, global_position, target, {"angle": angle_mod})
 				if extra_proj and is_instance_valid(extra_proj):
-					quill_refs.append(extra_proj)
+					feather_refs.append(extra_proj)
 
 		attack_counter += 1
 
@@ -1191,8 +1191,8 @@ func remove_ghost():
 func return_to_start():
 	position = start_position
 
-func _on_porcupine_cleanup():
-	for q in quill_refs:
+func _on_peacock_cleanup():
+	for q in feather_refs:
 		if is_instance_valid(q):
 			q.queue_free()
-	quill_refs.clear()
+	feather_refs.clear()
