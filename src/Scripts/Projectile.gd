@@ -498,6 +498,24 @@ func recall():
 	hit_list.clear() # Reset hit list so we can hit enemies on way back
 	set_deferred("monitoring", true)
 
+	# Immediate check for overlapping enemies (in case we are already inside one)
+	# Defer this to next frame to ensure monitoring update takes effect or check current overlaps if possible?
+	# "monitoring" is set deferred, so get_overlapping_bodies might not work instantly if it was false.
+	# But state was STUCK (monitoring false).
+	# So we need to wait a frame or force update.
+	# Actually, simply clearing hit_list allows the engine to re-trigger if we exit and enter,
+	# but if we are inside and move, we might not exit?
+	# Better to perform a manual check after a short delay or force update.
+	await get_tree().process_frame
+	if not is_instance_valid(self): return
+
+	var overlaps = []
+	if monitoring:
+		overlaps = get_overlapping_areas() + get_overlapping_bodies()
+
+	for o in overlaps:
+		_handle_hit(o)
+
 	# Visual update?
 	if visual_node:
 		visual_node.modulate = Color.RED # Highlight return
