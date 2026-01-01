@@ -474,7 +474,17 @@ func recall():
 	target = source_unit
 	pierce = 999
 	hit_list.clear()
-	set_deferred("monitoring", true)
+	shared_hit_list_ref = []
+
+	monitoring = true
+
+	var bodies = get_overlapping_bodies()
+	for body in bodies:
+		_handle_hit(body)
+
+	var areas = get_overlapping_areas()
+	for area in areas:
+		_handle_hit(area)
 
 	# Visual update?
 	if visual_node:
