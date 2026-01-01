@@ -96,6 +96,8 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 	if not is_meteor_falling:
 		if target and is_instance_valid(target):
 			look_at(target.global_position)
+		elif stats.has("target_pos"):
+			look_at(stats.target_pos)
 
 		if type == "feather":
 			if target and is_instance_valid(target):
@@ -237,6 +239,14 @@ func _process(delta):
 
 	position += direction * speed * delta
 
+	# Enemy Ranged Attack: Check for arrival at Core (target_pos)
+	if !is_instance_valid(target) and stats.has("target_pos") and source_unit and source_unit.is_in_group("enemies"):
+		if global_position.distance_to(stats.target_pos) < 15.0:
+			GameManager.damage_core(damage)
+			_spawn_hit_visual(global_position)
+			queue_free()
+			return
+
 	# Visual Rotation (Spin)
 	if visual_node:
 		visual_node.rotation += delta * 15.0
@@ -325,13 +335,17 @@ func _handle_hit(target_node):
 	if type == "feather" and state == State.STUCK: return
 
 	if target_node.is_in_group("enemies"):
+		# Friendly Fire Prevention
+		if source_unit and source_unit.is_in_group("enemies"):
+			return
+
 		if shared_hit_list_ref != null and target_node in shared_hit_list_ref: return
 		if target_node in hit_list: return
 
 		# Feather Return Logic (Pull)
 		if type == "feather" and state == State.RETURNING:
 			var pull_str = 0.0
-			if source_unit and source_unit.unit_data.has("levels"):
+			if source_unit and "unit_data" in source_unit and source_unit.unit_data.has("levels"):
 				var lvl_stats = source_unit.unit_data["levels"][str(source_unit.level)]
 				if lvl_stats.has("mechanics"):
 					pull_str = lvl_stats["mechanics"].get("pull_strength", 0.0)
@@ -379,7 +393,7 @@ func _handle_hit(target_node):
 				target_node.set("freeze_timer", max(target_node.get("freeze_timer") if target_node.get("freeze_timer") else 0.0, effects["freeze"]))
 
 		# Lifesteal Logic
-		if source_unit and is_instance_valid(source_unit) and source_unit.unit_data.get("trait") == "lifesteal":
+		if source_unit and is_instance_valid(source_unit) and "unit_data" in source_unit and source_unit.unit_data.get("trait") == "lifesteal":
 			var lifesteal_pct = source_unit.unit_data.get("lifesteal_percent", 0.0)
 			var heal_amt = damage * lifesteal_pct
 			if heal_amt > 0:
