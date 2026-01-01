@@ -483,6 +483,14 @@ func recall():
 func _setup_quill():
 	if visual_node: visual_node.hide()
 
+	# Increase collision size
+	var collision_shape = get_node_or_null("CollisionShape2D")
+	if collision_shape:
+		# Create a unique shape to avoid affecting other projectiles using the shared resource
+		var new_shape = CircleShape2D.new()
+		new_shape.radius = 12.0
+		collision_shape.shape = new_shape
+
 	# Thin sharp triangle
 	var poly = Polygon2D.new()
 	poly.polygon = PackedVector2Array([Vector2(10, 0), Vector2(-10, -3), Vector2(-10, 3)])
