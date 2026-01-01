@@ -334,8 +334,14 @@ func _handle_hit(target_node):
 		# Feather Return Logic (Pull)
 		if type == "feather" and state == State.RETURNING:
 			var pull_str = 0.0
-			if source_unit and source_unit.unit_data.has("levels"):
-				var lvl_stats = source_unit.unit_data["levels"][str(source_unit.level)]
+			# Safe data access
+			var s_data = {}
+			if source_unit and is_instance_valid(source_unit):
+				if "unit_data" in source_unit: s_data = source_unit.unit_data
+				elif "enemy_data" in source_unit: s_data = source_unit.enemy_data
+
+			if s_data.has("levels") and source_unit.get("level"):
+				var lvl_stats = s_data["levels"][str(source_unit.level)]
 				if lvl_stats.has("mechanics"):
 					pull_str = lvl_stats["mechanics"].get("pull_strength", 0.0)
 
@@ -382,8 +388,14 @@ func _handle_hit(target_node):
 				target_node.set("freeze_timer", max(target_node.get("freeze_timer") if target_node.get("freeze_timer") else 0.0, effects["freeze"]))
 
 		# Lifesteal Logic
-		if source_unit and is_instance_valid(source_unit) and source_unit.unit_data.get("trait") == "lifesteal":
-			var lifesteal_pct = source_unit.unit_data.get("lifesteal_percent", 0.0)
+		# Safe data access
+		var trait_source_data = {}
+		if source_unit and is_instance_valid(source_unit):
+			if "unit_data" in source_unit: trait_source_data = source_unit.unit_data
+			elif "enemy_data" in source_unit: trait_source_data = source_unit.enemy_data
+
+		if trait_source_data.get("trait") == "lifesteal":
+			var lifesteal_pct = trait_source_data.get("lifesteal_percent", 0.0)
 			var heal_amt = damage * lifesteal_pct
 			if heal_amt > 0:
 				GameManager.damage_core(-heal_amt)
