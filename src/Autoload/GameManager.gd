@@ -86,6 +86,18 @@ func _ready():
 			add_child(reward_manager)
 			reward_manager.sacrifice_state_changed.connect(_on_sacrifice_state_changed)
 
+func _set_ignore_mouse_recursive(node: Node):
+	node.set_process_input(false)
+	node.set_process_unhandled_input(false)
+	if node is CollisionObject2D:
+		node.input_pickable = false
+	if node is Control:
+		node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	for child in node.get_children():
+		_set_ignore_mouse_recursive(child)
+
+
 func _on_damage_dealt(unit, amount):
 	if core_type == "moon_well":
 		moonwell_pool += amount * 0.1
