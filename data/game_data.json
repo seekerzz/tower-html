@@ -1647,6 +1647,30 @@
 				"style": "float",
 				"amplitude": 0.08,
 				"base_freq": 2.0
+			},
+			"sprite_config": {
+				"size_in_tiles": [
+					1.5,
+					1.5
+				],
+				"animations": {
+					"walk": {
+						"path": "res://assets/images/enemies/summoner/walk_seqs.png",
+						"rows": 2,
+						"cols": 5,
+						"fps": 10,
+						"loop": true
+					},
+					"action": {
+						"path": "res://assets/images/enemies/summoner/action_seqs.png",
+						"rows": 4,
+						"cols": 5,
+						"fps": 12,
+						"loop": false
+					},
+					"hit": {},
+					"die": {}
+				}
 			}
 		},
 		"ranger": {
