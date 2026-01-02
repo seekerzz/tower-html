@@ -1510,10 +1510,7 @@ func start_trap_placement_sequence(unit):
 	interaction_source_unit = unit
 
 	valid_interaction_targets.clear()
-	for key in tiles:
-		var tile = tiles[key]
-		if can_place_trap_at(Vector2i(tile.x, tile.y)):
-			_spawn_interaction_highlight(Vector2i(tile.x, tile.y), Color(0, 1, 0, 0.2))
+	# No global highlight, just follow mouse
 
 func _handle_input_trap_placement(event):
 	if event is InputEventMouseButton and event.pressed:
@@ -1543,11 +1540,20 @@ func _handle_input_trap_placement(event):
 					if "associated_traps" in interaction_source_unit:
 						interaction_source_unit.associated_traps.append(trap_node)
 
-				# End Trap Step -> Start Interaction Selection
+				# End Trap Step
 				end_trap_placement_sequence()
 
+				# Determine next step
+				var next_step_started = false
 				if interaction_source_unit and is_instance_valid(interaction_source_unit):
-					start_interaction_selection(interaction_source_unit)
+					var info = interaction_source_unit.get_interaction_info()
+					if info.has_interaction:
+						start_interaction_selection(interaction_source_unit)
+						next_step_started = true
+
+				if not next_step_started:
+					interaction_state = STATE_IDLE
+					interaction_source_unit = null
 
 				get_viewport().set_input_as_handled()
 			else:

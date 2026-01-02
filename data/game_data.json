@@ -136,7 +136,6 @@
 			"atkSpeed": 1.0,
 			"attackType": "ranged",
 			"proj": "stinger",
-			"has_interaction": true,
 			"levels": {
 				"1": {
 					"damage": 30,
