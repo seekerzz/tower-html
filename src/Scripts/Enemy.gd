@@ -63,8 +63,13 @@ const TRANSFER_RATE = 0.8
 # Mass
 var mass: float = 1.0
 
+var is_facing_left: bool = false
+const FLIP_THRESHOLD: float = 15.0
+var visual_sprite: Node2D = null
+
 func _ready():
 	add_to_group("enemies")
+	visual_sprite = get_node_or_null("Sprite2D")
 	collision_layer = 2
 	collision_mask = 1 | 2
 
@@ -158,8 +163,20 @@ func _draw():
 		draw_rect(Rect2(bar_pos, Vector2(bar_w, bar_h)), Color.RED)
 		draw_rect(Rect2(bar_pos, Vector2(bar_w * hp_pct, bar_h)), Color.GREEN)
 
+func _update_facing():
+	if !GameManager.grid_manager: return
+	var core_pos = GameManager.grid_manager.global_position
+	var diff = global_position.x - core_pos.x
+
+	if diff > FLIP_THRESHOLD:
+		is_facing_left = true
+	elif diff < -FLIP_THRESHOLD:
+		is_facing_left = false
+
 func _physics_process(delta):
 	if !GameManager.is_wave_active: return
+
+	_update_facing()
 
 	# Update Environmental Cooldowns
 	var finished_cooldowns = []
@@ -321,14 +338,23 @@ func _process_effects(delta):
 		var t = clamp(float(poison_stacks) / Constants.POISON_VISUAL_SATURATION_STACKS, 0.0, 1.0)
 		modulate = Color.WHITE.lerp(Color(0.2, 1.0, 0.2), t)
 
+	var visual_scale = wobble_scale
+	if is_facing_left:
+		visual_scale.x *= -1
+
 	if has_node("Label"):
-		$Label.scale = wobble_scale
+		$Label.pivot_offset = $Label.size / 2
+		$Label.scale = visual_scale
 		$Label.position = -$Label.size / 2 + visual_offset
 		$Label.rotation = visual_rotation
 	if has_node("TextureRect"):
-		$TextureRect.scale = wobble_scale
+		$TextureRect.pivot_offset = $TextureRect.size / 2
+		$TextureRect.scale = visual_scale
 		$TextureRect.position = -$TextureRect.size / 2 + visual_offset
 		$TextureRect.rotation = visual_rotation
+
+	if visual_sprite:
+		visual_sprite.flip_h = is_facing_left
 
 	if hit_flash_timer > 0:
 		hit_flash_timer -= delta
