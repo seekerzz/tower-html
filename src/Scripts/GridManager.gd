@@ -533,16 +533,14 @@ func _handle_input_sequence_trap(event):
 		var gy = int(round(mouse_pos.y / TILE_SIZE))
 		var grid_pos = Vector2i(gx, gy)
 		var item_id = sequence_data.get("trap_type", "poison_trap")
-		# Determine world position for cursor
-		var world_pos = grid_to_local(grid_pos)
-		# Convert local to global for the cursor function which seems to expect world pos?
-		# Wait, update_placement_preview implementation:
-		# placement_preview_cursor.global_position = world_pos
-		# It expects global position.
+
+		# Ensure correct ID for check
 		var item_id_preview = item_id
 		if item_id == "poison": item_id_preview = "poison_trap"
 		elif item_id == "fang": item_id_preview = "fang_trap"
-		update_placement_preview(grid_pos, to_global(world_pos), item_id_preview)
+
+		var world_pos_local = grid_to_local(grid_pos)
+		update_placement_preview(grid_pos, to_global(world_pos_local), item_id_preview)
 
 	elif event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT:
@@ -553,23 +551,18 @@ func _handle_input_sequence_trap(event):
 			var grid_pos = Vector2i(gx, gy)
 
 			var trap_type = sequence_data.get("trap_type", "poison")
-			var item_id_check = "trap" # Simplified check
+			var item_id_check = "trap"
 			if trap_type == "poison": item_id_check = "poison_trap"
 			elif trap_type == "fang": item_id_check = "fang_trap"
 
 			if can_place_item_at(grid_pos, item_id_check):
 				spawn_trap_custom(grid_pos, trap_type)
 
-				# Store associated trap
-				# Need reference to the spawned trap. spawn_trap_custom doesn't return it.
-				# Let's check spawn_trap_custom or implementation details.
-				# It calls _spawn_barricade which adds child.
-				# We can find it via obstacles[grid_pos].
 				if obstacles.has(grid_pos) and sequence_unit_ref and is_instance_valid(sequence_unit_ref):
 					sequence_unit_ref.associated_traps.append(obstacles[grid_pos])
 
-				# Proceed to next stage
 				if placement_preview_cursor: placement_preview_cursor.visible = false
+				_clear_placement_highlights()
 				start_interaction_selection(sequence_unit_ref)
 				get_viewport().set_input_as_handled()
 
@@ -579,15 +572,38 @@ func _handle_input_sequence_trap(event):
 
 func rollback_sequence_placement():
 	if placement_preview_cursor: placement_preview_cursor.visible = false
+	_clear_placement_highlights()
 	if sequence_unit_ref and is_instance_valid(sequence_unit_ref):
 		remove_unit_from_grid(sequence_unit_ref)
-		# Add back to bench
 		if GameManager.main_game:
 			GameManager.main_game.add_to_bench(sequence_unit_ref.type_key)
 
 	interaction_state = STATE_IDLE
 	sequence_unit_ref = null
 	sequence_data.clear()
+
+func _show_valid_placement_highlights(item_id: String):
+	_clear_placement_highlights()
+
+	for key in tiles:
+		var tile = tiles[key]
+		var grid_pos = Vector2i(tile.x, tile.y)
+		if can_place_item_at(grid_pos, item_id):
+			var highlight = ColorRect.new()
+			highlight.size = Vector2(TILE_SIZE, TILE_SIZE)
+			highlight.color = Color(0, 1, 0, 0.2) # Faint green
+			highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			add_child(highlight)
+
+			# Use grid_to_local
+			var local_pos = grid_to_local(grid_pos)
+			highlight.position = local_pos - Vector2(TILE_SIZE, TILE_SIZE) / 2
+			placement_highlights.append(highlight)
+
+func _clear_placement_highlights():
+	for node in placement_highlights:
+		node.queue_free()
+	placement_highlights.clear()
 
 func update_placement_preview(grid_pos: Vector2i, world_pos: Vector2, item_id: String):
 	if not placement_preview_cursor:
@@ -963,7 +979,21 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 
 		# Show initial preview at mouse pos?
 		var mouse_pos = get_global_mouse_position()
-		# Can't reliably get grid pos from here without event, but update loop or _input will catch it.
+		var local_pos = to_local(mouse_pos)
+		var gx = int(round(local_pos.x / TILE_SIZE))
+		var gy = int(round(local_pos.y / TILE_SIZE))
+
+		var trap_type_id = "poison_trap"
+		if unit_key == "scorpion":
+			sequence_data["trap_type"] = "fang"
+			trap_type_id = "fang_trap"
+		else:
+			sequence_data["trap_type"] = "poison"
+			trap_type_id = "poison_trap"
+
+		update_placement_preview(Vector2i(gx, gy), mouse_pos, trap_type_id)
+		_show_valid_placement_highlights(trap_type_id)
+
 		GameManager.spawn_floating_text(unit.global_position, "Place Trap!", Color.YELLOW)
 
 	else:

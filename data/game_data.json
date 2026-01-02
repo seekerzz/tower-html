@@ -137,6 +137,7 @@
 			"attackType": "ranged",
 			"proj": "stinger",
 			"has_interaction": true,
+			"buff_id": "crit",
 			"levels": {
 				"1": {
 					"damage": 30,
