@@ -67,8 +67,9 @@ func _handle_inventory_drop(data):
 
 	# Trap Logic
 	if "trap" in item_id or Constants.BARRICADE_TYPES.has(item_id) or item_id in ["poison_trap", "fang_trap"]:
-		# Check empty tile
-		if tile_ref.unit == null and tile_ref.occupied_by == Vector2i.ZERO:
+		var grid_pos = Vector2i(tile_ref.x, tile_ref.y)
+		# Use shared validation logic
+		if GameManager.grid_manager.can_place_item_at(grid_pos, item_id):
 			# Determine trap type mapping
 			var trap_type = ""
 
@@ -88,7 +89,7 @@ func _handle_inventory_drop(data):
 				trap_type = "fang"
 
 			if trap_type != "":
-				GameManager.grid_manager.spawn_trap_custom(Vector2i(tile_ref.x, tile_ref.y), trap_type)
+				GameManager.grid_manager.spawn_trap_custom(grid_pos, trap_type)
 				GameManager.inventory_manager.remove_item(data.slot_index)
 			else:
 				print("TileDropHandler: Unknown trap type for item_id: ", item_id)

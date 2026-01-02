@@ -136,33 +136,29 @@
 			"atkSpeed": 1.0,
 			"attackType": "ranged",
 			"proj": "stinger",
-			"production_type": "item",
-			"produce_item_id": "fang_trap",
-			"production_interval": 5.0,
+			"has_interaction": true,
 			"levels": {
 				"1": {
 					"damage": 30,
 					"cost": 40,
-					"desc": "每5秒生成尖牙陷阱",
+					"desc": "部署时放置尖牙陷阱",
 					"mechanics": {}
 				},
 				"2": {
 					"damage": 45,
 					"cost": 80,
-					"desc": "每4秒生成尖牙陷阱",
+					"desc": "部署时放置尖牙陷阱",
 					"mechanics": {
-						"crit_rate_bonus": 0.1,
-						"production_interval": 4.0
+						"crit_rate_bonus": 0.1
 					}
 				},
 				"3": {
 					"damage": 67,
 					"cost": 160,
-					"desc": "每3秒生成尖牙陷阱",
+					"desc": "部署时放置尖牙陷阱",
 					"mechanics": {
 						"crit_rate_bonus": 0.2,
-						"multi_shot_chance": 0.3,
-						"production_interval": 3.0
+						"multi_shot_chance": 0.3
 					}
 				}
 			},
@@ -1233,9 +1229,6 @@
 			"attackType": "melee",
 			"trait": "poison_touch",
 			"damageType": "poison",
-			"production_type": "item",
-			"produce_item_id": "poison_trap",
-			"production_interval": 5.0,
 			"crit_rate": 0.1,
 			"crit_dmg": 1.5,
 			"has_interaction": true,
@@ -1245,27 +1238,25 @@
 					"damage": 40,
 					"hp": 150,
 					"cost": 30,
-					"desc": "每5秒生成毒液陷阱",
+					"desc": "部署时放置毒液陷阱",
 					"mechanics": {}
 				},
 				"2": {
 					"damage": 60,
 					"hp": 225,
 					"cost": 60,
-					"desc": "每4秒生成毒液陷阱",
+					"desc": "部署时放置毒液陷阱",
 					"mechanics": {
-						"crit_rate_bonus": 0.1,
-						"production_interval": 4.0
+						"crit_rate_bonus": 0.1
 					}
 				},
 				"3": {
 					"damage": 90,
 					"hp": 337,
 					"cost": 120,
-					"desc": "每3秒生成毒液陷阱",
+					"desc": "部署时放置毒液陷阱",
 					"mechanics": {
-						"crit_rate_bonus": 0.2,
-						"production_interval": 3.0
+						"crit_rate_bonus": 0.2
 					}
 				}
 			},
