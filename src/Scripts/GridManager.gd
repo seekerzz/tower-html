@@ -27,6 +27,7 @@ var last_preview_frame: int = 0
 const STATE_IDLE = 0
 const STATE_SELECTING_INTERACTION_TARGET = 1
 const STATE_SKILL_TARGETING = 2
+const STATE_SEQUENCE_TRAP_PLACEMENT = 3
 
 var interaction_state: int = STATE_IDLE
 var interaction_source_unit = null
@@ -433,6 +434,9 @@ func _process(_delta):
 	if interaction_state == STATE_SELECTING_INTERACTION_TARGET:
 		selection_overlay.queue_redraw()
 
+	if interaction_state == STATE_SEQUENCE_TRAP_PLACEMENT:
+		_process_trap_placement_preview()
+
 	if interaction_state == STATE_SKILL_TARGETING and skill_preview_node and is_instance_valid(skill_preview_node):
 		var mouse_pos = get_local_mouse_position()
 		var gx = round(mouse_pos.x / TILE_SIZE)
@@ -463,6 +467,8 @@ func _input(event):
 			_handle_input_skill_targeting(event)
 		STATE_SELECTING_INTERACTION_TARGET:
 			_handle_input_interaction_selection(event)
+		STATE_SEQUENCE_TRAP_PLACEMENT:
+			_handle_input_trap_placement(event)
 		STATE_IDLE:
 			_handle_input_idle(event)
 		_:
@@ -510,7 +516,7 @@ func _handle_input_interaction_selection(event):
 
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			# Cancel interaction
-			end_interaction_selection()
+			_cancel_deployment_sequence()
 			get_viewport().set_input_as_handled()
 
 func _handle_input_idle(event):
@@ -709,7 +715,7 @@ func create_tile(x: int, y: int, type: String = "normal", state: String = "locke
 
 	var tile = TILE_SCENE.instantiate()
 	tile.setup(x, y, type)
-	# Explicitly call set_state to ensure visuals are updated
+	# Explicit call to set_state to ensure visuals are updated
 	tile.set_state(state)
 
 	tile.position = grid_to_local(Vector2i(x, y))
@@ -880,7 +886,11 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 
 	# Check for Interaction
 	var info = unit.get_interaction_info()
-	if info.has_interaction:
+
+	# Check for Trap Deployment Sequence
+	if unit_key == "viper" or unit_key == "scorpion":
+		start_trap_placement_sequence(unit)
+	elif info.has_interaction:
 		start_interaction_selection(unit)
 
 	return true
@@ -1117,6 +1127,14 @@ func remove_unit_from_grid(unit):
 
 	if unit.unit_data.get("trait") in ["reflect", "flat_reduce"]:
 		remove_obstacle(unit)
+
+	# Clean up associated traps
+	if "associated_traps" in unit and unit.associated_traps:
+		for trap in unit.associated_traps:
+			if is_instance_valid(trap):
+				remove_obstacle(trap)
+				trap.queue_free()
+		unit.associated_traps.clear()
 
 	_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
 	unit.queue_free()
@@ -1484,3 +1502,123 @@ func get_closest_unlocked_tile(world_pos: Vector2) -> Node2D:
 			closest_tile = tile
 
 	return closest_tile
+
+# --- Trap Placement Sequence ---
+
+func start_trap_placement_sequence(unit):
+	interaction_state = STATE_SEQUENCE_TRAP_PLACEMENT
+	interaction_source_unit = unit
+
+	valid_interaction_targets.clear()
+	for key in tiles:
+		var tile = tiles[key]
+		if can_place_trap_at(Vector2i(tile.x, tile.y)):
+			_spawn_interaction_highlight(Vector2i(tile.x, tile.y), Color(0, 1, 0, 0.2))
+
+func _handle_input_trap_placement(event):
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			var mouse_pos = get_local_mouse_position()
+			var gx = int(round(mouse_pos.x / TILE_SIZE))
+			var gy = int(round(mouse_pos.y / TILE_SIZE))
+			var grid_pos = Vector2i(gx, gy)
+
+			if can_place_trap_at(grid_pos):
+				# Place Trap
+				var trap_type = "poison_trap" # Default
+				if interaction_source_unit.type_key == "scorpion":
+					trap_type = "fang_trap"
+				elif interaction_source_unit.type_key == "viper":
+					trap_type = "poison_trap"
+
+				# Mapping:
+				if trap_type == "poison_trap": trap_type = "poison"
+				if trap_type == "fang_trap": trap_type = "fang"
+
+				spawn_trap_custom(grid_pos, trap_type)
+
+				# Register trap to unit
+				var trap_node = obstacles.get(grid_pos)
+				if trap_node and interaction_source_unit:
+					if "associated_traps" in interaction_source_unit:
+						interaction_source_unit.associated_traps.append(trap_node)
+
+				# End Trap Step -> Start Interaction Selection
+				end_trap_placement_sequence()
+
+				if interaction_source_unit and is_instance_valid(interaction_source_unit):
+					start_interaction_selection(interaction_source_unit)
+
+				get_viewport().set_input_as_handled()
+			else:
+				# Invalid click
+				get_viewport().set_input_as_handled()
+
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			_cancel_deployment_sequence()
+			get_viewport().set_input_as_handled()
+
+func _process_trap_placement_preview():
+	var mouse_pos = get_global_mouse_position()
+	# Mimic dragging trap
+	var trap_type = "poison_trap"
+	if interaction_source_unit and is_instance_valid(interaction_source_unit):
+		if interaction_source_unit.type_key == "scorpion":
+			trap_type = "fang_trap"
+
+	var gx = int(round(get_local_mouse_position().x / TILE_SIZE))
+	var gy = int(round(get_local_mouse_position().y / TILE_SIZE))
+	update_placement_preview(Vector2i(gx, gy), mouse_pos, trap_type)
+
+func can_place_trap_at(grid_pos: Vector2i) -> bool:
+	var key = get_tile_key(grid_pos.x, grid_pos.y)
+	if !tiles.has(key): return false
+	var tile = tiles[key]
+
+	if obstacles.has(grid_pos): return false
+	if tile.unit != null: return false
+	if tile.occupied_by != Vector2i.ZERO: return false
+	if tile.type == "core": return false
+
+	return true
+
+func end_trap_placement_sequence():
+	# Clear highlights
+	for node in interaction_highlights:
+		node.queue_free()
+	interaction_highlights.clear()
+
+	if placement_preview_cursor:
+		placement_preview_cursor.visible = false
+
+func _cancel_deployment_sequence():
+	# Rollback: Remove the unit and return it to inventory/bench
+	# The unit was already placed in place_unit.
+	# We need to remove it.
+
+	end_trap_placement_sequence()
+	end_interaction_selection() # Just in case
+
+	if interaction_source_unit and is_instance_valid(interaction_source_unit):
+		# If unit came from bench, we should ideally put it back.
+		# But `place_unit` is called by `handle_bench_drop_at`.
+		# We don't have direct reference to where it came from here easily unless we stored it.
+		# However, typically rollback implies destruction + refund or return to bench.
+		# For this task, "Rollback entire operation, remove unit from grid and return to original place".
+		# Since `handle_bench_drop_at` removes it from bench upon success of `place_unit`.
+		# We need to re-add it to bench.
+
+		var u_key = interaction_source_unit.type_key
+		var u_cost = interaction_source_unit.unit_data.get("cost", 0)
+		remove_unit_from_grid(interaction_source_unit)
+
+		if GameManager.main_game:
+			# Try to add back to bench
+			if !GameManager.main_game.add_unit_to_bench(u_key):
+				# If bench full (unlikely if we just dragged from it), refund?
+				GameManager.add_gold(u_cost)
+		else:
+			print("MainGame not found, cannot return to bench.")
+
+	interaction_state = STATE_IDLE
+	interaction_source_unit = null
