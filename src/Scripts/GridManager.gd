@@ -1565,16 +1565,22 @@ func _handle_input_trap_placement(event):
 			get_viewport().set_input_as_handled()
 
 func _process_trap_placement_preview():
-	var mouse_pos = get_global_mouse_position()
 	# Mimic dragging trap
 	var trap_type = "poison_trap"
 	if interaction_source_unit and is_instance_valid(interaction_source_unit):
 		if interaction_source_unit.type_key == "scorpion":
 			trap_type = "fang_trap"
 
-	var gx = int(round(get_local_mouse_position().x / TILE_SIZE))
-	var gy = int(round(get_local_mouse_position().y / TILE_SIZE))
-	update_placement_preview(Vector2i(gx, gy), mouse_pos, trap_type)
+	var local_mouse = get_local_mouse_position()
+	var gx = int(round(local_mouse.x / TILE_SIZE))
+	var gy = int(round(local_mouse.y / TILE_SIZE))
+	var grid_pos = Vector2i(gx, gy)
+
+	# Snap to grid: Calculate world position of the tile center
+	var snapped_local_pos = grid_to_local(grid_pos)
+	var snapped_world_pos = to_global(snapped_local_pos)
+
+	update_placement_preview(grid_pos, snapped_world_pos, trap_type)
 
 func can_place_trap_at(grid_pos: Vector2i) -> bool:
 	var key = get_tile_key(grid_pos.x, grid_pos.y)
