@@ -30,7 +30,7 @@ func _can_drop_data(at_position, data):
 
 	if GameManager.is_wave_active: return false
 
-	if data.source == "grid" or data.source == "bench":
+	if data.source == "grid" or data.source == "bench" or data.source == "trap":
 		return true
 	return false
 
@@ -42,8 +42,8 @@ func _drop_data(at_position, data):
 	elif data.source == "bench":
 		# Call GridManager to place from bench
 		GameManager.grid_manager.handle_bench_drop_at(tile_ref, data)
-	elif data.source == "grid":
-		# Call GridManager to move unit
+	elif data.source == "grid" or data.source == "trap":
+		# Call GridManager to move unit or trap
 		GameManager.grid_manager.handle_grid_move_at(tile_ref, data)
 
 func _handle_inventory_drop(data):

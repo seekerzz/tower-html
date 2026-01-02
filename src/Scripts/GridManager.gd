@@ -27,8 +27,12 @@ var last_preview_frame: int = 0
 const STATE_IDLE = 0
 const STATE_SELECTING_INTERACTION_TARGET = 1
 const STATE_SKILL_TARGETING = 2
+const STATE_PLACING_ASSOCIATED_TRAP = 3
 
 var interaction_state: int = STATE_IDLE
+var pending_unit_for_trap: Node2D = null
+var traps_to_place_count: int = 0
+var trap_type_to_place: String = ""
 var interaction_source_unit = null
 var skill_source_unit: Node2D = null
 var skill_preview_node: Node2D = null
@@ -463,10 +467,67 @@ func _input(event):
 			_handle_input_skill_targeting(event)
 		STATE_SELECTING_INTERACTION_TARGET:
 			_handle_input_interaction_selection(event)
+		STATE_PLACING_ASSOCIATED_TRAP:
+			_handle_input_trap_placement(event)
 		STATE_IDLE:
 			_handle_input_idle(event)
 		_:
 			_handle_input_idle(event)
+
+func _handle_input_trap_placement(event):
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			var mouse_pos = get_local_mouse_position()
+			var gx = int(round(mouse_pos.x / TILE_SIZE))
+			var gy = int(round(mouse_pos.y / TILE_SIZE))
+			var grid_pos = Vector2i(gx, gy)
+
+			if is_cell_vacant_for_trap(grid_pos):
+				# Spawn Trap
+				spawn_trap_custom(grid_pos, trap_type_to_place, pending_unit_for_trap)
+				traps_to_place_count -= 1
+
+				if traps_to_place_count <= 0:
+					end_trap_placement()
+				else:
+					# Update preview or feedback for next trap
+					GameManager.spawn_floating_text(grid_to_local(grid_pos), "Trap Placed! %d Left" % traps_to_place_count, Color.GREEN)
+			else:
+				GameManager.spawn_floating_text(grid_to_local(grid_pos), "Invalid Position!", Color.RED)
+
+			get_viewport().set_input_as_handled()
+
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			# Cancel and rollback
+			cancel_trap_placement()
+			get_viewport().set_input_as_handled()
+
+func cancel_trap_placement():
+	if pending_unit_for_trap and is_instance_valid(pending_unit_for_trap):
+		# Remove the unit that initiated this
+		remove_unit_from_grid(pending_unit_for_trap)
+		GameManager.spawn_floating_text(pending_unit_for_trap.global_position, "Deployment Cancelled", Color.RED)
+
+	end_trap_placement()
+
+func end_trap_placement():
+	interaction_state = STATE_IDLE
+	pending_unit_for_trap = null
+	traps_to_place_count = 0
+	trap_type_to_place = ""
+	# Clear highlights if any were added
+
+func is_cell_vacant_for_trap(pos: Vector2i) -> bool:
+	var key = get_tile_key(pos.x, pos.y)
+	if !tiles.has(key): return false
+
+	var tile = tiles[key]
+	if tile.type == "core": return false
+	if tile.unit != null: return false
+	if tile.occupied_by != Vector2i.ZERO: return false
+	if obstacles.has(pos): return false
+
+	return true
 
 func _handle_input_skill_targeting(event):
 	if event is InputEventMouseButton and event.pressed:
@@ -558,13 +619,19 @@ func can_place_item_at(grid_pos: Vector2i, item_id: String) -> bool:
 
 	return false
 
-func spawn_trap_custom(grid_pos: Vector2i, type_key: String):
+func spawn_trap_custom(grid_pos: Vector2i, type_key: String, owner_unit: Node2D = null):
 	var key = get_tile_key(grid_pos.x, grid_pos.y)
 	if !tiles.has(key): return
 	var tile = tiles[key]
 
 	# We assume checks are done.
-	_spawn_barricade(tile, type_key)
+	var trap = _spawn_barricade(tile, type_key)
+
+	if owner_unit and is_instance_valid(owner_unit) and trap:
+		owner_unit.associated_traps.append(trap)
+		# Init level
+		if trap.has_method("update_level"):
+			trap.update_level(owner_unit.level)
 
 func try_spawn_trap(world_pos: Vector2, type_key: String):
 	var gx = int(round(world_pos.x / TILE_SIZE))
@@ -610,6 +677,7 @@ func try_spawn_trap(world_pos: Vector2, type_key: String):
 		obstacle.init(Vector2i(tile.x, tile.y), type_key)
 
 	register_obstacle(Vector2i(tile.x, tile.y), obstacle)
+	return obstacle
 
 func _init_astar():
 	astar_grid = AStarGrid2D.new()
@@ -883,7 +951,25 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 	if info.has_interaction:
 		start_interaction_selection(unit)
 
+	# Special Logic: Viper and Scorpion Trap Placement
+	if unit_key == "viper" or unit_key == "scorpion":
+		start_trap_placement(unit)
+
 	return true
+
+func start_trap_placement(unit):
+	pending_unit_for_trap = unit
+	interaction_state = STATE_PLACING_ASSOCIATED_TRAP
+
+	if unit.type_key == "viper":
+		trap_type_to_place = "poison" # Or poison_trap if that's the key
+	elif unit.type_key == "scorpion":
+		trap_type_to_place = "fang" # Or fang_trap
+
+	# Determine count based on unit data/level if needed. Currently 1 per deployment.
+	traps_to_place_count = 1
+
+	GameManager.spawn_floating_text(unit.global_position, "Place Trap!", Color.CYAN)
 
 func _set_tiles_occupied(x: int, y: int, w: int, h: int, unit):
 	for dx in range(w):
@@ -1112,6 +1198,15 @@ func _on_tile_clicked(tile):
 
 func remove_unit_from_grid(unit):
 	if unit == null: return
+
+	# Lifecycle Cleanup: Associated Traps
+	if unit.get("associated_traps"):
+		for trap in unit.associated_traps:
+			if is_instance_valid(trap):
+				remove_obstacle(trap)
+				trap.queue_free()
+		unit.associated_traps.clear()
+
 	var w = unit.unit_data.size.x
 	var h = unit.unit_data.size.y
 
@@ -1171,7 +1266,33 @@ func handle_bench_drop_at(target_tile, data):
 
 		temp_unit.queue_free()
 
+func handle_trap_move_at(target_tile, trap_node):
+	if !trap_node or !is_instance_valid(trap_node): return
+
+	var old_grid_pos = obstacle_map.get(trap_node, null)
+	var new_grid_pos = Vector2i(target_tile.x, target_tile.y)
+
+	if old_grid_pos == new_grid_pos: return
+
+	if is_cell_vacant_for_trap(new_grid_pos):
+		# Remove from old
+		if old_grid_pos:
+			remove_obstacle(trap_node)
+
+		# Place at new
+		trap_node.position = target_tile.position
+		register_obstacle(new_grid_pos, trap_node)
+
+		GameManager.spawn_floating_text(target_tile.global_position, "Moved!", Color.GREEN)
+	else:
+		GameManager.spawn_floating_text(target_tile.global_position, "Blocked!", Color.RED)
+
 func handle_grid_move_at(target_tile, data):
+	# Check source type
+	if data.source == "trap":
+		handle_trap_move_at(target_tile, data.node)
+		return
+
 	var unit = data.unit
 	if !unit: return
 

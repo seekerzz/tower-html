@@ -21,6 +21,7 @@ func init(grid_pos: Vector2i, type_key: String):
 
 		# Setup Visuals
 		var label = Label.new()
+		label.name = "Label"
 		label.text = props.get("icon", "?")
 		label.add_theme_font_size_override("font_size", 32)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -28,6 +29,14 @@ func init(grid_pos: Vector2i, type_key: String):
 		label.custom_minimum_size = Vector2(tile_size, tile_size)
 		label.position = offset
 		add_child(label)
+
+		# Setup Drag Handler
+		var drag_handler = Control.new()
+		var script = load("res://src/Scripts/UI/TrapDragHandler.gd")
+		if script:
+			drag_handler.set_script(script)
+			add_child(drag_handler)
+			drag_handler.setup(self)
 
 		# Hide Line2D if it exists
 		if has_node("Line2D"):
@@ -54,6 +63,37 @@ func init(grid_pos: Vector2i, type_key: String):
 
 	else:
 		push_error("Invalid barricade type: " + type_key)
+
+func update_level(new_level: int):
+	if !props: return
+	# Re-initialize or scale properties based on level if data supports it
+	# Assuming simple scaling for now since data doesn't have levels for barricades yet
+	# But following prompt: "Re-initialize trap properties based on Constants.BARRICADE_TYPES level data"
+	# If BARRICADE_TYPES has no level data, we might assume Unit level scaling logic or just keep base.
+
+	# Current BARRICADE_TYPES structure is flat.
+	# We can add a simple multiplier based on level:
+	var strength = props.get("strength", 0)
+	var new_strength = strength * (1.0 + (new_level - 1) * 0.5)
+
+	# If we stored this in a variable, update it.
+	# props is a reference to CONSTANT dict usually, so we shouldn't modify it directly if it's shared.
+	# But here we are reading.
+	# Barricade logic uses props directly.
+	# To support leveling, we should probably clone props and modify locally.
+
+	if props == Constants.BARRICADE_TYPES[type]:
+		props = props.duplicate()
+
+	props["strength"] = new_strength
+
+	# Visual update if needed (e.g. size or color intensity)
+	var label = get_node_or_null("Label")
+	if label:
+		if new_level > 1:
+			label.modulate = Color(1.2, 1.2, 1.2) # Brighter
+		else:
+			label.modulate = Color.WHITE
 
 func _process(delta):
 	if !props: return

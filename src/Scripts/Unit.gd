@@ -9,6 +9,7 @@ var active_buffs: Array = []
 var buff_sources: Dictionary = {} # Key: buff_type, Value: source_unit (Node2D)
 var traits: Array = []
 var unit_data: Dictionary
+var associated_traps: Array[Node2D] = []
 
 # Stats
 var damage: float
@@ -195,14 +196,6 @@ func reset_stats():
 	# Update production interval from mechanics if available
 	if unit_data.has("produce"):
 		max_production_timer = 1.0
-	elif unit_data.has("production_type") and unit_data["production_type"] == "item":
-		var base_interval = unit_data.get("production_interval", 5.0)
-		var new_interval = base_interval
-
-		if stats.has("mechanics") and stats["mechanics"].has("production_interval"):
-			new_interval = stats["mechanics"]["production_interval"]
-
-		max_production_timer = new_interval
 	elif unit_data.has("skill") and unit_data.skill == "milk_aura":
 		max_production_timer = 5.0
 
@@ -1050,6 +1043,11 @@ func can_merge_with(other_unit) -> bool:
 func merge_with(other_unit):
 	level += 1
 	reset_stats()
+
+	# Sync level to associated traps
+	for trap in associated_traps:
+		if is_instance_valid(trap) and trap.has_method("update_level"):
+			trap.update_level(level)
 
 	# Visual Effect
 	GameManager.spawn_floating_text(global_position, "Level Up!", Color.GOLD)
