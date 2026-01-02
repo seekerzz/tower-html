@@ -27,11 +27,14 @@ var last_preview_frame: int = 0
 const STATE_IDLE = 0
 const STATE_SELECTING_INTERACTION_TARGET = 1
 const STATE_SKILL_TARGETING = 2
+const STATE_SEQUENCE_TRAP_PLACEMENT = 3
 
 var interaction_state: int = STATE_IDLE
 var interaction_source_unit = null
 var skill_source_unit: Node2D = null
 var skill_preview_node: Node2D = null
+var sequence_unit_ref = null # Reference to unit in sequence
+var sequence_data: Dictionary = {}
 
 var valid_interaction_targets: Array = [] # Array[Vector2i]
 var interaction_highlights: Array = [] # Array[Node2D] (Visuals)
@@ -463,6 +466,8 @@ func _input(event):
 			_handle_input_skill_targeting(event)
 		STATE_SELECTING_INTERACTION_TARGET:
 			_handle_input_interaction_selection(event)
+		STATE_SEQUENCE_TRAP_PLACEMENT:
+			_handle_input_sequence_trap(event)
 		STATE_IDLE:
 			_handle_input_idle(event)
 		_:
@@ -510,13 +515,79 @@ func _handle_input_interaction_selection(event):
 
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			# Cancel interaction
-			end_interaction_selection()
+			if sequence_unit_ref and is_instance_valid(sequence_unit_ref) and sequence_unit_ref == interaction_source_unit:
+				rollback_sequence_placement()
+			else:
+				end_interaction_selection()
 			get_viewport().set_input_as_handled()
 
 func _handle_input_idle(event):
 	# Default state handling
 	# Currently logic for unit placement and clicking is handled via Tile signals or other managers
 	pass
+
+func _handle_input_sequence_trap(event):
+	if event is InputEventMouseMotion:
+		var mouse_pos = get_global_mouse_position()
+		var gx = int(round(mouse_pos.x / TILE_SIZE))
+		var gy = int(round(mouse_pos.y / TILE_SIZE))
+		var grid_pos = Vector2i(gx, gy)
+		var item_id = sequence_data.get("trap_type", "poison_trap")
+		# Determine world position for cursor
+		var world_pos = grid_to_local(grid_pos)
+		# Convert local to global for the cursor function which seems to expect world pos?
+		# Wait, update_placement_preview implementation:
+		# placement_preview_cursor.global_position = world_pos
+		# It expects global position.
+		var item_id_preview = item_id
+		if item_id == "poison": item_id_preview = "poison_trap"
+		elif item_id == "fang": item_id_preview = "fang_trap"
+		update_placement_preview(grid_pos, to_global(world_pos), item_id_preview)
+
+	elif event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			var mouse_pos = get_global_mouse_position()
+			var local_pos = to_local(mouse_pos)
+			var gx = int(round(local_pos.x / TILE_SIZE))
+			var gy = int(round(local_pos.y / TILE_SIZE))
+			var grid_pos = Vector2i(gx, gy)
+
+			var trap_type = sequence_data.get("trap_type", "poison")
+			var item_id_check = "trap" # Simplified check
+			if trap_type == "poison": item_id_check = "poison_trap"
+			elif trap_type == "fang": item_id_check = "fang_trap"
+
+			if can_place_item_at(grid_pos, item_id_check):
+				spawn_trap_custom(grid_pos, trap_type)
+
+				# Store associated trap
+				# Need reference to the spawned trap. spawn_trap_custom doesn't return it.
+				# Let's check spawn_trap_custom or implementation details.
+				# It calls _spawn_barricade which adds child.
+				# We can find it via obstacles[grid_pos].
+				if obstacles.has(grid_pos) and sequence_unit_ref and is_instance_valid(sequence_unit_ref):
+					sequence_unit_ref.associated_traps.append(obstacles[grid_pos])
+
+				# Proceed to next stage
+				if placement_preview_cursor: placement_preview_cursor.visible = false
+				start_interaction_selection(sequence_unit_ref)
+				get_viewport().set_input_as_handled()
+
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			rollback_sequence_placement()
+			get_viewport().set_input_as_handled()
+
+func rollback_sequence_placement():
+	if placement_preview_cursor: placement_preview_cursor.visible = false
+	if sequence_unit_ref and is_instance_valid(sequence_unit_ref):
+		remove_unit_from_grid(sequence_unit_ref)
+		# Add back to bench
+		if GameManager.main_game:
+			GameManager.main_game.add_to_bench(sequence_unit_ref.type_key)
+
+	interaction_state = STATE_IDLE
+	sequence_unit_ref = null
+	sequence_data.clear()
 
 func update_placement_preview(grid_pos: Vector2i, world_pos: Vector2, item_id: String):
 	if not placement_preview_cursor:
@@ -879,9 +950,26 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 	GameManager.recalculate_max_health()
 
 	# Check for Interaction
-	var info = unit.get_interaction_info()
-	if info.has_interaction:
-		start_interaction_selection(unit)
+	# Modified for Viper/Scorpion sequence
+	if unit_key == "viper" or unit_key == "scorpion":
+		sequence_unit_ref = unit
+		sequence_data = {}
+		if unit_key == "viper":
+			sequence_data["trap_type"] = "poison"
+		else:
+			sequence_data["trap_type"] = "fang"
+
+		interaction_state = STATE_SEQUENCE_TRAP_PLACEMENT
+
+		# Show initial preview at mouse pos?
+		var mouse_pos = get_global_mouse_position()
+		# Can't reliably get grid pos from here without event, but update loop or _input will catch it.
+		GameManager.spawn_floating_text(unit.global_position, "Place Trap!", Color.YELLOW)
+
+	else:
+		var info = unit.get_interaction_info()
+		if info.has_interaction:
+			start_interaction_selection(unit)
 
 	return true
 
@@ -1117,6 +1205,14 @@ func remove_unit_from_grid(unit):
 
 	if unit.unit_data.get("trait") in ["reflect", "flat_reduce"]:
 		remove_obstacle(unit)
+
+	# Clean up associated traps
+	if unit.get("associated_traps"):
+		for trap in unit.associated_traps:
+			if is_instance_valid(trap):
+				remove_obstacle(trap)
+				trap.queue_free()
+		unit.associated_traps.clear()
 
 	_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
 	unit.queue_free()

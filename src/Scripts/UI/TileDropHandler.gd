@@ -17,6 +17,7 @@ func _can_drop_data(at_position, data):
 			var item_id = data.item.get("item_id", "")
 			if "trap" in item_id or item_id in ["poison_trap", "fang_trap"]:
 				var grid_pos = Vector2i(tile_ref.x, tile_ref.y)
+				# Delegate to GridManager
 				GameManager.grid_manager.update_placement_preview(grid_pos, tile_ref.global_position, item_id)
 				return GameManager.grid_manager.can_place_item_at(grid_pos, item_id)
 
@@ -67,28 +68,26 @@ func _handle_inventory_drop(data):
 
 	# Trap Logic
 	if "trap" in item_id or Constants.BARRICADE_TYPES.has(item_id) or item_id in ["poison_trap", "fang_trap"]:
-		# Check empty tile
-		if tile_ref.unit == null and tile_ref.occupied_by == Vector2i.ZERO:
-			# Determine trap type mapping
-			var trap_type = ""
+		# Determine trap type mapping logic... moved to helper?
+		# Or just reuse spawn_trap_custom which expects the key.
+		# We need to map item_id to trap_key.
+		var trap_type = ""
+		if Constants.BARRICADE_TYPES.has(item_id):
+			trap_type = item_id
+		elif item_id == "poison_trap":
+			trap_type = "poison"
+		elif item_id == "fang_trap":
+			trap_type = "fang"
+		elif "poison" in item_id:
+			trap_type = "poison"
+		elif "fang" in item_id:
+			trap_type = "fang"
 
-			# 1. Direct match in BARRICADE_TYPES
-			if Constants.BARRICADE_TYPES.has(item_id):
-				trap_type = item_id
-			# 2. Legacy Mapping for poison/fang which use _trap suffix in items but short keys in barricades
-			elif item_id == "poison_trap":
-				trap_type = "poison"
-			elif item_id == "fang_trap":
-				trap_type = "fang"
-			# 3. Fallback: default to poison if likely intended but unknown?
-			# Or better: check for specific substring matches if not found
-			elif "poison" in item_id:
-				trap_type = "poison"
-			elif "fang" in item_id:
-				trap_type = "fang"
-
-			if trap_type != "":
-				GameManager.grid_manager.spawn_trap_custom(Vector2i(tile_ref.x, tile_ref.y), trap_type)
+		if trap_type != "":
+			# Delegate to GridManager check and spawn
+			var grid_pos = Vector2i(tile_ref.x, tile_ref.y)
+			if GameManager.grid_manager.can_place_item_at(grid_pos, item_id):
+				GameManager.grid_manager.spawn_trap_custom(grid_pos, trap_type)
 				GameManager.inventory_manager.remove_item(data.slot_index)
-			else:
-				print("TileDropHandler: Unknown trap type for item_id: ", item_id)
+		else:
+			print("TileDropHandler: Unknown trap type for item_id: ", item_id)

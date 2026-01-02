@@ -51,9 +51,6 @@ func refresh_units():
 			# Generic check for production units
 			if u.unit_data.has("production_type") and u.unit_data["production_type"] == "item":
 				monitored_units.append(u)
-			# Fallback for hardcoded types if JSON isn't fully migrated (legacy safety)
-			elif u.type_key == "viper" or u.type_key == "scorpion":
-				monitored_units.append(u)
 			elif u.type_key == "parrot":
 				monitored_units.append(u)
 

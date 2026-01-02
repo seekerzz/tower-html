@@ -45,6 +45,7 @@ var start_position: Vector2 = Vector2.ZERO
 
 # Interaction
 var interaction_target_pos = null # Vector2i or null
+var associated_traps: Array = []
 
 # Missing variables required for the old drag logic at the bottom to compile
 var is_dragging: bool = false
