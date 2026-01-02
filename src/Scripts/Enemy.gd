@@ -63,6 +63,14 @@ const TRANSFER_RATE = 0.8
 # Mass
 var mass: float = 1.0
 
+# Sprite Animation System
+var sprite_config: Dictionary = {}
+var sprite_2d: Sprite2D = null
+var current_anim_name: String = ""
+var anim_frame_timer: float = 0.0
+var is_anim_looping: bool = false
+var anim_fps: float = 10.0
+
 func _ready():
 	add_to_group("enemies")
 	collision_layer = 2
@@ -75,6 +83,7 @@ func setup(key: String, wave: int):
 	type_key = key
 	enemy_data = Constants.ENEMY_VARIANTS[key]
 	anim_config = enemy_data.get("anim_config", {})
+	sprite_config = enemy_data.get("sprite_config", {})
 
 	var base_hp = 100 + (wave * 80)
 	hp = base_hp * enemy_data.hpMod
@@ -106,6 +115,12 @@ func setup(key: String, wave: int):
 	update_visuals()
 
 func update_visuals():
+	if not sprite_config.is_empty():
+		_setup_sprite_visuals()
+		if has_node("Label"): $Label.hide()
+		if has_node("TextureRect"): $TextureRect.hide()
+		return
+
 	var icon_texture = AssetLoader.get_enemy_icon(type_key)
 
 	if icon_texture:
@@ -147,7 +162,10 @@ func _draw():
 	var color = enemy_data.color
 	if hit_flash_timer > 0:
 		color = Color.WHITE
-	draw_circle(Vector2.ZERO, enemy_data.radius, color)
+
+	if not sprite_2d:
+		draw_circle(Vector2.ZERO, enemy_data.radius, color)
+
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	if hp < max_hp and hp > 0:
@@ -174,6 +192,7 @@ func _physics_process(delta):
 	# Process Timers and Effects
 	_process_effects(delta)
 	_update_animation(delta)
+	_process_sprite_animation(delta)
 
 	var is_knockback = knockback_velocity.length() > 10.0
 
@@ -335,11 +354,21 @@ func _process_effects(delta):
 		if hit_flash_timer <= 0: queue_redraw()
 
 	if slow_timer > 0: slow_timer -= delta
+
+	# Modulate handling
+	var desired_modulate = Color.WHITE
+
 	if freeze_timer > 0:
 		freeze_timer -= delta
-		modulate = Color(0.5, 0.5, 1.0)
-	else:
-		if poison_stacks == 0: modulate = Color.WHITE
+		desired_modulate = Color(0.5, 0.5, 1.0)
+	elif poison_stacks > 0:
+		var t = clamp(float(poison_stacks) / Constants.POISON_VISUAL_SATURATION_STACKS, 0.0, 1.0)
+		desired_modulate = Color.WHITE.lerp(Color(0.2, 1.0, 0.2), t)
+
+	if hit_flash_timer > 0 and sprite_2d:
+		desired_modulate = Color(3, 3, 3, 1) # Bright flash for sprite
+
+	modulate = desired_modulate
 
 func _update_animation(delta):
 	# Skip if attack animation is playing
@@ -504,6 +533,9 @@ func explode_suicide(target_wall):
 	queue_free()
 
 func perform_boss_skill(skill_name: String):
+	if not sprite_config.is_empty():
+		play_sprite_anim("action")
+
 	if skill_name == "summon":
 		GameManager.spawn_floating_text(global_position, "Summon!", Color.PURPLE)
 		for i in range(3):
@@ -753,3 +785,74 @@ func _trigger_burn_explosion():
 		damage = burn_source.damage * 3.0
 	if GameManager.combat_manager:
 		GameManager.combat_manager.queue_burn_explosion(global_position, damage, burn_source)
+
+func _setup_sprite_visuals():
+	if not sprite_2d:
+		sprite_2d = Sprite2D.new()
+		sprite_2d.name = "Sprite2D"
+		add_child(sprite_2d)
+
+	play_sprite_anim("walk")
+
+func play_sprite_anim(anim_name: String):
+	if current_anim_name == anim_name and is_anim_looping: return
+
+	var anims = sprite_config.get("animations", {})
+	if not anims.has(anim_name): return
+
+	var data = anims[anim_name]
+	if data.is_empty(): return
+
+	var path = data.get("path", "")
+	var texture = load(path)
+	if not texture: return
+
+	current_anim_name = anim_name
+	sprite_2d.texture = texture
+	sprite_2d.hframes = data.get("cols", 1)
+	sprite_2d.vframes = data.get("rows", 1)
+	sprite_2d.frame = 0
+	anim_fps = data.get("fps", 10)
+	is_anim_looping = data.get("loop", true)
+	anim_frame_timer = 0.0
+
+	# Calculate Scale
+	var size_in_tiles = sprite_config.get("size_in_tiles", [1.0, 1.0])
+	var target_w = size_in_tiles[0] * Constants.TILE_SIZE
+	var target_h = size_in_tiles[1] * Constants.TILE_SIZE
+
+	var frame_w = texture.get_width() / sprite_2d.hframes
+	var frame_h = texture.get_height() / sprite_2d.vframes
+
+	# "scale = target / max(w, h)" logic
+	# Assuming fitting the larger dimension of the frame into the larger dimension of the target box
+	var target_max = max(target_w, target_h)
+	var frame_max = max(frame_w, frame_h)
+	var final_scale = 1.0
+	if frame_max > 0:
+		final_scale = target_max / frame_max
+
+	sprite_2d.scale = Vector2(final_scale, final_scale)
+	sprite_2d.position = Vector2.ZERO
+
+func _process_sprite_animation(delta):
+	if not sprite_2d or current_anim_name == "": return
+
+	anim_frame_timer += delta
+	if anim_frame_timer >= 1.0 / anim_fps:
+		anim_frame_timer -= 1.0 / anim_fps
+		var next_frame = sprite_2d.frame + 1
+		var total_frames = sprite_2d.hframes * sprite_2d.vframes
+
+		if next_frame >= total_frames:
+			if is_anim_looping:
+				sprite_2d.frame = 0
+			else:
+				# Finished one-shot
+				_on_anim_finished()
+		else:
+			sprite_2d.frame = next_frame
+
+func _on_anim_finished():
+	if current_anim_name == "action":
+		play_sprite_anim("walk")
