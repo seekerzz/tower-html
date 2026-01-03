@@ -1,3 +1,66 @@
-[gd_scene format=3 uid="uid://b17jqqda7eboe"]
+[gd_scene load_steps=6 format=3 uid="uid://b17jqqda7eboe"]
+
+[ext_resource type="Texture2D" uid="uid://bimlwoxh2ajjk" path="res://src/Scenes/Game/Spine/ArmL.png" id="1_b7fdm"]
+[ext_resource type="Texture2D" uid="uid://bp2a7mrmsb2w3" path="res://src/Scenes/Game/Spine/LegL.png" id="2_ux5hp"]
+[ext_resource type="Texture2D" uid="uid://o6v0wmdk1sng" path="res://src/Scenes/Game/Spine/LegR.png" id="3_uyutw"]
+[ext_resource type="Texture2D" uid="uid://exnwylg0xq4x" path="res://src/Scenes/Game/Spine/Torso.png" id="4_ndp77"]
+[ext_resource type="Texture2D" uid="uid://c1iigbluo2pmw" path="res://src/Scenes/Game/Spine/ArmR.png" id="5_idnnt"]
 
 [node name="Template" type="CharacterBody2D"]
+
+[node name="VisualRoot" type="Node2D" parent="."]
+
+[node name="Skeleton2D" type="Skeleton2D" parent="VisualRoot"]
+
+[node name="Torso" type="Bone2D" parent="VisualRoot/Skeleton2D"]
+position = Vector2(-3, 0)
+rest = Transform2D(1, 0, 0, 1, -3, 0)
+editor_settings/show_bone_gizmo = false
+
+[node name="ArmL" type="Bone2D" parent="VisualRoot/Skeleton2D/Torso"]
+position = Vector2(131, -185)
+rest = Transform2D(1, 0, 0, 1, 131, -185)
+editor_settings/show_bone_gizmo = false
+metadata/_edit_group_ = true
+
+[node name="ArmL" type="Sprite2D" parent="VisualRoot/Skeleton2D/Torso/ArmL"]
+position = Vector2(104, -24)
+texture = ExtResource("1_b7fdm")
+offset = Vector2(115.065, 105.42)
+
+[node name="LegL" type="Bone2D" parent="VisualRoot/Skeleton2D/Torso"]
+position = Vector2(168, -32)
+rest = Transform2D(1, 0, 0, 1, 168, -32)
+editor_settings/show_bone_gizmo = false
+metadata/_edit_group_ = true
+
+[node name="LegL" type="Sprite2D" parent="VisualRoot/Skeleton2D/Torso/LegL"]
+position = Vector2(15, -4)
+texture = ExtResource("2_ux5hp")
+offset = Vector2(48.035, 200)
+
+[node name="LegR" type="Bone2D" parent="VisualRoot/Skeleton2D/Torso"]
+position = Vector2(-7, -56)
+rest = Transform2D(1, 0, 0, 1, -7, -56)
+metadata/_edit_group_ = true
+
+[node name="LegR" type="Sprite2D" parent="VisualRoot/Skeleton2D/Torso/LegR"]
+position = Vector2(-8, 7)
+texture = ExtResource("3_uyutw")
+offset = Vector2(0, 200)
+
+[node name="Torso" type="Sprite2D" parent="VisualRoot/Skeleton2D/Torso"]
+position = Vector2(105, -59)
+texture = ExtResource("4_ndp77")
+
+[node name="ArmR" type="Bone2D" parent="VisualRoot/Skeleton2D/Torso"]
+position = Vector2(-1, -153)
+rest = Transform2D(1, 0, 0, 1, -1, -153)
+editor_settings/show_bone_gizmo = false
+metadata/_edit_group_ = true
+
+[node name="ArmR" type="Sprite2D" parent="VisualRoot/Skeleton2D/Torso/ArmR"]
+position = Vector2(-175, -75)
+rotation = 1.1606439
+texture = ExtResource("5_idnnt")
+offset = Vector2(42.48, 65.78)
