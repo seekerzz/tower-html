@@ -1,0 +1,55 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/Scripts/Tests/SpinePreview.gd" id="1_script"]
+[ext_resource type="PackedScene" uid="uid://b17jqqda7eboe" path="res://src/Scenes/Game/Spine/template.tscn" id="2_template"]
+
+[node name="SpinePreview" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Template" parent="." instance=ExtResource("2_template")]
+position = Vector2(576, 324)
+
+[node name="UI" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="UI"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -128.0
+offset_top = -80.0
+offset_right = 128.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 0
+alignment = 1
+
+[node name="IdleBtn" type="Button" parent="UI/HBoxContainer"]
+layout_mode = 2
+text = "Idle"
+
+[node name="WalkBtn" type="Button" parent="UI/HBoxContainer"]
+layout_mode = 2
+text = "Walk"
+
+[node name="AttackBtn" type="Button" parent="UI/HBoxContainer"]
+layout_mode = 2
+text = "Attack"
+
+[node name="DeathBtn" type="Button" parent="UI/HBoxContainer"]
+layout_mode = 2
+text = "Death"
