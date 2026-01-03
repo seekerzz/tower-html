@@ -59,9 +59,11 @@ var last_hit_direction: Vector2 = Vector2.ZERO
 const WALL_SLAM_FACTOR = 0.5
 const HEAVY_IMPACT_THRESHOLD = 50.0
 const TRANSFER_RATE = 0.8
+const FLIP_THRESHOLD = 15.0
 
 # Mass
 var mass: float = 1.0
+var is_facing_left: bool = false
 
 func _ready():
 	add_to_group("enemies")
@@ -172,6 +174,7 @@ func _physics_process(delta):
 		_env_cooldowns.erase(id)
 
 	# Process Timers and Effects
+	_update_facing_logic()
 	_process_effects(delta)
 	_update_animation(delta)
 
@@ -297,6 +300,17 @@ func handle_environmental_impact(trap_node):
 	if trap_node.has_method("spawn_splash_effect"):
 		trap_node.spawn_splash_effect(global_position)
 
+func _update_facing_logic():
+	if !GameManager.grid_manager: return
+
+	var core_pos = GameManager.grid_manager.global_position
+	var diff_x = global_position.x - core_pos.x
+
+	if diff_x > FLIP_THRESHOLD:
+		is_facing_left = true
+	elif diff_x < -FLIP_THRESHOLD:
+		is_facing_left = false
+
 func _process_effects(delta):
 	if has_node("BurnParticles"): $BurnParticles.emitting = (effects.burn > 0)
 	if has_node("PoisonParticles"): $PoisonParticles.emitting = (effects.poison > 0)
@@ -321,14 +335,24 @@ func _process_effects(delta):
 		var t = clamp(float(poison_stacks) / Constants.POISON_VISUAL_SATURATION_STACKS, 0.0, 1.0)
 		modulate = Color.WHITE.lerp(Color(0.2, 1.0, 0.2), t)
 
+	var final_scale = wobble_scale
+	if is_facing_left:
+		final_scale.x = -abs(final_scale.x)
+	else:
+		final_scale.x = abs(final_scale.x)
+
 	if has_node("Label"):
-		$Label.scale = wobble_scale
+		$Label.pivot_offset = $Label.size / 2
+		$Label.scale = final_scale
 		$Label.position = -$Label.size / 2 + visual_offset
 		$Label.rotation = visual_rotation
 	if has_node("TextureRect"):
-		$TextureRect.scale = wobble_scale
+		$TextureRect.pivot_offset = $TextureRect.size / 2
+		$TextureRect.scale = final_scale
 		$TextureRect.position = -$TextureRect.size / 2 + visual_offset
 		$TextureRect.rotation = visual_rotation
+	if has_node("Sprite2D"):
+		$Sprite2D.flip_h = is_facing_left
 
 	if hit_flash_timer > 0:
 		hit_flash_timer -= delta
