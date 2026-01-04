@@ -70,10 +70,15 @@ func _ready():
 	input_pickable = false
 	GameManager._set_ignore_mouse_recursive(self)
 
-	visual_controller = load("res://src/Scripts/Components/VisualController.gd").new()
-	add_child(visual_controller)
+	if not visual_controller:
+		visual_controller = load("res://src/Scripts/Components/VisualController.gd").new()
+		add_child(visual_controller)
 
 func setup(key: String, wave: int):
+	if not visual_controller:
+		visual_controller = load("res://src/Scripts/Components/VisualController.gd").new()
+		add_child(visual_controller)
+
 	type_key = key
 	enemy_data = Constants.ENEMY_VARIANTS[key]
 	anim_config = enemy_data.get("anim_config", {})
