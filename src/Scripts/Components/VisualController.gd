@@ -51,42 +51,19 @@ func _process(delta: float):
 	# But the instructions say "Provide apply_transform helper" or similar.
 	# The parent script is instructed to call apply_transform.
 
-func apply_transform(target_node: Node2D):
+func apply_transform(target_node: Node):
 	if !target_node: return
 
-	target_node.scale = wobble_scale
-	target_node.position = visual_offset
-	# Reset position centering if needed. Assuming visual_offset is delta from center.
-	# The previous code did: position = -size/2 + visual_offset.
-	# So we should probably let the parent handle the base position or pass it in.
-	# But wait, wobble_scale is multiplicative.
-	# The parent code was:
-	# $TextureRect.scale = final_scale
-	# $TextureRect.position = -$TextureRect.size / 2 + visual_offset
-	# $TextureRect.rotation = visual_rotation
-
-	# So `visual_offset` is the animation offset.
-	# We can just set the properties we manage.
-	# However, if target_node is a Control (TextureRect), position is top-left.
-	# If it's a Sprite2D, position is center (usually).
-
-	target_node.rotation = visual_rotation
-	target_node.scale = wobble_scale
-
-	# Position handling is tricky because it depends on the anchor/pivot.
-	# The VisualController calculates the *offset*.
-	# If the caller uses this, they should add this offset to their base position.
-	# But the prompt says "apply_transform(target_node) ... apply calculated scale/offset/rotation".
-	# I'll implement it such that it sets the values, assuming the parent has set up pivots correctly.
-	# For TextureRect in Enemy.gd: `tex_rect.pivot_offset = tex_rect.size / 2`.
-	# So setting rotation/scale works fine around center.
-	# Position: `tex_rect.position = -tex_rect.size / 2` (centered).
-	# So we need to add visual_offset to that.
+	# Common properties if we assume Node is CanvasItem or has these props
+	# Dynamic access is safer if type is generic Node
+	if "scale" in target_node:
+		target_node.scale = wobble_scale
+	if "rotation" in target_node:
+		target_node.rotation = visual_rotation
 
 	if target_node is Control:
 		target_node.position = -target_node.size / 2 + visual_offset
 	elif target_node is Node2D:
-		# For Sprite2D centered at 0,0
 		target_node.position = visual_offset
 
 
@@ -127,7 +104,7 @@ func play_elastic_slash():
 
 	await _anim_tween.finished
 
-func play_death_implosion(target_node: Node2D = null):
+func play_death_implosion(target_node: Node = null):
 	if _anim_tween: _anim_tween.kill()
 	_anim_tween = create_tween().set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 
