@@ -27,11 +27,8 @@ var burn_tick_timer: float = 0.0
 
 var temp_speed_mod: float = 1.0
 
-var wobble_scale = Vector2.ONE
-var visual_offset = Vector2.ZERO
-var visual_rotation = 0.0
+var visual_controller: Node2D = null
 
-var anim_time: float = 0.0
 var anim_config: Dictionary = {}
 var base_speed: float = 40.0 # Default fallback
 
@@ -73,6 +70,9 @@ func _ready():
 	input_pickable = false
 	GameManager._set_ignore_mouse_recursive(self)
 
+	visual_controller = load("res://src/Scripts/Components/VisualController.gd").new()
+	add_child(visual_controller)
+
 func setup(key: String, wave: int):
 	type_key = key
 	enemy_data = Constants.ENEMY_VARIANTS[key]
@@ -105,6 +105,7 @@ func setup(key: String, wave: int):
 	mass *= mass_mod
 	knockback_resistance *= mass_mod
 
+	visual_controller.setup(anim_config, base_speed, speed)
 	update_visuals()
 
 func update_visuals():
@@ -145,7 +146,8 @@ func update_visuals():
 	queue_redraw()
 
 func _draw():
-	draw_set_transform(visual_offset, visual_rotation, wobble_scale)
+	if visual_controller:
+		draw_set_transform(visual_controller.visual_offset, visual_controller.visual_rotation, visual_controller.wobble_scale)
 	var color = enemy_data.color
 	if hit_flash_timer > 0:
 		color = Color.WHITE
@@ -176,7 +178,19 @@ func _physics_process(delta):
 	# Process Timers and Effects
 	_update_facing_logic()
 	_process_effects(delta)
-	_update_animation(delta)
+
+	# Update visual controller speed info and apply transforms
+	# Note: We must apply visual transforms AFTER _process_effects or carefully coordinate
+	# because _process_effects also sets scale (flip X).
+	# However, _process_effects relies on visual_controller.wobble_scale.
+	# The best approach: Let VisualController set the base transform, then apply facing flip.
+	# _process_effects currently does exactly this (reads wobble_scale, sets scale with flip).
+	# So we just need to update the speed on the controller here.
+	if visual_controller:
+		visual_controller.update_speed(speed, temp_speed_mod)
+		# Disable idle animation if a legacy attack tween is playing
+		var is_legacy_anim_playing = (anim_tween and anim_tween.is_valid())
+		visual_controller.set_idle_enabled(not is_legacy_anim_playing)
 
 	var is_knockback = knockback_velocity.length() > 10.0
 
@@ -335,22 +349,29 @@ func _process_effects(delta):
 		var t = clamp(float(poison_stacks) / Constants.POISON_VISUAL_SATURATION_STACKS, 0.0, 1.0)
 		modulate = Color.WHITE.lerp(Color(0.2, 1.0, 0.2), t)
 
-	var final_scale = wobble_scale
-	if is_facing_left:
-		final_scale.x = -abs(final_scale.x)
-	else:
-		final_scale.x = abs(final_scale.x)
+	# Apply Visual Controller transforms
+	if visual_controller:
+		if has_node("TextureRect"):
+			visual_controller.apply_to($TextureRect)
+		elif has_node("Label"):
+			visual_controller.apply_to($Label)
 
-	if has_node("Label"):
-		$Label.pivot_offset = $Label.size / 2
-		$Label.scale = final_scale
-		$Label.position = -$Label.size / 2 + visual_offset
-		$Label.rotation = visual_rotation
+	# Handling facing flip on top of visual controller scale
+	var final_scale_x = 1.0
+	if visual_controller:
+		final_scale_x = visual_controller.wobble_scale.x
+
+	if is_facing_left:
+		final_scale_x = -abs(final_scale_x)
+	else:
+		final_scale_x = abs(final_scale_x)
+
+	# Force override X scale for facing
 	if has_node("TextureRect"):
-		$TextureRect.pivot_offset = $TextureRect.size / 2
-		$TextureRect.scale = final_scale
-		$TextureRect.position = -$TextureRect.size / 2 + visual_offset
-		$TextureRect.rotation = visual_rotation
+		$TextureRect.scale.x = final_scale_x
+	if has_node("Label"):
+		$Label.scale.x = final_scale_x
+
 	if has_node("Sprite2D"):
 		$Sprite2D.flip_h = is_facing_left
 
@@ -365,62 +386,6 @@ func _process_effects(delta):
 	else:
 		if poison_stacks == 0: modulate = Color.WHITE
 
-func _update_animation(delta):
-	# Skip if attack animation is playing
-	if anim_tween and anim_tween.is_valid():
-		return
-
-	if anim_config.is_empty():
-		return
-
-	var style = anim_config.get("style", "squash")
-	var amp = anim_config.get("amplitude", 0.1)
-	var freq = anim_config.get("base_freq", 1.0)
-
-	# Avoid division by zero
-	var effective_speed = speed
-	if effective_speed < 1.0: effective_speed = 1.0
-
-	# Dynamic frequency scaling: freq * (current_speed / base_speed)
-	# If stationary (speed=0 in theory, but here speed is stat), use temp_speed_mod
-	var speed_factor = (speed * temp_speed_mod) / max(1.0, base_speed)
-
-	anim_time += delta * freq * speed_factor * 2.0 # * 2.0 PI factor approximation or just speed up
-
-	match style:
-		"squash":
-			# Squash & Stretch
-			var s = sin(anim_time)
-			var y_scale = 1.0 + s * amp
-			var x_scale = 1.0
-			if y_scale > 0.01:
-				x_scale = 1.0 / y_scale
-			wobble_scale = Vector2(x_scale, y_scale)
-			visual_offset = Vector2.ZERO
-			visual_rotation = 0.0
-
-		"bob":
-			# Vertical bobbing
-			var s = abs(sin(anim_time)) # Bob up and down (bounce)
-			visual_offset = Vector2(0, -s * amp)
-			wobble_scale = Vector2.ONE
-			visual_rotation = 0.0
-
-		"float":
-			# Breathing / Floating
-			var s = sin(anim_time)
-			wobble_scale = Vector2.ONE * (1.0 + s * amp)
-			visual_offset = Vector2.ZERO
-			visual_rotation = 0.0
-
-		"stiff":
-			# Rotation wobble
-			var s = sin(anim_time)
-			visual_rotation = s * amp
-			wobble_scale = Vector2.ONE
-			visual_offset = Vector2.ZERO
-
-	queue_redraw()
 
 func handle_collisions(delta):
 	var count = get_slide_collision_count()
@@ -493,7 +458,9 @@ func calculate_move_velocity() -> Vector2:
 func apply_physics_stagger(duration: float):
 	if anim_tween and anim_tween.is_valid():
 		anim_tween.kill()
-		wobble_scale = Vector2.ONE
+	if visual_controller:
+		visual_controller.kill_tween()
+		visual_controller.wobble_scale = Vector2.ONE
 
 	apply_stun(duration)
 
@@ -651,16 +618,18 @@ func play_attack_animation(target_pos: Vector2, hit_callback: Callable = Callabl
 		anim_tween.set_parallel(true)
 		anim_tween.tween_property(self, "global_position", original_pos - direction * Constants.ANIM_WINDUP_DIST, Constants.ANIM_WINDUP_TIME)\
 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		anim_tween.tween_property(self, "wobble_scale", Constants.ANIM_WINDUP_SCALE, Constants.ANIM_WINDUP_TIME)\
-			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		if visual_controller:
+			anim_tween.tween_property(visual_controller, "wobble_scale", Constants.ANIM_WINDUP_SCALE, Constants.ANIM_WINDUP_TIME)\
+				.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		anim_tween.set_parallel(false)
 
 		# Phase 2: Strike
 		anim_tween.set_parallel(true)
 		anim_tween.tween_property(self, "global_position", original_pos + direction * Constants.ANIM_STRIKE_DIST, Constants.ANIM_STRIKE_TIME)\
 			.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
-		anim_tween.tween_property(self, "wobble_scale", Constants.ANIM_STRIKE_SCALE, Constants.ANIM_STRIKE_TIME)\
-			.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+		if visual_controller:
+			anim_tween.tween_property(visual_controller, "wobble_scale", Constants.ANIM_STRIKE_SCALE, Constants.ANIM_STRIKE_TIME)\
+				.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
 		anim_tween.set_parallel(false)
 
 		# Callback on impact
@@ -674,8 +643,9 @@ func play_attack_animation(target_pos: Vector2, hit_callback: Callable = Callabl
 		anim_tween.set_parallel(true)
 		anim_tween.tween_property(self, "global_position", original_pos, Constants.ANIM_RECOVERY_TIME)\
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		anim_tween.tween_property(self, "wobble_scale", Vector2.ONE, Constants.ANIM_RECOVERY_TIME)\
-			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		if visual_controller:
+			anim_tween.tween_property(visual_controller, "wobble_scale", Vector2.ONE, Constants.ANIM_RECOVERY_TIME)\
+				.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		anim_tween.set_parallel(false)
 
 	elif anim_type == "recoil":
@@ -684,8 +654,9 @@ func play_attack_animation(target_pos: Vector2, hit_callback: Callable = Callabl
 			if hit_callback.is_valid():
 				hit_callback.call()
 		)
-		anim_tween.tween_property(self, "wobble_scale", Vector2(0.8, 0.8), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		anim_tween.tween_property(self, "wobble_scale", Vector2.ONE, 0.2)
+		if visual_controller:
+			anim_tween.tween_property(visual_controller, "wobble_scale", Vector2(0.8, 0.8), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			anim_tween.tween_property(visual_controller, "wobble_scale", Vector2.ONE, 0.2)
 		# Ensure position reset if it was modified
 		anim_tween.parallel().tween_property(self, "global_position", original_pos, 0.1)
 
@@ -704,6 +675,30 @@ func play_attack_animation(target_pos: Vector2, hit_callback: Callable = Callabl
 		# Return
 		anim_tween.tween_property(self, "global_position", original_pos, 0.2)\
 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+	elif anim_type == "elastic_shoot":
+		if visual_controller:
+			var tween = visual_controller.play_elastic_shoot()
+			# Sync firing with the middle of the animation
+			tween.tween_callback(func():
+				if hit_callback.is_valid():
+					hit_callback.call()
+			).set_delay(0.4) # Wait for windup (0.3) + shoot (0.1) start
+		else:
+			if hit_callback.is_valid():
+				hit_callback.call()
+
+	elif anim_type == "elastic_slash":
+		if visual_controller:
+			var tween = visual_controller.play_elastic_slash()
+			tween.tween_callback(func():
+				spawn_slash_effect(target_pos)
+				if hit_callback.is_valid():
+					hit_callback.call()
+			).set_delay(0.4) # Wait for windup
+		else:
+			if hit_callback.is_valid():
+				hit_callback.call()
 
 func spawn_slash_effect(pos: Vector2):
 	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
@@ -762,7 +757,24 @@ func die():
 				GameManager.add_gold(1)
 				GameManager.spawn_floating_text(global_position, "+1💰 (Recycle)", Color.GOLD, last_hit_direction)
 	GameManager.spawn_floating_text(global_position, "+1💰", Color.YELLOW, last_hit_direction)
-	queue_free()
+
+	if enemy_data.get("is_boss", false) and visual_controller:
+		# Disable collision
+		collision_layer = 0
+		collision_mask = 0
+		# Disable processing so it stops moving
+		set_physics_process(false)
+
+		var death_tween = visual_controller.play_death_implosion()
+
+		# Turn gray
+		var tween = create_tween()
+		tween.tween_property(self, "modulate", Color.GRAY, 0.5)
+
+		await death_tween.finished
+		queue_free()
+	else:
+		queue_free()
 
 func _trigger_burn_explosion():
 	GameManager.spawn_floating_text(global_position, "BOOM!", Color.ORANGE)

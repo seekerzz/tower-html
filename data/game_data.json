@@ -1568,6 +1568,28 @@
 				"base_freq": 4.0
 			}
 		},
+		"archer_rat": {
+			"name": "神射鼠",
+			"icon": "🏹🐭",
+			"color": "#16a085",
+			"radius": 14,
+			"hpMod": 0.8,
+			"spdMod": 0.8,
+			"attackType": "ranged",
+			"proj": "pinecone",
+			"rangedAnimType": "elastic_shoot",
+			"range": 200,
+			"dmg": 80,
+			"atkSpeed": 2.0,
+			"projectileSpeed": 150,
+			"drop": "wood",
+			"dropRate": 0.3,
+			"anim_config": {
+				"style": "stiff",
+				"amplitude": 0.05,
+				"base_freq": 4.0
+			}
+		},
 		"boss": {
 			"name": "虚空领主",
 			"icon": "👹",
@@ -1581,6 +1603,7 @@
 			"atkSpeed": 3.0,
 			"drop": "stone",
 			"dropRate": 1.0,
+			"is_boss": true,
 			"anim_config": {
 				"style": "float",
 				"amplitude": 0.1,
@@ -1635,7 +1658,7 @@
 			"spdMod": 0.3,
 			"attackType": "ranged",
 			"proj": "ink",
-			"rangedAnimType": "recoil",
+			"rangedAnimType": "elastic_slash",
 			"range": 150,
 			"dmg": 50,
 			"atkSpeed": 2.0,
@@ -1643,6 +1666,7 @@
 			"dropRate": 1.0,
 			"stationary_time": 8.0,
 			"boss_skill": "summon",
+			"is_boss": true,
 			"anim_config": {
 				"style": "float",
 				"amplitude": 0.08,
@@ -1666,6 +1690,7 @@
 			"dropRate": 1.0,
 			"stationary_time": 5.0,
 			"boss_skill": "shoot_enemy",
+			"is_boss": true,
 			"anim_config": {
 				"style": "stiff",
 				"amplitude": 0.05,
@@ -1686,6 +1711,7 @@
 			"drop": "iron",
 			"dropRate": 1.0,
 			"stationary_time": 0.0,
+			"is_boss": true,
 			"anim_config": {
 				"style": "stiff",
 				"amplitude": 0.03,
