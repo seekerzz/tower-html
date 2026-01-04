@@ -838,7 +838,12 @@ func _perform_split():
 		child.hp = child_hp
 		child.hit_count = 0
 
-		var new_scale_val = (child_hp / ancestor_max_hp) * 1.5
+		var new_scale_val = 1.0
+		if child.split_generation == 1:
+			new_scale_val = 1.0
+		elif child.split_generation == 2:
+			new_scale_val = 0.75
+
 		child.scale = Vector2(new_scale_val, new_scale_val)
 		child.invincible_timer = 0.5
 
