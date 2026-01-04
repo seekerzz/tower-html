@@ -1568,10 +1568,33 @@
 				"base_freq": 4.0
 			}
 		},
+		"archer_rat": {
+			"name": "神射鼠",
+			"icon": "🏹🐭",
+			"color": "#16a085",
+			"radius": 14,
+			"hpMod": 0.8,
+			"spdMod": 0.8,
+			"attackType": "ranged",
+			"proj": "pinecone",
+			"rangedAnimType": "elastic_shoot",
+			"range": 200,
+			"dmg": 80,
+			"atkSpeed": 2.0,
+			"projectileSpeed": 150,
+			"drop": "wood",
+			"dropRate": 0.3,
+			"anim_config": {
+				"style": "stiff",
+				"amplitude": 0.05,
+				"base_freq": 4.0
+			}
+		},
 		"boss": {
 			"name": "虚空领主",
 			"icon": "👹",
 			"color": "#2c3e50",
+			"is_boss": true,
 			"radius": 32,
 			"hpMod": 15.0,
 			"spdMod": 0.4,
@@ -1630,12 +1653,13 @@
 			"name": "鼠祭司",
 			"icon": "🧙",
 			"color": "#8e44ad",
+			"is_boss": true,
 			"radius": 24,
 			"hpMod": 8.0,
 			"spdMod": 0.3,
 			"attackType": "ranged",
 			"proj": "ink",
-			"rangedAnimType": "recoil",
+			"rangedAnimType": "elastic_slash",
 			"range": 150,
 			"dmg": 50,
 			"atkSpeed": 2.0,
@@ -1644,7 +1668,7 @@
 			"stationary_time": 8.0,
 			"boss_skill": "summon",
 			"anim_config": {
-				"style": "float",
+				"style": "bouncy_idle",
 				"amplitude": 0.08,
 				"base_freq": 2.0
 			}
@@ -1653,6 +1677,7 @@
 			"name": "鼠弩车",
 			"icon": "🚜",
 			"color": "#d35400",
+			"is_boss": true,
 			"radius": 28,
 			"hpMod": 6.0,
 			"spdMod": 0.4,
@@ -1676,6 +1701,7 @@
 			"name": "鼠将军",
 			"icon": "🐗",
 			"color": "#7f8c8d",
+			"is_boss": true,
 			"radius": 32,
 			"hpMod": 12.0,
 			"spdMod": 0.35,
