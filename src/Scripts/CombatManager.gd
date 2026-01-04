@@ -31,6 +31,8 @@ func get_wave_type(n: int) -> String:
 	if n % 10 == 0: return 'boss'
 	if n % 3 == 0: return 'event'
 
+	if n == 2: return 'mutant_slime'
+
 	# Logic from ref.html: const idx = Math.min(types.length - 1, Math.floor((n-1)/2));
 	var idx = min(types.size() - 1, floor((n - 1) / 2.0))
 	return types[int(idx) % types.size()]
