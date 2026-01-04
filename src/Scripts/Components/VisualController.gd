@@ -52,7 +52,7 @@ func _process(delta):
 	# "Idle/Walk 循环： 在 _process 中根据时间 sin 函数计算呼吸感缩放和移动时的跳跃位移 (abs(sin))."
 	# So I stick to that.
 
-func apply_transform(target_node: Node2D, is_facing_left: bool = false):
+func apply_transform(target_node, is_facing_left: bool = false):
 	if !target_node: return
 
 	var final_scale = wobble_scale
