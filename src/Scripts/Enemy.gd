@@ -63,6 +63,13 @@ var mass: float = 1.0
 var is_facing_left: bool = false
 var is_dying: bool = false
 
+# Mutant Slime Properties
+var split_generation: int = 0
+var hit_count: int = 0
+var ancestor_max_hp: float = 0.0
+var invincible_timer: float = 0.0
+var is_splitting: bool = false
+
 func _ready():
 	add_to_group("enemies")
 	collision_layer = 2
@@ -83,6 +90,11 @@ func setup(key: String, wave: int):
 	var base_hp = 100 + (wave * 80)
 	hp = base_hp * enemy_data.hpMod
 	max_hp = hp
+
+	if split_generation == 0:
+		ancestor_max_hp = max_hp
+		if type_key == "mutant_slime":
+			scale = Vector2(1.5, 1.5)
 
 	# Store the initial speed calculation as base_speed reference for animation freq
 	# But actually the requirement says (speed * temp_speed_mod) / base_speed.
@@ -171,6 +183,9 @@ func _draw():
 
 func _physics_process(delta):
 	if !GameManager.is_wave_active: return
+
+	if invincible_timer > 0:
+		invincible_timer -= delta
 
 	# Update Environmental Cooldowns
 	var finished_cooldowns = []
@@ -738,6 +753,16 @@ func is_trap(node):
 	return false
 
 func take_damage(amount: float, source_unit = null, damage_type: String = "physical", hit_source: Node2D = null, kb_force: float = 0.0):
+	if invincible_timer > 0 or is_splitting:
+		return
+
+	hit_count += 1
+
+	if type_key == "mutant_slime" and hit_count >= 5 and split_generation < 3 and hp > 0:
+		is_splitting = true
+		_perform_split()
+		return
+
 	hp -= amount
 	hit_flash_timer = 0.1
 	queue_redraw()
@@ -754,6 +779,30 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 		GameManager.damage_dealt.emit(source_unit, amount)
 	if hp <= 0:
 		die()
+
+func _perform_split():
+	var child_hp = min(hp, max_hp / 2.0)
+
+	for i in range(2):
+		var child = load("res://src/Scenes/Game/Enemy.tscn").instantiate()
+		child.setup(type_key, GameManager.wave)
+
+		child.split_generation = split_generation + 1
+		child.ancestor_max_hp = ancestor_max_hp
+		child.max_hp = child_hp
+		child.hp = child_hp
+		child.hit_count = 0
+
+		var new_scale = (child_hp / ancestor_max_hp) * 1.5
+		child.scale = Vector2(new_scale, new_scale)
+		child.invincible_timer = 0.5
+
+		var offset = Vector2(randf_range(-20, 20), randf_range(-20, 20))
+		child.global_position = global_position + offset
+
+		get_parent().add_child(child)
+
+	queue_free()
 
 func die():
 	if effects.get("burn", 0) > 0:
