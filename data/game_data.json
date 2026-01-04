@@ -1458,7 +1458,7 @@
 			"radius": 12,
 			"hpMod": 5.0,
 			"spdMod": 0.6,
-			"split_limit": 3,
+			"split_limit": 2,
 			"split_trigger_hits": 5,
 			"attackType": "melee",
 			"range": 30,

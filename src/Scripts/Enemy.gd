@@ -758,7 +758,7 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 
 	hit_count += 1
 
-	if type_key == "mutant_slime" and hit_count >= 5 and split_generation < 3 and hp > 0:
+	if type_key == "mutant_slime" and hit_count >= 5 and split_generation < 2 and hp > 0:
 		is_splitting = true
 		_perform_split()
 		return
@@ -793,7 +793,12 @@ func _perform_split():
 		child.hp = child_hp
 		child.hit_count = 0
 
-		var new_scale = (child_hp / ancestor_max_hp) * 1.5
+		var new_scale = 1.0
+		if child.split_generation == 1:
+			new_scale = 1.0
+		elif child.split_generation == 2:
+			new_scale = 0.75
+
 		child.scale = Vector2(new_scale, new_scale)
 		child.invincible_timer = 0.5
 
