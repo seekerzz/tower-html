@@ -61,6 +61,7 @@ const FLIP_THRESHOLD = 15.0
 # Mass
 var mass: float = 1.0
 var is_facing_left: bool = false
+var is_dying: bool = false
 
 func _ready():
 	add_to_group("enemies")
@@ -70,10 +71,11 @@ func _ready():
 	input_pickable = false
 	GameManager._set_ignore_mouse_recursive(self)
 
-	visual_controller = load("res://src/Scripts/Components/VisualController.gd").new()
-	add_child(visual_controller)
+	_ensure_visual_controller()
 
 func setup(key: String, wave: int):
+	_ensure_visual_controller()
+
 	type_key = key
 	enemy_data = Constants.ENEMY_VARIANTS[key]
 	anim_config = enemy_data.get("anim_config", {})
@@ -107,6 +109,11 @@ func setup(key: String, wave: int):
 
 	visual_controller.setup(anim_config, base_speed, speed)
 	update_visuals()
+
+func _ensure_visual_controller():
+	if not visual_controller:
+		visual_controller = load("res://src/Scripts/Components/VisualController.gd").new()
+		add_child(visual_controller)
 
 func update_visuals():
 	var icon_texture = AssetLoader.get_enemy_icon(type_key)
@@ -176,7 +183,8 @@ func _physics_process(delta):
 		_env_cooldowns.erase(id)
 
 	# Process Timers and Effects
-	_update_facing_logic()
+	if not is_dying:
+		_update_facing_logic()
 	_process_effects(delta)
 
 	# Update visual controller speed info and apply transforms
@@ -191,6 +199,9 @@ func _physics_process(delta):
 		# Disable idle animation if a legacy attack tween is playing
 		var is_legacy_anim_playing = (anim_tween and anim_tween.is_valid())
 		visual_controller.set_idle_enabled(not is_legacy_anim_playing)
+
+	if is_dying:
+		return
 
 	var is_knockback = knockback_velocity.length() > 10.0
 
@@ -759,11 +770,10 @@ func die():
 	GameManager.spawn_floating_text(global_position, "+1💰", Color.YELLOW, last_hit_direction)
 
 	if enemy_data.get("is_boss", false) and visual_controller:
-		# Disable collision
+		# Disable collision and logic
 		collision_layer = 0
 		collision_mask = 0
-		# Disable processing so it stops moving
-		set_physics_process(false)
+		is_dying = true
 
 		var death_tween = visual_controller.play_death_implosion()
 
