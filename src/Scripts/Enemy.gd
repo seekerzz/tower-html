@@ -65,7 +65,8 @@ var is_dying: bool = false
 
 # Rotation Physics (Crab)
 var angular_velocity: float = 0.0
-var rotational_damping: float = 2.0
+var rotational_damping: float = 5.0
+var rotation_sensitivity = 5.0
 
 # Mutant Slime Properties
 var split_generation: int = 0
@@ -251,7 +252,7 @@ func _physics_process(delta):
 	if not is_dying:
 		if enemy_data.get("shape") == "rect":
 			# Apply Physics Rotation
-			rotation += angular_velocity * delta
+			rotation += angular_velocity * delta * rotation_sensitivity
 			angular_velocity = lerp(angular_velocity, 0.0, rotational_damping * delta)
 		else:
 			_update_facing_logic()
