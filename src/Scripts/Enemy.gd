@@ -1,6 +1,6 @@
 extends CharacterBody2D
 
-enum State { MOVE, ATTACK_BASE, STUNNED }
+enum State { MOVE, ATTACK_BASE, STUNNED, SUPPORT }
 var state: State = State.MOVE
 
 var type_key: String
@@ -751,6 +751,13 @@ func is_trap(node):
 		var b_type = Constants.BARRICADE_TYPES[node.type].type
 		return b_type == "slow" or b_type == "poison" or b_type == "reflect"
 	return false
+
+func heal(amount: float):
+	if hp <= 0: return # Can't heal dead
+	hp = min(hp + amount, max_hp)
+	queue_redraw()
+	# Optional: Spawn healing text here if not done by the healer
+	# But healer does it.
 
 func take_damage(amount: float, source_unit = null, damage_type: String = "physical", hit_source: Node2D = null, kb_force: float = 0.0):
 	if invincible_timer > 0 or is_splitting:
