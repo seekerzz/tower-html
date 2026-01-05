@@ -62,7 +62,8 @@ var original_atk_speed: float = 0.0
 var _is_skill_highlight_active: bool = false
 var _highlight_color: Color = Color.WHITE
 
-var connection_overlay: Node2D = null
+# Highlighting
+var is_force_highlighted: bool = false
 
 # Porcupine Variables
 var attack_counter: int = 0
@@ -84,12 +85,6 @@ func _ready():
 
 	if type_key == "peacock":
 		tree_exiting.connect(_on_peacock_cleanup)
-
-	connection_overlay = Node2D.new()
-	connection_overlay.name = "ConnectionOverlay"
-	connection_overlay.z_index = 100
-	connection_overlay.draw.connect(_on_connection_overlay_draw)
-	add_child(connection_overlay)
 
 	# If unit_data is already populated (e.g. from scene or prior setup), update visuals
 	if !unit_data.is_empty():
@@ -141,19 +136,12 @@ func setup(key: String):
 	production_timer = max_production_timer
 	update_visuals()
 
-	# Preserve interaction target if reloading/upgrading?
-	# Actually setup is called on creation.
-	# If we upgrade (merge), we might need to copy it, but merge creates new unit or modifies existing?
-	# Merge in GridManager: target_unit.merge_with(temp_unit). Unit instance persists.
-	# So interaction_target_pos is preserved in target_unit.
-
 	start_breathe_anim()
 
 	var drag_handler = Control.new()
 	drag_handler.set_script(DRAG_HANDLER_SCRIPT)
 	add_child(drag_handler)
 	drag_handler.setup(self)
-	# --- Merged Logic End ---
 
 func take_damage(amount: float, source_enemy = null):
 	# Handle Reflect (Hedgehog)
@@ -168,8 +156,6 @@ func take_damage(amount: float, source_enemy = null):
 	if unit_data.get("trait") == "flat_reduce":
 		var reduce = unit_data.get("flat_amount", 0)
 		amount = max(1, amount - reduce)
-		# Visual feedback for block?
-		# GameManager.spawn_floating_text(global_position, "Block", Color.GRAY)
 
 	# Shared Health Logic: Unit acts as a wall/entity linked to Core
 	GameManager.damage_core(amount)
@@ -207,10 +193,6 @@ func reset_stats():
 	elif unit_data.has("skill") and unit_data.skill == "milk_aura":
 		max_production_timer = 5.0
 
-	# Handle hp: if max_hp changes, should we heal?
-	# For now, just set max_hp. Current HP handling is done by GameManager (Core Health) or Barricades.
-	# But some units act as walls? If so, they need local HP.
-	# The current Unit.gd seems to delegate damage to core usually, but let's set max_hp.
 	max_hp = stats.get("hp", unit_data.get("hp", 0))
 
 	# Non-leveled stats (unless moved to levels, which range/atkSpeed weren't in my script)
@@ -237,12 +219,6 @@ func reset_stats():
 		var mechs = stats["mechanics"]
 		if mechs.has("crit_rate_bonus"):
 			crit_rate += mechs["crit_rate_bonus"]
-		# Add other mechanics here
-		# e.g. multi_shot_chance is handled in combat/projectile logic,
-		# so we might need to store it or apply it to a variable if Unit.gd handles shooting.
-		# Unit.gd doesn't seem to fire projectiles directly, usually CombatManager or Projectile.gd?
-		# Wait, Unit.gd doesn't have attack logic loop in _process?
-		# Ah, CombatManager handles attacks. We need to expose stats for CombatManager.
 
 	bounce_count = 0
 	split_count = 0
@@ -287,7 +263,6 @@ func capture_bullet(bullet_snapshot: Dictionary):
 	ammo_queue.append(bullet_snapshot.duplicate(true))
 
 	# Visual Feedback?
-	# We'll update the UI, but maybe a small effect on the parrot too?
 	if visual_holder:
 		var tween = create_tween()
 		tween.tween_property(visual_holder, "scale", Vector2(1.1, 1.1), 0.1)
@@ -330,28 +305,15 @@ func apply_buff(buff_type: String, source_unit: Node2D = null):
 func set_highlight(active: bool, color: Color = Color.WHITE):
 	_is_skill_highlight_active = active
 	_highlight_color = color
+	queue_redraw()
 
-	if active:
-		if visual_holder:
-			# Use modulate on visual_holder or simple drawing?
-			# Drawing a border is better but Unit needs _draw() logic for that.
-			# Let's use modulate or just add a color rect/border.
-			# Or simpler: use self.modulate but mix with original color.
-			# But self.modulate affects everything.
-			# The requirement says "Unit appears green/red outline (stroke)".
-			# Godot _draw is easiest for stroke.
-			queue_redraw()
-	else:
-		queue_redraw()
-
-	if connection_overlay: connection_overlay.queue_redraw()
+func set_force_highlight(active: bool):
+	is_force_highlighted = active
+	queue_redraw()
 
 func execute_skill_at(grid_pos: Vector2i):
 	if skill_cooldown > 0: return
 
-	# Units with item production (generic) usually don't have active skills in this context,
-	# or at least we shouldn't block by name.
-	# If the unit data has no "skill" field or skillType is not point, this won't be called normally.
 	if not unit_data.has("skill"): return
 
 	if GameManager.consume_resource("mana", skill_mana_cost):
@@ -373,15 +335,8 @@ func execute_skill_at(grid_pos: Vector2i):
 				"damage": 0,
 				"hide_visuals": false # Ensure visuals are shown for the field
 			}
-			# Need to convert grid_pos to world position for spawn
-			# Since execute_skill_effect usually handles this via GameManager -> CombatManager,
-			# but here we want to spawn a specific projectile with custom stats directly
-			# OR we rely on GameManager to handle "dragon" type if implemented there.
-			# The task says: "In execute_skill_at ... Call GameManager.combat_manager.spawn_projectile"
-
 			if GameManager.grid_manager:
 				var world_pos = GameManager.grid_manager.get_world_pos_from_grid(grid_pos)
-				# Spawn directly
 				if GameManager.combat_manager:
 					GameManager.combat_manager.spawn_projectile(self, world_pos, null, extra_stats)
 		else:
@@ -413,9 +368,6 @@ func activate_skill():
 		if GameManager.grid_manager:
 			GameManager.grid_manager.enter_skill_targeting(self)
 		return
-
-	# Check cost but proceed only if successful.
-	# Note: Cow regeneration logic is powerful, verify cost.
 
 	if GameManager.consume_resource("mana", skill_mana_cost):
 		is_no_mana = false
@@ -578,8 +530,7 @@ func _process(delta):
 						added = true
 				else:
 					# Fallback for testing
-					print("Attempting to add %s to inventory (No InvManager)" % item_id)
-					added = true # Assume success in tests without manager
+					added = true
 
 				if added:
 					var trap_name = "Trap"
@@ -691,8 +642,6 @@ func _do_mimic_attack(target, combat_manager):
 
 	if is_discharging:
 		if ammo_queue.size() > 0:
-			# For mimic, we might want to keep firing if we started, or re-acquire?
-			# Original logic re-acquires.
 			var aim_target = target
 			if !aim_target or !is_instance_valid(aim_target):
 				aim_target = combat_manager.find_nearest_enemy(global_position, range_val)
@@ -757,12 +706,9 @@ func _do_melee_attack(target):
 	await get_tree().create_timer(Constants.ANIM_WINDUP_TIME).timeout
 	if !is_instance_valid(self): return
 
-	# Melee usually requires valid target to hit? Or spawns projectile?
-	# Implementation spawns projectiles.
 	if is_instance_valid(target):
 		_spawn_melee_projectiles(target)
 	else:
-		# Blind fire melee swing towards last pos
 		_spawn_melee_projectiles_blind(target_last_pos)
 
 func _spawn_melee_projectiles_blind(target_pos: Vector2):
@@ -887,10 +833,6 @@ func _handle_peacock_attack(target, combat_manager):
 
 				for i in range(extra_shots):
 					var angle_mod = angles[i % 2]
-					# Calculate approximate target pos for extra shots? Or just angle.
-					# Feathers need target pos to stick.
-					# For extra shots, they just fly angled. If they stick, they need a pos.
-					# Let's synthesize a target pos based on angle and distance to main target.
 					var dist = global_position.distance_to(saved_target_pos)
 					var extra_target_pos = global_position + Vector2.RIGHT.rotated(angle_mod) * dist
 
@@ -1073,7 +1015,18 @@ func _on_area_2d_input_event(viewport, event, shape_idx):
 func _on_area_2d_mouse_entered():
 	is_hovered = true
 	queue_redraw()
-	if connection_overlay: connection_overlay.queue_redraw()
+
+	# --- Static Hover Feedback ---
+	# Receiver View: Highlight sources
+	for buff_type in buff_sources:
+		var source = buff_sources[buff_type]
+		if is_instance_valid(source) and source.has_method("set_force_highlight"):
+			source.set_force_highlight(true)
+
+	# Provider View: Show icons on potential receivers
+	if GameManager.grid_manager and GameManager.grid_manager.has_method("show_provider_icons"):
+		GameManager.grid_manager.show_provider_icons(self)
+
 	var current_stats = {
 		"level": level,
 		"damage": damage,
@@ -1087,16 +1040,24 @@ func _on_area_2d_mouse_entered():
 func _on_area_2d_mouse_exited():
 	is_hovered = false
 	queue_redraw()
-	if connection_overlay: connection_overlay.queue_redraw()
+
+	# --- Cleanup Hover Feedback ---
+	# Receiver View
+	for buff_type in buff_sources:
+		var source = buff_sources[buff_type]
+		if is_instance_valid(source) and source.has_method("set_force_highlight"):
+			source.set_force_highlight(false)
+
+	# Provider View
+	if GameManager.grid_manager and GameManager.grid_manager.has_method("hide_provider_icons"):
+		GameManager.grid_manager.hide_provider_icons()
+
 	GameManager.hide_tooltip.emit()
 
 func _draw():
 	if is_hovered:
 		var draw_radius = range_val
 		if unit_data.get("attackType") == "melee":
-			# For melee, use actual range if it's reasonable, or a fixed visual range if range_val is too small (e.g. < 50)
-			# But prompt suggests "fixed smaller range (e.g. 100) or actual range".
-			# Most melee units have range around 80-100.
 			draw_radius = max(range_val, 100.0)
 
 		draw_circle(Vector2.ZERO, draw_radius, Color(1, 1, 1, 0.1))
@@ -1108,38 +1069,16 @@ func _draw():
 		if unit_data and unit_data.has("size"):
 			size = Vector2(unit_data.size.x * Constants.TILE_SIZE, unit_data.size.y * Constants.TILE_SIZE)
 
-		# Assuming pivot is center
 		var rect = Rect2(-size / 2, size)
 		draw_rect(rect, _highlight_color, false, 4.0)
 
-func _on_connection_overlay_draw():
-	if is_hovered:
-		# --- Receiver View (Trace Back) ---
-		for buff_type in buff_sources:
-			var source = buff_sources[buff_type]
-			if is_instance_valid(source):
-				var self_pos = Vector2.ZERO
-				var source_pos = connection_overlay.to_local(source.global_position)
-				# Draw from Source to Self so arrow points to Self (Receiver)
-				_draw_curve_connection(source_pos, self_pos, Color.BLACK, buff_type)
+	if is_force_highlighted:
+		var size = Vector2(Constants.TILE_SIZE, Constants.TILE_SIZE)
+		if unit_data and unit_data.has("size"):
+			size = Vector2(unit_data.size.x * Constants.TILE_SIZE, unit_data.size.y * Constants.TILE_SIZE)
 
-		# --- Provider View (Trace Forward) ---
-		if unit_data.has("buffProvider") or (unit_data.has("has_interaction") and unit_data.has_interaction):
-			if GameManager.grid_manager:
-				var neighbors = _get_neighbor_units()
-				for neighbor in neighbors:
-					if neighbor == self: continue
-					# Check if neighbor has a buff from me.
-					var provided_buff = ""
-					for b_type in neighbor.buff_sources:
-						if neighbor.buff_sources[b_type] == self:
-							provided_buff = b_type
-							break
-
-					if provided_buff != "":
-						var start_pos = Vector2.ZERO
-						var end_pos = connection_overlay.to_local(neighbor.global_position)
-						_draw_curve_connection(start_pos, end_pos, Color.WHITE, provided_buff)
+		var rect = Rect2(-size / 2, size)
+		draw_rect(rect, Color.WHITE, false, 4.0)
 
 func _get_neighbor_units() -> Array:
 	var list = []
@@ -1173,67 +1112,6 @@ func _get_neighbor_units() -> Array:
 			if u and is_instance_valid(u) and not (u in list):
 				list.append(u)
 	return list
-
-func _draw_curve_connection(start: Vector2, end: Vector2, color: Color, buff_type: String = ""):
-	var diff = end - start
-	var control_point = (start + end) / 2
-
-	if start.distance_squared_to(end) < 1.0:
-		control_point.y -= 40 # Self loop vertical offset
-	else:
-		var normal = Vector2(-diff.y, diff.x).normalized()
-		var offset_amount = 30.0
-		control_point += normal * offset_amount
-
-	var points = PackedVector2Array()
-	var segments = 15
-	for i in range(segments + 1):
-		var t = float(i) / segments
-		var q0 = start.lerp(control_point, t)
-		var q1 = control_point.lerp(end, t)
-		var p = q0.lerp(q1, t)
-		points.append(p)
-
-	# Arrow Calculation
-	var arrow_len = 15.0
-	var direction = Vector2.RIGHT
-	if points.size() >= 2:
-		direction = (points[-1] - points[-2]).normalized()
-	else:
-		direction = (end - control_point).normalized()
-
-	var arrow_tip = end
-	var arrow_back = end - direction * arrow_len
-	var arrow_side1 = arrow_back + direction.orthogonal() * (arrow_len * 0.5)
-	var arrow_side2 = arrow_back - direction.orthogonal() * (arrow_len * 0.5)
-
-	# Trim line to arrow back
-	if points.size() > 1:
-		points[-1] = arrow_back
-
-	connection_overlay.draw_polyline(points, color, 2.0, true)
-	connection_overlay.draw_colored_polygon(PackedVector2Array([arrow_tip, arrow_side1, arrow_side2]), color)
-
-	if buff_type != "":
-		# Draw Buff Icon at source (near start of curve)
-		var icon_t = 0.15
-		var q0 = start.lerp(control_point, icon_t)
-		var q1 = control_point.lerp(end, icon_t)
-		var icon_pos = q0.lerp(q1, icon_t)
-
-		var icon_text = _get_buff_icon(buff_type)
-
-		# Draw background circle
-		connection_overlay.draw_circle(icon_pos, 10, Color(0, 0, 0, 0.7))
-
-		# Draw text
-		# Note: draw_string uses position as baseline-ish. Need to center.
-		# A default font is usually available via ThemeDB
-		var font = ThemeDB.fallback_font
-		var font_size = 14
-		if font:
-			var text_size = font.get_string_size(icon_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-			connection_overlay.draw_string(font, icon_pos + Vector2(-text_size.x/2, text_size.y/3), icon_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 
 func _input(event):
 	if is_dragging:
@@ -1269,10 +1147,6 @@ func create_ghost():
 	if ghost_node: return
 	ghost_node = Node2D.new()
 
-	# Clone visuals
-	# Since visual_holder contains TextureRect and Label, we can try to duplicate it or its children
-	# NOTE: Duplicate() is shallow by default but can be deep.
-
 	if visual_holder:
 		var dup_visual = visual_holder.duplicate(7) # Duplicate scripts, signals, groups
 		ghost_node.add_child(dup_visual)
@@ -1295,3 +1169,40 @@ func _on_peacock_cleanup():
 		if is_instance_valid(q):
 			q.queue_free()
 	feather_refs.clear()
+
+func play_buff_receive_anim():
+	if visual_holder:
+		var tween = create_tween()
+		tween.tween_property(visual_holder, "scale", Vector2(1.3, 1.3), 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+func spawn_buff_effect(icon_char: String):
+	# Create a temporary node for the effect
+	var effect_node = Node2D.new()
+	effect_node.name = "BuffEffect"
+	effect_node.z_index = 101 # Above normal units
+
+	# Create label
+	var lbl = Label.new()
+	lbl.text = icon_char
+	lbl.add_theme_font_size_override("font_size", 24)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+
+	# Center label (approximate since sizing is tricky without rect control, but 0,0 with grow directions works)
+	lbl.anchors_preset = Control.PRESET_CENTER
+	lbl.position = Vector2(-20, -20) # Approx centering for 40x40 area
+	lbl.size = Vector2(40, 40)
+
+	effect_node.add_child(lbl)
+	add_child(effect_node)
+
+	effect_node.position = Vector2.ZERO # Local to unit
+
+	var tween = create_tween()
+	# Scale 1.0 -> 2.5
+	tween.tween_property(effect_node, "scale", Vector2(2.5, 2.5), 0.6).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	# Parallel Opacity 1.0 -> 0.0
+	tween.parallel().tween_property(effect_node, "modulate:a", 0.0, 0.6)
+
+	tween.finished.connect(effect_node.queue_free)

@@ -37,6 +37,8 @@ var skill_preview_node: Node2D = null
 var valid_interaction_targets: Array = [] # Array[Vector2i]
 var interaction_highlights: Array = [] # Array[Node2D] (Visuals)
 
+# Overlay for Provider Buff Icons
+var provider_icon_overlay: Node2D = null
 var selection_overlay: Node2D = null
 var astar_grid: AStarGrid2D
 
@@ -50,6 +52,11 @@ func _ready():
 	selection_overlay.z_index = 100
 	selection_overlay.draw.connect(_on_selection_overlay_draw)
 	add_child(selection_overlay)
+
+	provider_icon_overlay = Node2D.new()
+	provider_icon_overlay.name = "ProviderIconOverlay"
+	provider_icon_overlay.z_index = 99
+	add_child(provider_icon_overlay)
 
 	TILE_SCENE = load("res://src/Scenes/Game/Tile.tscn")
 	if ResourceLoader.exists("res://src/Scenes/Game/Barricade.tscn"):
@@ -77,23 +84,15 @@ func _setup_border_visual():
 	border_line.default_color = Constants.COLORS.border_line
 	add_child(border_line)
 
-	# Calculate bounds based on grid structure
-	# Grid is centered at (0,0) and extends from -half_w to +half_w (indices)
 	var half_grid_w = floor(Constants.MAP_WIDTH / 2.0)
 	var half_grid_h = floor(Constants.MAP_HEIGHT / 2.0)
-
-	# Top-Left corner of the top-left tile
 	var min_grid_pos = Vector2i(-half_grid_w, -half_grid_h)
-	# Bottom-Right corner of the bottom-right tile
 	var max_grid_pos = Vector2i(half_grid_w, half_grid_h)
-
-	# grid_to_local gives center of tile.
-	# We want outer edges.
 	var top_left = grid_to_local(min_grid_pos) - Vector2(TILE_SIZE/2.0, TILE_SIZE/2.0) - Vector2(border_margin, border_margin)
 	var bottom_right = grid_to_local(max_grid_pos) + Vector2(TILE_SIZE/2.0, TILE_SIZE/2.0) + Vector2(border_margin, border_margin)
 
 	var rect = Rect2(top_left, bottom_right - top_left)
-	var radius = 15.0 # Arbitrary visual radius for rounded corners
+	var radius = 15.0
 
 	var points = _generate_rounded_rect_path(rect, radius)
 	points = _subdivide_path(points, 10.0)
@@ -101,11 +100,10 @@ func _setup_border_visual():
 
 	border_line.points = points
 
-	# Width curve
 	var curve = Curve.new()
 	curve.add_point(Vector2(0, 1))
 	curve.add_point(Vector2(0.25, 0.9))
-	curve.add_point(Vector2(0.5, 1.2)) # Slight swell
+	curve.add_point(Vector2(0.5, 1.2))
 	curve.add_point(Vector2(0.75, 1.1))
 	curve.add_point(Vector2(1, 1))
 	border_line.width_curve = curve
@@ -161,11 +159,9 @@ func _subdivide_path(points: PackedVector2Array, min_segment_len: float) -> Pack
 func _apply_jitter_to_path(points: PackedVector2Array, magnitude: float) -> PackedVector2Array:
 	var new_points = PackedVector2Array()
 
-	# Skip the last point in the loop since it should match the first
 	for i in range(points.size() - 1):
 		var p = points[i]
 
-		# Calculate Normal
 		var prev = points[(i - 1 + points.size()) % points.size()]
 		var next = points[(i + 1) % points.size()]
 		var tangent = (next - prev).normalized()
@@ -174,7 +170,6 @@ func _apply_jitter_to_path(points: PackedVector2Array, magnitude: float) -> Pack
 		var offset = normal * randf_range(-magnitude, magnitude)
 		new_points.append(p + offset)
 
-	# Close loop by duplicating the jittered first point
 	new_points.append(new_points[0])
 
 	return new_points
@@ -197,16 +192,12 @@ func _setup_plant_decorations(texture_path: String = Constants.PLANT_CONFIG.text
 
 	var exclusion_zone = Constants.PLANT_CONFIG.exclusion_zone
 
-	# Determine bounds
 	var bounds_rect = Rect2()
 	var bg_found = false
 
 	if GameManager.main_game and is_instance_valid(GameManager.main_game) and GameManager.main_game.background:
 		var bg = GameManager.main_game.background
 		if bg.texture:
-			# Background scale is applied by MainGame.
-			# background.position is grid_manager.position (in MainGame space).
-			# So background center is (0,0) in GridManager space.
 			var bg_size = bg.texture.get_size() * bg.scale
 			var half_w = bg_size.x / 2.0
 			var half_h = bg_size.y / 2.0
@@ -214,11 +205,9 @@ func _setup_plant_decorations(texture_path: String = Constants.PLANT_CONFIG.text
 			bg_found = true
 
 	if not bg_found:
-		# Fallback: Dynamic calculation based on camera max visible range or simple multiplier
-		# Assuming a reasonable default if BG logic fails
 		var map_w = Constants.MAP_WIDTH * Constants.TILE_SIZE
 		var map_h = Constants.MAP_HEIGHT * Constants.TILE_SIZE
-		var size_mult = 2.0 # Covers a bit more than the map
+		var size_mult = 2.0
 		var w = map_w * size_mult
 		var h = map_h * size_mult
 		bounds_rect = Rect2(-w/2.0, -h/2.0, w, h)
@@ -232,7 +221,6 @@ func _setup_plant_decorations(texture_path: String = Constants.PLANT_CONFIG.text
 			var x = randf_range(bounds_rect.position.x, bounds_rect.end.x)
 			var y = randf_range(bounds_rect.position.y, bounds_rect.end.y)
 
-			# Exclusion Zone Check
 			if abs(x) < exclusion_zone and abs(y) < exclusion_zone:
 				continue
 
@@ -250,7 +238,6 @@ func _setup_plant_decorations(texture_path: String = Constants.PLANT_CONFIG.text
 			var frame = randi() % (hframes * vframes)
 			var flip_h = randf() > 0.5
 
-			# Scale Calculation
 			var target_size = randf_range(Constants.PLANT_CONFIG.min_size, Constants.PLANT_CONFIG.max_size)
 			var frame_width = tex.get_width() / float(hframes)
 			var scale_val = 1.0
@@ -263,25 +250,20 @@ func _setup_tree_border():
 	print("Generating tree border (Refactored)...")
 
 	var T = float(Constants.TILE_SIZE)
-	# M_w and M_h are 9. E_x, E_y = 270.
 	var Ex = (Constants.MAP_WIDTH * T) / 2.0
 	var Ey = (Constants.MAP_HEIGHT * T) / 2.0
 	var Omax = T / 2.0
 	var Gmax = T
 	var Rmargin = T / 6.0
 
-	# 1. Determine Count and Sides
-	# Total N strictly between 4 and 6.
 	var N = randi_range(4, 6)
 	var sides = ["Top", "Bottom", "Left", "Right"]
 	var extra = N - 4
-	# Random distribution for remaining quota
 	for i in range(extra):
 		sides.append(["Top", "Bottom", "Left", "Right"].pick_random())
 
-	# Track placed trees
-	var placed_trees = [] # Array of Dictionary {rect: Rect2, node: Tree}
-	var occupied_grid_cells = {} # Key: Vector2i, Value: true
+	var placed_trees = []
+	var occupied_grid_cells = {}
 
 	for side in sides:
 		var tree = TREE_SCENE.instantiate()
@@ -295,7 +277,6 @@ func _setup_tree_border():
 		var success = false
 		var pos = Vector2.ZERO
 
-		# Corner Exclusion Zone Limits: |coord| > (E - T)
 		var corner_limit_x = Ex - T
 		var corner_limit_y = Ey - T
 
@@ -306,45 +287,27 @@ func _setup_tree_border():
 			var y_cand = 0.0
 
 			if side == "Top":
-				# Top (Y < 0): Y in [-Ey - Gmax, -Ey - Rmargin]
 				y_cand = randf_range(-Ey - Gmax, -Ey - Rmargin)
-				# Transverse X must avoid corner zone if Y is in corner zone.
-				# Top Y is always < -270, so |Y| > 210. Always in corner Y zone.
-				# So X must be within corner limits.
 				x_cand = randf_range(-corner_limit_x, corner_limit_x)
-
 			elif side == "Bottom":
-				# Bottom (Y > 0): Anchor Y in [Ey + H - Omax, Ey + H + Gmax]
 				y_cand = randf_range(Ey + H - Omax, Ey + H + Gmax)
-				# Bottom Y is > 270 + H - 30 > 240 > 210. Always in corner Y zone.
 				x_cand = randf_range(-corner_limit_x, corner_limit_x)
-
 			elif side == "Left":
-				# Left (X < 0): X in [-Ex - W/2 - Gmax, -Ex - W/2 + Omax]
 				x_cand = randf_range(-Ex - W/2 - Gmax, -Ex - W/2 + Omax)
-				# Left X is < -270 + Omax = -240. |X| > 240 > 210. Always in corner X zone.
 				y_cand = randf_range(-corner_limit_y, corner_limit_y)
-
 			elif side == "Right":
-				# Right (X > 0): X in [Ex + W/2 - Omax, Ex + W/2 + Gmax]
 				x_cand = randf_range(Ex + W/2 - Omax, Ex + W/2 + Gmax)
-				# Right X > 240. Always in corner X zone.
 				y_cand = randf_range(-corner_limit_y, corner_limit_y)
 
 			pos = Vector2(x_cand, y_cand)
 
-			# 1. Corner Check (Double Verification)
 			if abs(pos.x) > corner_limit_x and abs(pos.y) > corner_limit_y:
-				continue # Retry
+				continue
 
-			# 2. Grid Uniqueness
 			var grid_pos = local_to_grid(pos)
 			if occupied_grid_cells.has(grid_pos):
 				continue
 
-			# 3. Overlap Check
-			# Tree Rect: Centered X, Bottom Y.
-			# Left = x - W/2, Top = y - H, Width W, Height H.
 			var new_rect = Rect2(pos.x - W/2, pos.y - H, W, H)
 			var overlap_fail = false
 
@@ -366,7 +329,6 @@ func _setup_tree_border():
 		if success:
 			add_child(tree)
 			tree.position = pos
-			# Z-Index is updated in tree.setup or can be forced here
 			if tree.has_method("update_z_index"):
 				tree.update_z_index()
 
@@ -379,7 +341,7 @@ func _setup_tree_border():
 func _create_map_boundaries():
 	var border_body = StaticBody2D.new()
 	border_body.name = "MapBorder"
-	border_body.collision_layer = 1 # Wall layer
+	border_body.collision_layer = 1
 	border_body.collision_mask = 0
 	add_child(border_body)
 
@@ -387,7 +349,6 @@ func _create_map_boundaries():
 	var map_h_pixels = Constants.MAP_HEIGHT * TILE_SIZE
 	var wall_thickness = 100.0
 
-	# Top Wall
 	var top_shape = CollisionShape2D.new()
 	var top_rect = RectangleShape2D.new()
 	top_rect.size = Vector2(map_w_pixels + wall_thickness * 2, wall_thickness)
@@ -395,7 +356,6 @@ func _create_map_boundaries():
 	top_shape.position = Vector2(0, -map_h_pixels/2.0 - wall_thickness/2.0)
 	border_body.add_child(top_shape)
 
-	# Bottom Wall
 	var bot_shape = CollisionShape2D.new()
 	var bot_rect = RectangleShape2D.new()
 	bot_rect.size = Vector2(map_w_pixels + wall_thickness * 2, wall_thickness)
@@ -403,7 +363,6 @@ func _create_map_boundaries():
 	bot_shape.position = Vector2(0, map_h_pixels/2.0 + wall_thickness/2.0)
 	border_body.add_child(bot_shape)
 
-	# Left Wall
 	var left_shape = CollisionShape2D.new()
 	var left_rect = RectangleShape2D.new()
 	left_rect.size = Vector2(wall_thickness, map_h_pixels + wall_thickness * 2)
@@ -411,7 +370,6 @@ func _create_map_boundaries():
 	left_shape.position = Vector2(-map_w_pixels/2.0 - wall_thickness/2.0, 0)
 	border_body.add_child(left_shape)
 
-	# Right Wall
 	var right_shape = CollisionShape2D.new()
 	var right_rect = RectangleShape2D.new()
 	right_rect.size = Vector2(wall_thickness, map_h_pixels + wall_thickness * 2)
@@ -420,7 +378,6 @@ func _create_map_boundaries():
 	border_body.add_child(right_shape)
 
 func _process(_delta):
-	# Update Global Shader Parameters for Environment Decorations
 	_update_environment_shader_globals()
 
 	if placement_preview_cursor and placement_preview_cursor.visible:
@@ -446,8 +403,6 @@ func _process(_delta):
 func _update_environment_shader_globals():
 	var plant_container = get_node_or_null("PlantContainer")
 	if plant_container and plant_container.get_child_count() > 0:
-		# Get the first child to access the shared material
-		# Assuming all decorations use the same shared material resource
 		var first_deco = plant_container.get_child(0)
 		if first_deco.has_node("Sprite2D"):
 			var sprite = first_deco.get_node("Sprite2D")
@@ -457,8 +412,6 @@ func _update_environment_shader_globals():
 				var cam = get_viewport().get_camera_2d()
 				if cam:
 					cam_pos = cam.global_position
-
-				# This updates the Resource, so it affects all instances using this material
 				mat.set_shader_parameter("camera_global_pos", cam_pos)
 
 func _input(event):
@@ -482,8 +435,6 @@ func _handle_input_skill_targeting(event):
 			var gx = int(round(mouse_pos.x / TILE_SIZE))
 			var gy = int(round(mouse_pos.y / TILE_SIZE))
 
-			print("[DEBUG] GridManager._input: Global Mouse: ", mouse_pos_global, " Local Mouse: ", mouse_pos, " Grid: ", gx, ",", gy)
-
 			if skill_source_unit and is_instance_valid(skill_source_unit):
 				skill_source_unit.execute_skill_at(Vector2i(gx, gy))
 
@@ -506,22 +457,33 @@ func _handle_input_interaction_selection(event):
 				if interaction_source_unit and is_instance_valid(interaction_source_unit):
 					interaction_source_unit.interaction_target_pos = grid_pos
 					recalculate_buffs()
+
+					# Interaction Feedback
+					var key = get_tile_key(gx, gy)
+					if tiles.has(key):
+						var tile = tiles[key]
+						var u = tile.unit
+						if u == null and tile.occupied_by != Vector2i.ZERO:
+							var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
+							if tiles.has(origin_key):
+								u = tiles[origin_key].unit
+
+						if u and is_instance_valid(u):
+							u.play_buff_receive_anim()
+							var buff_icon = interaction_source_unit._get_buff_icon(interaction_source_unit.get_interaction_info().buff_id)
+							u.spawn_buff_effect(buff_icon)
+
 				end_interaction_selection()
 				get_viewport().set_input_as_handled()
 			else:
-				# Clicked outside valid target
-				# Cancel selection on invalid click as per requirements
 				end_interaction_selection()
 				get_viewport().set_input_as_handled()
 
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
-			# Cancel interaction
 			_cancel_deployment_sequence()
 			get_viewport().set_input_as_handled()
 
 func _handle_input_idle(event):
-	# Default state handling
-	# Currently logic for unit placement and clicking is handled via Tile signals or other managers
 	pass
 
 func update_placement_preview(grid_pos: Vector2i, world_pos: Vector2, item_id: String):
@@ -555,7 +517,6 @@ func can_place_item_at(grid_pos: Vector2i, item_id: String) -> bool:
 	var tile = tiles[key]
 
 	if "trap" in item_id or item_id == "poison_trap" or item_id == "fang_trap":
-		# Only check obstacles and units as per requirements
 		if obstacles.has(grid_pos): return false
 		if tile.unit != null: return false
 		if tile.occupied_by != Vector2i.ZERO: return false
@@ -568,8 +529,6 @@ func spawn_trap_custom(grid_pos: Vector2i, type_key: String):
 	var key = get_tile_key(grid_pos.x, grid_pos.y)
 	if !tiles.has(key): return
 	var tile = tiles[key]
-
-	# We assume checks are done.
 	_spawn_barricade(tile, type_key)
 
 func try_spawn_trap(world_pos: Vector2, type_key: String):
@@ -582,16 +541,11 @@ func try_spawn_trap(world_pos: Vector2, type_key: String):
 		return
 
 	var tile = tiles[key]
-
-	# Check requirements: No unit, No core, No obstacle
 	if tile.unit != null: return
 	if tile.occupied_by != Vector2i.ZERO: return
 	if tile.type == "core": return
 	if obstacles.has(grid_pos): return
 
-	# _spawn_barricade(tile, type_key)
-
-	# Inline spawning logic to ensure explicit implementation as requested and avoid confusion
 	var data = Constants.BARRICADE_TYPES[type_key]
 	var obstacle
 
@@ -626,7 +580,7 @@ func _init_astar():
 		Constants.MAP_HEIGHT
 	)
 	astar_grid.cell_size = Vector2(TILE_SIZE, TILE_SIZE)
-	astar_grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER # Usually tower defense is Manhattan distance
+	astar_grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER
 	astar_grid.default_compute_heuristic = AStarGrid2D.HEURISTIC_MANHATTAN
 	astar_grid.default_estimate_heuristic = AStarGrid2D.HEURISTIC_MANHATTAN
 	astar_grid.update()
@@ -638,7 +592,6 @@ func _init_astar():
 		)
 
 func create_initial_grid():
-	# Clear existing
 	for key in tiles:
 		tiles[key].queue_free()
 	tiles.clear()
@@ -648,7 +601,6 @@ func create_initial_grid():
 	var half_w = Constants.MAP_WIDTH / 2
 	var half_h = Constants.MAP_HEIGHT / 2
 
-	# Determine spawn candidates (Four corners)
 	var chosen_spawns = []
 	var corners = [
 		Vector2i(-half_w, -half_h),
@@ -659,15 +611,10 @@ func create_initial_grid():
 
 	for corner in corners:
 		chosen_spawns.append(corner)
-		# Determine direction towards center
 		var dx = 1 if corner.x < 0 else -1
 		var dy = 1 if corner.y < 0 else -1
-
-		# Horizontal extension
 		chosen_spawns.append(Vector2i(corner.x + dx, corner.y))
 		chosen_spawns.append(Vector2i(corner.x + dx * 2, corner.y))
-
-		# Vertical extension
 		chosen_spawns.append(Vector2i(corner.x, corner.y + dy))
 		chosen_spawns.append(Vector2i(corner.x, corner.y + dy * 2))
 
@@ -676,19 +623,16 @@ func create_initial_grid():
 			var type = "wilderness"
 			var state = "locked_inner"
 
-			# Check Core Zone
 			if abs(x) <= Constants.CORE_ZONE_RADIUS and abs(y) <= Constants.CORE_ZONE_RADIUS:
 				type = "core_zone"
 				state = "locked_inner"
 				if x == 0 and y == 0:
-					type = "core" # The absolute center
+					type = "core"
 					state = "unlocked"
 			else:
 				type = "wilderness"
 				state = "locked_outer"
 
-			# Check Unlocked (Cross Shape)
-			# (0,0) is core, unlocked. Neighbors (0,1), (0,-1), (1,0), (-1,0) are unlocked.
 			if (x == 0 and y == 0) or \
 			   (x == 0 and abs(y) == 1) or \
 			   (y == 0 and abs(x) == 1):
@@ -700,7 +644,6 @@ func create_initial_grid():
 				if x == 0 and y == 0:
 					type = "core"
 
-			# Check Spawn Points
 			if Vector2i(x,y) in chosen_spawns:
 				state = "spawn"
 				spawn_tiles.append(Vector2i(x,y))
@@ -715,7 +658,6 @@ func create_tile(x: int, y: int, type: String = "normal", state: String = "locke
 
 	var tile = TILE_SCENE.instantiate()
 	tile.setup(x, y, type)
-	# Explicit call to set_state to ensure visuals are updated
 	tile.set_state(state)
 
 	tile.position = grid_to_local(Vector2i(x, y))
@@ -728,22 +670,17 @@ func create_tile(x: int, y: int, type: String = "normal", state: String = "locke
 
 	tile.tile_clicked.connect(_on_tile_clicked)
 
-	# Initial weight setup for AStar
 	var grid_pos = Vector2i(x, y)
 	if astar_grid.is_in_boundsv(grid_pos):
-		# Assuming obstacles and locked tiles affect navigation?
-		# For now standard weight, obstacles will increase it.
 		astar_grid.set_point_weight_scale(grid_pos, 1.0)
 
 func _generate_random_obstacles():
 	var candidate_tiles = []
 	for key in tiles:
 		var tile = tiles[key]
-		# Candidates: locked_outer, not spawn, not core_zone (implied by locked_outer check in create_initial_grid logic, but let's be safe)
 		if tile.state == "locked_outer":
 			candidate_tiles.append(tile)
 
-	# Generate 10-15 obstacles
 	var obstacle_count = randi_range(10, 15)
 	obstacle_count = min(obstacle_count, candidate_tiles.size())
 	candidate_tiles.shuffle()
@@ -753,23 +690,17 @@ func _generate_random_obstacles():
 		if placed_count >= obstacle_count: break
 
 		var tile = candidate_tiles[i]
-
-		# Pick random type
 		var type_keys = Constants.BARRICADE_TYPES.keys()
 		var type_key = type_keys.pick_random()
 
 		_spawn_barricade(tile, type_key)
-
 		placed_count += 1
 
 func is_path_clear_from_spawns_to_core() -> bool:
-	var core_pos = Vector2i(0, 0) # Assumes core is at 0,0
-
-	# If core itself is blocked (shouldn't happen logic wise but safe to check)
+	var core_pos = Vector2i(0, 0)
 	if obstacles.has(core_pos): return false
 
 	for spawn_pos in spawn_tiles:
-		# astar_grid.get_id_path returns Array[Vector2i]
 		var path = astar_grid.get_id_path(spawn_pos, core_pos)
 		if path.size() == 0:
 			return false
@@ -801,25 +732,18 @@ func _spawn_barricade(tile, type_key):
 
 	register_obstacle(Vector2i(tile.x, tile.y), obstacle)
 
-
 func register_obstacle(grid_pos: Vector2i, node: Node):
 	if astar_grid.is_in_boundsv(grid_pos):
-		# Ensure obstacle is always passable for pathfinding
 		astar_grid.set_point_solid(grid_pos, false)
 		astar_grid.set_point_weight_scale(grid_pos, 1.0)
 
-	# Map the node to the grid position for later removal
 	obstacle_map[node] = grid_pos
-	# Add to fast lookup for placement checks
 	obstacles[grid_pos] = node
 
 func remove_obstacle(node: Node):
 	if not obstacle_map.has(node):
 		return
-
 	var grid_pos = obstacle_map[node]
-	# Removed AStar reset logic as obstacles no longer block pathfinding
-
 	obstacles.erase(grid_pos)
 	obstacle_map.erase(node)
 
@@ -835,7 +759,6 @@ func get_nav_path(start_pos: Vector2, end_pos: Vector2) -> PackedVector2Array:
 func get_spawn_points() -> Array[Vector2]:
 	var points: Array[Vector2] = []
 	for tile_pos in spawn_tiles:
-		# Use grid_to_local
 		var local_pos = grid_to_local(tile_pos)
 		points.append(to_global(local_pos))
 	return points
@@ -866,10 +789,6 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 		return false
 
 	add_child(unit)
-	# unit.position = tile.position + Vector2((w-1) * TILE_SIZE * 0.5, (h-1) * TILE_SIZE * 0.5)
-	# tile.position is already derived from grid_to_local(x,y).
-	# We can use grid_to_local directly on the tile, but tile.position is fine.
-	# To stay consistent with "using grid_to_local in place_unit", we can do:
 	unit.position = grid_to_local(Vector2i(x,y)) + Vector2((w-1) * TILE_SIZE * 0.5, (h-1) * TILE_SIZE * 0.5)
 
 	unit.start_position = unit.position
@@ -877,17 +796,14 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 
 	_set_tiles_occupied(x, y, w, h, unit)
 
-	# Register as obstacle if it's a defensive unit
 	if unit.unit_data.get("trait") in ["reflect", "flat_reduce"]:
 		register_obstacle(Vector2i(x, y), unit)
 
 	recalculate_buffs()
 	GameManager.recalculate_max_health()
 
-	# Check for Interaction
 	var info = unit.get_interaction_info()
 
-	# Check for Trap Deployment Sequence
 	if unit_key == "viper" or unit_key == "scorpion":
 		start_trap_placement_sequence(unit)
 	elif info.has_interaction:
@@ -921,7 +837,7 @@ func is_in_core_zone(pos: Vector2i) -> bool:
 # --- Skill Targeting ---
 
 func enter_skill_targeting(unit: Node2D):
-	exit_skill_targeting() # Cleanup if already active
+	exit_skill_targeting()
 
 	interaction_state = STATE_SKILL_TARGETING
 	skill_source_unit = unit
@@ -930,16 +846,10 @@ func enter_skill_targeting(unit: Node2D):
 	skill_preview_node.name = "SkillPreview"
 	skill_preview_node.z_index = 100
 
-	# Create 3x3 highlight
 	for x in range(-1, 2):
 		for y in range(-1, 2):
 			var rect = ColorRect.new()
 			rect.size = Vector2(TILE_SIZE, TILE_SIZE)
-			# Replaced manual Vector2 calculation with grid_to_local logic offset?
-			# Or just utilize TILE_SIZE. grid_to_local is for grid coordinates (integers).
-			# Here we are drawing relative to (0,0) of the preview node.
-			# But the preview node position is set using grid_to_local in _process.
-			# So local children offsets are fine to use TILE_SIZE directly.
 			rect.position = Vector2(x * TILE_SIZE, y * TILE_SIZE) - Vector2(TILE_SIZE/2.0, TILE_SIZE/2.0)
 			rect.color = Color(0, 1, 0, 0.4)
 			rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -963,12 +873,10 @@ func is_neighbor(unit, target_pos: Vector2i) -> bool:
 	var w = unit.unit_data.size.x
 	var h = unit.unit_data.size.y
 
-	# Check if target_pos is adjacent to the rectangle defined by (cx, cy, w, h)
 	if target_pos.x >= cx - 1 and target_pos.x < cx + w + 1:
 		if target_pos.y >= cy - 1 and target_pos.y < cy + h + 1:
-			# It is in the expanded box. Now check if it is NOT inside the unit.
 			if target_pos.x >= cx and target_pos.x < cx + w and target_pos.y >= cy and target_pos.y < cy + h:
-				return false # Inside
+				return false
 			return true
 	return false
 
@@ -977,7 +885,6 @@ func start_interaction_selection(unit):
 	interaction_source_unit = unit
 	valid_interaction_targets.clear()
 
-	# Calculate neighbors (8 directions)
 	var cx = unit.grid_pos.x
 	var cy = unit.grid_pos.y
 
@@ -985,12 +892,10 @@ func start_interaction_selection(unit):
 	var w = unit.unit_data.size.x
 	var h = unit.unit_data.size.y
 
-	# Top and Bottom rows
 	for dx in range(-1, w + 1):
 		neighbors.append(Vector2i(cx + dx, cy - 1))
 		neighbors.append(Vector2i(cx + dx, cy + h))
 
-	# Left and Right columns (excluding corners already added)
 	for dy in range(0, h):
 		neighbors.append(Vector2i(cx - 1, cy + dy))
 		neighbors.append(Vector2i(cx + w, cy + dy))
@@ -1005,20 +910,13 @@ func start_interaction_selection(unit):
 		else:
 			_spawn_interaction_highlight(pos, Color.RED)
 
-	# Pause game or just block input?
-	# "Place -> Pause -> Select Neighbor -> Effect"
-	# Ideally we set time scale to 0 or block other inputs.
-	# For this task, visual feedback + state lock is sufficient unless explicit pause requested.
-	# Assuming realtime continues but input is hijacked.
-
 func is_valid_interaction_target(origin_unit, target_pos: Vector2i) -> bool:
 	var key = get_tile_key(target_pos.x, target_pos.y)
 	if !tiles.has(key): return false
 	var tile = tiles[key]
 
-	# Rule: Neighbor + In Core Zone + Unlocked
 	if !is_in_core_zone(target_pos): return false
-	if tile.state != "unlocked" and tile.type != "core": return false # Core is unlocked by definition usually
+	if tile.state != "unlocked" and tile.type != "core": return false
 
 	return true
 
@@ -1035,69 +933,109 @@ func _spawn_interaction_highlight(grid_pos: Vector2i, color: Color = Color(1, 0.
 	var highlight = ColorRect.new()
 	highlight.size = Vector2(TILE_SIZE, TILE_SIZE)
 	highlight.color = color
-	highlight.color.a = 0.4 # Ensure transparency
+	highlight.color.a = 0.4
 
 	highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(highlight)
 
-	# Use grid_to_local
 	var local_pos = grid_to_local(grid_pos)
 	highlight.position = local_pos - Vector2(TILE_SIZE, TILE_SIZE) / 2
 	interaction_highlights.append(highlight)
 
 func _on_selection_overlay_draw():
 	if interaction_state == STATE_SELECTING_INTERACTION_TARGET and interaction_source_unit and is_instance_valid(interaction_source_unit):
-		var start_pos = interaction_source_unit.global_position
-		var end_pos = get_global_mouse_position()
+		# Dynamic Cursor Logic
+		var mouse_pos = get_local_mouse_position()
+		var gx = int(round(mouse_pos.x / TILE_SIZE))
+		var gy = int(round(mouse_pos.y / TILE_SIZE))
+		var grid_pos = Vector2i(gx, gy)
 
-		# Convert to local coordinates relative to Overlay (which is same as GridManager global effectively if no offset, but Node2D children follow parent transform)
-		start_pos = selection_overlay.to_local(start_pos)
-		end_pos = selection_overlay.to_local(end_pos)
+		# Only draw if near mouse on grid
+		var snap_pos = grid_to_local(grid_pos)
 
-		var control_point = (start_pos + end_pos) / 2
-		control_point.y -= 50
+		var buff_id = interaction_source_unit.get_interaction_info().buff_id
+		var icon_char = interaction_source_unit._get_buff_icon(buff_id)
 
-		var segments = 20
-		var curve_points = PackedVector2Array()
-		for i in range(segments + 1):
-			var t = float(i) / segments
-			var q0 = start_pos.lerp(control_point, t)
-			var q1 = control_point.lerp(end_pos, t)
-			var p = q0.lerp(q1, t)
-			curve_points.append(p)
+		var font = ThemeDB.fallback_font
+		var font_size = 24
 
-		# Arrow Calculation
-		var arrow_len = 15.0
-		var direction = Vector2.RIGHT
-		if curve_points.size() >= 2:
-			direction = (curve_points[-1] - curve_points[-2]).normalized()
-		else:
-			direction = (end_pos - control_point).normalized()
+		var is_valid = grid_pos in valid_interaction_targets
+		var color = Color.WHITE
+		if !is_valid:
+			color = Color(0.5, 0.5, 0.5, 0.5)
 
-		# Trim the line so it doesn't overlap the arrow tip area too much
-		var trimmed_points = PackedVector2Array()
-		var arrow_base_center = end_pos - direction * (arrow_len * 0.5)
-		# Or just draw line to end_pos and draw arrow on top.
-		# If user says arrow is "behind", maybe they mean the line goes OVER the arrow?
-		# Drawing order: Line first, then Arrow. The Arrow should cover the line.
-		# Let's ensure Arrow is big enough and centered at end_pos.
+		selection_overlay.draw_string(font, snap_pos + Vector2(-10, 10), icon_char, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, color)
 
-		# Arrow Vertices: Tip at end_pos
-		var arrow_tip = end_pos
-		var arrow_back = end_pos - direction * arrow_len
-		var arrow_side1 = arrow_back + direction.orthogonal() * (arrow_len * 0.5)
-		var arrow_side2 = arrow_back - direction.orthogonal() * (arrow_len * 0.5)
+func show_provider_icons(provider_unit: Node2D):
+	hide_provider_icons()
+	if !provider_unit: return
 
-		# Draw Line
-		# To avoid glitch, we can trim the line to arrow_back
-		var line_end_idx = segments
-		# Simple distance check to find where to cut?
-		# Just modifying the last point to be arrow_back might be enough if segments are small.
-		if curve_points.size() > 1:
-			curve_points[-1] = arrow_back
+	# Determine receivers logic (same as _apply_buff_to_neighbors or specific)
+	var buff_type = ""
+	if "buffProvider" in provider_unit.unit_data:
+		buff_type = provider_unit.unit_data["buffProvider"]
 
-		selection_overlay.draw_polyline(curve_points, Color.WHITE, 3.0, true)
-		selection_overlay.draw_colored_polygon(PackedVector2Array([arrow_tip, arrow_side1, arrow_side2]), Color.WHITE)
+	# If provider is interactive type, it gives buff to specific target
+	var info = provider_unit.get_interaction_info()
+	if info.has_interaction:
+		if provider_unit.interaction_target_pos != null:
+			# Single target
+			_spawn_provider_icon_at(provider_unit.interaction_target_pos, info.buff_id, provider_unit)
+			return
+
+	if buff_type == "": return
+
+	# Default neighbor logic
+	var cx = provider_unit.grid_pos.x
+	var cy = provider_unit.grid_pos.y
+	var w = provider_unit.unit_data.size.x
+	var h = provider_unit.unit_data.size.y
+
+	var neighbors = []
+	for dx in range(w):
+		neighbors.append(Vector2i(cx + dx, cy - 1))
+		neighbors.append(Vector2i(cx + dx, cy + h))
+	for dy in range(h):
+		neighbors.append(Vector2i(cx - 1, cy + dy))
+		neighbors.append(Vector2i(cx + w, cy + dy))
+
+	for n_pos in neighbors:
+		_spawn_provider_icon_at(n_pos, buff_type, provider_unit)
+
+func _spawn_provider_icon_at(grid_pos: Vector2i, buff_type: String, provider_unit: Node2D):
+	var key = get_tile_key(grid_pos.x, grid_pos.y)
+	if tiles.has(key):
+		var tile = tiles[key]
+		var target_unit = tile.unit
+		if target_unit == null and tile.occupied_by != Vector2i.ZERO:
+			var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
+			if tiles.has(origin_key):
+				target_unit = tiles[origin_key].unit
+
+		if target_unit and target_unit != provider_unit:
+			# Validate that target actually received the buff from this provider
+			var received = false
+			if target_unit.buff_sources.has(buff_type):
+				if target_unit.buff_sources[buff_type] == provider_unit:
+					received = true
+
+			if not received: return
+
+			# Draw icon
+			var lbl = Label.new()
+			lbl.text = provider_unit._get_buff_icon(buff_type)
+			lbl.add_theme_font_size_override("font_size", 20)
+			lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+
+			lbl.position = grid_to_local(grid_pos) - Vector2(20, 20) # Center
+			lbl.size = Vector2(40, 40)
+
+			provider_icon_overlay.add_child(lbl)
+
+func hide_provider_icons():
+	for child in provider_icon_overlay.get_children():
+		child.queue_free()
 
 func can_place_unit(x: int, y: int, w: int, h: int, exclude_unit = null) -> bool:
 	for dx in range(w):
