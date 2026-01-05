@@ -1,6 +1,7 @@
 extends Node
 
 const ENEMY_SCENE = preload("res://src/Scenes/Game/Enemy.tscn")
+const HEALER_SCRIPT = preload("res://src/Scripts/Enemies/HealerEnemy.gd")
 const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
 const LIGHTNING_SCENE = preload("res://src/Scenes/Game/LightningArc.tscn")
 const SLASH_EFFECT_SCRIPT = preload("res://src/Scripts/Effects/SlashEffect.gd")
@@ -29,6 +30,7 @@ func _on_wave_started():
 func get_wave_type(n: int) -> String:
 	var types = ['slime', 'wolf', 'poison', 'treant', 'yeti', 'golem']
 	if n % 10 == 0: return 'boss'
+	if n == 3: return 'healer'
 	if n % 3 == 0: return 'event'
 
 	if n == 2: return 'mutant_slime'
@@ -234,6 +236,8 @@ func _spawn_batch(type_key: String, count: int):
 
 func _spawn_enemy_at_pos(pos: Vector2, type_key: String):
 	var enemy = ENEMY_SCENE.instantiate()
+	if type_key == "healer":
+		enemy.set_script(HEALER_SCRIPT)
 	enemy.setup(type_key, GameManager.wave)
 	enemy.global_position = pos
 	add_child(enemy)
