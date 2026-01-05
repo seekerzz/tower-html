@@ -63,6 +63,10 @@ var mass: float = 1.0
 var is_facing_left: bool = false
 var is_dying: bool = false
 
+# Rotation Physics (Crab)
+var angular_velocity: float = 0.0
+var rotational_damping: float = 2.0
+
 # Mutant Slime Properties
 var split_generation: int = 0
 var hit_count: int = 0
@@ -109,11 +113,44 @@ func setup(key: String, wave: int):
 	if stationary_timer > 0.0:
 		is_stationary = true
 
+	# Collision Shape Logic
+	var col_shape = get_node_or_null("CollisionShape2D")
+	if !col_shape:
+		col_shape = CollisionShape2D.new()
+		col_shape.name = "CollisionShape2D"
+		add_child(col_shape)
+
 	if type_key == "boss" or type_key == "tank":
 		knockback_resistance = 10.0
 		mass = 5.0
+		# Boss default shape (Circle)
+		var circle_shape = CircleShape2D.new()
+		circle_shape.radius = enemy_data.radius
+		col_shape.shape = circle_shape
+
+	elif enemy_data.get("shape") == "rect":
+		# Crab Setup
+		knockback_resistance = 8.0
+		mass = 5.0
+
+		# Setup Rectangle Collision
+		var size_grid = enemy_data.get("size_grid", [1, 1])
+		var tile_size = 60 # Default
+		if GameManager.grid_manager:
+			tile_size = GameManager.grid_manager.TILE_SIZE
+
+		var rect_size = Vector2(size_grid[0] * tile_size, size_grid[1] * tile_size)
+
+		var rect_shape = RectangleShape2D.new()
+		rect_shape.size = rect_size * 0.8 # Slightly smaller than grid to avoid sticking
+		col_shape.shape = rect_shape
+
 	else:
 		mass = 1.0
+		# Default Circle Collision
+		var circle_shape = CircleShape2D.new()
+		circle_shape.radius = enemy_data.radius
+		col_shape.shape = circle_shape
 
 	var mass_mod = GameManager.get_stat_modifier("enemy_mass")
 	mass *= mass_mod
@@ -170,7 +207,20 @@ func _draw():
 	var color = enemy_data.color
 	if hit_flash_timer > 0:
 		color = Color.WHITE
-	draw_circle(Vector2.ZERO, enemy_data.radius, color)
+
+	if enemy_data.get("shape") == "rect":
+		var size_grid = enemy_data.get("size_grid", [2, 1])
+		var tile_size = 60
+		if GameManager.grid_manager:
+			tile_size = GameManager.grid_manager.TILE_SIZE
+
+		var w = size_grid[0] * tile_size
+		var h = size_grid[1] * tile_size
+		var rect = Rect2(-w/2, -h/2, w, h)
+		draw_rect(rect, color)
+	else:
+		draw_circle(Vector2.ZERO, enemy_data.radius, color)
+
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	if hp < max_hp and hp > 0:
@@ -199,7 +249,13 @@ func _physics_process(delta):
 
 	# Process Timers and Effects
 	if not is_dying:
-		_update_facing_logic()
+		if enemy_data.get("shape") == "rect":
+			# Apply Physics Rotation
+			rotation += angular_velocity * delta
+			angular_velocity = lerp(angular_velocity, 0.0, rotational_damping * delta)
+		else:
+			_update_facing_logic()
+
 	_process_effects(delta)
 
 	# Update visual controller speed info and apply transforms
@@ -777,6 +833,27 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 	if hit_source and is_instance_valid(hit_source) and "speed" in hit_source:
 		hit_dir = Vector2.RIGHT.rotated(hit_source.rotation)
 	last_hit_direction = hit_dir
+
+	if enemy_data.get("shape") == "rect":
+		# Torque calculation
+		# hit_source position relative to center
+		var hit_pos = global_position # Default
+		if hit_source and "global_position" in hit_source:
+			hit_pos = hit_source.global_position
+
+		var r = hit_pos - global_position
+		# F is force vector. Approximate from hit_dir
+		var force_dir = hit_dir
+		if force_dir == Vector2.ZERO and hit_source:
+			force_dir = (global_position - hit_source.global_position).normalized()
+
+		# Torque = r x F (2D Cross Product is scalar)
+		# A x B = Ax*By - Ay*Bx
+		var torque = r.x * force_dir.y - r.y * force_dir.x
+
+		# Scale torque
+		angular_velocity += torque * 0.05 # Sensitivity factor reduced
+
 	if kb_force > 0:
 		var applied_force = kb_force / max(0.1, knockback_resistance)
 		knockback_velocity += hit_dir * applied_force
