@@ -778,7 +778,7 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 	if source_unit:
 		GameManager.damage_dealt.emit(source_unit, amount)
 	if hp <= 0:
-		die()
+		die(source_unit)
 
 func _perform_split():
 	var child_hp = min(hp, max_hp / 2.0)
@@ -809,11 +809,15 @@ func _perform_split():
 
 	queue_free()
 
-func die():
+func die(killer = null):
 	if effects.get("burn", 0) > 0:
 		effects["burn"] = 0.0
 		_trigger_burn_explosion()
 	GameManager.add_gold(1)
+
+	if killer and GameManager.combat_manager:
+		GameManager.combat_manager.on_enemy_died(self, killer)
+
 	if GameManager.reward_manager and "scrap_recycling" in GameManager.reward_manager.acquired_artifacts:
 		if GameManager.grid_manager:
 			var core_pos = GameManager.grid_manager.global_position

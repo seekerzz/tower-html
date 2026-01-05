@@ -459,19 +459,30 @@ func _handle_input_interaction_selection(event):
 					recalculate_buffs()
 
 					# Interaction Feedback
-					var key = get_tile_key(gx, gy)
-					if tiles.has(key):
-						var tile = tiles[key]
-						var u = tile.unit
-						if u == null and tile.occupied_by != Vector2i.ZERO:
-							var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
-							if tiles.has(origin_key):
-								u = tiles[origin_key].unit
+					var targets_to_anim = [grid_pos]
+					if interaction_source_unit.unit_data.get("interaction_pattern") == "neighbor_pair":
+						var neighbors = _get_clockwise_neighbors(interaction_source_unit.grid_pos)
+						var idx = neighbors.find(grid_pos)
+						if idx != -1:
+							var next_idx = (idx + 1) % neighbors.size()
+							var next_pos = neighbors[next_idx]
+							if is_valid_interaction_target(interaction_source_unit, next_pos):
+								targets_to_anim.append(next_pos)
 
-						if u and is_instance_valid(u):
-							u.play_buff_receive_anim()
-							var buff_icon = interaction_source_unit._get_buff_icon(interaction_source_unit.get_interaction_info().buff_id)
-							u.spawn_buff_effect(buff_icon)
+					for t_pos in targets_to_anim:
+						var key = get_tile_key(t_pos.x, t_pos.y)
+						if tiles.has(key):
+							var tile = tiles[key]
+							var u = tile.unit
+							if u == null and tile.occupied_by != Vector2i.ZERO:
+								var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
+								if tiles.has(origin_key):
+									u = tiles[origin_key].unit
+
+							if u and is_instance_valid(u):
+								u.play_buff_receive_anim()
+								var buff_icon = interaction_source_unit._get_buff_icon(interaction_source_unit.get_interaction_info().buff_id)
+								u.spawn_buff_effect(buff_icon)
 
 				end_interaction_selection()
 				get_viewport().set_input_as_handled()
@@ -880,6 +891,20 @@ func is_neighbor(unit, target_pos: Vector2i) -> bool:
 			return true
 	return false
 
+func _get_clockwise_neighbors(center_pos: Vector2i) -> Array[Vector2i]:
+	var x = center_pos.x
+	var y = center_pos.y
+	return [
+		Vector2i(x, y - 1),      # Up
+		Vector2i(x + 1, y - 1),  # Up-Right
+		Vector2i(x + 1, y),      # Right
+		Vector2i(x + 1, y + 1),  # Down-Right
+		Vector2i(x, y + 1),      # Down
+		Vector2i(x - 1, y + 1),  # Down-Left
+		Vector2i(x - 1, y),      # Left
+		Vector2i(x - 1, y - 1)   # Up-Left
+	]
+
 func start_interaction_selection(unit):
 	interaction_state = STATE_SELECTING_INTERACTION_TARGET
 	interaction_source_unit = unit
@@ -888,17 +913,22 @@ func start_interaction_selection(unit):
 	var cx = unit.grid_pos.x
 	var cy = unit.grid_pos.y
 
+	# Assuming 1x1 units for neighbor_pair pattern as per task description
 	var neighbors = []
-	var w = unit.unit_data.size.x
-	var h = unit.unit_data.size.y
+	if unit.unit_data.get("interaction_pattern") == "neighbor_pair":
+		neighbors = _get_clockwise_neighbors(Vector2i(cx, cy))
+	else:
+		# Standard neighbor logic for other units
+		var w = unit.unit_data.size.x
+		var h = unit.unit_data.size.y
 
-	for dx in range(-1, w + 1):
-		neighbors.append(Vector2i(cx + dx, cy - 1))
-		neighbors.append(Vector2i(cx + dx, cy + h))
+		for dx in range(-1, w + 1):
+			neighbors.append(Vector2i(cx + dx, cy - 1))
+			neighbors.append(Vector2i(cx + dx, cy + h))
 
-	for dy in range(0, h):
-		neighbors.append(Vector2i(cx - 1, cy + dy))
-		neighbors.append(Vector2i(cx + w, cy + dy))
+		for dy in range(0, h):
+			neighbors.append(Vector2i(cx - 1, cy + dy))
+			neighbors.append(Vector2i(cx + w, cy + dy))
 
 	for pos in neighbors:
 		if is_valid_interaction_target(unit, pos):
@@ -950,21 +980,41 @@ func _on_selection_overlay_draw():
 		var gy = int(round(mouse_pos.y / TILE_SIZE))
 		var grid_pos = Vector2i(gx, gy)
 
-		# Only draw if near mouse on grid
-		var snap_pos = grid_to_local(grid_pos)
-
 		var buff_id = interaction_source_unit.get_interaction_info().buff_id
 		var icon_char = interaction_source_unit._get_buff_icon(buff_id)
-
 		var font = ThemeDB.fallback_font
 		var font_size = 24
 
-		var is_valid = grid_pos in valid_interaction_targets
-		var color = Color.WHITE
-		if !is_valid:
-			color = Color(0.5, 0.5, 0.5, 0.5)
+		var targets_to_draw = []
 
-		selection_overlay.draw_string(font, snap_pos + Vector2(-10, 10), icon_char, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, color)
+		if interaction_source_unit.unit_data.get("interaction_pattern") == "neighbor_pair":
+			if grid_pos in valid_interaction_targets:
+				targets_to_draw.append(grid_pos)
+				# Find next clockwise neighbor
+				var neighbors = _get_clockwise_neighbors(interaction_source_unit.grid_pos)
+				var idx = neighbors.find(grid_pos)
+				if idx != -1:
+					var next_idx = (idx + 1) % neighbors.size()
+					var next_pos = neighbors[next_idx]
+					if is_valid_interaction_target(interaction_source_unit, next_pos):
+						targets_to_draw.append(next_pos)
+		else:
+			# Default single target behavior
+			targets_to_draw.append(grid_pos)
+
+		for target_pos in targets_to_draw:
+			var snap_pos = grid_to_local(target_pos)
+			var is_valid = target_pos in valid_interaction_targets
+
+			# Special check for the second neighbor in pair (it might not be 'selected' by mouse but is valid)
+			if interaction_source_unit.unit_data.get("interaction_pattern") == "neighbor_pair" and target_pos != grid_pos:
+				is_valid = is_valid_interaction_target(interaction_source_unit, target_pos)
+
+			var color = Color.WHITE
+			if !is_valid:
+				color = Color(0.5, 0.5, 0.5, 0.5)
+
+			selection_overlay.draw_string(font, snap_pos + Vector2(-10, 10), icon_char, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, color)
 
 func show_provider_icons(provider_unit: Node2D):
 	hide_provider_icons()
@@ -979,8 +1029,18 @@ func show_provider_icons(provider_unit: Node2D):
 	var info = provider_unit.get_interaction_info()
 	if info.has_interaction:
 		if provider_unit.interaction_target_pos != null:
-			# Single target
-			_spawn_provider_icon_at(provider_unit.interaction_target_pos, info.buff_id, provider_unit)
+			if provider_unit.unit_data.get("interaction_pattern") == "neighbor_pair":
+				_spawn_provider_icon_at(provider_unit.interaction_target_pos, info.buff_id, provider_unit)
+
+				var neighbors = _get_clockwise_neighbors(provider_unit.grid_pos)
+				var idx = neighbors.find(provider_unit.interaction_target_pos)
+				if idx != -1:
+					var next_idx = (idx + 1) % neighbors.size()
+					var next_pos = neighbors[next_idx]
+					_spawn_provider_icon_at(next_pos, info.buff_id, provider_unit)
+			else:
+				# Single target
+				_spawn_provider_icon_at(provider_unit.interaction_target_pos, info.buff_id, provider_unit)
 			return
 
 	if buff_type == "": return
@@ -1277,7 +1337,21 @@ func recalculate_buffs():
 		# Interaction Buffs
 		var info = unit.get_interaction_info()
 		if info.has_interaction and unit.interaction_target_pos != null:
-			if is_neighbor(unit, unit.interaction_target_pos):
+			if unit.unit_data.get("interaction_pattern") == "neighbor_pair":
+				# Apply to target and next clockwise
+				var neighbors = _get_clockwise_neighbors(unit.grid_pos)
+				var idx = neighbors.find(unit.interaction_target_pos)
+
+				# Apply to primary target (if valid neighbor)
+				if idx != -1: # Ensure it is a neighbor
+					_apply_buff_to_specific_pos(unit.interaction_target_pos, info.buff_id, unit)
+
+					# Apply to next
+					var next_idx = (idx + 1) % neighbors.size()
+					var next_pos = neighbors[next_idx]
+					_apply_buff_to_specific_pos(next_pos, info.buff_id, unit)
+
+			elif is_neighbor(unit, unit.interaction_target_pos):
 				_apply_buff_to_specific_pos(unit.interaction_target_pos, info.buff_id, unit)
 
 	for unit in processed_units:

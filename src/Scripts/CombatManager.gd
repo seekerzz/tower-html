@@ -414,6 +414,12 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 
 	return proj
 
+func on_enemy_died(enemy, killer):
+	if killer and is_instance_valid(killer):
+		if "active_buffs" in killer and "wealth" in killer.active_buffs:
+			GameManager.add_gold(1)
+			GameManager.spawn_floating_text(enemy.global_position, "+1💰", Color.GOLD)
+
 func queue_burn_explosion(pos: Vector2, damage: float, source: Node2D):
 	explosion_queue.append({ "pos": pos, "damage": damage, "source": source })
 
