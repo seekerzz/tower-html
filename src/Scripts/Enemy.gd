@@ -62,6 +62,7 @@ const FLIP_THRESHOLD = 15.0
 var mass: float = 1.0
 var is_facing_left: bool = false
 var is_dying: bool = false
+var last_attacker: Node2D = null
 
 # Mutant Slime Properties
 var split_generation: int = 0
@@ -758,6 +759,9 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 
 	hit_count += 1
 
+	if source_unit:
+		last_attacker = source_unit
+
 	if type_key == "mutant_slime" and hit_count >= 5 and split_generation < 2 and hp > 0:
 		is_splitting = true
 		_perform_split()
@@ -814,6 +818,10 @@ func die():
 		effects["burn"] = 0.0
 		_trigger_burn_explosion()
 	GameManager.add_gold(1)
+
+	if GameManager.combat_manager:
+		GameManager.combat_manager.on_enemy_died(self, last_attacker)
+
 	if GameManager.reward_manager and "scrap_recycling" in GameManager.reward_manager.acquired_artifacts:
 		if GameManager.grid_manager:
 			var core_pos = GameManager.grid_manager.global_position

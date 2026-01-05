@@ -1,1743 +1,1788 @@
 {
-	"CORE_TYPES": {
-		"abundance": {
-			"name": "丰饶图腾",
-			"wave_item": "rice_ear",
-			"desc": "每波获得法力补给"
-		},
-		"moon_well": {
-			"name": "月亮井",
-			"wave_item": "moon_water",
-			"desc": "储存伤害转化为治疗"
-		},
-		"holy_sword": {
-			"name": "圣剑图腾",
-			"wave_item": "holy_sword",
-			"desc": "每波获得圣剑"
-		}
-	},
-	"ITEM_TYPES": {
-		"rice_ear": {
-			"name": "稻穗",
-			"icon": "🌾",
-			"type": "consumable",
-			"desc": "恢复50%法力值"
-		},
-		"moon_water": {
-			"name": "月亮井水",
-			"icon": "🧪",
-			"type": "consumable",
-			"desc": "释放储存的治疗量"
-		},
-		"holy_sword": {
-			"name": "神圣之剑",
-			"icon": "🗡️",
-			"type": "target_unit",
-			"desc": "下3次攻击必暴击"
-		}
-	},
-	"BARRICADE_TYPES": {
-		"mucus": {
-			"hp": 500,
-			"type": "slow",
-			"strength": 0.3,
-			"color": "#00cec9",
-			"width": 8,
-			"name": "粘液网",
-			"is_solid": false,
-			"icon": "🕸️"
-		},
-		"poison": {
-			"hp": 10,
-			"type": "poison",
-			"strength": 200,
-			"color": "#2ecc71",
-			"width": 20,
-			"name": "毒雾",
-			"immune": true,
-			"is_solid": false,
-			"icon": "☠️"
-		},
-		"fang": {
-			"hp": 800,
-			"type": "reflect",
-			"strength": 100,
-			"color": "#e74c3c",
-			"width": 6,
-			"name": "荆棘",
-			"is_solid": false,
-			"icon": "🦷"
-		},
-		"snowball_trap": {
-			"hp": 10,
-			"type": "trap_freeze",
-			"color": "#74b9ff",
-			"width": 10,
-			"name": "雪球陷阱",
-			"is_solid": false,
-			"icon": "❄️",
-			"desc": "放置3秒后爆炸，冻结周围3x3范围敌人，无伤害"
-		}
-	},
-	"UNIT_TYPES": {
-		"tiger": {
-			"name": "猛虎",
-			"icon": "🐯",
-			"size": [
-				1,
-				1
-			],
-			"range": 250,
-			"atkSpeed": 1.5,
-			"manaCost": 0,
-			"attackType": "ranged",
-			"proj": "pinecone",
-			"damageType": "physical",
-			"skill": "meteor_fall",
-			"skillCd": 15,
-			"skillDuration": 5.0,
-			"levels": {
-				"1": {
-					"damage": 300,
-					"hp": 500,
-					"cost": 250,
-					"desc": "主动：流星雨轰炸",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 450,
-					"hp": 750,
-					"cost": 500,
-					"desc": "主动：流星雨轰炸",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 675,
-					"hp": 1125,
-					"cost": 1000,
-					"desc": "主动：流星雨轰炸",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "tiger"
-		},
-		"scorpion": {
-			"name": "蝎子",
-			"icon": "🦂",
-			"size": [
-				1,
-				1
-			],
-			"range": 200,
-			"atkSpeed": 1.0,
-			"attackType": "ranged",
-			"proj": "stinger",
-			"levels": {
-				"1": {
-					"damage": 30,
-					"cost": 40,
-					"desc": "部署时放置尖牙陷阱",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 45,
-					"cost": 80,
-					"desc": "部署时放置尖牙陷阱",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 67,
-					"cost": 160,
-					"desc": "部署时放置尖牙陷阱",
-					"mechanics": {
-						"crit_rate_bonus": 0.2,
-						"multi_shot_chance": 0.3
-					}
-				}
-			},
-			"type_key": "scorpion"
-		},
-		"squirrel": {
-			"name": "松鼠",
-			"icon": "🐿️",
-			"size": [
-				1,
-				1
-			],
-			"range": 250,
-			"atkSpeed": 0.15,
-			"manaCost": 0,
-			"attackType": "ranged",
-			"proj": "pinecone",
-			"damageType": "physical",
-			"crit_rate": 0.1,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 30,
-					"hp": 100,
-					"cost": 15,
-					"desc": "远程: 快速投掷松果",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 45,
-					"hp": 150,
-					"cost": 30,
-					"desc": "远程: 快速投掷松果",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 67,
-					"hp": 225,
-					"cost": 60,
-					"desc": "远程: 快速投掷松果",
-					"mechanics": {
-						"crit_rate_bonus": 0.2,
-						"multi_shot_chance": 0.3
-					}
-				}
-			},
-			"type_key": "squirrel"
-		},
-		"octopus": {
-			"name": "八爪鱼",
-			"icon": "🐙",
-			"size": [
-				1,
-				1
-			],
-			"range": 180,
-			"atkSpeed": 1.5,
-			"manaCost": 0,
-			"attackType": "ranged",
-			"proj": "ink",
-			"projCount": 5,
-			"spread": 0.5,
-			"damageType": "physical",
-			"crit_rate": 0.1,
-			"crit_dmg": 1.5,
-			"has_interaction": true,
-			"buff_id": "multishot",
-			"levels": {
-				"1": {
-					"damage": 120,
-					"hp": 150,
-					"cost": 60,
-					"desc": "散射: 同时喷射多道墨汁",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 180,
-					"hp": 225,
-					"cost": 120,
-					"desc": "散射: 同时喷射多道墨汁",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 270,
-					"hp": 337,
-					"cost": 240,
-					"desc": "散射: 同时喷射多道墨汁",
-					"mechanics": {
-						"crit_rate_bonus": 0.2,
-						"multi_shot_chance": 0.3
-					}
-				}
-			},
-			"type_key": "octopus"
-		},
-		"bee": {
-			"name": "蜜蜂",
-			"icon": "🐝",
-			"size": [
-				1,
-				1
-			],
-			"range": 250,
-			"atkSpeed": 0.8,
-			"manaCost": 0,
-			"attackType": "ranged",
-			"proj": "stinger",
-			"pierce": 3,
-			"damageType": "physical",
-			"crit_rate": 0.2,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 250,
-					"hp": 180,
-					"cost": 80,
-					"desc": "穿透: 尖锐的蜂刺穿透敌人",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 375,
-					"hp": 270,
-					"cost": 160,
-					"desc": "穿透: 尖锐的蜂刺穿透敌人",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 562,
-					"hp": 405,
-					"cost": 320,
-					"desc": "穿透: 尖锐的蜂刺穿透敌人",
-					"mechanics": {
-						"crit_rate_bonus": 0.2,
-						"multi_shot_chance": 0.3
-					}
-				}
-			},
-			"type_key": "bee"
-		},
-		"eel": {
-			"name": "电鳗",
-			"icon": "⚡",
-			"size": [
-				1,
-				1
-			],
-			"range": 200,
-			"atkSpeed": 1.2,
-			"manaCost": 50,
-			"attackType": "ranged",
-			"proj": "lightning",
-			"chain": 4,
-			"damageType": "lightning",
-			"crit_rate": 0.1,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 350,
-					"hp": 200,
-					"cost": 70,
-					"desc": "连锁: 释放电流攻击多个敌人",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 525,
-					"hp": 300,
-					"cost": 140,
-					"desc": "连锁: 释放电流攻击多个敌人",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 787,
-					"hp": 450,
-					"cost": 280,
-					"desc": "连锁: 释放电流攻击多个敌人",
-					"mechanics": {
-						"crit_rate_bonus": 0.2,
-						"multi_shot_chance": 0.3
-					}
-				}
-			},
-			"type_key": "eel"
-		},
-		"lion": {
-			"name": "狮子",
-			"icon": "🦁",
-			"size": [
-				1,
-				1
-			],
-			"range": 200,
-			"atkSpeed": 2.0,
-			"manaCost": 0,
-			"attackType": "ranged",
-			"proj": "roar",
-			"damageType": "poison",
-			"crit_rate": 0.1,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 400,
-					"hp": 200,
-					"cost": 90,
-					"desc": "声波: 狮吼造成范围伤害",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 600,
-					"hp": 300,
-					"cost": 180,
-					"desc": "声波: 狮吼造成范围伤害",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 900,
-					"hp": 450,
-					"cost": 360,
-					"desc": "声波: 狮吼造成范围伤害",
-					"mechanics": {
-						"crit_rate_bonus": 0.2,
-						"multi_shot_chance": 0.3
-					}
-				}
-			},
-			"type_key": "lion"
-		},
-		"dragon": {
-			"name": "龙",
-			"icon": "🐉",
-			"size": [
-				1,
-				1
-			],
-			"range": 300,
-			"manaCost": 200,
-			"attackType": "none",
-			"skill": "black_hole",
-			"skillType": "point",
-			"targetArea": [
-				3,
-				3
-			],
-			"skillCd": 20.0,
-			"proj": "black_hole_field",
-			"skillDuration": 8.0,
-			"skillRadius": 150.0,
-			"skillStrength": 3000.0,
-			"skillColor": "#330066",
-			"crit_rate": 0.1,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"hp": 250,
-					"cost": 200,
-					"desc": "主动：召唤黑洞控制敌人",
-					"mechanics": {}
-				},
-				"2": {
-					"hp": 375,
-					"cost": 400,
-					"desc": "主动：召唤黑洞控制敌人",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"hp": 562,
-					"cost": 800,
-					"desc": "主动：召唤黑洞控制敌人",
-					"mechanics": {
-						"crit_rate_bonus": 0.2,
-						"multi_shot_chance": 0.3
-					}
-				}
-			},
-			"type_key": "dragon"
-		},
-		"dog": {
-			"name": "恶霸犬",
-			"icon": "🐕",
-			"size": [
-				1,
-				1
-			],
-			"range": 100,
-			"atkSpeed": 0.8,
-			"manaCost": 0,
-			"attackType": "melee",
-			"splash": 60,
-			"skill": "rage",
-			"skillCd": 10,
-			"skillDuration": 5.0,
-			"damageType": "physical",
-			"crit_rate": 0.1,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 200,
-					"hp": 300,
-					"cost": 30,
-					"desc": "近战: 凶猛撕咬 (范围伤害)",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 300,
-					"hp": 450,
-					"cost": 60,
-					"desc": "近战: 凶猛撕咬 (范围伤害)",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 450,
-					"hp": 675,
-					"cost": 120,
-					"desc": "近战: 凶猛撕咬 (范围伤害)",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "dog"
-		},
-		"bear": {
-			"name": "暴怒熊",
-			"icon": "🐻",
-			"size": [
-				1,
-				1
-			],
-			"range": 80,
-			"atkSpeed": 1.2,
-			"manaCost": 0,
-			"attackType": "melee",
-			"skill": "stun",
-			"skillCd": 15,
-			"damageType": "physical",
-			"crit_rate": 0.1,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 350,
-					"hp": 400,
-					"cost": 65,
-					"desc": "近战:重击晕眩\n技能:震慑(300💧)",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 525,
-					"hp": 600,
-					"cost": 130,
-					"desc": "近战:重击晕眩\n技能:震慑(300💧)",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 787,
-					"hp": 900,
-					"cost": 260,
-					"desc": "近战:重击晕眩\n技能:震慑(300💧)",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "bear"
-		},
-		"butterfly": {
-			"name": "蝴蝶",
-			"icon": "🦋",
-			"size": [
-				1,
-				1
-			],
-			"range": 350,
-			"atkSpeed": 1.2,
-			"manaCost": 50,
-			"attackType": "ranged",
-			"proj": "pollen",
-			"splash": 30,
-			"damageType": "magic",
-			"crit_rate": 0.1,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 600,
-					"hp": 150,
-					"cost": 50,
-					"desc": "魔法: 消耗法力释放强力花粉",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 900,
-					"hp": 225,
-					"cost": 100,
-					"desc": "魔法: 消耗法力释放强力花粉",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 1350,
-					"hp": 337,
-					"cost": 200,
-					"desc": "魔法: 消耗法力释放强力花粉",
-					"mechanics": {
-						"crit_rate_bonus": 0.2,
-						"multi_shot_chance": 0.3
-					}
-				}
-			},
-			"type_key": "butterfly"
-		},
-		"phoenix": {
-			"name": "凤凰",
-			"icon": "🦅",
-			"size": [
-				1,
-				1
-			],
-			"range": 300,
-			"atkSpeed": 0.6,
-			"manaCost": 0,
-			"attackType": "ranged",
-			"proj": "fire",
-			"splash": 40,
-			"skill": "firestorm",
-			"skillCd": 20,
-			"targetType": "ground",
-			"targetArea": [
-				3,
-				3
-			],
-			"damageType": "fire",
-			"crit_rate": 0.1,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 250,
-					"hp": 250,
-					"cost": 150,
-					"desc": "远程:AOE轰炸\n技能:火雨(300💧)",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 375,
-					"hp": 375,
-					"cost": 300,
-					"desc": "远程:AOE轰炸\n技能:火雨(300💧)",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 562,
-					"hp": 562,
-					"cost": 600,
-					"desc": "远程:AOE轰炸\n技能:火雨(300💧)",
-					"mechanics": {
-						"crit_rate_bonus": 0.2,
-						"multi_shot_chance": 0.3
-					}
-				}
-			},
-			"type_key": "phoenix",
-			"skillType": "point",
-			"skillId": "firestorm"
-		},
-		"plant": {
-			"name": "向日葵",
-			"icon": "🌻",
-			"size": [
-				1,
-				1
-			],
-			"range": 0,
-			"atkSpeed": 1.0,
-			"manaCost": 0,
-			"attackType": "none",
-			"produce": "mana",
-			"produceAmt": 60,
-			"crit_rate": 0.0,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 0,
-					"hp": 50,
-					"cost": 20,
-					"desc": "产出:法力值+60/s",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 0,
-					"hp": 75,
-					"cost": 40,
-					"desc": "产出:法力值+60/s",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 0,
-					"hp": 112,
-					"cost": 80,
-					"desc": "产出:法力值+60/s",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "plant"
-		},
-		"torch": {
-			"name": "红莲火炬",
-			"icon": "🔥",
-			"size": [
-				1,
-				1
-			],
-			"range": 0,
-			"atkSpeed": 0,
-			"manaCost": 0,
-			"attackType": "none",
-			"buffProvider": "fire",
-			"crit_rate": 0.0,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 0,
-					"hp": 100,
-					"cost": 35,
-					"desc": "邻接:赋予燃烧",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 0,
-					"hp": 150,
-					"cost": 70,
-					"desc": "邻接:赋予燃烧",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 0,
-					"hp": 225,
-					"cost": 140,
-					"desc": "邻接:赋予燃烧",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "torch"
-		},
-		"cauldron": {
-			"name": "剧毒大锅",
-			"icon": "🧪",
-			"size": [
-				1,
-				1
-			],
-			"range": 0,
-			"atkSpeed": 0,
-			"manaCost": 0,
-			"attackType": "none",
-			"buffProvider": "poison",
-			"crit_rate": 0.0,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 0,
-					"hp": 100,
-					"cost": 35,
-					"desc": "邻接:赋予中毒",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 0,
-					"hp": 150,
-					"cost": 70,
-					"desc": "邻接:赋予中毒",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 0,
-					"hp": 225,
-					"cost": 140,
-					"desc": "邻接:赋予中毒",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "cauldron"
-		},
-		"drum": {
-			"name": "战鼓",
-			"icon": "🥁",
-			"size": [
-				1,
-				1
-			],
-			"range": 0,
-			"atkSpeed": 0,
-			"manaCost": 0,
-			"attackType": "none",
-			"buffProvider": "speed",
-			"crit_rate": 0.0,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 0,
-					"hp": 100,
-					"cost": 40,
-					"desc": "邻接:攻速+20%",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 0,
-					"hp": 150,
-					"cost": 80,
-					"desc": "邻接:攻速+20%",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 0,
-					"hp": 225,
-					"cost": 160,
-					"desc": "邻接:攻速+20%",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "drum"
-		},
-		"mirror": {
-			"name": "反射魔镜",
-			"icon": "🪞",
-			"size": [
-				1,
-				1
-			],
-			"range": 0,
-			"atkSpeed": 0,
-			"manaCost": 0,
-			"attackType": "none",
-			"buffProvider": "bounce",
-			"crit_rate": 0.0,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 0,
-					"hp": 100,
-					"cost": 50,
-					"desc": "邻接:子弹弹射+1",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 0,
-					"hp": 150,
-					"cost": 100,
-					"desc": "邻接:子弹弹射+1",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 0,
-					"hp": 225,
-					"cost": 200,
-					"desc": "邻接:子弹弹射+1",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "mirror"
-		},
-		"splitter": {
-			"name": "多重棱镜",
-			"icon": "💠",
-			"size": [
-				1,
-				1
-			],
-			"range": 0,
-			"atkSpeed": 0,
-			"manaCost": 0,
-			"attackType": "none",
-			"buffProvider": "split",
-			"crit_rate": 0.0,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 0,
-					"hp": 100,
-					"cost": 55,
-					"desc": "邻接:子弹分裂+1",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 0,
-					"hp": 150,
-					"cost": 110,
-					"desc": "邻接:子弹分裂+1",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 0,
-					"hp": 225,
-					"cost": 220,
-					"desc": "邻接:子弹分裂+1",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "splitter"
-		},
-		"meat": {
-			"name": "五花肉",
-			"icon": "🥓",
-			"size": [
-				1,
-				1
-			],
-			"range": 0,
-			"atkSpeed": 0,
-			"manaCost": 0,
-			"isFood": true,
-			"xp": 50,
-			"attackType": "none",
-			"crit_rate": 0.0,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 0,
-					"hp": 10,
-					"cost": 10,
-					"desc": "喂食获得大量Buff",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 0,
-					"hp": 15,
-					"cost": 20,
-					"desc": "喂食获得大量Buff",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 0,
-					"hp": 22,
-					"cost": 40,
-					"desc": "喂食获得大量Buff",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "meat"
-		},
-		"hedgehog": {
-			"name": "刺猬",
-			"icon": "🦔",
-			"size": [
-				1,
-				1
-			],
-			"range": 80,
-			"atkSpeed": 1.0,
-			"manaCost": 0,
-			"attackType": "melee",
-			"trait": "reflect",
-			"reflect_percent": 0.3,
-			"damageType": "physical",
-			"crit_rate": 0.0,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 50,
-					"hp": 400,
-					"cost": 40,
-					"desc": "反伤30%",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 75,
-					"hp": 600,
-					"cost": 80,
-					"desc": "反伤30%",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 112,
-					"hp": 900,
-					"cost": 160,
-					"desc": "反伤30%",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "hedgehog"
-		},
-		"iron_turtle": {
-			"name": "铁甲龟",
-			"icon": "🐢🛡️",
-			"size": [
-				1,
-				1
-			],
-			"range": 80,
-			"atkSpeed": 0.8,
-			"manaCost": 0,
-			"attackType": "melee",
-			"trait": "flat_reduce",
-			"flat_amount": 20,
-			"damageType": "physical",
-			"crit_rate": 0.0,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 20,
-					"hp": 600,
-					"cost": 50,
-					"desc": "固定减伤20",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 30,
-					"hp": 900,
-					"cost": 100,
-					"desc": "固定减伤20",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 45,
-					"hp": 1350,
-					"cost": 200,
-					"desc": "固定减伤20",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "iron_turtle"
-		},
-		"cow": {
-			"name": "奶牛",
-			"icon": "🐄",
-			"size": [
-				1,
-				1
-			],
-			"range": 0,
-			"atkSpeed": 1.0,
-			"manaCost": 0,
-			"attackType": "none",
-			"skill": "regenerate",
-			"skillDuration": 5.0,
-			"crit_rate": 0.0,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 0,
-					"hp": 300,
-					"cost": 45,
-					"desc": "每5秒治疗核心50",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 0,
-					"hp": 450,
-					"cost": 90,
-					"desc": "每5秒治疗核心50",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 0,
-					"hp": 675,
-					"cost": 180,
-					"desc": "每5秒治疗核心50",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "cow"
-		},
-		"mosquito": {
-			"name": "蚊子",
-			"icon": "🦟",
-			"size": [
-				1,
-				1
-			],
-			"range": 200,
-			"atkSpeed": 1.5,
-			"manaCost": 0,
-			"attackType": "ranged",
-			"proj": "dot",
-			"trait": "lifesteal",
-			"lifesteal_percent": 1.0,
-			"damageType": "physical",
-			"crit_rate": 0.1,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 20,
-					"hp": 50,
-					"cost": 25,
-					"desc": "造成伤害治疗核心",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 30,
-					"hp": 75,
-					"cost": 50,
-					"desc": "造成伤害治疗核心",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 45,
-					"hp": 112,
-					"cost": 100,
-					"desc": "造成伤害治疗核心",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "mosquito"
-		},
-		"snowman": {
-			"name": "雪人",
-			"icon": "☃️",
-			"size": [
-				1,
-				1
-			],
-			"range": 0,
-			"atkSpeed": 1.0,
-			"manaCost": 20,
-			"attackType": "none",
-			"production_type": "item",
-			"produce_item_id": "snowball_trap",
-			"production_interval": 5.0,
-			"trait": "freeze",
-			"damageType": "magic",
-			"crit_rate": 0.1,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 40,
-					"hp": 200,
-					"cost": 60,
-					"desc": "每5秒生成雪球陷阱",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 60,
-					"hp": 300,
-					"cost": 120,
-					"desc": "每4秒生成雪球陷阱",
-					"mechanics": {
-						"crit_rate_bonus": 0.1,
-						"production_interval": 4.0
-					}
-				},
-				"3": {
-					"damage": 90,
-					"hp": 450,
-					"cost": 240,
-					"desc": "每3秒生成雪球陷阱",
-					"mechanics": {
-						"crit_rate_bonus": 0.2,
-						"production_interval": 3.0
-					}
-				}
-			},
-			"type_key": "snowman"
-		},
-		"rabbit": {
-			"name": "兔子",
-			"icon": "🐇",
-			"size": [
-				1,
-				1
-			],
-			"range": 80,
-			"atkSpeed": 1.2,
-			"manaCost": 0,
-			"attackType": "melee",
-			"trait": "dodge_counter",
-			"dodge_rate": 0.3,
-			"damageType": "physical",
-			"crit_rate": 0.2,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 80,
-					"hp": 150,
-					"cost": 35,
-					"desc": "30%闪避并反击",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 120,
-					"hp": 225,
-					"cost": 70,
-					"desc": "30%闪避并反击",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 180,
-					"hp": 337,
-					"cost": 140,
-					"desc": "30%闪避并反击",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "rabbit"
-		},
-		"viper": {
-			"name": "毒蛇",
-			"icon": "🐍",
-			"size": [
-				1,
-				1
-			],
-			"range": 80,
-			"atkSpeed": 1.2,
-			"manaCost": 0,
-			"attackType": "melee",
-			"trait": "poison_touch",
-			"damageType": "poison",
-			"crit_rate": 0.1,
-			"crit_dmg": 1.5,
-			"has_interaction": true,
-			"buff_id": "poison",
-			"levels": {
-				"1": {
-					"damage": 40,
-					"hp": 150,
-					"cost": 30,
-					"desc": "部署时放置毒液陷阱",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 60,
-					"hp": 225,
-					"cost": 60,
-					"desc": "部署时放置毒液陷阱",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 90,
-					"hp": 337,
-					"cost": 120,
-					"desc": "部署时放置毒液陷阱",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "viper"
-		},
-		"spider": {
-			"name": "蜘蛛",
-			"icon": "🕷️",
-			"size": [
-				1,
-				1
-			],
-			"range": 250,
-			"atkSpeed": 1.0,
-			"manaCost": 0,
-			"attackType": "ranged",
-			"proj": "web",
-			"trait": "slow",
-			"damageType": "physical",
-			"crit_rate": 0.1,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 30,
-					"hp": 180,
-					"cost": 40,
-					"desc": "攻击概率生成蜘蛛网陷阱",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 45,
-					"hp": 270,
-					"cost": 80,
-					"desc": "攻击概率生成蜘蛛网陷阱",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 67,
-					"hp": 405,
-					"cost": 160,
-					"desc": "攻击概率生成蜘蛛网陷阱",
-					"mechanics": {
-						"crit_rate_bonus": 0.2,
-						"multi_shot_chance": 0.3
-					}
-				}
-			},
-			"type_key": "spider"
-		},
-		"parrot": {
-			"name": "鹦鹉",
-			"icon": "🦜",
-			"size": [
-				1,
-				1
-			],
-			"range": 0,
-			"atkSpeed": 0.08,
-			"manaCost": 0,
-			"attackType": "mimic",
-			"crit_rate": 0.1,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 0,
-					"hp": 100,
-					"cost": 0,
-					"desc": "学习邻居子弹\n上限:5发",
-					"mechanics": {
-						"max_ammo": 5
-					}
-				},
-				"2": {
-					"damage": 0,
-					"hp": 150,
-					"cost": 0,
-					"desc": "学习邻居子弹\n上限:7发",
-					"mechanics": {
-						"max_ammo": 7
-					}
-				},
-				"3": {
-					"damage": 0,
-					"hp": 225,
-					"cost": 0,
-					"desc": "学习邻居子弹\n上限:10发",
-					"mechanics": {
-						"max_ammo": 10
-					}
-				}
-			},
-			"type_key": "parrot"
-		},
-		"peacock": {
-			"name": "孔雀",
-			"icon": "🦚",
-			"size": [
-				1,
-				1
-			],
-			"range": 300,
-			"atkSpeed": 1.2,
-			"attackType": "ranged",
-			"proj": "feather",
-			"max_quills": 3,
-			"damageType": "physical",
-			"crit_rate": 0.1,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 60,
-					"hp": 200,
-					"cost": 40,
-					"desc": "远程: 发射羽毛, 第4次收回拉扯敌人",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 90,
-					"hp": 300,
-					"cost": 80,
-					"desc": "远程: 发射羽毛, 第4次收回拉扯敌人",
-					"mechanics": {
-						"pull_strength": 600,
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 135,
-					"hp": 450,
-					"cost": 160,
-					"desc": "远程: 发射羽毛, 第4次收回拉扯敌人",
-					"mechanics": {
-						"pull_strength": 1000,
-						"multi_shot_chance": 0.2,
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "peacock"
-		}
-	},
-	"TRAITS": [
-		{
-			"id": "vamp",
-			"name": "吸血",
-			"desc": "造成伤害回复生命",
-			"icon": "🩸"
-		},
-		{
-			"id": "crit",
-			"name": "暴击",
-			"desc": "20%几率造成双倍伤害",
-			"icon": "💥"
-		},
-		{
-			"id": "exec",
-			"name": "处决",
-			"desc": "对生命低于30%的敌人伤害翻倍",
-			"icon": "💀"
-		},
-		{
-			"id": "giant",
-			"name": "巨化",
-			"desc": "体型变大，范围增加",
-			"icon": "🏔️"
-		},
-		{
-			"id": "swift",
-			"name": "神速",
-			"desc": "攻速 +30%",
-			"icon": "👟"
-		}
-	],
-	"ENEMY_VARIANTS": {
-		"slime": {
-			"name": "史莱姆",
-			"icon": "💧",
-			"color": "#00cec9",
-			"radius": 10,
-			"hpMod": 0.8,
-			"spdMod": 0.7,
-			"attackType": "melee",
-			"range": 30,
-			"dmg": 50,
-			"atkSpeed": 1.0,
-			"drop": "mucus",
-			"dropRate": 0.5,
-			"anim_config": {
-				"style": "squash",
-				"amplitude": 0.2,
-				"base_freq": 4.0
-			}
-		},
-		"mutant_slime": {
-			"name": "变异母体",
-			"icon": "🦠",
-			"color": "#00cec9",
-			"radius": 12,
-			"hpMod": 5.0,
-			"spdMod": 0.6,
-			"split_limit": 2,
-			"split_trigger_hits": 5,
-			"attackType": "melee",
-			"range": 30,
-			"dmg": 50,
-			"atkSpeed": 1.0,
-			"drop": "mucus",
-			"dropRate": 0.5,
-			"anim_config": {
-				"style": "squash",
-				"amplitude": 0.2,
-				"base_freq": 4.0
-			}
-		},
-		"poison": {
-			"name": "毒怪",
-			"icon": "🤢",
-			"color": "#2ecc71",
-			"radius": 12,
-			"hpMod": 1.2,
-			"spdMod": 0.8,
-			"attackType": "melee",
-			"range": 30,
-			"dmg": 80,
-			"atkSpeed": 1.0,
-			"drop": "poison",
-			"dropRate": 0.4,
-			"anim_config": {
-				"style": "squash",
-				"amplitude": 0.25,
-				"base_freq": 3.5
-			}
-		},
-		"wolf": {
-			"name": "狼群",
-			"icon": "🐺",
-			"color": "#e74c3c",
-			"radius": 14,
-			"hpMod": 1.0,
-			"spdMod": 1.5,
-			"attackType": "melee",
-			"range": 30,
-			"dmg": 120,
-			"atkSpeed": 0.8,
-			"drop": "fang",
-			"dropRate": 0.3,
-			"anim_config": {
-				"style": "bob",
-				"amplitude": 4.0,
-				"base_freq": 10.0
-			}
-		},
-		"treant": {
-			"name": "树人",
-			"icon": "🌳",
-			"color": "#d35400",
-			"radius": 18,
-			"hpMod": 2.5,
-			"spdMod": 0.5,
-			"attackType": "melee",
-			"range": 30,
-			"dmg": 200,
-			"atkSpeed": 2.0,
-			"drop": "wood",
-			"dropRate": 0.6,
-			"anim_config": {
-				"style": "stiff",
-				"amplitude": 0.05,
-				"base_freq": 2.0
-			}
-		},
-		"yeti": {
-			"name": "雪怪",
-			"icon": "❄️",
-			"color": "#74b9ff",
-			"radius": 20,
-			"hpMod": 3.0,
-			"spdMod": 0.6,
-			"attackType": "melee",
-			"range": 40,
-			"dmg": 250,
-			"atkSpeed": 2.0,
-			"drop": "snow",
-			"dropRate": 0.5,
-			"anim_config": {
-				"style": "stiff",
-				"amplitude": 0.08,
-				"base_freq": 2.5
-			}
-		},
-		"golem": {
-			"name": "石头人",
-			"icon": "🗿",
-			"color": "#95a5a6",
-			"radius": 22,
-			"hpMod": 4.0,
-			"spdMod": 0.4,
-			"attackType": "melee",
-			"range": 40,
-			"dmg": 300,
-			"atkSpeed": 2.5,
-			"drop": "stone",
-			"dropRate": 0.5,
-			"anim_config": {
-				"style": "stiff",
-				"amplitude": 0.05,
-				"base_freq": 2.0
-			}
-		},
-		"shooter": {
-			"name": "投矛手",
-			"icon": "🏹",
-			"color": "#16a085",
-			"radius": 14,
-			"hpMod": 0.8,
-			"spdMod": 0.8,
-			"attackType": "ranged",
-			"proj": "pinecone",
-			"rangedAnimType": "lunge",
-			"range": 200,
-			"dmg": 80,
-			"atkSpeed": 2.0,
-			"projectileSpeed": 150,
-			"drop": "wood",
-			"dropRate": 0.3,
-			"anim_config": {
-				"style": "stiff",
-				"amplitude": 0.05,
-				"base_freq": 4.0
-			}
-		},
-		"archer_rat": {
-			"name": "神射鼠",
-			"icon": "🏹🐭",
-			"color": "#16a085",
-			"radius": 14,
-			"hpMod": 0.8,
-			"spdMod": 0.8,
-			"attackType": "ranged",
-			"proj": "pinecone",
-			"rangedAnimType": "elastic_shoot",
-			"range": 200,
-			"dmg": 80,
-			"atkSpeed": 2.0,
-			"projectileSpeed": 150,
-			"drop": "wood",
-			"dropRate": 0.3,
-			"anim_config": {
-				"style": "stiff",
-				"amplitude": 0.05,
-				"base_freq": 4.0
-			}
-		},
-		"boss": {
-			"name": "虚空领主",
-			"icon": "👹",
-			"color": "#2c3e50",
-			"radius": 32,
-			"hpMod": 15.0,
-			"spdMod": 0.4,
-			"attackType": "melee",
-			"range": 50,
-			"dmg": 500,
-			"atkSpeed": 3.0,
-			"drop": "stone",
-			"dropRate": 1.0,
-			"is_boss": true,
-			"anim_config": {
-				"style": "float",
-				"amplitude": 0.1,
-				"base_freq": 1.5
-			}
-		},
-		"minion": {
-			"name": "鼠小兵",
-			"icon": "🐭",
-			"color": "#95a5a6",
-			"radius": 8,
-			"hpMod": 0.5,
-			"spdMod": 1.1,
-			"attackType": "melee",
-			"range": 20,
-			"dmg": 20,
-			"atkSpeed": 1.0,
-			"drop": "mana",
-			"dropRate": 0.2,
-			"anim_config": {
-				"style": "bob",
-				"amplitude": 2.0,
-				"base_freq": 12.0
-			}
-		},
-		"bullet_entity": {
-			"name": "滚地雷鼠",
-			"icon": "💣",
-			"color": "#000000",
-			"radius": 6,
-			"hpMod": 0.1,
-			"spdMod": 3.0,
-			"attackType": "melee",
-			"range": 20,
-			"dmg": 300,
-			"atkSpeed": 10.0,
-			"drop": "none",
-			"dropRate": 0.0,
-			"is_suicide": true,
-			"anim_config": {
-				"style": "squash",
-				"amplitude": 0.3,
-				"base_freq": 15.0
-			}
-		},
-		"summoner": {
-			"name": "鼠祭司",
-			"icon": "🧙",
-			"color": "#8e44ad",
-			"radius": 24,
-			"hpMod": 8.0,
-			"spdMod": 0.3,
-			"attackType": "ranged",
-			"proj": "ink",
-			"rangedAnimType": "elastic_slash",
-			"range": 150,
-			"dmg": 50,
-			"atkSpeed": 2.0,
-			"drop": "magic_dust",
-			"dropRate": 1.0,
-			"stationary_time": 8.0,
-			"boss_skill": "summon",
-			"is_boss": true,
-			"anim_config": {
-				"style": "float",
-				"amplitude": 0.08,
-				"base_freq": 2.0
-			}
-		},
-		"ranger": {
-			"name": "鼠弩车",
-			"icon": "🚜",
-			"color": "#d35400",
-			"radius": 28,
-			"hpMod": 6.0,
-			"spdMod": 0.4,
-			"attackType": "ranged",
-			"proj": "stinger",
-			"rangedAnimType": "recoil",
-			"range": 300,
-			"dmg": 80,
-			"atkSpeed": 1.5,
-			"drop": "wood",
-			"dropRate": 1.0,
-			"stationary_time": 5.0,
-			"boss_skill": "shoot_enemy",
-			"is_boss": true,
-			"anim_config": {
-				"style": "stiff",
-				"amplitude": 0.05,
-				"base_freq": 3.0
-			}
-		},
-		"tank": {
-			"name": "鼠将军",
-			"icon": "🐗",
-			"color": "#7f8c8d",
-			"radius": 32,
-			"hpMod": 12.0,
-			"spdMod": 0.35,
-			"attackType": "melee",
-			"range": 60,
-			"dmg": 200,
-			"atkSpeed": 1.2,
-			"drop": "iron",
-			"dropRate": 1.0,
-			"stationary_time": 0.0,
-			"is_boss": true,
-			"anim_config": {
-				"style": "stiff",
-				"amplitude": 0.03,
-				"base_freq": 2.0
-			}
-		}
-	}
+    "CORE_TYPES": {
+        "abundance": {
+            "name": "丰饶图腾",
+            "wave_item": "rice_ear",
+            "desc": "每波获得法力补给"
+        },
+        "moon_well": {
+            "name": "月亮井",
+            "wave_item": "moon_water",
+            "desc": "储存伤害转化为治疗"
+        },
+        "holy_sword": {
+            "name": "圣剑图腾",
+            "wave_item": "holy_sword",
+            "desc": "每波获得圣剑"
+        }
+    },
+    "ITEM_TYPES": {
+        "rice_ear": {
+            "name": "稻穗",
+            "icon": "🌾",
+            "type": "consumable",
+            "desc": "恢复50%法力值"
+        },
+        "moon_water": {
+            "name": "月亮井水",
+            "icon": "🧪",
+            "type": "consumable",
+            "desc": "释放储存的治疗量"
+        },
+        "holy_sword": {
+            "name": "神圣之剑",
+            "icon": "🗡️",
+            "type": "target_unit",
+            "desc": "下3次攻击必暴击"
+        }
+    },
+    "BARRICADE_TYPES": {
+        "mucus": {
+            "hp": 500,
+            "type": "slow",
+            "strength": 0.3,
+            "color": "#00cec9",
+            "width": 8,
+            "name": "粘液网",
+            "is_solid": false,
+            "icon": "🕸️"
+        },
+        "poison": {
+            "hp": 10,
+            "type": "poison",
+            "strength": 200,
+            "color": "#2ecc71",
+            "width": 20,
+            "name": "毒雾",
+            "immune": true,
+            "is_solid": false,
+            "icon": "☠️"
+        },
+        "fang": {
+            "hp": 800,
+            "type": "reflect",
+            "strength": 100,
+            "color": "#e74c3c",
+            "width": 6,
+            "name": "荆棘",
+            "is_solid": false,
+            "icon": "🦷"
+        },
+        "snowball_trap": {
+            "hp": 10,
+            "type": "trap_freeze",
+            "color": "#74b9ff",
+            "width": 10,
+            "name": "雪球陷阱",
+            "is_solid": false,
+            "icon": "❄️",
+            "desc": "放置3秒后爆炸，冻结周围3x3范围敌人，无伤害"
+        }
+    },
+    "UNIT_TYPES": {
+        "tiger": {
+            "name": "猛虎",
+            "icon": "🐯",
+            "size": [
+                1,
+                1
+            ],
+            "range": 250,
+            "atkSpeed": 1.5,
+            "manaCost": 0,
+            "attackType": "ranged",
+            "proj": "pinecone",
+            "damageType": "physical",
+            "skill": "meteor_fall",
+            "skillCd": 15,
+            "skillDuration": 5.0,
+            "levels": {
+                "1": {
+                    "damage": 300,
+                    "hp": 500,
+                    "cost": 250,
+                    "desc": "主动：流星雨轰炸",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 450,
+                    "hp": 750,
+                    "cost": 500,
+                    "desc": "主动：流星雨轰炸",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 675,
+                    "hp": 1125,
+                    "cost": 1000,
+                    "desc": "主动：流星雨轰炸",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2
+                    }
+                }
+            },
+            "type_key": "tiger"
+        },
+        "scorpion": {
+            "name": "蝎子",
+            "icon": "🦂",
+            "size": [
+                1,
+                1
+            ],
+            "range": 200,
+            "atkSpeed": 1.0,
+            "attackType": "ranged",
+            "proj": "stinger",
+            "levels": {
+                "1": {
+                    "damage": 30,
+                    "cost": 40,
+                    "desc": "部署时放置尖牙陷阱",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 45,
+                    "cost": 80,
+                    "desc": "部署时放置尖牙陷阱",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 67,
+                    "cost": 160,
+                    "desc": "部署时放置尖牙陷阱",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2,
+                        "multi_shot_chance": 0.3
+                    }
+                }
+            },
+            "type_key": "scorpion"
+        },
+        "squirrel": {
+            "name": "松鼠",
+            "icon": "🐿️",
+            "size": [
+                1,
+                1
+            ],
+            "range": 250,
+            "atkSpeed": 0.15,
+            "manaCost": 0,
+            "attackType": "ranged",
+            "proj": "pinecone",
+            "damageType": "physical",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 30,
+                    "hp": 100,
+                    "cost": 15,
+                    "desc": "远程: 快速投掷松果",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 45,
+                    "hp": 150,
+                    "cost": 30,
+                    "desc": "远程: 快速投掷松果",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 67,
+                    "hp": 225,
+                    "cost": 60,
+                    "desc": "远程: 快速投掷松果",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2,
+                        "multi_shot_chance": 0.3
+                    }
+                }
+            },
+            "type_key": "squirrel"
+        },
+        "octopus": {
+            "name": "八爪鱼",
+            "icon": "🐙",
+            "size": [
+                1,
+                1
+            ],
+            "range": 180,
+            "atkSpeed": 1.5,
+            "manaCost": 0,
+            "attackType": "ranged",
+            "proj": "ink",
+            "projCount": 5,
+            "spread": 0.5,
+            "damageType": "physical",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "has_interaction": true,
+            "buff_id": "multishot",
+            "levels": {
+                "1": {
+                    "damage": 120,
+                    "hp": 150,
+                    "cost": 60,
+                    "desc": "散射: 同时喷射多道墨汁",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 180,
+                    "hp": 225,
+                    "cost": 120,
+                    "desc": "散射: 同时喷射多道墨汁",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 270,
+                    "hp": 337,
+                    "cost": 240,
+                    "desc": "散射: 同时喷射多道墨汁",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2,
+                        "multi_shot_chance": 0.3
+                    }
+                }
+            },
+            "type_key": "octopus"
+        },
+        "bee": {
+            "name": "蜜蜂",
+            "icon": "🐝",
+            "size": [
+                1,
+                1
+            ],
+            "range": 250,
+            "atkSpeed": 0.8,
+            "manaCost": 0,
+            "attackType": "ranged",
+            "proj": "stinger",
+            "pierce": 3,
+            "damageType": "physical",
+            "crit_rate": 0.2,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 250,
+                    "hp": 180,
+                    "cost": 80,
+                    "desc": "穿透: 尖锐的蜂刺穿透敌人",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 375,
+                    "hp": 270,
+                    "cost": 160,
+                    "desc": "穿透: 尖锐的蜂刺穿透敌人",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 562,
+                    "hp": 405,
+                    "cost": 320,
+                    "desc": "穿透: 尖锐的蜂刺穿透敌人",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2,
+                        "multi_shot_chance": 0.3
+                    }
+                }
+            },
+            "type_key": "bee"
+        },
+        "eel": {
+            "name": "电鳗",
+            "icon": "⚡",
+            "size": [
+                1,
+                1
+            ],
+            "range": 200,
+            "atkSpeed": 1.2,
+            "manaCost": 50,
+            "attackType": "ranged",
+            "proj": "lightning",
+            "chain": 4,
+            "damageType": "lightning",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 350,
+                    "hp": 200,
+                    "cost": 70,
+                    "desc": "连锁: 释放电流攻击多个敌人",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 525,
+                    "hp": 300,
+                    "cost": 140,
+                    "desc": "连锁: 释放电流攻击多个敌人",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 787,
+                    "hp": 450,
+                    "cost": 280,
+                    "desc": "连锁: 释放电流攻击多个敌人",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2,
+                        "multi_shot_chance": 0.3
+                    }
+                }
+            },
+            "type_key": "eel"
+        },
+        "lion": {
+            "name": "狮子",
+            "icon": "🦁",
+            "size": [
+                1,
+                1
+            ],
+            "range": 200,
+            "atkSpeed": 2.0,
+            "manaCost": 0,
+            "attackType": "ranged",
+            "proj": "roar",
+            "damageType": "poison",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 400,
+                    "hp": 200,
+                    "cost": 90,
+                    "desc": "声波: 狮吼造成范围伤害",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 600,
+                    "hp": 300,
+                    "cost": 180,
+                    "desc": "声波: 狮吼造成范围伤害",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 900,
+                    "hp": 450,
+                    "cost": 360,
+                    "desc": "声波: 狮吼造成范围伤害",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2,
+                        "multi_shot_chance": 0.3
+                    }
+                }
+            },
+            "type_key": "lion"
+        },
+        "dragon": {
+            "name": "龙",
+            "icon": "🐉",
+            "size": [
+                1,
+                1
+            ],
+            "range": 300,
+            "manaCost": 200,
+            "attackType": "none",
+            "skill": "black_hole",
+            "skillType": "point",
+            "targetArea": [
+                3,
+                3
+            ],
+            "skillCd": 20.0,
+            "proj": "black_hole_field",
+            "skillDuration": 8.0,
+            "skillRadius": 150.0,
+            "skillStrength": 3000.0,
+            "skillColor": "#330066",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "hp": 250,
+                    "cost": 200,
+                    "desc": "主动：召唤黑洞控制敌人",
+                    "mechanics": {}
+                },
+                "2": {
+                    "hp": 375,
+                    "cost": 400,
+                    "desc": "主动：召唤黑洞控制敌人",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "hp": 562,
+                    "cost": 800,
+                    "desc": "主动：召唤黑洞控制敌人",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2,
+                        "multi_shot_chance": 0.3
+                    }
+                }
+            },
+            "type_key": "dragon"
+        },
+        "dog": {
+            "name": "恶霸犬",
+            "icon": "🐕",
+            "size": [
+                1,
+                1
+            ],
+            "range": 100,
+            "atkSpeed": 0.8,
+            "manaCost": 0,
+            "attackType": "melee",
+            "splash": 60,
+            "skill": "rage",
+            "skillCd": 10,
+            "skillDuration": 5.0,
+            "damageType": "physical",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 200,
+                    "hp": 300,
+                    "cost": 30,
+                    "desc": "近战: 凶猛撕咬 (范围伤害)",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 300,
+                    "hp": 450,
+                    "cost": 60,
+                    "desc": "近战: 凶猛撕咬 (范围伤害)",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 450,
+                    "hp": 675,
+                    "cost": 120,
+                    "desc": "近战: 凶猛撕咬 (范围伤害)",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2
+                    }
+                }
+            },
+            "type_key": "dog"
+        },
+        "bear": {
+            "name": "暴怒熊",
+            "icon": "🐻",
+            "size": [
+                1,
+                1
+            ],
+            "range": 80,
+            "atkSpeed": 1.2,
+            "manaCost": 0,
+            "attackType": "melee",
+            "skill": "stun",
+            "skillCd": 15,
+            "damageType": "physical",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 350,
+                    "hp": 400,
+                    "cost": 65,
+                    "desc": "近战:重击晕眩\n技能:震慑(300💧)",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 525,
+                    "hp": 600,
+                    "cost": 130,
+                    "desc": "近战:重击晕眩\n技能:震慑(300💧)",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 787,
+                    "hp": 900,
+                    "cost": 260,
+                    "desc": "近战:重击晕眩\n技能:震慑(300💧)",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2
+                    }
+                }
+            },
+            "type_key": "bear"
+        },
+        "butterfly": {
+            "name": "蝴蝶",
+            "icon": "🦋",
+            "size": [
+                1,
+                1
+            ],
+            "range": 350,
+            "atkSpeed": 1.2,
+            "manaCost": 50,
+            "attackType": "ranged",
+            "proj": "pollen",
+            "splash": 30,
+            "damageType": "magic",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 600,
+                    "hp": 150,
+                    "cost": 50,
+                    "desc": "魔法: 消耗法力释放强力花粉",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 900,
+                    "hp": 225,
+                    "cost": 100,
+                    "desc": "魔法: 消耗法力释放强力花粉",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 1350,
+                    "hp": 337,
+                    "cost": 200,
+                    "desc": "魔法: 消耗法力释放强力花粉",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2,
+                        "multi_shot_chance": 0.3
+                    }
+                }
+            },
+            "type_key": "butterfly"
+        },
+        "phoenix": {
+            "name": "凤凰",
+            "icon": "🦅",
+            "size": [
+                1,
+                1
+            ],
+            "range": 300,
+            "atkSpeed": 0.6,
+            "manaCost": 0,
+            "attackType": "ranged",
+            "proj": "fire",
+            "splash": 40,
+            "skill": "firestorm",
+            "skillCd": 20,
+            "targetType": "ground",
+            "targetArea": [
+                3,
+                3
+            ],
+            "damageType": "fire",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 250,
+                    "hp": 250,
+                    "cost": 150,
+                    "desc": "远程:AOE轰炸\n技能:火雨(300💧)",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 375,
+                    "hp": 375,
+                    "cost": 300,
+                    "desc": "远程:AOE轰炸\n技能:火雨(300💧)",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 562,
+                    "hp": 562,
+                    "cost": 600,
+                    "desc": "远程:AOE轰炸\n技能:火雨(300💧)",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2,
+                        "multi_shot_chance": 0.3
+                    }
+                }
+            },
+            "type_key": "phoenix",
+            "skillType": "point",
+            "skillId": "firestorm"
+        },
+        "plant": {
+            "name": "向日葵",
+            "icon": "🌻",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 1.0,
+            "manaCost": 0,
+            "attackType": "none",
+            "produce": "mana",
+            "produceAmt": 60,
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 0,
+                    "hp": 50,
+                    "cost": 20,
+                    "desc": "产出:法力值+60/s",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 0,
+                    "hp": 75,
+                    "cost": 40,
+                    "desc": "产出:法力值+60/s",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 0,
+                    "hp": 112,
+                    "cost": 80,
+                    "desc": "产出:法力值+60/s",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2
+                    }
+                }
+            },
+            "type_key": "plant"
+        },
+        "torch": {
+            "name": "红莲火炬",
+            "icon": "🔥",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 0,
+            "manaCost": 0,
+            "attackType": "none",
+            "buffProvider": "fire",
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 0,
+                    "hp": 100,
+                    "cost": 35,
+                    "desc": "邻接:赋予燃烧",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 0,
+                    "hp": 150,
+                    "cost": 70,
+                    "desc": "邻接:赋予燃烧",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 0,
+                    "hp": 225,
+                    "cost": 140,
+                    "desc": "邻接:赋予燃烧",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2
+                    }
+                }
+            },
+            "type_key": "torch"
+        },
+        "cauldron": {
+            "name": "剧毒大锅",
+            "icon": "🧪",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 0,
+            "manaCost": 0,
+            "attackType": "none",
+            "buffProvider": "poison",
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 0,
+                    "hp": 100,
+                    "cost": 35,
+                    "desc": "邻接:赋予中毒",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 0,
+                    "hp": 150,
+                    "cost": 70,
+                    "desc": "邻接:赋予中毒",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 0,
+                    "hp": 225,
+                    "cost": 140,
+                    "desc": "邻接:赋予中毒",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2
+                    }
+                }
+            },
+            "type_key": "cauldron"
+        },
+        "drum": {
+            "name": "战鼓",
+            "icon": "🥁",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 0,
+            "manaCost": 0,
+            "attackType": "none",
+            "buffProvider": "speed",
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 0,
+                    "hp": 100,
+                    "cost": 40,
+                    "desc": "邻接:攻速+20%",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 0,
+                    "hp": 150,
+                    "cost": 80,
+                    "desc": "邻接:攻速+20%",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 0,
+                    "hp": 225,
+                    "cost": 160,
+                    "desc": "邻接:攻速+20%",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2
+                    }
+                }
+            },
+            "type_key": "drum"
+        },
+        "mirror": {
+            "name": "反射魔镜",
+            "icon": "🪞",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 0,
+            "manaCost": 0,
+            "attackType": "none",
+            "buffProvider": "bounce",
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 0,
+                    "hp": 100,
+                    "cost": 50,
+                    "desc": "邻接:子弹弹射+1",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 0,
+                    "hp": 150,
+                    "cost": 100,
+                    "desc": "邻接:子弹弹射+1",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 0,
+                    "hp": 225,
+                    "cost": 200,
+                    "desc": "邻接:子弹弹射+1",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2
+                    }
+                }
+            },
+            "type_key": "mirror"
+        },
+        "splitter": {
+            "name": "多重棱镜",
+            "icon": "💠",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 0,
+            "manaCost": 0,
+            "attackType": "none",
+            "buffProvider": "split",
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 0,
+                    "hp": 100,
+                    "cost": 55,
+                    "desc": "邻接:子弹分裂+1",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 0,
+                    "hp": 150,
+                    "cost": 110,
+                    "desc": "邻接:子弹分裂+1",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 0,
+                    "hp": 225,
+                    "cost": 220,
+                    "desc": "邻接:子弹分裂+1",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2
+                    }
+                }
+            },
+            "type_key": "splitter"
+        },
+        "meat": {
+            "name": "五花肉",
+            "icon": "🥓",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 0,
+            "manaCost": 0,
+            "isFood": true,
+            "xp": 50,
+            "attackType": "none",
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 0,
+                    "hp": 10,
+                    "cost": 10,
+                    "desc": "喂食获得大量Buff",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 0,
+                    "hp": 15,
+                    "cost": 20,
+                    "desc": "喂食获得大量Buff",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 0,
+                    "hp": 22,
+                    "cost": 40,
+                    "desc": "喂食获得大量Buff",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2
+                    }
+                }
+            },
+            "type_key": "meat"
+        },
+        "hedgehog": {
+            "name": "刺猬",
+            "icon": "🦔",
+            "size": [
+                1,
+                1
+            ],
+            "range": 80,
+            "atkSpeed": 1.0,
+            "manaCost": 0,
+            "attackType": "melee",
+            "trait": "reflect",
+            "reflect_percent": 0.3,
+            "damageType": "physical",
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 50,
+                    "hp": 400,
+                    "cost": 40,
+                    "desc": "反伤30%",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 75,
+                    "hp": 600,
+                    "cost": 80,
+                    "desc": "反伤30%",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 112,
+                    "hp": 900,
+                    "cost": 160,
+                    "desc": "反伤30%",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2
+                    }
+                }
+            },
+            "type_key": "hedgehog"
+        },
+        "iron_turtle": {
+            "name": "铁甲龟",
+            "icon": "🐢🛡️",
+            "size": [
+                1,
+                1
+            ],
+            "range": 80,
+            "atkSpeed": 0.8,
+            "manaCost": 0,
+            "attackType": "melee",
+            "trait": "flat_reduce",
+            "flat_amount": 20,
+            "damageType": "physical",
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 20,
+                    "hp": 600,
+                    "cost": 50,
+                    "desc": "固定减伤20",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 30,
+                    "hp": 900,
+                    "cost": 100,
+                    "desc": "固定减伤20",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 45,
+                    "hp": 1350,
+                    "cost": 200,
+                    "desc": "固定减伤20",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2
+                    }
+                }
+            },
+            "type_key": "iron_turtle"
+        },
+        "cow": {
+            "name": "奶牛",
+            "icon": "🐄",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 1.0,
+            "manaCost": 0,
+            "attackType": "none",
+            "skill": "regenerate",
+            "skillDuration": 5.0,
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 0,
+                    "hp": 300,
+                    "cost": 45,
+                    "desc": "每5秒治疗核心50",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 0,
+                    "hp": 450,
+                    "cost": 90,
+                    "desc": "每5秒治疗核心50",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 0,
+                    "hp": 675,
+                    "cost": 180,
+                    "desc": "每5秒治疗核心50",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2
+                    }
+                }
+            },
+            "type_key": "cow"
+        },
+        "mosquito": {
+            "name": "蚊子",
+            "icon": "🦟",
+            "size": [
+                1,
+                1
+            ],
+            "range": 200,
+            "atkSpeed": 1.5,
+            "manaCost": 0,
+            "attackType": "ranged",
+            "proj": "dot",
+            "trait": "lifesteal",
+            "lifesteal_percent": 1.0,
+            "damageType": "physical",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 20,
+                    "hp": 50,
+                    "cost": 25,
+                    "desc": "造成伤害治疗核心",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 30,
+                    "hp": 75,
+                    "cost": 50,
+                    "desc": "造成伤害治疗核心",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 45,
+                    "hp": 112,
+                    "cost": 100,
+                    "desc": "造成伤害治疗核心",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2
+                    }
+                }
+            },
+            "type_key": "mosquito"
+        },
+        "snowman": {
+            "name": "雪人",
+            "icon": "☃️",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 1.0,
+            "manaCost": 20,
+            "attackType": "none",
+            "production_type": "item",
+            "produce_item_id": "snowball_trap",
+            "production_interval": 5.0,
+            "trait": "freeze",
+            "damageType": "magic",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 40,
+                    "hp": 200,
+                    "cost": 60,
+                    "desc": "每5秒生成雪球陷阱",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 60,
+                    "hp": 300,
+                    "cost": 120,
+                    "desc": "每4秒生成雪球陷阱",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1,
+                        "production_interval": 4.0
+                    }
+                },
+                "3": {
+                    "damage": 90,
+                    "hp": 450,
+                    "cost": 240,
+                    "desc": "每3秒生成雪球陷阱",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2,
+                        "production_interval": 3.0
+                    }
+                }
+            },
+            "type_key": "snowman"
+        },
+        "rabbit": {
+            "name": "兔子",
+            "icon": "🐇",
+            "size": [
+                1,
+                1
+            ],
+            "range": 80,
+            "atkSpeed": 1.2,
+            "manaCost": 0,
+            "attackType": "melee",
+            "trait": "dodge_counter",
+            "dodge_rate": 0.3,
+            "damageType": "physical",
+            "crit_rate": 0.2,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 80,
+                    "hp": 150,
+                    "cost": 35,
+                    "desc": "30%闪避并反击",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 120,
+                    "hp": 225,
+                    "cost": 70,
+                    "desc": "30%闪避并反击",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 180,
+                    "hp": 337,
+                    "cost": 140,
+                    "desc": "30%闪避并反击",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2
+                    }
+                }
+            },
+            "type_key": "rabbit"
+        },
+        "viper": {
+            "name": "毒蛇",
+            "icon": "🐍",
+            "size": [
+                1,
+                1
+            ],
+            "range": 80,
+            "atkSpeed": 1.2,
+            "manaCost": 0,
+            "attackType": "melee",
+            "trait": "poison_touch",
+            "damageType": "poison",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "has_interaction": true,
+            "buff_id": "poison",
+            "levels": {
+                "1": {
+                    "damage": 40,
+                    "hp": 150,
+                    "cost": 30,
+                    "desc": "部署时放置毒液陷阱",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 60,
+                    "hp": 225,
+                    "cost": 60,
+                    "desc": "部署时放置毒液陷阱",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 90,
+                    "hp": 337,
+                    "cost": 120,
+                    "desc": "部署时放置毒液陷阱",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2
+                    }
+                }
+            },
+            "type_key": "viper"
+        },
+        "spider": {
+            "name": "蜘蛛",
+            "icon": "🕷️",
+            "size": [
+                1,
+                1
+            ],
+            "range": 250,
+            "atkSpeed": 1.0,
+            "manaCost": 0,
+            "attackType": "ranged",
+            "proj": "web",
+            "trait": "slow",
+            "damageType": "physical",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 30,
+                    "hp": 180,
+                    "cost": 40,
+                    "desc": "攻击概率生成蜘蛛网陷阱",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 45,
+                    "hp": 270,
+                    "cost": 80,
+                    "desc": "攻击概率生成蜘蛛网陷阱",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 67,
+                    "hp": 405,
+                    "cost": 160,
+                    "desc": "攻击概率生成蜘蛛网陷阱",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2,
+                        "multi_shot_chance": 0.3
+                    }
+                }
+            },
+            "type_key": "spider"
+        },
+        "parrot": {
+            "name": "鹦鹉",
+            "icon": "🦜",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 0.08,
+            "manaCost": 0,
+            "attackType": "mimic",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 0,
+                    "hp": 100,
+                    "cost": 0,
+                    "desc": "学习邻居子弹\n上限:5发",
+                    "mechanics": {
+                        "max_ammo": 5
+                    }
+                },
+                "2": {
+                    "damage": 0,
+                    "hp": 150,
+                    "cost": 0,
+                    "desc": "学习邻居子弹\n上限:7发",
+                    "mechanics": {
+                        "max_ammo": 7
+                    }
+                },
+                "3": {
+                    "damage": 0,
+                    "hp": 225,
+                    "cost": 0,
+                    "desc": "学习邻居子弹\n上限:10发",
+                    "mechanics": {
+                        "max_ammo": 10
+                    }
+                }
+            },
+            "type_key": "parrot"
+        },
+        "peacock": {
+            "name": "孔雀",
+            "icon": "🦚",
+            "size": [
+                1,
+                1
+            ],
+            "range": 300,
+            "atkSpeed": 1.2,
+            "attackType": "ranged",
+            "proj": "feather",
+            "max_quills": 3,
+            "damageType": "physical",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 60,
+                    "hp": 200,
+                    "cost": 40,
+                    "desc": "远程: 发射羽毛, 第4次收回拉扯敌人",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 90,
+                    "hp": 300,
+                    "cost": 80,
+                    "desc": "远程: 发射羽毛, 第4次收回拉扯敌人",
+                    "mechanics": {
+                        "pull_strength": 600,
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 135,
+                    "hp": 450,
+                    "cost": 160,
+                    "desc": "远程: 发射羽毛, 第4次收回拉扯敌人",
+                    "mechanics": {
+                        "pull_strength": 1000,
+                        "multi_shot_chance": 0.2,
+                        "crit_rate_bonus": 0.2
+                    }
+                }
+            },
+            "type_key": "peacock"
+        },
+        "lucky_cat": {
+            "name": "招财猫",
+            "icon": "🐱",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 0,
+            "manaCost": 0,
+            "attackType": "none",
+            "has_interaction": true,
+            "interaction_pattern": "neighbor_pair",
+            "buff_id": "wealth",
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 0,
+                    "hp": 100,
+                    "cost": 50,
+                    "desc": "邻接:击杀+1金币",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 0,
+                    "hp": 150,
+                    "cost": 100,
+                    "desc": "邻接:击杀+1金币",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 0,
+                    "hp": 225,
+                    "cost": 200,
+                    "desc": "邻接:击杀+1金币",
+                    "mechanics": {
+                        "crit_rate_bonus": 0.2
+                    }
+                }
+            },
+            "type_key": "lucky_cat"
+        }
+    },
+    "TRAITS": [
+        {
+            "id": "vamp",
+            "name": "吸血",
+            "desc": "造成伤害回复生命",
+            "icon": "🩸"
+        },
+        {
+            "id": "crit",
+            "name": "暴击",
+            "desc": "20%几率造成双倍伤害",
+            "icon": "💥"
+        },
+        {
+            "id": "exec",
+            "name": "处决",
+            "desc": "对生命低于30%的敌人伤害翻倍",
+            "icon": "💀"
+        },
+        {
+            "id": "giant",
+            "name": "巨化",
+            "desc": "体型变大，范围增加",
+            "icon": "🏔️"
+        },
+        {
+            "id": "swift",
+            "name": "神速",
+            "desc": "攻速 +30%",
+            "icon": "👟"
+        }
+    ],
+    "ENEMY_VARIANTS": {
+        "slime": {
+            "name": "史莱姆",
+            "icon": "💧",
+            "color": "#00cec9",
+            "radius": 10,
+            "hpMod": 0.8,
+            "spdMod": 0.7,
+            "attackType": "melee",
+            "range": 30,
+            "dmg": 50,
+            "atkSpeed": 1.0,
+            "drop": "mucus",
+            "dropRate": 0.5,
+            "anim_config": {
+                "style": "squash",
+                "amplitude": 0.2,
+                "base_freq": 4.0
+            }
+        },
+        "mutant_slime": {
+            "name": "变异母体",
+            "icon": "🦠",
+            "color": "#00cec9",
+            "radius": 12,
+            "hpMod": 5.0,
+            "spdMod": 0.6,
+            "split_limit": 2,
+            "split_trigger_hits": 5,
+            "attackType": "melee",
+            "range": 30,
+            "dmg": 50,
+            "atkSpeed": 1.0,
+            "drop": "mucus",
+            "dropRate": 0.5,
+            "anim_config": {
+                "style": "squash",
+                "amplitude": 0.2,
+                "base_freq": 4.0
+            }
+        },
+        "poison": {
+            "name": "毒怪",
+            "icon": "🤢",
+            "color": "#2ecc71",
+            "radius": 12,
+            "hpMod": 1.2,
+            "spdMod": 0.8,
+            "attackType": "melee",
+            "range": 30,
+            "dmg": 80,
+            "atkSpeed": 1.0,
+            "drop": "poison",
+            "dropRate": 0.4,
+            "anim_config": {
+                "style": "squash",
+                "amplitude": 0.25,
+                "base_freq": 3.5
+            }
+        },
+        "wolf": {
+            "name": "狼群",
+            "icon": "🐺",
+            "color": "#e74c3c",
+            "radius": 14,
+            "hpMod": 1.0,
+            "spdMod": 1.5,
+            "attackType": "melee",
+            "range": 30,
+            "dmg": 120,
+            "atkSpeed": 0.8,
+            "drop": "fang",
+            "dropRate": 0.3,
+            "anim_config": {
+                "style": "bob",
+                "amplitude": 4.0,
+                "base_freq": 10.0
+            }
+        },
+        "treant": {
+            "name": "树人",
+            "icon": "🌳",
+            "color": "#d35400",
+            "radius": 18,
+            "hpMod": 2.5,
+            "spdMod": 0.5,
+            "attackType": "melee",
+            "range": 30,
+            "dmg": 200,
+            "atkSpeed": 2.0,
+            "drop": "wood",
+            "dropRate": 0.6,
+            "anim_config": {
+                "style": "stiff",
+                "amplitude": 0.05,
+                "base_freq": 2.0
+            }
+        },
+        "yeti": {
+            "name": "雪怪",
+            "icon": "❄️",
+            "color": "#74b9ff",
+            "radius": 20,
+            "hpMod": 3.0,
+            "spdMod": 0.6,
+            "attackType": "melee",
+            "range": 40,
+            "dmg": 250,
+            "atkSpeed": 2.0,
+            "drop": "snow",
+            "dropRate": 0.5,
+            "anim_config": {
+                "style": "stiff",
+                "amplitude": 0.08,
+                "base_freq": 2.5
+            }
+        },
+        "golem": {
+            "name": "石头人",
+            "icon": "🗿",
+            "color": "#95a5a6",
+            "radius": 22,
+            "hpMod": 4.0,
+            "spdMod": 0.4,
+            "attackType": "melee",
+            "range": 40,
+            "dmg": 300,
+            "atkSpeed": 2.5,
+            "drop": "stone",
+            "dropRate": 0.5,
+            "anim_config": {
+                "style": "stiff",
+                "amplitude": 0.05,
+                "base_freq": 2.0
+            }
+        },
+        "shooter": {
+            "name": "投矛手",
+            "icon": "🏹",
+            "color": "#16a085",
+            "radius": 14,
+            "hpMod": 0.8,
+            "spdMod": 0.8,
+            "attackType": "ranged",
+            "proj": "pinecone",
+            "rangedAnimType": "lunge",
+            "range": 200,
+            "dmg": 80,
+            "atkSpeed": 2.0,
+            "projectileSpeed": 150,
+            "drop": "wood",
+            "dropRate": 0.3,
+            "anim_config": {
+                "style": "stiff",
+                "amplitude": 0.05,
+                "base_freq": 4.0
+            }
+        },
+        "archer_rat": {
+            "name": "神射鼠",
+            "icon": "🏹🐭",
+            "color": "#16a085",
+            "radius": 14,
+            "hpMod": 0.8,
+            "spdMod": 0.8,
+            "attackType": "ranged",
+            "proj": "pinecone",
+            "rangedAnimType": "elastic_shoot",
+            "range": 200,
+            "dmg": 80,
+            "atkSpeed": 2.0,
+            "projectileSpeed": 150,
+            "drop": "wood",
+            "dropRate": 0.3,
+            "anim_config": {
+                "style": "stiff",
+                "amplitude": 0.05,
+                "base_freq": 4.0
+            }
+        },
+        "boss": {
+            "name": "虚空领主",
+            "icon": "👹",
+            "color": "#2c3e50",
+            "radius": 32,
+            "hpMod": 15.0,
+            "spdMod": 0.4,
+            "attackType": "melee",
+            "range": 50,
+            "dmg": 500,
+            "atkSpeed": 3.0,
+            "drop": "stone",
+            "dropRate": 1.0,
+            "is_boss": true,
+            "anim_config": {
+                "style": "float",
+                "amplitude": 0.1,
+                "base_freq": 1.5
+            }
+        },
+        "minion": {
+            "name": "鼠小兵",
+            "icon": "🐭",
+            "color": "#95a5a6",
+            "radius": 8,
+            "hpMod": 0.5,
+            "spdMod": 1.1,
+            "attackType": "melee",
+            "range": 20,
+            "dmg": 20,
+            "atkSpeed": 1.0,
+            "drop": "mana",
+            "dropRate": 0.2,
+            "anim_config": {
+                "style": "bob",
+                "amplitude": 2.0,
+                "base_freq": 12.0
+            }
+        },
+        "bullet_entity": {
+            "name": "滚地雷鼠",
+            "icon": "💣",
+            "color": "#000000",
+            "radius": 6,
+            "hpMod": 0.1,
+            "spdMod": 3.0,
+            "attackType": "melee",
+            "range": 20,
+            "dmg": 300,
+            "atkSpeed": 10.0,
+            "drop": "none",
+            "dropRate": 0.0,
+            "is_suicide": true,
+            "anim_config": {
+                "style": "squash",
+                "amplitude": 0.3,
+                "base_freq": 15.0
+            }
+        },
+        "summoner": {
+            "name": "鼠祭司",
+            "icon": "🧙",
+            "color": "#8e44ad",
+            "radius": 24,
+            "hpMod": 8.0,
+            "spdMod": 0.3,
+            "attackType": "ranged",
+            "proj": "ink",
+            "rangedAnimType": "elastic_slash",
+            "range": 150,
+            "dmg": 50,
+            "atkSpeed": 2.0,
+            "drop": "magic_dust",
+            "dropRate": 1.0,
+            "stationary_time": 8.0,
+            "boss_skill": "summon",
+            "is_boss": true,
+            "anim_config": {
+                "style": "float",
+                "amplitude": 0.08,
+                "base_freq": 2.0
+            }
+        },
+        "ranger": {
+            "name": "鼠弩车",
+            "icon": "🚜",
+            "color": "#d35400",
+            "radius": 28,
+            "hpMod": 6.0,
+            "spdMod": 0.4,
+            "attackType": "ranged",
+            "proj": "stinger",
+            "rangedAnimType": "recoil",
+            "range": 300,
+            "dmg": 80,
+            "atkSpeed": 1.5,
+            "drop": "wood",
+            "dropRate": 1.0,
+            "stationary_time": 5.0,
+            "boss_skill": "shoot_enemy",
+            "is_boss": true,
+            "anim_config": {
+                "style": "stiff",
+                "amplitude": 0.05,
+                "base_freq": 3.0
+            }
+        },
+        "tank": {
+            "name": "鼠将军",
+            "icon": "🐗",
+            "color": "#7f8c8d",
+            "radius": 32,
+            "hpMod": 12.0,
+            "spdMod": 0.35,
+            "attackType": "melee",
+            "range": 60,
+            "dmg": 200,
+            "atkSpeed": 1.2,
+            "drop": "iron",
+            "dropRate": 1.0,
+            "stationary_time": 0.0,
+            "is_boss": true,
+            "anim_config": {
+                "style": "stiff",
+                "amplitude": 0.03,
+                "base_freq": 2.0
+            }
+        }
+    }
 }
