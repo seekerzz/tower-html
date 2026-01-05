@@ -63,6 +63,10 @@ var mass: float = 1.0
 var is_facing_left: bool = false
 var is_dying: bool = false
 
+# Crab Properties
+var angular_velocity: float = 0.0
+var rotational_damping: float = 2.0
+
 # Mutant Slime Properties
 var split_generation: int = 0
 var hit_count: int = 0
@@ -112,6 +116,28 @@ func setup(key: String, wave: int):
 	if type_key == "boss" or type_key == "tank":
 		knockback_resistance = 10.0
 		mass = 5.0
+	elif enemy_data.get("shape") == "rect":
+		# Crab
+		mass = 5.0
+		knockback_resistance = 5.0
+
+		var grid_size = enemy_data.get("size_grid", [1, 1])
+		var tile_size = 60.0
+		if GameManager.grid_manager:
+			tile_size = GameManager.grid_manager.TILE_SIZE
+
+		var w = grid_size[0] * tile_size
+		var h = grid_size[1] * tile_size
+
+		# Update collision shape
+		var shape = RectangleShape2D.new()
+		shape.size = Vector2(w, h)
+
+		# We need to find the CollisionShape2D node and update it
+		# Assuming standard setup has a CollisionShape2D child
+		var col_node = get_node_or_null("CollisionShape2D")
+		if col_node:
+			col_node.shape = shape
 	else:
 		mass = 1.0
 
@@ -170,7 +196,20 @@ func _draw():
 	var color = enemy_data.color
 	if hit_flash_timer > 0:
 		color = Color.WHITE
-	draw_circle(Vector2.ZERO, enemy_data.radius, color)
+
+	if enemy_data.get("shape") == "rect":
+		var grid_size = enemy_data.get("size_grid", [1, 1])
+		var tile_size = 60.0 # fallback
+		if GameManager.grid_manager:
+			tile_size = GameManager.grid_manager.TILE_SIZE
+
+		var w = grid_size[0] * tile_size
+		var h = grid_size[1] * tile_size
+		var rect = Rect2(-w/2, -h/2, w, h)
+		draw_rect(rect, color)
+	else:
+		draw_circle(Vector2.ZERO, enemy_data.radius, color)
+
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	if hp < max_hp and hp > 0:
@@ -199,7 +238,13 @@ func _physics_process(delta):
 
 	# Process Timers and Effects
 	if not is_dying:
-		_update_facing_logic()
+		if enemy_data.get("shape") != "rect":
+			_update_facing_logic()
+
+	if enemy_data.get("shape") == "rect":
+		rotation += angular_velocity * delta
+		angular_velocity = lerp(angular_velocity, 0.0, rotational_damping * delta)
+
 	_process_effects(delta)
 
 	# Update visual controller speed info and apply transforms
@@ -769,6 +814,30 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 		is_splitting = true
 		_perform_split()
 		return
+
+	if enemy_data.get("shape") == "rect":
+		# Calculate torque
+		# Attack source position vs Enemy Center
+		var hit_pos = global_position # Default fallback
+		if hit_source and is_instance_valid(hit_source):
+			hit_pos = hit_source.global_position
+
+		# Lever arm
+		var r = hit_pos - global_position
+
+		# Force direction
+		var force_dir = Vector2.ZERO
+		if hit_source and is_instance_valid(hit_source) and "speed" in hit_source:
+			force_dir = Vector2.RIGHT.rotated(hit_source.rotation)
+		elif source_unit and is_instance_valid(source_unit):
+			force_dir = (global_position - source_unit.global_position).normalized()
+
+		# 2D Cross product: r.x * f.y - r.y * f.x
+		# Scale torque by impact force (using kb_force or amount as proxy if 0)
+		var impact = kb_force if kb_force > 0 else amount * 0.5
+		var torque = (r.x * force_dir.y - r.y * force_dir.x) * impact * 0.05
+
+		angular_velocity += torque
 
 	hp -= amount
 	hit_flash_timer = 0.1

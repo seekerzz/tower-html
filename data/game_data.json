@@ -1611,6 +1611,27 @@
 				"base_freq": 4.0
 			}
 		},
+		"crab": {
+			"name": "巨鳌蟹",
+			"icon": "🦀",
+			"color": "#e17055",
+			"radius": 20,
+			"shape": "rect",
+			"size_grid": [2, 1],
+			"hpMod": 8.0,
+			"spdMod": 0.6,
+			"attackType": "melee",
+			"range": 40,
+			"dmg": 200,
+			"atkSpeed": 1.5,
+			"drop": "stone",
+			"dropRate": 0.8,
+			"anim_config": {
+				"style": "stiff",
+				"amplitude": 0.05,
+				"base_freq": 2.0
+			}
+		},
 		"boss": {
 			"name": "虚空领主",
 			"icon": "👹",
