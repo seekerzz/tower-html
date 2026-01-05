@@ -504,8 +504,12 @@ func _handle_input_interaction_selection(event):
 
 			if grid_pos in valid_interaction_targets:
 				if interaction_source_unit and is_instance_valid(interaction_source_unit):
+					# Click Animation
+					_animate_interaction_confirmation(grid_pos)
+
 					interaction_source_unit.interaction_target_pos = grid_pos
 					recalculate_buffs()
+
 				end_interaction_selection()
 				get_viewport().set_input_as_handled()
 			else:
@@ -518,6 +522,49 @@ func _handle_input_interaction_selection(event):
 			# Cancel interaction
 			_cancel_deployment_sequence()
 			get_viewport().set_input_as_handled()
+
+func _animate_interaction_confirmation(target_grid_pos: Vector2i):
+	# 1. Target Unit Scale Animation
+	var key = get_tile_key(target_grid_pos.x, target_grid_pos.y)
+	if tiles.has(key):
+		var tile = tiles[key]
+		var target_unit = tile.unit
+		# Handle large units occupied tiles
+		if target_unit == null and tile.occupied_by != Vector2i.ZERO:
+			var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
+			if tiles.has(origin_key):
+				target_unit = tiles[origin_key].unit
+
+		if target_unit and is_instance_valid(target_unit) and target_unit.visual_holder:
+			var tween = create_tween()
+			tween.tween_property(target_unit.visual_holder, "scale", Vector2(1.3, 1.3), 0.1).set_trans(Tween.TRANS_SINE)
+			tween.tween_property(target_unit.visual_holder, "scale", Vector2(1.0, 1.0), 0.1).set_trans(Tween.TRANS_SINE)
+
+	# 2. Temporary Buff Icon Effect
+	if interaction_source_unit and is_instance_valid(interaction_source_unit):
+		var buff_id = interaction_source_unit.get_interaction_info().buff_id
+		var icon_char = interaction_source_unit._get_buff_icon(buff_id)
+
+		var icon_node = Node2D.new()
+		icon_node.name = "TempInteractionIcon"
+
+		var lbl = Label.new()
+		lbl.text = icon_char
+		lbl.add_theme_font_size_override("font_size", 24)
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		# Center label
+		lbl.size = Vector2(100, 100)
+		lbl.position = -lbl.size / 2
+		icon_node.add_child(lbl)
+
+		add_child(icon_node)
+		icon_node.position = grid_to_local(target_grid_pos)
+
+		var tween = create_tween()
+		tween.tween_property(icon_node, "scale", Vector2(2.5, 2.5), 0.5).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(icon_node, "modulate:a", 0.0, 0.5)
+		tween.tween_callback(icon_node.queue_free)
 
 func _handle_input_idle(event):
 	# Default state handling
@@ -1047,57 +1094,32 @@ func _spawn_interaction_highlight(grid_pos: Vector2i, color: Color = Color(1, 0.
 
 func _on_selection_overlay_draw():
 	if interaction_state == STATE_SELECTING_INTERACTION_TARGET and interaction_source_unit and is_instance_valid(interaction_source_unit):
-		var start_pos = interaction_source_unit.global_position
-		var end_pos = get_global_mouse_position()
+		var mouse_pos = get_local_mouse_position()
+		var gx = int(round(mouse_pos.x / TILE_SIZE))
+		var gy = int(round(mouse_pos.y / TILE_SIZE))
+		var grid_pos = Vector2i(gx, gy)
 
-		# Convert to local coordinates relative to Overlay (which is same as GridManager global effectively if no offset, but Node2D children follow parent transform)
-		start_pos = selection_overlay.to_local(start_pos)
-		end_pos = selection_overlay.to_local(end_pos)
+		# Snap drawing position to grid cell center
+		var draw_pos = grid_to_local(grid_pos)
 
-		var control_point = (start_pos + end_pos) / 2
-		control_point.y -= 50
+		var buff_id = interaction_source_unit.get_interaction_info().buff_id
+		var icon_char = interaction_source_unit._get_buff_icon(buff_id)
 
-		var segments = 20
-		var curve_points = PackedVector2Array()
-		for i in range(segments + 1):
-			var t = float(i) / segments
-			var q0 = start_pos.lerp(control_point, t)
-			var q1 = control_point.lerp(end_pos, t)
-			var p = q0.lerp(q1, t)
-			curve_points.append(p)
+		# Color logic: Valid target -> Normal, Invalid -> Gray/Transparent
+		var draw_color = Color.WHITE
+		if not (grid_pos in valid_interaction_targets):
+			draw_color = Color(0.5, 0.5, 0.5, 0.5)
 
-		# Arrow Calculation
-		var arrow_len = 15.0
-		var direction = Vector2.RIGHT
-		if curve_points.size() >= 2:
-			direction = (curve_points[-1] - curve_points[-2]).normalized()
-		else:
-			direction = (end_pos - control_point).normalized()
+		# Draw centered text
+		var font = ThemeDB.fallback_font
+		var font_size = 32
+		if font:
+			var text_size = font.get_string_size(icon_char, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
 
-		# Trim the line so it doesn't overlap the arrow tip area too much
-		var trimmed_points = PackedVector2Array()
-		var arrow_base_center = end_pos - direction * (arrow_len * 0.5)
-		# Or just draw line to end_pos and draw arrow on top.
-		# If user says arrow is "behind", maybe they mean the line goes OVER the arrow?
-		# Drawing order: Line first, then Arrow. The Arrow should cover the line.
-		# Let's ensure Arrow is big enough and centered at end_pos.
+			# Draw darker circle background for contrast
+			selection_overlay.draw_circle(draw_pos, 25, Color(0,0,0,0.5) * draw_color.a)
 
-		# Arrow Vertices: Tip at end_pos
-		var arrow_tip = end_pos
-		var arrow_back = end_pos - direction * arrow_len
-		var arrow_side1 = arrow_back + direction.orthogonal() * (arrow_len * 0.5)
-		var arrow_side2 = arrow_back - direction.orthogonal() * (arrow_len * 0.5)
-
-		# Draw Line
-		# To avoid glitch, we can trim the line to arrow_back
-		var line_end_idx = segments
-		# Simple distance check to find where to cut?
-		# Just modifying the last point to be arrow_back might be enough if segments are small.
-		if curve_points.size() > 1:
-			curve_points[-1] = arrow_back
-
-		selection_overlay.draw_polyline(curve_points, Color.WHITE, 3.0, true)
-		selection_overlay.draw_colored_polygon(PackedVector2Array([arrow_tip, arrow_side1, arrow_side2]), Color.WHITE)
+			selection_overlay.draw_string(font, draw_pos + Vector2(-text_size.x/2, text_size.y/3), icon_char, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, draw_color)
 
 func can_place_unit(x: int, y: int, w: int, h: int, exclude_unit = null) -> bool:
 	for dx in range(w):

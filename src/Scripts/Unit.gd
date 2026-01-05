@@ -62,7 +62,9 @@ var original_atk_speed: float = 0.0
 var _is_skill_highlight_active: bool = false
 var _highlight_color: Color = Color.WHITE
 
-var connection_overlay: Node2D = null
+# Visuals
+var is_force_highlighted: bool = false
+var preview_buff_icon: String = ""
 
 # Porcupine Variables
 var attack_counter: int = 0
@@ -84,12 +86,6 @@ func _ready():
 
 	if type_key == "peacock":
 		tree_exiting.connect(_on_peacock_cleanup)
-
-	connection_overlay = Node2D.new()
-	connection_overlay.name = "ConnectionOverlay"
-	connection_overlay.z_index = 100
-	connection_overlay.draw.connect(_on_connection_overlay_draw)
-	add_child(connection_overlay)
 
 	# If unit_data is already populated (e.g. from scene or prior setup), update visuals
 	if !unit_data.is_empty():
@@ -330,21 +326,19 @@ func apply_buff(buff_type: String, source_unit: Node2D = null):
 func set_highlight(active: bool, color: Color = Color.WHITE):
 	_is_skill_highlight_active = active
 	_highlight_color = color
+	queue_redraw()
 
-	if active:
-		if visual_holder:
-			# Use modulate on visual_holder or simple drawing?
-			# Drawing a border is better but Unit needs _draw() logic for that.
-			# Let's use modulate or just add a color rect/border.
-			# Or simpler: use self.modulate but mix with original color.
-			# But self.modulate affects everything.
-			# The requirement says "Unit appears green/red outline (stroke)".
-			# Godot _draw is easiest for stroke.
-			queue_redraw()
-	else:
-		queue_redraw()
+func set_force_highlight(active: bool):
+	is_force_highlighted = active
+	queue_redraw()
 
-	if connection_overlay: connection_overlay.queue_redraw()
+func show_preview_buff(icon: String):
+	preview_buff_icon = icon
+	queue_redraw()
+
+func hide_preview_buff():
+	preview_buff_icon = ""
+	queue_redraw()
 
 func execute_skill_at(grid_pos: Vector2i):
 	if skill_cooldown > 0: return
@@ -494,7 +488,7 @@ func update_visuals():
 	
 	# Size update based on unit_data
 	var size = unit_data["size"]
-	var target_size = Vector2(size.x * Constants.TILE_SIZE - 4, size.y * Constants.TILE_SIZE - 4)
+	var target_size = Vector2(size.x * Constants.TILE_SIZE - 4, size_val_y(size) * Constants.TILE_SIZE - 4)
 	var target_pos = -(target_size / 2) # Center inside parent (Unit node)
 
 	if tex_rect:
@@ -516,6 +510,10 @@ func update_visuals():
 			star_label.hide()
 
 	_update_buff_icons()
+
+func size_val_y(size_val):
+	# Helper for missing size.y issue if any
+	return size_val.y
 
 func _update_buff_icons():
 	var buff_container = get_node_or_null("BuffContainer")
@@ -1073,7 +1071,39 @@ func _on_area_2d_input_event(viewport, event, shape_idx):
 func _on_area_2d_mouse_entered():
 	is_hovered = true
 	queue_redraw()
-	if connection_overlay: connection_overlay.queue_redraw()
+
+	# Receiver View: Highlight sources
+	for buff_type in buff_sources:
+		var source = buff_sources[buff_type]
+		if is_instance_valid(source) and source.has_method("set_force_highlight"):
+			source.set_force_highlight(true)
+
+	# Provider View: Show buffs on neighbors
+	if unit_data.has("buffProvider") or (unit_data.has("has_interaction") and unit_data.has_interaction):
+		var buff_to_show = ""
+		if unit_data.has("buffProvider"):
+			buff_to_show = unit_data["buffProvider"]
+		elif unit_data.has("buff_id"):
+			buff_to_show = unit_data["buff_id"]
+
+		if buff_to_show != "":
+			var icon = _get_buff_icon(buff_to_show)
+			var neighbors = _get_neighbor_units()
+			for neighbor in neighbors:
+				if neighbor == self: continue
+				# Check if neighbor receives buff from me?
+				# Actually, the logic in GridManager.recalculate_buffs applies the buffs.
+				# So the neighbor should already have the buff in active_buffs AND buff_sources pointing to me.
+				# So we check if neighbor.buff_sources contains me.
+				var receives_from_me = false
+				for b in neighbor.buff_sources:
+					if neighbor.buff_sources[b] == self:
+						receives_from_me = true
+						break
+
+				if receives_from_me:
+					neighbor.show_preview_buff(icon)
+
 	var current_stats = {
 		"level": level,
 		"damage": damage,
@@ -1087,16 +1117,26 @@ func _on_area_2d_mouse_entered():
 func _on_area_2d_mouse_exited():
 	is_hovered = false
 	queue_redraw()
-	if connection_overlay: connection_overlay.queue_redraw()
+
+	# Clear Receiver View Highlights
+	for buff_type in buff_sources:
+		var source = buff_sources[buff_type]
+		if is_instance_valid(source) and source.has_method("set_force_highlight"):
+			source.set_force_highlight(false)
+
+	# Clear Provider View Previews
+	if unit_data.has("buffProvider") or (unit_data.has("has_interaction") and unit_data.has_interaction):
+		var neighbors = _get_neighbor_units()
+		for neighbor in neighbors:
+			if neighbor == self: continue
+			neighbor.hide_preview_buff()
+
 	GameManager.hide_tooltip.emit()
 
 func _draw():
 	if is_hovered:
 		var draw_radius = range_val
 		if unit_data.get("attackType") == "melee":
-			# For melee, use actual range if it's reasonable, or a fixed visual range if range_val is too small (e.g. < 50)
-			# But prompt suggests "fixed smaller range (e.g. 100) or actual range".
-			# Most melee units have range around 80-100.
 			draw_radius = max(range_val, 100.0)
 
 		draw_circle(Vector2.ZERO, draw_radius, Color(1, 1, 1, 0.1))
@@ -1108,38 +1148,28 @@ func _draw():
 		if unit_data and unit_data.has("size"):
 			size = Vector2(unit_data.size.x * Constants.TILE_SIZE, unit_data.size.y * Constants.TILE_SIZE)
 
-		# Assuming pivot is center
 		var rect = Rect2(-size / 2, size)
 		draw_rect(rect, _highlight_color, false, 4.0)
 
-func _on_connection_overlay_draw():
-	if is_hovered:
-		# --- Receiver View (Trace Back) ---
-		for buff_type in buff_sources:
-			var source = buff_sources[buff_type]
-			if is_instance_valid(source):
-				var self_pos = Vector2.ZERO
-				var source_pos = connection_overlay.to_local(source.global_position)
-				# Draw from Source to Self so arrow points to Self (Receiver)
-				_draw_curve_connection(source_pos, self_pos, Color.BLACK, buff_type)
+	if is_force_highlighted:
+		# White stroke
+		var size = Vector2(Constants.TILE_SIZE, Constants.TILE_SIZE)
+		if unit_data and unit_data.has("size"):
+			size = Vector2(unit_data.size.x * Constants.TILE_SIZE, unit_data.size.y * Constants.TILE_SIZE)
 
-		# --- Provider View (Trace Forward) ---
-		if unit_data.has("buffProvider") or (unit_data.has("has_interaction") and unit_data.has_interaction):
-			if GameManager.grid_manager:
-				var neighbors = _get_neighbor_units()
-				for neighbor in neighbors:
-					if neighbor == self: continue
-					# Check if neighbor has a buff from me.
-					var provided_buff = ""
-					for b_type in neighbor.buff_sources:
-						if neighbor.buff_sources[b_type] == self:
-							provided_buff = b_type
-							break
+		var rect = Rect2(-size / 2, size)
+		draw_rect(rect, Color.WHITE, false, 3.0)
 
-					if provided_buff != "":
-						var start_pos = Vector2.ZERO
-						var end_pos = connection_overlay.to_local(neighbor.global_position)
-						_draw_curve_connection(start_pos, end_pos, Color.WHITE, provided_buff)
+	if preview_buff_icon != "":
+		# Draw centered icon
+		# Assuming standard font
+		var font = ThemeDB.fallback_font
+		var font_size = 24
+		if font:
+			var text_size = font.get_string_size(preview_buff_icon, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
+			# Draw darker background for visibility
+			draw_circle(Vector2.ZERO, 15, Color(0, 0, 0, 0.6))
+			draw_string(font, Vector2(-text_size.x/2, text_size.y/3), preview_buff_icon, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
 
 func _get_neighbor_units() -> Array:
 	var list = []
@@ -1173,67 +1203,6 @@ func _get_neighbor_units() -> Array:
 			if u and is_instance_valid(u) and not (u in list):
 				list.append(u)
 	return list
-
-func _draw_curve_connection(start: Vector2, end: Vector2, color: Color, buff_type: String = ""):
-	var diff = end - start
-	var control_point = (start + end) / 2
-
-	if start.distance_squared_to(end) < 1.0:
-		control_point.y -= 40 # Self loop vertical offset
-	else:
-		var normal = Vector2(-diff.y, diff.x).normalized()
-		var offset_amount = 30.0
-		control_point += normal * offset_amount
-
-	var points = PackedVector2Array()
-	var segments = 15
-	for i in range(segments + 1):
-		var t = float(i) / segments
-		var q0 = start.lerp(control_point, t)
-		var q1 = control_point.lerp(end, t)
-		var p = q0.lerp(q1, t)
-		points.append(p)
-
-	# Arrow Calculation
-	var arrow_len = 15.0
-	var direction = Vector2.RIGHT
-	if points.size() >= 2:
-		direction = (points[-1] - points[-2]).normalized()
-	else:
-		direction = (end - control_point).normalized()
-
-	var arrow_tip = end
-	var arrow_back = end - direction * arrow_len
-	var arrow_side1 = arrow_back + direction.orthogonal() * (arrow_len * 0.5)
-	var arrow_side2 = arrow_back - direction.orthogonal() * (arrow_len * 0.5)
-
-	# Trim line to arrow back
-	if points.size() > 1:
-		points[-1] = arrow_back
-
-	connection_overlay.draw_polyline(points, color, 2.0, true)
-	connection_overlay.draw_colored_polygon(PackedVector2Array([arrow_tip, arrow_side1, arrow_side2]), color)
-
-	if buff_type != "":
-		# Draw Buff Icon at source (near start of curve)
-		var icon_t = 0.15
-		var q0 = start.lerp(control_point, icon_t)
-		var q1 = control_point.lerp(end, icon_t)
-		var icon_pos = q0.lerp(q1, icon_t)
-
-		var icon_text = _get_buff_icon(buff_type)
-
-		# Draw background circle
-		connection_overlay.draw_circle(icon_pos, 10, Color(0, 0, 0, 0.7))
-
-		# Draw text
-		# Note: draw_string uses position as baseline-ish. Need to center.
-		# A default font is usually available via ThemeDB
-		var font = ThemeDB.fallback_font
-		var font_size = 14
-		if font:
-			var text_size = font.get_string_size(icon_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-			connection_overlay.draw_string(font, icon_pos + Vector2(-text_size.x/2, text_size.y/3), icon_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 
 func _input(event):
 	if is_dragging:
