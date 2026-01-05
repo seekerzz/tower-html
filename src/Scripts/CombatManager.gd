@@ -27,6 +27,7 @@ func _on_wave_started():
 	start_wave_logic()
 
 func get_wave_type(n: int) -> String:
+	if n == 3: return 'healer'
 	var types = ['slime', 'wolf', 'poison', 'treant', 'yeti', 'golem']
 	if n % 10 == 0: return 'boss'
 	if n % 3 == 0: return 'event'

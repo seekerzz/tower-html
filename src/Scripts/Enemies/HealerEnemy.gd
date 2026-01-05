@@ -36,8 +36,8 @@ func perform_support_action(target):
 	var line = Line2D.new()
 	line.width = 2.0
 	line.default_color = Color.GREEN
-	line.points = [Vector2.ZERO, target.global_position - global_position]
-	add_child(line)
+	line.points = [global_position, target.global_position]
+	get_parent().add_child(line)
 
 	# Fade out line
 	var tween = create_tween()
