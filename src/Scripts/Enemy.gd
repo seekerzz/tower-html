@@ -63,6 +63,9 @@ var mass: float = 1.0
 var is_facing_left: bool = false
 var is_dying: bool = false
 
+var angular_velocity: float = 0.0
+var rotational_damping: float = 2.0
+
 # Mutant Slime Properties
 var split_generation: int = 0
 var hit_count: int = 0
@@ -119,6 +122,21 @@ func setup(key: String, wave: int):
 	mass *= mass_mod
 	knockback_resistance *= mass_mod
 
+	if enemy_data.get("shape") == "rect":
+		var size_grid = enemy_data.get("size_grid", [1, 1])
+		var shape = RectangleShape2D.new()
+		# Use GridManager.TILE_SIZE which is 60 or Constants.TILE_SIZE
+		# Assuming standard TILE_SIZE is accessible or via GridManager instance if needed.
+		# But GridManager might not be instanced in editor or tests. Using safe fallback.
+		var tile_size = 60.0
+		if Constants.get("TILE_SIZE"): tile_size = Constants.TILE_SIZE
+
+		shape.size = Vector2(size_grid[0] * tile_size, size_grid[1] * tile_size)
+		$CollisionShape2D.shape = shape
+
+		mass = 5.0 # High mass for crab
+		knockback_resistance = 10.0 # High resistance
+
 	visual_controller.setup(anim_config, base_speed, speed)
 	update_visuals()
 
@@ -170,7 +188,14 @@ func _draw():
 	var color = enemy_data.color
 	if hit_flash_timer > 0:
 		color = Color.WHITE
-	draw_circle(Vector2.ZERO, enemy_data.radius, color)
+
+	if enemy_data.get("shape") == "rect":
+		var size_grid = enemy_data.get("size_grid", [1, 1])
+		var tile_size = Constants.TILE_SIZE if Constants else 60.0
+		var rect_size = Vector2(size_grid[0] * tile_size, size_grid[1] * tile_size)
+		draw_rect(Rect2(-rect_size / 2, rect_size), color)
+	else:
+		draw_circle(Vector2.ZERO, enemy_data.radius, color)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	if hp < max_hp and hp > 0:
@@ -199,7 +224,13 @@ func _physics_process(delta):
 
 	# Process Timers and Effects
 	if not is_dying:
-		_update_facing_logic()
+		if enemy_data.get("shape") != "rect":
+			_update_facing_logic()
+		else:
+			# Apply Physics for Rect Enemies (Crab)
+			rotation += angular_velocity * delta
+			angular_velocity = move_toward(angular_velocity, 0.0, rotational_damping * delta)
+
 	_process_effects(delta)
 
 	# Update visual controller speed info and apply transforms
@@ -777,6 +808,26 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 	if hit_source and is_instance_valid(hit_source) and "speed" in hit_source:
 		hit_dir = Vector2.RIGHT.rotated(hit_source.rotation)
 	last_hit_direction = hit_dir
+
+	# Torque Logic for Rect Enemies
+	if enemy_data.get("shape") == "rect":
+		if hit_source and is_instance_valid(hit_source):
+			# Calculate torque: Cross product of radius vector and force vector
+			# Radius vector (r) = hit_point - center
+			# Force vector (F) = hit_dir (assuming force direction follows hit direction)
+
+			# We approximate hit point. If hit_source is a projectile, it has position.
+			# If it's a melee unit, it also has position.
+			var r = hit_source.global_position - global_position
+			var f = hit_dir
+
+			# In 2D, Torque = r.x * F.y - r.y * F.x (Cross product magnitude)
+			var torque = r.cross(f)
+
+			# Apply torque to angular velocity
+			# Scale factor to make it noticeable
+			angular_velocity += torque * 0.1
+
 	if kb_force > 0:
 		var applied_force = kb_force / max(0.1, knockback_resistance)
 		knockback_velocity += hit_dir * applied_force

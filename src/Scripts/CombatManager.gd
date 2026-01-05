@@ -172,6 +172,12 @@ func _run_batch_sequence(batches_left: int, enemies_per_batch: int):
 		# Random variant for event waves (or maybe mixed)
 		var variants = ['slime', 'wolf', 'poison', 'shooter']
 		type_key = variants.pick_random()
+	elif GameManager.wave == 2:
+		# Wave 2: Mutant Slime AND Crabs
+		if randf() < 0.3: # 30% chance for Crab
+			type_key = "crab"
+		else:
+			type_key = "mutant_slime"
 	else:
 		# It returned a specific type like 'slime' or 'wolf'
 		# We use that. However, ref.html seemed to fallback to random 'normal' often.
