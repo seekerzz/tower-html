@@ -439,3 +439,9 @@ func _process_burn_explosion(expl):
 			enemy.take_damage(damage, source, "fire")
 			enemy.effects["burn"] = 5.0
 			enemy.burn_source = source
+
+func check_kill_bonuses(killer_unit):
+	if killer_unit and "active_buffs" in killer_unit:
+		if "wealth" in killer_unit.active_buffs:
+			GameManager.add_gold(1)
+			GameManager.spawn_floating_text(killer_unit.global_position, "+1 Gold", Color.YELLOW)

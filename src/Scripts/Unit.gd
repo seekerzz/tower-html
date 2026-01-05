@@ -509,6 +509,7 @@ func _get_buff_icon(buff_type: String) -> String:
 		"bounce": return "🪞"
 		"split": return "💠"
 		"multishot": return "📶"
+		"wealth": return "💰"
 	return "?"
 
 func _process(delta):

@@ -785,7 +785,7 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 	if source_unit:
 		GameManager.damage_dealt.emit(source_unit, amount)
 	if hp <= 0:
-		die()
+		die(source_unit)
 
 func _perform_split():
 	var child_hp = min(hp, max_hp / 2.0)
@@ -816,7 +816,11 @@ func _perform_split():
 
 	queue_free()
 
-func die():
+func die(killer_unit = null):
+	# Kill Bonus Check
+	if GameManager.combat_manager and killer_unit:
+		GameManager.combat_manager.check_kill_bonuses(killer_unit)
+
 	if effects.get("burn", 0) > 0:
 		effects["burn"] = 0.0
 		_trigger_burn_explosion()
