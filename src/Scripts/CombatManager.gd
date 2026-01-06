@@ -353,9 +353,21 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	# Merge buffs from Unit.gd (if present)
 	var effects = {}
 	if "active_buffs" in source_unit:
+		# Use pre-calculated stats on unit if available, otherwise iterate active_buffs
+		if "bounce_count" in source_unit:
+			stats["bounce"] += source_unit.bounce_count
+		else:
+			# Fallback for non-Unit nodes or old logic
+			for buff in source_unit.active_buffs:
+				if buff == "bounce": stats["bounce"] += 1
+
+		if "split_count" in source_unit:
+			stats["split"] += source_unit.split_count
+		else:
+			for buff in source_unit.active_buffs:
+				if buff == "split": stats["split"] += 1
+
 		for buff in source_unit.active_buffs:
-			if buff == "bounce": stats["bounce"] += 1
-			if buff == "split": stats["split"] += 1
 			if buff == "fire": effects["burn"] = 3.0
 			if buff == "poison": effects["poison"] = 5.0
 
