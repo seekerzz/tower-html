@@ -233,7 +233,19 @@ func reset_stats():
 	if type_key == "parrot":
 		update_parrot_range()
 
+	broadcast_buffs()
 	update_visuals()
+
+func broadcast_buffs():
+	if !unit_data.has("buff_id"): return
+	var buff = unit_data.get("buff_id")
+	if buff == "": return
+
+	# Currently simplistic: apply to all neighbors if it's a provider
+	var neighbors = _get_neighbor_units()
+	for neighbor in neighbors:
+		if neighbor != self:
+			neighbor.apply_buff(buff, self)
 
 func update_parrot_range():
 	if type_key != "parrot": return
@@ -285,8 +297,12 @@ func calculate_damage_against(target_node: Node2D) -> float:
 	return final_damage
 
 func apply_buff(buff_type: String, source_unit: Node2D = null):
-	if buff_type in active_buffs: return
-	active_buffs.append(buff_type)
+	# Allow stacking for specific buffs like bounce
+	if buff_type in active_buffs and buff_type != "bounce": return
+
+	if not (buff_type in active_buffs):
+		active_buffs.append(buff_type)
+
 	if source_unit:
 		buff_sources[buff_type] = source_unit
 
@@ -593,11 +609,11 @@ func _process(delta):
 		modulate = Color.WHITE
 
 func _process_combat(delta):
-	if cooldown > 0:
-		cooldown -= delta
+	if !unit_data.has("attackType") or unit_data.attackType == "none":
 		return
 
-	if !unit_data.has("attackType") or unit_data.attackType == "none":
+	if cooldown > 0:
+		cooldown -= delta
 		return
 
 	# Resource Check (Pre-check)
@@ -994,6 +1010,7 @@ func can_merge_with(other_unit) -> bool:
 func merge_with(other_unit):
 	level += 1
 	reset_stats()
+	broadcast_buffs()
 
 	# Visual Effect
 	GameManager.spawn_floating_text(global_position, "Level Up!", Color.GOLD)

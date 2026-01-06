@@ -292,7 +292,7 @@ func _physics_process(delta):
 	if freeze_timer > 0:
 		return
 
-	check_unit_interactions(delta)
+	# check_unit_interactions(delta) # Removed Rabbit interaction
 
 	if is_stationary:
 		stationary_timer -= delta
@@ -596,32 +596,6 @@ func apply_stun(duration: float):
 func apply_freeze(duration: float):
 	freeze_timer = duration
 	GameManager.spawn_floating_text(global_position, "Frozen!", Color.CYAN)
-
-func check_unit_interactions(delta):
-	if !GameManager.grid_manager: return
-	var grid_pos = GameManager.grid_manager.local_to_grid(global_position)
-	var tile_key = GameManager.grid_manager.get_tile_key(grid_pos.x, grid_pos.y)
-	if GameManager.grid_manager.tiles.has(tile_key):
-		var tile = GameManager.grid_manager.tiles[tile_key]
-		var unit = tile.unit
-		if unit and is_instance_valid(unit):
-			if unit.unit_data.get("trait") == "dodge_counter":
-				_trigger_rabbit_interaction(unit)
-
-var _rabbit_interaction_timer: float = 0.0
-
-func _trigger_rabbit_interaction(unit):
-	if _rabbit_interaction_timer > 0:
-		_rabbit_interaction_timer -= get_process_delta_time()
-		return
-	_rabbit_interaction_timer = 1.0
-	var dodge_rate = unit.unit_data.get("dodge_rate", 0.3)
-	if randf() < dodge_rate:
-		GameManager.spawn_floating_text(unit.global_position, "Miss!", Color.YELLOW)
-		take_damage(unit.damage, unit, "physical")
-	else:
-		unit.play_attack_anim("melee", global_position)
-		unit.take_damage(enemy_data.dmg, self)
 
 func attack_base_logic(delta):
 	var target_pos = GameManager.grid_manager.global_position
