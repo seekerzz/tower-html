@@ -420,7 +420,9 @@ func _handle_hit(target_node):
 		var total_bounce = bounce + chain
 		var bounced = false
 
-		if total_bounce > 0:
+		if bounce > 0:
+			bounced = perform_physical_bounce(target_node)
+		elif chain > 0:
 			bounced = perform_bounce(target_node)
 
 		# 2. Pierce & Split Logic
@@ -668,6 +670,7 @@ func perform_split():
 		get_parent().call_deferred("add_child", proj)
 
 func perform_bounce(current_hit_enemy):
+	# Chain Logic (Homing to nearest)
 	# Find nearest enemy NOT in hit_list within range
 	var search_range = 300.0
 	var nearest = null
@@ -687,16 +690,83 @@ func perform_bounce(current_hit_enemy):
 		# Update this projectile to fly towards the new target
 		target = nearest
 		damage *= 0.8
-		if bounce > 0: bounce -= 1
-		elif chain > 0: chain -= 1
+		if chain > 0: chain -= 1
 
-		# Reset life slightly? Ref sets life to 0.5 or similar for bounces sometimes,
-		# or just lets it fly. Let's ensure it has enough life to reach.
 		life = 1.0
 
 		return true # Bounced successfully
 
 	return false # No target to bounce to
+
+func perform_physical_bounce(hit_node):
+	# Physical Reflection Logic
+	# R = I - 2(I . N) * N
+
+	var incident = Vector2.RIGHT.rotated(rotation)
+	var normal = Vector2.ZERO
+
+	# Determine Normal
+	if "enemy_data" in hit_node:
+		var e_data = hit_node.enemy_data
+		if e_data.get("shape") == "rect" or hit_node.type_key == "crab":
+			# Rectangle Normal Calculation
+			# Approximate by checking which side of the bounding box was hit
+			# Localize hit position relative to enemy center
+			var local_hit = hit_node.to_local(global_position)
+
+			# We assume rect is aligned or we rotate the local point.
+			# Enemy node might be rotated (crab rotates).
+			# to_local handles rotation if the Node2D itself is rotated.
+			# But if rotation is just visual, we might need manual handling.
+			# Enemy.gd rotates `rotation` property for rects, so to_local should work.
+
+			var size_grid = e_data.get("size_grid", [1,1])
+			var w = size_grid[0] * 60 # TILE_SIZE hardcoded fallback or pass it
+			var h = size_grid[1] * 60
+
+			# Simple box normal
+			# Check aspect ratio to determine side
+			var dx = local_hit.x
+			var dy = local_hit.y
+
+			# Normalize to aspect
+			if h > 0:
+				var aspect = w / h
+				if abs(dx) > abs(dy) * aspect:
+					# Left or Right
+					normal = Vector2(sign(dx), 0).rotated(hit_node.rotation)
+				else:
+					# Top or Bottom
+					normal = Vector2(0, sign(dy)).rotated(hit_node.rotation)
+		else:
+			# Point/Circle Normal
+			# "Velocity/Facing" as normal
+			if hit_node.velocity.length() > 0.1:
+				normal = hit_node.velocity.normalized()
+			else:
+				# Fallback to facing direction derived from sprite flip or just vector from center
+				normal = (global_position - hit_node.global_position).normalized()
+	else:
+		# Fallback for non-enemy (shouldn't happen here usually)
+		normal = (global_position - hit_node.global_position).normalized()
+
+	# Calculate Reflection
+	# I is incident vector.
+	var dot = incident.dot(normal)
+	var reflect = incident - 2 * dot * normal
+
+	# Update Projectile
+	rotation = reflect.angle()
+	target = null # Stop homing, fly straight
+
+	damage *= 0.8
+	bounce -= 1
+	life = 1.0 # Reset life
+
+	# Visual effect?
+	# Handled in caller mostly, but we can play a ping sound or flash here if we had audio.
+
+	return true
 
 
 func _setup_snowball():
