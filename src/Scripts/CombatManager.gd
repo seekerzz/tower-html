@@ -172,6 +172,12 @@ func _run_batch_sequence(batches_left: int, enemies_per_batch: int):
 		# Random variant for event waves (or maybe mixed)
 		var variants = ['slime', 'wolf', 'poison', 'shooter']
 		type_key = variants.pick_random()
+	elif GameManager.wave == 1:
+		# Mix 'twin_slime' and 'slime'
+		if randf() < 0.2: # 20% chance for Twin Slime
+			type_key = 'twin_slime'
+		else:
+			type_key = 'slime'
 	elif GameManager.wave == 2:
 		# Special mix for Wave 2
 		# Mix 'mutant_slime' and 'crab'
