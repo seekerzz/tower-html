@@ -43,7 +43,28 @@ var CORE_TYPES = {}
 var BARRICADE_TYPES = {}
 var UNIT_TYPES = {}
 var TRAITS = []
-var ENEMY_VARIANTS = {}
+var ENEMY_VARIANTS = {
+	"twin_slime": {
+		"name": "Twin Slime",
+		"icon": "👯",
+		"color": "#00cec9",
+		"radius": 10,
+		"hpMod": 0.48,
+		"spdMod": 0.7,
+		"attackType": "melee",
+		"range": 30,
+		"dmg": 50,
+		"atkSpeed": 1.0,
+		"drop": "mucus",
+		"dropRate": 0.5,
+		"is_twin": true,
+		"anim_config": {
+			"style": "squash",
+			"amplitude": 0.2,
+			"base_freq": 4.0
+		}
+	}
+}
 
 const ENVIRONMENT_CONFIG = {
 	"tree_tile_set": "res://assets/images/UI/tile_trees.png",
