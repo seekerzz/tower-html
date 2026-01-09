@@ -75,6 +75,12 @@ var ancestor_max_hp: float = 0.0
 var invincible_timer: float = 0.0
 var is_splitting: bool = false
 
+# Twin Slime Properties
+var twin_partner: Node2D = null
+var rope_line: Line2D = null
+const TWIN_ROPE_LENGTH = 150.0
+const TWIN_PULL_STRENGTH = 10.0
+
 func _ready():
 	add_to_group("enemies")
 	collision_layer = 2
@@ -159,6 +165,27 @@ func setup(key: String, wave: int):
 
 	visual_controller.setup(anim_config, base_speed, speed)
 	update_visuals()
+
+	if type_key == "twin_slime" and not is_instance_valid(twin_partner):
+		call_deferred("_spawn_twin_partner")
+
+func _spawn_twin_partner():
+	if not is_inside_tree(): return
+	var partner = load("res://src/Scenes/Game/Enemy.tscn").instantiate()
+	get_parent().add_child(partner)
+
+	self.twin_partner = partner
+	partner.twin_partner = self
+
+	# Offset slightly to avoid stuck
+	partner.global_position = global_position + Vector2(randf_range(-20, 20), randf_range(-20, 20))
+	partner.setup(type_key, GameManager.wave)
+
+	rope_line = Line2D.new()
+	rope_line.width = 3.0
+	rope_line.default_color = Color("#00cec9")
+	rope_line.top_level = true
+	add_child(rope_line)
 
 func _ensure_visual_controller():
 	if not visual_controller:
@@ -311,6 +338,7 @@ func _physics_process(delta):
 	match state:
 		State.STUNNED:
 			velocity = velocity.move_toward(Vector2.ZERO, 500 * delta)
+			_process_twin_mechanics(delta)
 			move_and_slide()
 
 		State.MOVE:
@@ -327,6 +355,7 @@ func _physics_process(delta):
 				velocity = Vector2.ZERO
 			else:
 				velocity = desired_velocity
+				_process_twin_mechanics(delta)
 				move_and_slide()
 
 		State.ATTACK_BASE:
@@ -335,8 +364,64 @@ func _physics_process(delta):
 			else:
 				attack_base_logic(delta)
 				velocity = Vector2.ZERO
+				_process_twin_mechanics(delta)
 
 	handle_collisions(delta)
+
+func _process_twin_mechanics(delta):
+	if type_key != "twin_slime": return
+	if not is_instance_valid(twin_partner):
+		if rope_line:
+			rope_line.queue_free()
+			rope_line = null
+		return
+
+	# Rigid Tether Physics
+	var dist = global_position.distance_to(twin_partner.global_position)
+	if dist > TWIN_ROPE_LENGTH:
+		var dir_to_partner = (twin_partner.global_position - global_position).normalized()
+
+		# Velocity Correction
+		var vel_away = velocity.dot(-dir_to_partner)
+		if vel_away > 0:
+			velocity -= (-dir_to_partner) * vel_away
+
+		# Centripetal Force
+		var stretch_distance = dist - TWIN_ROPE_LENGTH
+		velocity += dir_to_partner * (stretch_distance * TWIN_PULL_STRENGTH)
+
+	# Visuals
+	if rope_line:
+		# Ensure rope is drawn in global space (reset transform)
+		rope_line.global_position = Vector2.ZERO
+		rope_line.rotation = 0
+		rope_line.scale = Vector2.ONE
+
+		var start_pos = global_position
+		var end_pos = twin_partner.global_position
+
+		var gravity_factor = 200.0
+		var inertia_factor = 1.0
+
+		var partner_vel = Vector2.ZERO
+		if "velocity" in twin_partner:
+			partner_vel = twin_partner.velocity
+
+		var sag_vector = Vector2.DOWN * gravity_factor - (velocity + partner_vel).normalized() * inertia_factor * 80.0
+
+		var sag_amplitude = clamp((TWIN_ROPE_LENGTH - dist) / TWIN_ROPE_LENGTH, 0.0, 1.0)
+
+		# Generate Curve Points
+		var points = []
+		var steps = 15
+		for i in range(steps + 1):
+			var t = float(i) / steps
+			var linear_p = start_pos.lerp(end_pos, t)
+			var parabola = 4.0 * t * (1.0 - t)
+			var offset = sag_vector * sag_amplitude * parabola
+			points.append(linear_p + offset)
+
+		rope_line.points = PackedVector2Array(points)
 
 func _should_attack_base() -> bool:
 	# If ranged, check distance to Core directly if we want to shoot core.
@@ -869,6 +954,12 @@ func _perform_split():
 	queue_free()
 
 func die(killer_unit = null):
+	if is_dying: return
+	is_dying = true
+
+	if type_key == "twin_slime" and is_instance_valid(twin_partner) and not twin_partner.is_dying:
+		twin_partner.die(killer_unit)
+
 	# Kill Bonus Check
 	if GameManager.combat_manager and killer_unit:
 		GameManager.combat_manager.check_kill_bonuses(killer_unit)
