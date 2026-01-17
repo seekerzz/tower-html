@@ -272,6 +272,9 @@ func _on_upgrade_selected(upgrade_data):
 	_finish_wave_process()
 
 func damage_core(amount: float):
+	if current_mechanic:
+		current_mechanic.on_core_damaged(amount)
+
 	if cheat_god_mode and amount > 0:
 		print("[GodMode] Damage blocked. Original amount: ", amount)
 		amount = 0
@@ -293,9 +296,6 @@ func damage_core(amount: float):
 			spawn_floating_text(grid_manager.global_position if grid_manager else Vector2.ZERO, "UNDYING!", Color.PURPLE)
 			resource_changed.emit()
 			return
-
-	if current_mechanic:
-		current_mechanic.on_core_damaged(amount)
 
 	core_health -= amount
 	resource_changed.emit()
