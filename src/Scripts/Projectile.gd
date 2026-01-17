@@ -149,6 +149,8 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 		_setup_dragon_breath()
 	elif type == "pinecone":
 		_setup_simple_visual(Color("8B4513"), "circle") # Brown circle
+	elif type == "bat_orb":
+		_setup_simple_visual(Color.RED, "circle")
 	elif type == "ink":
 		_setup_simple_visual(Color.BLACK, "blob")
 	elif type == "pollen":
@@ -382,6 +384,9 @@ func _handle_hit(target_node):
 		if effects.get("poison", 0.0) > 0.0:
 			if target_node.has_method("apply_poison"):
 				target_node.apply_poison(source_unit, 1, effects["poison"])
+		if effects.get("bleed", 0.0) > 0.0:
+			if target_node.has_method("apply_bleed"):
+				target_node.apply_bleed(effects["bleed"])
 		if effects.get("slow", 0.0) > 0.0:
 			if "slow_timer" in target_node:
 				target_node.slow_timer = max(target_node.slow_timer, effects["slow"])

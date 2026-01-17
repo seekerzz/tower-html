@@ -19,6 +19,9 @@ var poison_power: float = 0.0
 var poison_tick_timer: float = 0.0
 var poison_trap_timer: float = 0.0
 
+var bleed_stacks: int = 0
+var bleed_timer: float = 0.0
+
 var burn_source: Node2D = null
 var heat_accumulation: float = 0.0
 
@@ -417,6 +420,11 @@ func _process_effects(delta):
 	if effects.burn > 0:
 		effects.burn -= delta
 
+	if bleed_timer > 0:
+		bleed_timer -= delta
+		if bleed_timer <= 0:
+			bleed_stacks = 0
+
 	if effects.poison > 0:
 		effects.poison -= delta
 		if effects.poison <= 0:
@@ -559,6 +567,11 @@ func apply_poison(source_unit, stacks_added, duration):
 			base_dmg = source_unit.damage
 		var damage_increment = base_dmg * Constants.POISON_DAMAGE_RATIO * stacks_added
 		poison_power += damage_increment
+
+func apply_bleed(duration: float):
+	bleed_stacks += 1
+	bleed_timer = duration
+	print("[Enemy] Bleed applied. Stacks: ", bleed_stacks, " Timer: ", bleed_timer)
 
 func check_suicide_collision():
 	if GameManager.grid_manager:
