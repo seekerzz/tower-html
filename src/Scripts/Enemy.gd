@@ -1,5 +1,7 @@
 extends CharacterBody2D
 
+signal died
+
 enum State { MOVE, ATTACK_BASE, STUNNED, SUPPORT }
 var state: State = State.MOVE
 
@@ -8,17 +10,13 @@ var hp: float
 var max_hp: float
 var speed: float
 var enemy_data: Dictionary
-var slow_timer: float = 0.0
+
+# Status Effects
+# Refactored to use child nodes
+# Preserving freeze/stun as timers for now (or could be effects too, but keeping scope focused)
 var freeze_timer: float = 0.0
 var stun_timer: float = 0.0
-var effects = { "burn": 0.0, "poison": 0.0 }
 var _env_cooldowns = {} # Trap Instance ID -> Cooldown Timer
-
-var poison_stacks: int = 0
-var poison_power: float = 0.0
-var poison_tick_timer: float = 0.0
-
-var burn_source: Node2D = null
 
 var hit_flash_timer: float = 0.0
 
@@ -282,10 +280,12 @@ func handle_environmental_impact(trap_node):
 		take_damage(trap_node.props.get("strength", 10.0), trap_node, "physical")
 		_env_cooldowns[trap_id] = 0.5
 	elif type == "poison":
-		apply_poison(null, 1, 3.0)
+		# Legacy: apply_poison(null, 1, 3.0)
+		apply_status(load("res://src/Scripts/Effects/PoisonEffect.gd"), {"duration": 3.0, "damage": 10.0, "stacks": 1})
 		_env_cooldowns[trap_id] = 0.5
 	elif type == "slow":
-		slow_timer = 0.1 # Continually refresh while in area
+		# Legacy: slow_timer = 0.1
+		apply_status(load("res://src/Scripts/Effects/SlowEffect.gd"), {"duration": 0.1, "slow_factor": 0.5})
 
 	if trap_node.has_method("spawn_splash_effect"):
 		trap_node.spawn_splash_effect(global_position)
@@ -302,28 +302,26 @@ func _update_facing_logic():
 		is_facing_left = false
 
 func _process_effects(delta):
-	if has_node("BurnParticles"): $BurnParticles.emitting = (effects.burn > 0)
-	if has_node("PoisonParticles"): $PoisonParticles.emitting = (effects.poison > 0)
+	# Burn and Poison are now handled by child Nodes.
+	# We just need to handle built-in timers and visual sync if needed.
+
+	if has_node("BurnParticles"):
+		# This node might not exist or needs to be controlled by BurnEffect?
+		# If it's a legacy child node in the scene, we can keep this or let BurnEffect handle particles.
+		# For now, we assume BurnEffect handles logic.
+		# If BurnParticles exists in the scene, we should check if we have a BurnEffect.
+		var has_burn = false
+		for c in get_children():
+			if c.get("type_key") == "burn": has_burn = true
+		$BurnParticles.emitting = has_burn
+
+	if has_node("PoisonParticles"):
+		var has_poison = false
+		for c in get_children():
+			if c.get("type_key") == "poison": has_poison = true
+		$PoisonParticles.emitting = has_poison
 
 	if stun_timer > 0: stun_timer -= delta
-
-	if effects.burn > 0:
-		effects.burn -= delta
-
-	if effects.poison > 0:
-		effects.poison -= delta
-		if effects.poison <= 0:
-			poison_stacks = 0
-			poison_power = 0.0
-			modulate = Color.WHITE
-
-	if poison_stacks > 0:
-		poison_tick_timer -= delta
-		if poison_tick_timer <= 0:
-			poison_tick_timer = Constants.POISON_TICK_INTERVAL
-			take_damage(poison_power, null, "poison")
-		var t = clamp(float(poison_stacks) / Constants.POISON_VISUAL_SATURATION_STACKS, 0.0, 1.0)
-		modulate = Color.WHITE.lerp(Color(0.2, 1.0, 0.2), t)
 
 	# Apply Visual Controller transforms
 	if visual_controller:
@@ -355,12 +353,18 @@ func _process_effects(delta):
 		hit_flash_timer -= delta
 		if hit_flash_timer <= 0: queue_redraw()
 
-	if slow_timer > 0: slow_timer -= delta
 	if freeze_timer > 0:
 		freeze_timer -= delta
 		modulate = Color(0.5, 0.5, 1.0)
 	else:
-		if poison_stacks == 0: modulate = Color.WHITE
+		# If not frozen, color is white OR handled by PoisonEffect/SlowEffect
+		# We should not forcibly reset to White if effects are active,
+		# but PoisonEffect resets on exit.
+		# However, if we were frozen, we want to return to whatever state we should be.
+		# For simplicity, if not frozen, we don't touch modulate here, letting effects drive it.
+		# But we must ensure if we just unfroze, we don't stay blue.
+		if modulate == Color(0.5, 0.5, 1.0):
+			modulate = Color.WHITE
 
 
 func handle_collisions(delta):
@@ -419,18 +423,28 @@ func apply_physics_stagger(duration: float):
 
 	apply_stun(duration)
 
-func apply_poison(source_unit, stacks_added, duration):
-	if poison_stacks == 0:
-		poison_tick_timer = Constants.POISON_TICK_INTERVAL
-	effects["poison"] = duration
-	if poison_stacks < Constants.POISON_MAX_STACKS:
-		poison_stacks += stacks_added
-		if poison_stacks > Constants.POISON_MAX_STACKS: poison_stacks = Constants.POISON_MAX_STACKS
-		var base_dmg = 10.0
-		if source_unit and is_instance_valid(source_unit) and source_unit.get("damage"):
-			base_dmg = source_unit.damage
-		var damage_increment = base_dmg * Constants.POISON_DAMAGE_RATIO * stacks_added
-		poison_power += damage_increment
+func apply_status(effect_script: Script, params: Dictionary):
+	if not effect_script: return
+
+	# Instantiate a dummy to check type_key?
+	# Or rely on type_key being passed in params or standard way to check existance.
+	# We need to know if we already have this effect.
+	# We can check by script type or a 'key' property if we instance it.
+
+	# Optimization: check children by script
+	var existing = null
+	for c in get_children():
+		if c.get_script() == effect_script:
+			existing = c
+			break
+
+	if existing:
+		existing.stack(params)
+	else:
+		var effect = effect_script.new()
+		add_child(effect)
+		effect.setup(self, params.get("source", null), params)
+
 
 func apply_stun(duration: float):
 	stun_timer = duration
@@ -505,9 +519,8 @@ func die(killer_unit = null):
 	if GameManager.combat_manager and killer_unit:
 		GameManager.combat_manager.check_kill_bonuses(killer_unit)
 
-	if effects.get("burn", 0) > 0:
-		effects["burn"] = 0.0
-		_trigger_burn_explosion()
+	emit_signal("died")
+
 	GameManager.add_gold(1)
 	if GameManager.reward_manager and "scrap_recycling" in GameManager.reward_manager.acquired_artifacts:
 		if GameManager.grid_manager:
@@ -524,17 +537,3 @@ func die(killer_unit = null):
 
 	if !handled:
 		queue_free()
-
-func _trigger_burn_explosion():
-	GameManager.spawn_floating_text(global_position, "BOOM!", Color.ORANGE)
-	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
-	get_parent().add_child(effect)
-	effect.global_position = global_position
-	effect.configure("cross", Color.ORANGE)
-	effect.scale = Vector2(3, 3)
-	effect.play()
-	var damage = 50.0
-	if burn_source and is_instance_valid(burn_source):
-		damage = burn_source.damage * 3.0
-	if GameManager.combat_manager:
-		GameManager.combat_manager.queue_burn_explosion(global_position, damage, burn_source)

@@ -1,14 +1,11 @@
-extends Area2D
+extends "res://src/Scripts/Projectiles/BaseProjectile.gd"
 
+# Logic for specific projectile types
 var target = null # Enemy node
-var speed: float = 400.0
-var damage: float = 10.0
 var life: float = 2.0
 var type: String = "pinecone"
 var hit_list = []
 var shared_hit_list_ref: Array = []
-var source_unit = null
-var effects: Dictionary = {}
 
 var is_meteor_falling: bool = false
 var meteor_target: Vector2 = Vector2.ZERO
@@ -23,6 +20,7 @@ var split: int = 0
 var chain: int = 0
 var damage_type: String = "physical"
 var is_critical: bool = false
+var freeze_duration: float = 0.0
 
 # Visuals
 var visual_node: Node2D = null
@@ -38,12 +36,21 @@ var feather_original_target_pos: Vector2 = Vector2.ZERO
 var feather_stuck_pos: Vector2 = Vector2.ZERO
 
 const PROJECTILE_SCENE = preload("res://src/Scenes/Game/Projectile.tscn")
+const PROJECTILE_VISUALS_SCRIPT = preload("res://src/Scripts/Projectiles/ProjectileVisuals.gd")
 
 func _ready():
-	if not body_entered.is_connected(_on_body_entered):
-		body_entered.connect(_on_body_entered)
-	if not area_entered.is_connected(_on_area_2d_area_entered):
-		area_entered.connect(_on_area_2d_area_entered)
+	super._ready() # Connect signals
+
+	# Instantiate Visuals Controller
+	var visuals = PROJECTILE_VISUALS_SCRIPT.new()
+	visuals.name = "ProjectileVisuals"
+	add_child(visuals)
+	visual_node = visuals
+
+	# Hide legacy nodes if they exist in the scene (ColorRect)
+	if has_node("ColorRect"): get_node("ColorRect").hide()
+	if has_node("Sprite2D"): get_node("Sprite2D").hide()
+	if has_node("Polygon2D"): get_node("Polygon2D").hide()
 
 func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = {}):
 	position = start_pos
@@ -56,8 +63,49 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 	if stats.has("source"):
 		source_unit = stats.source
 
-	if stats.has("effects"):
-		effects = stats.effects.duplicate()
+	# Map stats to payload_effects
+	payload_effects.clear()
+
+	var effects_dict = stats.get("effects", {})
+	if effects_dict.get("burn", 0.0) > 0.0:
+		payload_effects.append({
+			"script": load("res://src/Scripts/Effects/BurnEffect.gd"),
+			"params": {
+				"duration": effects_dict["burn"],
+				"damage": damage, # Default burn damage uses projectile damage or source damage?
+				# Original Logic: "target_node.effects["burn"] = max(..., effects["burn"])" -> Only duration was passed.
+				# "if "burn_source" in target_node: target_node.burn_source = source_unit"
+				# Burn Effect logic uses params["damage"]. If not set, defaults to 10.
+				# Let's pass 'damage' from stats or projectile damage.
+				# Usually burn damage is derived from source.damage but here we can pass it.
+				"source": source_unit
+			}
+		})
+	if effects_dict.get("poison", 0.0) > 0.0:
+		payload_effects.append({
+			"script": load("res://src/Scripts/Effects/PoisonEffect.gd"),
+			"params": {
+				"duration": effects_dict["poison"],
+				"damage": damage * 0.5, # Poison usually weaker per tick but stacks? Logic was: "damage_increment = base_dmg * 0.1 * stacks".
+				# PoisonEffect uses base_damage.
+				# Let's pass a reasonable base damage. Source unit damage is better.
+				"source": source_unit,
+				"stacks": 1
+			}
+		})
+	if effects_dict.get("slow", 0.0) > 0.0:
+		payload_effects.append({
+			"script": load("res://src/Scripts/Effects/SlowEffect.gd"),
+			"params": {
+				"duration": effects_dict["slow"],
+				"slow_factor": 0.5, # Default 50% slow
+				"source": source_unit
+			}
+		})
+
+	# Freeze
+	if effects_dict.get("freeze", 0.0) > 0.0:
+		freeze_duration = effects_dict["freeze"]
 
 	pierce = stats.get("pierce", 0)
 	bounce = stats.get("bounce", 0)
@@ -75,17 +123,10 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 	if stats.has("is_meteor"):
 		is_meteor_falling = true
 		meteor_target = stats["ground_pos"]
-		type = "fireball" # Reuse dragon breath or fireball visual if available, using dragon_breath as fallback if fireball not defined
-		if proj_type == "fireball": pass # Already set
-		else: type = "dragon_breath" # Use dragon breath visual as base if fireball not specific
+		type = "fireball" # Logic from original
+		if proj_type == "fireball": pass
+		else: type = "dragon_breath"
 
-		# Override type to ensure visual works? Let's check visuals.
-		# Code has `_setup_dragon_breath`, no `_setup_fireball`.
-		# So I will set type to "dragon_breath" for visual, or just assume "fireball" triggers something else?
-		# Actually, `setup` sets `type = proj_type` earlier.
-		# In CombatManager, we passed `proj: "fireball"`.
-		# But Projectile.gd doesn't seem to have "fireball" in setup.
-		# Let's map "fireball" to "dragon_breath" visual or create a simple one.
 		if type == "fireball":
 			type = "dragon_breath"
 
@@ -105,67 +146,38 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 			elif stats.has("target_pos"):
 				feather_original_target_pos = stats.target_pos
 			else:
-				# Fallback if no target and no pos given: fly straight for range
-				var r = stats.get("range", 1000.0) # unit range not passed in stats usually?
+				var r = stats.get("range", 1000.0)
 				feather_original_target_pos = position + Vector2.RIGHT.rotated(rotation) * r
 
 		if stats.get("angle") != null:
 			rotation = stats.get("angle")
 
-	# Visual Separation
-	if has_node("Sprite2D"):
-		visual_node = get_node("Sprite2D")
-	elif has_node("Polygon2D"):
-		visual_node = get_node("Polygon2D")
-
+	# Logic for Black Hole
 	if type == "black_hole_field":
-		_setup_black_hole_field()
 		speed = 0.0
-		# Use stats for life/duration if available
 		if stats.has("duration"):
 			life = stats["duration"]
 
-	if stats.get("hide_visuals", false):
-		if visual_node: visual_node.hide()
-		if has_node("ColorRect"): get_node("ColorRect").hide()
-		modulate.a = 0.0
-
+	# Critical Visuals handled in visual node?
 	if is_critical:
 		scale *= 1.2
-		# Optionally change color or modulation to indicate crit visually on the projectile itself
-		# modulate = Color(1.5, 1.2, 0.5) # Example glow
 
-	# Swarm Wave Visuals
-	if type == "snowball":
-		_setup_snowball()
-	elif type == "web":
-		_setup_web()
-	# Visual Setup
-	elif type == "stinger":
-		_setup_stinger()
-	elif type == "roar":
-		_setup_roar()
-	elif type == "dragon_breath":
-		_setup_dragon_breath()
-	elif type == "pinecone":
-		_setup_simple_visual(Color("8B4513"), "circle") # Brown circle
-	elif type == "ink":
-		_setup_simple_visual(Color.BLACK, "blob")
-	elif type == "pollen":
-		_setup_simple_visual(Color.PINK, "star")
-	elif type == "feather":
-		_setup_feather()
-	elif type == "lightning":
-		# Keep lightning if it was handled elsewhere or add simple visual
-		_setup_simple_visual(Color.CYAN, "line")
+	# Update Visuals
+	if visual_node:
+		visual_node.update_visuals(type, stats)
+		if type == "feather":
+			# Adjust collision for feather
+			var col_shape = get_node_or_null("CollisionShape2D")
+			if col_shape:
+				var new_shape = CircleShape2D.new()
+				new_shape.radius = 12.0
+				col_shape.shape = new_shape
 
 func fade_out():
 	if is_fading: return
-	if state == State.STUCK: return # Stuck feathers don't fade out by time alone usually, but we need life check
+	if state == State.STUCK: return
 
 	is_fading = true
-
-	# Disable collision to stop interacting
 	set_deferred("monitoring", false)
 	set_deferred("monitorable", false)
 
@@ -174,12 +186,13 @@ func fade_out():
 	tween.tween_property(self, "modulate:a", 0.0, 0.2)
 
 	if type != "swarm_wave" and type != "roar":
-		# Slight expansion for explosion effect
 		tween.tween_property(self, "scale", scale * 1.5, 0.2)
 
 	tween.chain().tween_callback(queue_free)
 
 func _process(delta):
+	# Override BaseProjectile movement
+
 	if is_fading: return
 
 	if is_meteor_falling:
@@ -195,51 +208,44 @@ func _process(delta):
 		position += Vector2.RIGHT.rotated(rotation) * speed * delta
 		return
 
-	# Dragon Breath Logic
 	if type == "dragon_breath":
 		_process_dragon_breath(delta)
 		return
 
-	# Feather Logic
 	if type == "feather":
 		_process_feather(delta)
 		if state != State.RETURNING:
 			return
 
-		# Destroy condition for returning feather
 		if state == State.RETURNING and source_unit and is_instance_valid(source_unit):
 			if global_position.distance_to(source_unit.global_position) < 15.0:
 				queue_free()
 				return
 
-	# Black Hole Logic
 	if type == "black_hole_field":
 		_process_black_hole(delta)
-		# fallthrough to life check
 
 	life -= delta
 	if life <= 0:
 		fade_out()
 		return
 
-	# Roar Logic
 	if type == "roar":
 		scale += Vector2(delta, delta) * speed * 0.01
 		modulate.a = max(0, modulate.a - delta * 0.8)
-		if has_node("WaveLine"):
-			var line = get_node("WaveLine")
-			line.width += delta * 15.0
+		# Note: Roar visual in VisualsNode doesn't update width automatically unless we expose it.
+		# But we can accept simple scaling for now.
 
 	var direction = Vector2.RIGHT.rotated(rotation)
 
 	if is_instance_valid(target):
 		var target_dir = (target.global_position - global_position).normalized()
 		direction = target_dir
-		rotation = direction.angle() # Turn entire node to face target
+		rotation = direction.angle()
 
 	position += direction * speed * delta
 
-	# Enemy Ranged Attack: Check for arrival at Core (target_pos)
+	# Enemy Ranged Attack
 	if !is_instance_valid(target) and stats.has("target_pos") and source_unit and source_unit.is_in_group("enemies"):
 		if global_position.distance_to(stats.target_pos) < 15.0:
 			GameManager.damage_core(damage)
@@ -247,7 +253,6 @@ func _process(delta):
 			queue_free()
 			return
 
-	# Visual Rotation (Spin)
 	if visual_node:
 		visual_node.rotation += delta * 15.0
 
@@ -261,30 +266,17 @@ func _process_black_hole(delta):
 		var dist = black_hole_center.distance_to(enemy.global_position)
 		if dist < pull_radius:
 			var dir = (black_hole_center - enemy.global_position).normalized()
-
-			# Mass calculation
 			var mass = 1.0
-			if "mass" in enemy:
-				mass = enemy.mass
-			elif "knockback_resistance" in enemy:
-				# Use resistance as mass proxy
-				mass = max(enemy.knockback_resistance, 1.0)
-			elif "radius" in enemy:
-				mass = max(enemy.radius, 1.0)
-			elif "hpMod" in enemy:
-				mass = max(enemy.hpMod * 10.0, 1.0)
-
-			# Boss resistance/immunity check if needed, but logic implies high mass reduces pull
+			if "mass" in enemy: mass = enemy.mass
+			elif "knockback_resistance" in enemy: mass = max(enemy.knockback_resistance, 1.0)
 			mass = max(mass, 0.1)
 
 			var force_magnitude = (pull_strength / max(dist, 10.0)) * (1.0 / mass)
 			var force_vector = dir * force_magnitude * delta
 
-			# Apply force
 			if enemy.has_method("apply_force"):
 				enemy.apply_force(force_vector)
 			else:
-				# Direct position modification (works on top of physics for control effects)
 				enemy.global_position += force_vector
 
 func _process_dragon_breath(delta):
@@ -301,7 +293,7 @@ func _process_dragon_breath(delta):
 
 			if dist < 10.0:
 				state = State.HOVERING
-				dragon_breath_timer = 3.0 # Duration
+				dragon_breath_timer = 3.0
 		else:
 			state = State.HOVERING
 			dragon_breath_timer = 2.0
@@ -312,37 +304,30 @@ func _process_dragon_breath(delta):
 			fade_out()
 			return
 
-		# Pull/Damage enemies
 		var pull_radius = 150.0
 		var enemies = get_tree().get_nodes_in_group("enemies")
 		for enemy in enemies:
 			var dist = global_position.distance_to(enemy.global_position)
 			if dist < pull_radius:
 				var pull_dir = (global_position - enemy.global_position).normalized()
-				enemy.global_position += pull_dir * 100.0 * delta # Pull speed
-				enemy.take_damage(damage * delta, source_unit, damage_type) # DoT
+				enemy.global_position += pull_dir * 100.0 * delta
+				enemy.take_damage(damage * delta, source_unit, damage_type)
 
-func _on_body_entered(body):
-	_handle_hit(body)
-
-func _on_area_2d_area_entered(area):
-	_handle_hit(area)
-
+# Overriding BaseProjectile _handle_hit
 func _handle_hit(target_node):
 	if is_fading: return
 	if type == "dragon_breath": return
-	if type == "black_hole_field": return # Black hole doesn't hit/destroy on contact, it pulls
+	if type == "black_hole_field": return
 	if type == "feather" and state == State.STUCK: return
 
 	if target_node.is_in_group("enemies"):
-		# Friendly Fire Prevention
 		if source_unit and source_unit.is_in_group("enemies"):
 			return
 
 		if shared_hit_list_ref != null and target_node in shared_hit_list_ref: return
 		if target_node in hit_list: return
 
-		# Feather Return Logic (Pull)
+		# Feather Pull
 		if type == "feather" and state == State.RETURNING:
 			var pull_str = 0.0
 			if source_unit and "unit_data" in source_unit and source_unit.unit_data.has("levels"):
@@ -352,47 +337,29 @@ func _handle_hit(target_node):
 
 			if pull_str > 0:
 				var dir = (source_unit.global_position - target_node.global_position).normalized()
-				# Pull enemy
-				# Apply a significant tug since this is a one-shot hit event
-				# Using a fixed time-slice equivalent (e.g. 0.1s) to make the pull noticeable
 				target_node.global_position += dir * (pull_str * 0.05)
 
-		# Apply Damage
+		# Damage
 		var final_damage_type = damage_type
 		if is_critical:
 			final_damage_type = "crit"
 
-		# Calculate Knockback Force
-		# kb_force = damage * speed * 0.005 (coefficient)
 		var kb_force = damage * speed * 0.005
-		if type == "roar":
-			kb_force *= 2.0 # Extra knockback for roar
-		if type == "snowball":
-			kb_force *= 1.5
+		if type == "roar": kb_force *= 2.0
+		if type == "snowball": kb_force *= 1.5
 
 		if target_node.has_method("take_damage"):
 			target_node.take_damage(damage, source_unit, final_damage_type, self, kb_force)
 
-		# Apply Status Effects
-		if effects.get("burn", 0.0) > 0.0:
-			if "effects" in target_node:
-				target_node.effects["burn"] = max(target_node.effects["burn"], effects["burn"])
-				if "burn_source" in target_node:
-					target_node.burn_source = source_unit
-		if effects.get("poison", 0.0) > 0.0:
-			if target_node.has_method("apply_poison"):
-				target_node.apply_poison(source_unit, 1, effects["poison"])
-		if effects.get("slow", 0.0) > 0.0:
-			if "slow_timer" in target_node:
-				target_node.slow_timer = max(target_node.slow_timer, effects["slow"])
-		if effects.get("freeze", 0.0) > 0.0:
-			# Freeze stops movement and attacks
-			if target_node.has_method("apply_freeze"):
-				target_node.apply_freeze(effects["freeze"])
-			else:
-				target_node.set("freeze_timer", max(target_node.get("freeze_timer") if target_node.get("freeze_timer") else 0.0, effects["freeze"]))
+		# Apply Status Effects (BaseProjectile method)
+		apply_payload(target_node)
 
-		# Trigger Source Behavior (Lifesteal, Traps, etc)
+		# Freeze Logic
+		if freeze_duration > 0.0:
+			if target_node.has_method("apply_freeze"):
+				target_node.apply_freeze(freeze_duration)
+
+		# Trigger Source Behavior
 		if source_unit and is_instance_valid(source_unit) and "behavior" in source_unit and source_unit.behavior:
 			if source_unit.behavior.has_method("on_projectile_hit"):
 				source_unit.behavior.on_projectile_hit(target_node, damage, self)
@@ -401,7 +368,7 @@ func _handle_hit(target_node):
 		if shared_hit_list_ref != null:
 			shared_hit_list_ref.append(target_node)
 
-		# 1. Bounce/Chain Logic
+		# Bounce/Chain
 		var total_bounce = bounce + chain
 		var bounced = false
 
@@ -410,7 +377,7 @@ func _handle_hit(target_node):
 		elif chain > 0:
 			bounced = perform_bounce(target_node)
 
-		# 2. Pierce & Split Logic
+		# Pierce & Split
 		if not bounced:
 			if type == "roar":
 				pass
@@ -420,25 +387,17 @@ func _handle_hit(target_node):
 				if split > 0 and type != "roar":
 					perform_split()
 
-				# Final Hit - Spawn visual and destroy
 				_spawn_hit_visual(target_node.global_position)
-				if type != "feather": # Feathers don't die on hit, they pass through until Stuck logic handles them (or if they hit during return)
-					print("Projectile hit final: ", type, " -> queue_free")
+				if type != "feather":
 					queue_free()
 
 func _process_feather(delta):
-	# Orphan Check
 	if (state == State.STUCK or state == State.RETURNING or state == State.MOVING) and (!source_unit or !is_instance_valid(source_unit)):
 		queue_free()
 		return
 
 	if state == State.MOVING:
-		var direction = Vector2.RIGHT.rotated(rotation)
-
-		# Move
-		position += direction * speed * delta
-
-		# Check if passed target
+		position += Vector2.RIGHT.rotated(rotation) * speed * delta
 		if source_unit and is_instance_valid(source_unit):
 			var start_pos = source_unit.global_position
 			var to_target = feather_original_target_pos - start_pos
@@ -449,17 +408,14 @@ func _process_feather(delta):
 			if projected_dist >= target_dist + 40.0:
 				_become_stuck()
 		else:
-			# Fallback if source died
 			if global_position.distance_to(feather_original_target_pos) < 10.0:
 				_become_stuck()
-
 
 func _become_stuck():
 	feather_stuck_pos = position
 	state = State.STUCK
 	set_deferred("monitoring", false)
 
-	# Visual Shake
 	if visual_node:
 		var tween = create_tween()
 		var base_rot = rotation
@@ -467,7 +423,6 @@ func _become_stuck():
 		tween.tween_property(visual_node, "rotation", base_rot - 0.2, 0.05)
 		tween.tween_property(visual_node, "rotation", base_rot, 0.05)
 
-	# Dust Particles (simple square for now or load effect)
 	var dust = Polygon2D.new()
 	dust.polygon = PackedVector2Array([Vector2(-2,-2), Vector2(2,-2), Vector2(2,2), Vector2(-2,2)])
 	dust.color = Color(0.6, 0.6, 0.6, 0.5)
@@ -480,66 +435,20 @@ func _become_stuck():
 
 func recall():
 	if state != State.STUCK and state != State.MOVING: return
-
 	state = State.RETURNING
 	target = source_unit
 	pierce = 999
 	hit_list.clear()
 	shared_hit_list_ref = []
-
 	monitoring = true
 
 	var bodies = get_overlapping_bodies()
-	for body in bodies:
-		_handle_hit(body)
-
+	for body in bodies: _handle_hit(body)
 	var areas = get_overlapping_areas()
-	for area in areas:
-		_handle_hit(area)
+	for area in areas: _handle_hit(area)
 
-	# Visual update?
 	if visual_node:
-		visual_node.modulate = Color.RED # Highlight return
-
-func _setup_feather():
-	if visual_node: visual_node.hide()
-
-	# Increase collision size
-	var collision_shape = get_node_or_null("CollisionShape2D")
-	if collision_shape:
-		# Create a unique shape to avoid affecting other projectiles using the shared resource
-		var new_shape = CircleShape2D.new()
-		new_shape.radius = 12.0
-		collision_shape.shape = new_shape
-
-	# Feather shape (modified from quill)
-	var poly = Polygon2D.new()
-	# More leaf/feather like
-	poly.polygon = PackedVector2Array([
-		Vector2(12, 0),
-		Vector2(4, -4),
-		Vector2(-10, -3),
-		Vector2(-8, 0),
-		Vector2(-10, 3),
-		Vector2(4, 4)
-	])
-	poly.color = Color("00CED1") # Dark Turquoise for peacock feather
-
-	var line = Line2D.new()
-	line.points = PackedVector2Array([Vector2(-10, 0), Vector2(12, 0)])
-	line.width = 1.5
-	line.default_color = Color.GOLD # Golden shaft
-
-	# Eye of the feather
-	var eye = Polygon2D.new()
-	eye.polygon = PackedVector2Array([
-		Vector2(6, 0), Vector2(9, -2), Vector2(11, 0), Vector2(9, 2)
-	])
-	eye.color = Color("191970") # Midnight Blue
-
-	add_child(poly)
-	add_child(line)
-	add_child(eye)
+		visual_node.modulate = Color.RED
 
 func _spawn_hit_visual(pos: Vector2):
 	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
@@ -547,45 +456,28 @@ func _spawn_hit_visual(pos: Vector2):
 	effect.global_position = pos
 	effect.rotation = randf() * TAU
 
-	var shape = "circle"
+	var shape = "slash"
 	var col = Color.WHITE
-
 	if type == "pinecone":
-		shape = "circle"
-		col = Color("8B4513") # SaddleBrown
+		shape = "circle"; col = Color("8B4513")
 	elif type == "ink":
-		shape = "blob"
-		col = Color.BLACK
+		shape = "blob"; col = Color.BLACK
 	elif type == "stinger":
-		shape = "triangle"
-		col = Color.YELLOW
+		shape = "triangle"; col = Color.YELLOW
 	elif type == "pollen":
-		shape = "star"
-		col = Color.PINK
-	else:
-		# Fallback defaults
-		shape = "slash"
-		col = Color.WHITE
+		shape = "star"; col = Color.PINK
 
 	effect.configure(shape, col)
 	effect.play()
 
 func _on_meteor_hit():
 	is_meteor_falling = false
-
-	# Momentum Bounce Logic
-	# Current rotation is the incidence angle.
-	# Bounce angle = rotation + randf_range(-0.5, 0.5) (approx +/- 30 deg)
 	var bounce_angle = rotation + randf_range(-0.5, 0.5)
 	rotation = bounce_angle
-
-	# Reset Stats
-	life = 0.3 # 快速消散
-	speed = 50.0 # 强摩擦力
+	life = 0.3
+	speed = 50.0
 	target = null
 
-	# Visual Splash
-	# Existing SlashEffect logic in codebase uses .new() on the script, so we follow that pattern.
 	var SlashEffectScript = load("res://src/Scripts/Effects/SlashEffect.gd")
 	if SlashEffectScript:
 		var slash = SlashEffectScript.new()
@@ -597,323 +489,62 @@ func _on_meteor_hit():
 
 	type = "meteor_debris"
 
-func _setup_simple_visual(color, shape):
-	if visual_node: visual_node.hide()
-	if has_node("ColorRect"): get_node("ColorRect").hide()
-
-	var poly = Polygon2D.new()
-	var points = PackedVector2Array()
-
-	if shape == "circle":
-		var radius = 6.0
-		for i in range(12):
-			var angle = (i * TAU) / 12
-			points.append(Vector2(cos(angle), sin(angle)) * radius)
-	elif shape == "blob":
-		# Irregular blob
-		points = PackedVector2Array([
-			Vector2(-4, -6), Vector2(4, -5),
-			Vector2(7, 2), Vector2(2, 6),
-			Vector2(-5, 5), Vector2(-7, 0)
-		])
-	elif shape == "triangle":
-		points = PackedVector2Array([Vector2(8, 0), Vector2(-4, -4), Vector2(-4, 4)])
-	elif shape == "star":
-		# Simple 4-point star
-		points = PackedVector2Array([
-			Vector2(6, 0), Vector2(2, 2),
-			Vector2(0, 6), Vector2(-2, 2),
-			Vector2(-6, 0), Vector2(-2, -2),
-			Vector2(0, -6), Vector2(2, -2)
-		])
-	else:
-		# Box
-		points = PackedVector2Array([Vector2(-4,-4), Vector2(4,-4), Vector2(4,4), Vector2(-4,4)])
-
-	poly.polygon = points
-	poly.color = color
-	add_child(poly)
-
 func perform_split():
-	# Spawn 2 projectiles at +/- 0.5 radians (~28 degrees)
 	var angles = [rotation + 0.5, rotation - 0.5]
-
 	for angle in angles:
 		var proj = PROJECTILE_SCENE.instantiate()
 		var new_stats = {
-			"pierce": 0,
-			"bounce": 0,
-			"split": 0,
-			"chain": 0,
-			"angle": angle,
-			"source": source_unit,
-			"damageType": damage_type
+			"pierce": 0, "bounce": 0, "split": 0, "chain": 0,
+			"angle": angle, "source": source_unit, "damageType": damage_type
 		}
-		# Split projectiles usually don't have a specific target unless we find one,
-		# but for now let's just make them fly in the direction.
 		proj.setup(global_position, null, damage * 0.5, speed, type, new_stats)
 		get_parent().call_deferred("add_child", proj)
 
 func perform_bounce(current_hit_enemy):
-	# Chain Logic (Homing to nearest)
-	# Find nearest enemy NOT in hit_list within range
 	var search_range = 300.0
 	var nearest = null
 	var min_dist = search_range
-
 	var enemies = get_tree().get_nodes_in_group("enemies")
 	for enemy in enemies:
-		if enemy == current_hit_enemy or enemy in hit_list:
-			continue
-
+		if enemy == current_hit_enemy or enemy in hit_list: continue
 		var dist = global_position.distance_to(enemy.global_position)
 		if dist < min_dist:
 			min_dist = dist
 			nearest = enemy
-
 	if nearest:
-		# Update this projectile to fly towards the new target
 		target = nearest
 		damage *= 0.8
 		if chain > 0: chain -= 1
-
 		life = 1.0
-
-		return true # Bounced successfully
-
-	return false # No target to bounce to
+		return true
+	return false
 
 func perform_physical_bounce(hit_node):
-	# Physical Reflection Logic
-	# R = I - 2(I . N) * N
-
 	var incident = Vector2.RIGHT.rotated(rotation)
 	var normal = Vector2.ZERO
-
-	# Determine Normal
 	if "enemy_data" in hit_node:
 		var e_data = hit_node.enemy_data
 		if e_data.get("shape") == "rect" or hit_node.type_key == "crab":
-			# Rectangle Normal Calculation
-			# Approximate by checking which side of the bounding box was hit
-			# Localize hit position relative to enemy center
 			var local_hit = hit_node.to_local(global_position)
-
-			# We assume rect is aligned or we rotate the local point.
-			# Enemy node might be rotated (crab rotates).
-			# to_local handles rotation if the Node2D itself is rotated.
-			# But if rotation is just visual, we might need manual handling.
-			# Enemy.gd rotates `rotation` property for rects, so to_local should work.
-
 			var size_grid = e_data.get("size_grid", [1,1])
-			var w = size_grid[0] * 60 # TILE_SIZE hardcoded fallback or pass it
+			var w = size_grid[0] * 60
 			var h = size_grid[1] * 60
-
-			# Simple box normal
-			# Check aspect ratio to determine side
-			var dx = local_hit.x
-			var dy = local_hit.y
-
-			# Normalize to aspect
-			if h > 0:
-				var aspect = w / h
-				if abs(dx) > abs(dy) * aspect:
-					# Left or Right
-					normal = Vector2(sign(dx), 0).rotated(hit_node.rotation)
-				else:
-					# Top or Bottom
-					normal = Vector2(0, sign(dy)).rotated(hit_node.rotation)
-		else:
-			# Point/Circle Normal
-			# "Velocity/Facing" as normal
-			if hit_node.velocity.length() > 0.1:
-				normal = hit_node.velocity.normalized()
+			var aspect = w / h if h > 0 else 1.0
+			if abs(local_hit.x) > abs(local_hit.y) * aspect:
+				normal = Vector2(sign(local_hit.x), 0).rotated(hit_node.rotation)
 			else:
-				# Fallback to facing direction derived from sprite flip or just vector from center
-				normal = (global_position - hit_node.global_position).normalized()
+				normal = Vector2(0, sign(local_hit.y)).rotated(hit_node.rotation)
+		else:
+			if hit_node.velocity.length() > 0.1: normal = hit_node.velocity.normalized()
+			else: normal = (global_position - hit_node.global_position).normalized()
 	else:
-		# Fallback for non-enemy (shouldn't happen here usually)
 		normal = (global_position - hit_node.global_position).normalized()
 
-	# Calculate Reflection
-	# I is incident vector.
 	var dot = incident.dot(normal)
 	var reflect = incident - 2 * dot * normal
-
-	# Update Projectile
 	rotation = reflect.angle()
-	target = null # Stop homing, fly straight
-
+	target = null
 	damage *= 0.8
 	bounce -= 1
-	life = 1.0 # Reset life
-
-	# Visual effect?
-	# Handled in caller mostly, but we can play a ping sound or flash here if we had audio.
-
+	life = 1.0
 	return true
-
-
-func _setup_snowball():
-	if visual_node: visual_node.hide()
-	if has_node("ColorRect"): get_node("ColorRect").hide()
-
-	var circle = Polygon2D.new()
-	var points = PackedVector2Array()
-	var radius = 8.0
-	for i in range(16):
-		var angle = (i * TAU) / 16
-		points.append(Vector2(cos(angle), sin(angle)) * radius)
-	circle.polygon = points
-	circle.color = Color.WHITE
-	add_child(circle)
-
-	# Trail
-	var trail = Line2D.new()
-	trail.width = 4
-	trail.default_color = Color(0.8, 0.9, 1.0, 0.5)
-	trail.set_script(load("res://src/Scripts/Effects/Trail.gd") if ResourceLoader.exists("res://src/Scripts/Effects/Trail.gd") else null) # Optional trail script
-	# Simple trail manually?
-	# Let's stick to simple visual
-
-func _setup_web():
-	if visual_node: visual_node.hide()
-	if has_node("ColorRect"): get_node("ColorRect").hide()
-
-	# Draw a web shape
-	var web = Line2D.new()
-	web.width = 1.5
-	web.default_color = Color.WEB_GRAY
-
-	# Star/Web shape
-	var points = []
-	for i in range(5):
-		var angle = i * (TAU / 5)
-		points.append(Vector2(cos(angle), sin(angle)) * 10.0)
-		points.append(Vector2.ZERO) # Return to center for web look
-		points.append(Vector2(cos(angle), sin(angle)) * 5.0) # Inner web
-
-	web.points = PackedVector2Array(points)
-	add_child(web)
-
-	# Rotation handled in _process
-func _setup_stinger():
-	if visual_node: visual_node.hide()
-
-	# Yellow/Black long triangle or line
-	var poly = Polygon2D.new()
-	# Narrow triangle
-	poly.polygon = PackedVector2Array([Vector2(-5, -2), Vector2(10, 0), Vector2(-5, 2)])
-	poly.color = Color.YELLOW
-
-	# Add a black line in middle or border
-	var line = Line2D.new()
-	line.points = PackedVector2Array([Vector2(-5, 0), Vector2(10, 0)])
-	line.width = 1.0
-	line.default_color = Color.BLACK
-
-	add_child(poly)
-	add_child(line)
-
-func _setup_roar():
-	if visual_node: visual_node.hide()
-
-	# Transparent white/pale yellow ripple rings
-	# Since _draw is not easily accessible without overriding, we can use Line2D as rings or a sprite.
-	# Or we can attach a Node2D script that has _draw.
-	# But simpler: Use Line2D to draw a circle (many points)
-
-	var line = Line2D.new()
-	var points = []
-	var radius = 20.0
-	var segments = 24
-	for i in range(segments + 1):
-		var angle = (float(i) / segments) * TAU
-		points.append(Vector2(cos(angle), sin(angle)) * radius)
-
-	line.points = PackedVector2Array(points)
-	line.width = 2.0
-	line.default_color = Color(1.0, 1.0, 0.8, 0.4) # Pale yellow transparent
-	line.closed = true
-	add_child(line)
-
-	# Maybe a second ring
-	var line2 = line.duplicate()
-	line2.scale = Vector2(0.7, 0.7)
-	add_child(line2)
-
-func _setup_black_hole_field():
-	if visual_node: visual_node.hide()
-
-	var color_hex = stats.get("skillColor", "#330066")
-	var color = Color(color_hex)
-	self.modulate = color # Apply modulation to entire node (including children we add)
-
-	# Create visual representation
-	var poly = Polygon2D.new()
-	var points = PackedVector2Array()
-	var r = 20.0
-	var steps = 16
-	for i in range(steps):
-		var angle = (i * TAU) / steps
-		# slightly irregular for effect
-		var rad = r + randf_range(-2, 2)
-		points.append(Vector2(cos(angle), sin(angle)) * rad)
-
-	poly.polygon = points
-	poly.color = Color(1, 1, 1, 0.8) # Base white, modulated by self.modulate
-	add_child(poly)
-
-	# Rotation Tween
-	var tween = create_tween().set_loops()
-	tween.tween_property(poly, "rotation", TAU, 2.0).from(0.0)
-
-func _setup_dragon_breath():
-	if visual_node: visual_node.hide()
-
-	# Orange-red fire particles or irregular polygon
-	var particles = GPUParticles2D.new()
-	var material = ParticleProcessMaterial.new()
-
-	material.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-	material.emission_sphere_radius = 5.0
-	material.gravity = Vector3.ZERO
-	material.spread = 20.0
-	material.initial_velocity_min = 50.0
-	material.initial_velocity_max = 100.0
-	# Direction is handled by node rotation
-
-	# Color ramp: Yellow -> Red -> Dark
-	var gradient = Gradient.new()
-	gradient.set_color(0, Color(1.0, 1.0, 0.0)) # Yellow
-	gradient.add_point(0.5, Color(1.0, 0.0, 0.0)) # Red
-	gradient.set_color(1, Color(0.2, 0.0, 0.0, 0.0)) # Dark transparent
-
-	var grad_tex = GradientTexture1D.new()
-	grad_tex.gradient = gradient
-	material.color_ramp = grad_tex
-	material.scale_min = 2.0
-	material.scale_max = 4.0
-
-	particles.process_material = material
-	particles.lifetime = 0.5
-	particles.amount = 30
-
-	# Create a simple texture
-	var img = Image.create(4, 4, false, Image.FORMAT_RGBA8)
-	img.fill(Color.WHITE)
-	var tex = ImageTexture.create_from_image(img)
-	particles.texture = tex
-
-	add_child(particles)
-
-	# Optional: Irregular polygon as core
-	var poly = Polygon2D.new()
-	var pts = []
-	for i in range(6):
-		var angle = i * TAU / 6
-		var r = randf_range(5.0, 10.0)
-		pts.append(Vector2(cos(angle), sin(angle)) * r)
-	poly.polygon = PackedVector2Array(pts)
-	poly.color = Color(1.0, 0.4, 0.0, 0.7) # Orange
-	add_child(poly)
