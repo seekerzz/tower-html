@@ -165,6 +165,15 @@ func _parse_effects_to_payload():
 			}
 		})
 
+	if effects.get("bleed", 0.0) > 0.0:
+		payload_effects.append({
+			"script": load("res://src/Scripts/Effects/BleedEffect.gd"),
+			"params": {
+				"duration": effects["bleed"],
+				"stack_count": 1
+			}
+		})
+
 	# Freeze is handled manually in handle_hit for now or could be here if we implemented FreezeEffect
 
 func fade_out():

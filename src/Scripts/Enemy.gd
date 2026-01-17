@@ -1,5 +1,7 @@
 extends CharacterBody2D
 
+const UNIT_SCRIPT = preload("res://src/Scripts/Unit.gd")
+
 signal died
 
 enum State { MOVE, ATTACK_BASE, STUNNED, SUPPORT }
@@ -511,6 +513,17 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 	GameManager.spawn_floating_text(global_position, str(display_val), damage_type, hit_dir)
 	if source_unit:
 		GameManager.damage_dealt.emit(source_unit, amount)
+
+		if source_unit.get_script() == UNIT_SCRIPT:
+			var bleed_stacks = 0
+			for c in get_children():
+				if c.get("type_key") == "bleed":
+					bleed_stacks += c.get("stack_count", 0)
+
+			if bleed_stacks > 0:
+				GameManager.damage_core(-bleed_stacks)
+				GameManager.spawn_floating_text(global_position, "+%d HP" % bleed_stacks, Color.GREEN)
+
 	if hp <= 0:
 		die(source_unit)
 
