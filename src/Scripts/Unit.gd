@@ -133,24 +133,7 @@ func _ensure_visual_hierarchy():
 func setup(key: String):
 	_ensure_visual_hierarchy()
 	type_key = key
-
-	if key == "oxpecker" and not Constants.UNIT_TYPES.has(key):
-		# Fallback if oxpecker not in constants
-		unit_data = {
-			"size": Vector2(1, 1),
-			"hp": 100,
-			"damage": 10,
-			"range": 300,
-			"atkSpeed": 1.0,
-			"attackType": "ranged",
-			"icon": "Ox"
-		}
-	else:
-		unit_data = Constants.UNIT_TYPES[key].duplicate()
-
-	if type_key == "oxpecker":
-		unit_data["attackType"] = "ranged"
-
+	unit_data = Constants.UNIT_TYPES[key].duplicate()
 	# reset_stats will handle reading stats from levels
 	reset_stats()
 	# Initialize production timer
