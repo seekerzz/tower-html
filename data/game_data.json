@@ -14,6 +14,10 @@
 			"name": "圣剑图腾",
 			"wave_item": "holy_sword",
 			"desc": "每波获得圣剑"
+		},
+		"cow_totem": {
+			"name": "牛图腾",
+			"desc": "受伤充能，5秒一次全屏反击"
 		}
 	},
 	"ITEM_TYPES": {
