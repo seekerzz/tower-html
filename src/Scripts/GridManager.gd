@@ -785,6 +785,19 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 	if !tiles.has(key): return false
 
 	var tile = tiles[key]
+
+	# --- Oxpecker Logic ---
+	if unit_key == "oxpecker" and tile.unit != null:
+		var target_unit = tile.unit
+		if target_unit.type_key != "oxpecker" and target_unit.attachment == null:
+			var oxpecker = UNIT_SCENE.instantiate()
+			oxpecker.setup(unit_key)
+			# No need to check can_place_unit for space as it attaches
+			add_child(oxpecker)
+			oxpecker.attach_to_host(target_unit)
+			return true
+	# ----------------------
+
 	if tile.unit != null or tile.occupied_by != Vector2i.ZERO: return false
 
 	var unit = UNIT_SCENE.instantiate()
@@ -1111,6 +1124,10 @@ func remove_unit_from_grid(unit):
 				trap.queue_free()
 		unit.associated_traps.clear()
 
+	# Clean up attachment
+	if "attachment" in unit and unit.attachment and is_instance_valid(unit.attachment):
+		unit.attachment.queue_free()
+
 	_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
 	unit.queue_free()
 	recalculate_buffs()
@@ -1178,6 +1195,21 @@ func try_move_unit(unit, from_tile, to_tile) -> bool:
 	var y = to_tile.y
 	var w = unit.unit_data.size.x
 	var h = unit.unit_data.size.y
+
+	# --- Oxpecker Logic (Grid to Unit) ---
+	if unit.type_key == "oxpecker":
+		var potential_host = to_tile.unit
+		if potential_host == null and to_tile.occupied_by != Vector2i.ZERO:
+			var origin_key = get_tile_key(to_tile.occupied_by.x, to_tile.occupied_by.y)
+			if tiles.has(origin_key):
+				potential_host = tiles[origin_key].unit
+
+		if potential_host and potential_host != unit and potential_host.type_key != "oxpecker" and potential_host.attachment == null:
+			_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
+			unit.attach_to_host(potential_host)
+			recalculate_buffs()
+			return true
+	# -------------------------------------
 
 	# Case 1: Empty Target
 	if can_place_unit(x, y, w, h, unit):

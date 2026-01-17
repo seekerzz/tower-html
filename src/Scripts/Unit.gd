@@ -47,6 +47,9 @@ var start_position: Vector2 = Vector2.ZERO
 var interaction_target_pos = null # Vector2i or null
 var associated_traps: Array = [] # Stores references to traps placed by this unit
 
+var attachment: Node2D = null
+var host: Node2D = null
+
 # Missing variables required for the old drag logic at the bottom to compile
 var is_dragging: bool = false
 var drag_offset: Vector2 = Vector2.ZERO
@@ -73,6 +76,7 @@ const MAX_LEVEL = 3
 const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 
 signal unit_clicked(unit)
+signal attack_performed(target_node)
 
 func _start_skill_cooldown(base_duration: float):
 	if GameManager.cheat_fast_cooldown and base_duration > 1.0:
@@ -675,6 +679,7 @@ func _do_mimic_attack(target, combat_manager):
 				extra["proj_override"] = bullet_data.get("type", "pinecone")
 
 				combat_manager.spawn_projectile(self, global_position, aim_target, extra)
+				attack_performed.emit(aim_target)
 		else:
 			is_discharging = false
 
@@ -700,15 +705,18 @@ func _do_bow_attack(target, on_release_callback: Callable = Callable()):
 	if on_release_callback.is_valid():
 		# Pass last pos to callback
 		on_release_callback.call(target_last_pos)
+		attack_performed.emit(target)
 	else:
 		# Default (Bee)
 		if GameManager.combat_manager:
 			if is_instance_valid(target):
 				GameManager.combat_manager.spawn_projectile(self, global_position, target)
+				attack_performed.emit(target)
 			else:
 				# Target dead, use last pos
 				var angle = (target_last_pos - global_position).angle()
 				GameManager.combat_manager.spawn_projectile(self, global_position, null, {"angle": angle, "target_pos": target_last_pos})
+				attack_performed.emit(null)
 
 func _do_melee_attack(target):
 	var target_last_pos = target.global_position
@@ -725,8 +733,10 @@ func _do_melee_attack(target):
 
 	if is_instance_valid(target):
 		_spawn_melee_projectiles(target)
+		attack_performed.emit(target)
 	else:
 		_spawn_melee_projectiles_blind(target_last_pos)
+		attack_performed.emit(null)
 
 func _spawn_melee_projectiles_blind(target_pos: Vector2):
 	var combat_manager = GameManager.combat_manager
@@ -790,6 +800,8 @@ func _do_standard_ranged_attack(target):
 		for i in range(proj_count):
 			var angle = start_angle + (i * step)
 			combat_manager.spawn_projectile(self, global_position, target, {"angle": angle})
+
+	attack_performed.emit(target)
 
 func _handle_peacock_attack(target, combat_manager):
 	# Peacock: 3 attacks then 1 recall
@@ -1224,3 +1236,54 @@ func spawn_buff_effect(icon_char: String):
 	tween.parallel().tween_property(effect_node, "modulate:a", 0.0, 0.6)
 
 	tween.finished.connect(effect_node.queue_free)
+
+func attach_to_host(target_unit: Node2D):
+	if host == target_unit: return
+	if target_unit.attachment != null: return
+
+	if get_parent():
+		get_parent().remove_child(self)
+
+	target_unit.add_child(self)
+	host = target_unit
+	target_unit.attachment = self
+
+	# Calculate offset
+	var offset_val = Constants.TILE_SIZE * 0.35
+	position = Vector2(offset_val, -offset_val)
+	scale = Vector2(0.5, 0.5)
+	z_index = 1
+
+	# Connect signal
+	if not target_unit.attack_performed.is_connected(_on_host_attack_performed):
+		target_unit.attack_performed.connect(_on_host_attack_performed)
+
+	# Disable collision
+	var area = get_node_or_null("Area2D")
+	if area:
+		area.monitorable = false
+		area.monitoring = false
+		# Also disable input pickable if needed, or handle input check
+		area.input_pickable = false
+
+func _on_host_attack_performed(target_node):
+	if type_key != "oxpecker": return
+
+	# Random Delay
+	await get_tree().create_timer(randf_range(0.1, 0.2)).timeout
+
+	if !is_instance_valid(host): return
+	# Target might be null or invalid now, but projectile can handle null target (blind fire) or we find new one
+	var use_target = target_node
+	if !is_instance_valid(use_target):
+		use_target = null
+
+	var dmg = host.max_hp * 0.1
+	if GameManager.combat_manager:
+		# If no target, maybe find one or shoot forward?
+		# Requirement says: "attacks host's current target"
+		if use_target == null:
+			use_target = GameManager.combat_manager.find_nearest_enemy(global_position, 300.0)
+
+		if use_target:
+			GameManager.combat_manager.spawn_projectile(self, global_position, use_target, {"damage": dmg})
