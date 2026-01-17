@@ -53,7 +53,7 @@ func _do_bow_attack(target):
 
 	_spawn_feathers(target_last_pos, target)
 
-func _spawn_feathers(saved_target_pos: Vector2, target: Node2D):
+func _spawn_feathers(saved_target_pos: Vector2, target):
 	if !GameManager.combat_manager: return
 
 	var extra_shots = 0
@@ -73,6 +73,7 @@ func _spawn_feathers(saved_target_pos: Vector2, target: Node2D):
 		use_target = target
 		base_angle = (target.global_position - unit.global_position).angle()
 	else:
+		use_target = null # Explicitly null if freed
 		base_angle = (saved_target_pos - unit.global_position).angle()
 
 	# Fire Primary Feather
