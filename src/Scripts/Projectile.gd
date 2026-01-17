@@ -40,10 +40,11 @@ const PROJECTILE_VISUALS_SCRIPT = preload("res://src/Scripts/Projectiles/Project
 func _ready():
 	super._ready()
 
-	# Instantiate Visuals Controller
-	visual_node = PROJECTILE_VISUALS_SCRIPT.new()
-	visual_node.name = "Visuals"
-	add_child(visual_node)
+	# Instantiate Visuals Controller if not already created in setup
+	if not visual_node:
+		visual_node = PROJECTILE_VISUALS_SCRIPT.new()
+		visual_node.name = "Visuals"
+		add_child(visual_node)
 
 	# Hide default legacy visuals
 	if has_node("ColorRect"):
@@ -60,6 +61,12 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 	speed = proj_speed
 	type = proj_type
 	stats = incoming_stats
+
+	# Ensure visual node exists because setup might be called before _ready
+	if not visual_node:
+		visual_node = PROJECTILE_VISUALS_SCRIPT.new()
+		visual_node.name = "Visuals"
+		add_child(visual_node)
 
 	if stats.has("source"):
 		source_unit = stats.source
