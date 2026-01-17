@@ -452,3 +452,10 @@ func check_kill_bonuses(killer_unit):
 		if "wealth" in killer_unit.active_buffs:
 			GameManager.add_gold(1)
 			GameManager.spawn_floating_text(killer_unit.global_position, "+1 Gold", Color.YELLOW)
+
+
+func deal_global_damage(damage: float, type: String):
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if is_instance_valid(enemy):
+			# Pass GameManager as source since it's a core effect
+			enemy.take_damage(damage, GameManager, type)
