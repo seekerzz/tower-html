@@ -3,7 +3,7 @@ extends Area2D
 var speed: float = 400.0
 var damage: float = 10.0
 var payload_effects: Array = [] # Array of { "script": Script, "params": Dictionary }
-var source_unit: Node = null
+var source_unit: Object = null # Relaxed from Node to Object to support RefCounted sources (e.g. MeteorSource)
 
 func _ready():
 	# Ensure signals are connected if not already
