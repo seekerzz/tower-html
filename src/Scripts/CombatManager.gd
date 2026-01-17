@@ -10,12 +10,19 @@ var enemies_to_spawn: int = 0
 var total_enemies_for_wave: int = 0
 # spawn_timer removed as we use coroutines now
 
+var explosion_queue: Array = []
+const MAX_EXPLOSIONS_PER_FRAME = 10
+
 func _ready():
 	GameManager.combat_manager = self
 	GameManager.wave_started.connect(_on_wave_started)
 
 func _process(delta):
-	pass
+	if explosion_queue.size() > 0:
+		var process_count = min(explosion_queue.size(), MAX_EXPLOSIONS_PER_FRAME)
+		for i in range(process_count):
+			var expl = explosion_queue.pop_front()
+			_process_burn_explosion_logic(expl.pos, expl.damage, expl.source)
 
 func _on_wave_started():
 	start_wave_logic()
@@ -422,11 +429,12 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 	return proj
 
 func trigger_burn_explosion(pos: Vector2, damage: float, source: Node2D):
-	call_deferred("_process_burn_explosion_immediate", pos, damage, source)
+	explosion_queue.append({ "pos": pos, "damage": damage, "source": source })
 
-func _process_burn_explosion_immediate(pos: Vector2, damage: float, source: Node2D):
+func _process_burn_explosion_logic(pos: Vector2, damage: float, source: Node2D):
 	var radius = 120.0
 	var enemies = get_tree().get_nodes_in_group("enemies")
+	var burn_script = load("res://src/Scripts/Effects/BurnEffect.gd")
 
 	for enemy in enemies:
 		if !is_instance_valid(enemy): continue
@@ -436,7 +444,6 @@ func _process_burn_explosion_immediate(pos: Vector2, damage: float, source: Node
 			enemy.take_damage(damage, source, "fire")
 			# Chain reaction: Apply burn
 			if enemy.has_method("apply_status"):
-				var burn_script = load("res://src/Scripts/Effects/BurnEffect.gd")
 				enemy.apply_status(burn_script, {
 					"duration": 5.0,
 					"damage": damage,
