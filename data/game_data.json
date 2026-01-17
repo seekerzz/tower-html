@@ -2,18 +2,23 @@
 	"CORE_TYPES": {
 		"abundance": {
 			"name": "丰饶图腾",
-			"wave_item": "rice_ear",
+			"wave_item": "",
 			"desc": "每波获得法力补给"
 		},
 		"moon_well": {
 			"name": "月亮井",
-			"wave_item": "moon_water",
+			"wave_item": "",
 			"desc": "储存伤害转化为治疗"
 		},
 		"holy_sword": {
 			"name": "圣剑图腾",
-			"wave_item": "holy_sword",
+			"wave_item": "",
 			"desc": "每波获得圣剑"
+		},
+		"cow_totem": {
+			"name": "牛图腾",
+			"wave_item": "",
+			"desc": "累计受击次数，每5秒全屏反击"
 		}
 	},
 	"ITEM_TYPES": {

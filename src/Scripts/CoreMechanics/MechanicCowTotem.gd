@@ -4,6 +4,7 @@ var hit_count: int = 0
 var timer: Timer
 
 func _ready():
+	process_mode = Node.PROCESS_MODE_PAUSABLE
 	timer = Timer.new()
 	timer.wait_time = 5.0
 	timer.one_shot = false
@@ -12,8 +13,7 @@ func _ready():
 	timer.start()
 
 func on_core_damaged(amount: float):
-	if amount > 0:
-		hit_count += 1
+	hit_count += 1
 
 func _on_timer_timeout():
 	var damage = hit_count * 5.0
