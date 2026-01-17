@@ -16,10 +16,12 @@ func on_core_damaged(amount: float):
 
 func _on_timer_timeout():
 	var damage = hit_count * 5.0
+	print("[CowTotem] Timeout. Hits: ", hit_count, " Damage: ", damage)
 	hit_count = 0 # Reset count immediately for next cycle
 
 	if damage > 0:
 		if GameManager.combat_manager:
+			print("[CowTotem] Dealing global damage...")
 			GameManager.combat_manager.deal_global_damage(damage, "magic")
 
 		# Visual feedback

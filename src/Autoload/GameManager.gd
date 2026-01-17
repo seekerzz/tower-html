@@ -14,7 +14,11 @@ signal ftext_spawn_requested(pos, value, color, direction)
 signal show_tooltip(data, stats, buffs, pos)
 signal hide_tooltip()
 
-var core_type: String = "cornucopia"
+var core_type: String = "cornucopia":
+	set(value):
+		core_type = value
+		_initialize_mechanic()
+
 var mana: float = 500.0
 var max_mana: float = 1000.0
 var gold: int = 150
