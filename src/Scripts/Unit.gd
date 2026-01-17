@@ -10,6 +10,8 @@ var buff_sources: Dictionary = {} # Key: buff_type, Value: source_unit (Node2D)
 var traits: Array = []
 var unit_data: Dictionary
 
+var behavior: UnitBehavior
+
 var attachment: Node2D = null
 var host: Node2D = null
 
@@ -22,9 +24,6 @@ var skill_mana_cost: float = 30.0
 
 var max_hp: float = 0.0
 
-var production_timer: float = 0.0
-var max_production_timer: float = 1.0
-
 # Visual Holder for animations and structure
 var visual_holder: Node2D = null
 
@@ -36,12 +35,6 @@ var split_count: int = 0
 
 var guaranteed_crit_stacks: int = 0
 
-# Parrot Mechanics
-var ammo_queue: Array = []
-var max_ammo: int = 0
-var mimicked_bullet_timer: float = 0.0
-var is_discharging: bool = false
-
 # Grid
 var grid_pos: Vector2i = Vector2i.ZERO
 var start_position: Vector2 = Vector2.ZERO
@@ -50,7 +43,7 @@ var start_position: Vector2 = Vector2.ZERO
 var interaction_target_pos = null # Vector2i or null
 var associated_traps: Array = [] # Stores references to traps placed by this unit
 
-# Missing variables required for the old drag logic at the bottom to compile
+# Dragging
 var is_dragging: bool = false
 var drag_offset: Vector2 = Vector2.ZERO
 var ghost_node: Node2D = null
@@ -58,19 +51,13 @@ var is_hovered: bool = false
 var focus_target: Node2D = null
 var focus_stacks: int = 0
 
-# Skill Logic
-var skill_active_timer: float = 0.0
-var _skill_interval_timer: float = 0.0
-var original_atk_speed: float = 0.0
+# Highlighting
 var _is_skill_highlight_active: bool = false
 var _highlight_color: Color = Color.WHITE
-
-# Highlighting
 var is_force_highlighted: bool = false
 
-# Porcupine Variables
+# Porcupine/Peacock Variables (Generic counter)
 var attack_counter: int = 0
-var feather_refs: Array = []
 
 const MAX_LEVEL = 3
 const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
@@ -86,9 +73,6 @@ func _start_skill_cooldown(base_duration: float):
 
 func _ready():
 	_ensure_visual_hierarchy()
-
-	if type_key == "peacock":
-		tree_exiting.connect(_on_peacock_cleanup)
 
 	# If unit_data is already populated (e.g. from scene or prior setup), update visuals
 	if !unit_data.is_empty():
@@ -128,16 +112,16 @@ func _ensure_visual_hierarchy():
 		highlight.size = target_size
 		highlight.position = -(target_size / 2)
 
-
-
 func setup(key: String):
 	_ensure_visual_hierarchy()
 	type_key = key
 	unit_data = Constants.UNIT_TYPES[key].duplicate()
+
+	# Load Behavior
+	_load_behavior()
+
 	# reset_stats will handle reading stats from levels
 	reset_stats()
-	# Initialize production timer
-	production_timer = max_production_timer
 	update_visuals()
 
 	start_breathe_anim()
@@ -147,19 +131,31 @@ func setup(key: String):
 	add_child(drag_handler)
 	drag_handler.setup(self)
 
-func take_damage(amount: float, source_enemy = null):
-	# Handle Reflect (Hedgehog)
-	if unit_data.get("trait") == "reflect":
-		var reflect_pct = unit_data.get("reflect_percent", 0.3)
-		var reflect_dmg = amount * reflect_pct
-		if source_enemy and is_instance_valid(source_enemy):
-			source_enemy.take_damage(reflect_dmg, self, "physical")
-			GameManager.spawn_floating_text(global_position, "Reflect!", Color.RED)
+	if behavior:
+		behavior.on_setup()
 
-	# Handle Flat Reduction (Iron Turtle)
-	if unit_data.get("trait") == "flat_reduce":
-		var reduce = unit_data.get("flat_amount", 0)
-		amount = max(1, amount - reduce)
+func _load_behavior():
+	# Convert snake_case to PascalCase
+	# e.g. "lucky_cat" -> "LuckyCat"
+	var parts = type_key.split("_")
+	var class_name_str = ""
+	for part in parts:
+		class_name_str += part.capitalize()
+	class_name_str = class_name_str.replace(" ", "")
+
+	var path = "res://src/Scripts/Units/Behaviors/" + class_name_str + ".gd"
+	if FileAccess.file_exists(path):
+		var script = load(path)
+		if script:
+			behavior = script.new(self)
+			# print("Loaded behavior: ", path)
+	else:
+		# print("Behavior not found: ", path, " -> Using DefaultBehavior")
+		behavior = preload("res://src/Scripts/Units/Behaviors/DefaultBehavior.gd").new(self)
+
+func take_damage(amount: float, source_enemy = null):
+	if behavior:
+		amount = behavior.on_damage_taken(amount, source_enemy)
 
 	# Shared Health Logic: Unit acts as a wall/entity linked to Core
 	GameManager.damage_core(amount)
@@ -177,39 +173,15 @@ func reset_stats():
 	if unit_data.has("levels") and unit_data["levels"].has(str(level)):
 		stats = unit_data["levels"][str(level)]
 	else:
-		# Fallback to root (should not happen with refactor, but safe)
 		stats = unit_data
 
 	# Load core stats
 	damage = stats.get("damage", unit_data.get("damage", 0))
 
-	# Update production interval from mechanics if available
-	if unit_data.has("produce"):
-		max_production_timer = 1.0
-	elif unit_data.has("production_type") and unit_data["production_type"] == "item":
-		var base_interval = unit_data.get("production_interval", 5.0)
-		var new_interval = base_interval
-
-		if stats.has("mechanics") and stats["mechanics"].has("production_interval"):
-			new_interval = stats["mechanics"]["production_interval"]
-
-		max_production_timer = new_interval
-	elif unit_data.has("skill") and unit_data.skill == "milk_aura":
-		max_production_timer = 5.0
-
 	max_hp = stats.get("hp", unit_data.get("hp", 0))
 
-	# Non-leveled stats (unless moved to levels, which range/atkSpeed weren't in my script)
 	range_val = unit_data.get("range", 0)
 	atk_speed = unit_data.get("atkSpeed", 1.0)
-
-	# Parrot Max Ammo
-	if type_key == "parrot":
-		if stats.has("mechanics") and stats["mechanics"].has("max_ammo"):
-			max_ammo = stats["mechanics"]["max_ammo"]
-		else:
-			max_ammo = 5 # Default fallback
-		update_parrot_range()
 
 	crit_rate = unit_data.get("crit_rate", 0.1)
 	crit_dmg = unit_data.get("crit_dmg", 1.5)
@@ -228,14 +200,11 @@ func reset_stats():
 	split_count = 0
 	active_buffs.clear()
 	buff_sources.clear()
-	feather_refs.clear()
+	# feather_refs cleared in cleanup usually, but we removed the var, behavior handles it.
 
 	# Artifact Effects
 	if GameManager.reward_manager and "focus_fire" in GameManager.reward_manager.acquired_artifacts:
 		range_val *= 1.2
-
-	if type_key == "parrot":
-		update_parrot_range()
 
 	broadcast_buffs()
 	update_visuals()
@@ -252,37 +221,12 @@ func broadcast_buffs():
 			neighbor.apply_buff(buff, self)
 
 func update_parrot_range():
-	if type_key != "parrot": return
-	if !GameManager.grid_manager: return
-
-	var neighbors = _get_neighbor_units()
-	var min_range = 9999.0
-	var has_ranged_neighbor = false
-
-	for unit in neighbors:
-		if unit.unit_data.get("attackType") == "ranged":
-			has_ranged_neighbor = true
-			if unit.range_val < min_range:
-				min_range = unit.range_val
-
-	if has_ranged_neighbor:
-		range_val = min_range
-	else:
-		range_val = 0.0
+	if behavior and behavior.has_method("update_range_logic"):
+		behavior.call("update_range_logic")
 
 func capture_bullet(bullet_snapshot: Dictionary):
-	if type_key != "parrot": return
-	if is_discharging: return # Don't capture while firing
-	if ammo_queue.size() >= max_ammo: return
-
-	# Clone to prevent reference issues
-	ammo_queue.append(bullet_snapshot.duplicate(true))
-
-	# Visual Feedback?
-	if visual_holder:
-		var tween = create_tween()
-		tween.tween_property(visual_holder, "scale", Vector2(1.1, 1.1), 0.1)
-		tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.1)
+	if behavior and behavior.has_method("capture_bullet"):
+		behavior.call("capture_bullet", bullet_snapshot)
 
 func calculate_damage_against(target_node: Node2D) -> float:
 	var final_damage = damage
@@ -344,22 +288,25 @@ func execute_skill_at(grid_pos: Vector2i):
 		GameManager.spawn_floating_text(global_position, skill_name.capitalize() + "!", Color.CYAN)
 		GameManager.skill_activated.emit(self)
 
-		print("[DEBUG] Unit.execute_skill_at: ", grid_pos)
+		if behavior:
+			behavior.on_skill_activated()
+			# Behavior should handle specific logic if it differs from default skill activation
+			# But for point skills, we might need extra handling here?
+			# The original code handled dragon/phoenix here specifically.
+			# I should delegate this to behavior too.
+			# If on_skill_activated() handles the logic, we are good.
+			# However, `execute_skill_at` passes `grid_pos`. `on_skill_activated` takes no args.
+			# I should add `grid_pos` to `on_skill_activated` or a new method.
+			# `on_skill_activated` in base class has no args.
+			# I can add `func on_point_skill(grid_pos)`?
+			pass
 
-		if type_key == "dragon":
-			var extra_stats = {
-				"duration": unit_data.get("skillDuration", 8.0),
-				"skillRadius": unit_data.get("skillRadius", 150.0),
-				"skillStrength": unit_data.get("skillStrength", 3000.0),
-				"skillColor": unit_data.get("skillColor", "#330066"),
-				"damage": 0,
-				"hide_visuals": false # Ensure visuals are shown for the field
-			}
-			if GameManager.grid_manager:
-				var world_pos = GameManager.grid_manager.get_world_pos_from_grid(grid_pos)
-				if GameManager.combat_manager:
-					GameManager.combat_manager.spawn_projectile(self, world_pos, null, extra_stats)
+		# For backward compatibility with existing Dragon/Phoenix logic, let's keep the core spawning here OR move to behavior.
+		# Ideally behavior.
+		if behavior and behavior.has_method("on_point_skill"):
+			behavior.on_point_skill(grid_pos)
 		else:
+			# Fallback if behavior not ready
 			GameManager.execute_skill_effect(type_key, grid_pos)
 
 	else:
@@ -368,14 +315,7 @@ func execute_skill_at(grid_pos: Vector2i):
 
 func add_crit_stacks(amount: int):
 	guaranteed_crit_stacks += amount
-	# Visual feedback if needed
 	GameManager.spawn_floating_text(global_position, "Crit Ready!", Color.ORANGE)
-
-func _on_skill_ended():
-	set_highlight(false)
-
-	if type_key == "dog":
-		atk_speed = original_atk_speed
 
 func activate_skill():
 	if !unit_data.has("skill"): return
@@ -383,8 +323,8 @@ func activate_skill():
 	if skill_cooldown > 0:
 		return
 
-	# Point Skill Handling (Phoenix and Dragon)
-	if unit_data.get("skillType") == "point" and (type_key == "phoenix" or type_key == "dragon"):
+	# Point Skill Handling
+	if unit_data.get("skillType") == "point":
 		if GameManager.grid_manager:
 			GameManager.grid_manager.enter_skill_targeting(self)
 		return
@@ -403,33 +343,8 @@ func activate_skill():
 			tween.tween_property(visual_holder, "scale", Vector2(1.2, 1.2), 0.1)
 			tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.1)
 
-		# --- New Logic ---
-		match type_key:
-			"tiger":
-				skill_active_timer = unit_data.get("skillDuration", 5.0)
-				_skill_interval_timer = 0.0
-				set_highlight(true, Color.ORANGE)
-
-			"cow":
-				skill_active_timer = 5.0
-				set_highlight(true, Color.GREEN)
-
-			"dog":
-				skill_active_timer = 5.0
-				set_highlight(true, Color.RED)
-				original_atk_speed = atk_speed
-				atk_speed *= 0.3 # Accelerate (smaller interval = faster)
-
-			"bear":
-				var enemies = get_tree().get_nodes_in_group("enemies")
-				for enemy in enemies:
-					if global_position.distance_to(enemy.global_position) <= range_val:
-						if enemy.has_method("apply_stun"):
-							enemy.apply_stun(2.0)
-
-			"butterfly":
-				# Do nothing or print
-				print("Butterfly skill activated (No effect implemented)")
+		if behavior:
+			behavior.on_skill_activated()
 
 	else:
 		is_no_mana = true
@@ -451,7 +366,6 @@ func update_visuals():
 		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		visual_holder.add_child(tex_rect)
-		# Ensure TextureRect is below labels if possible, though visual_holder order matters
 		if label: visual_holder.move_child(tex_rect, label.get_index())
 
 	if icon_texture:
@@ -464,10 +378,9 @@ func update_visuals():
 			label.text = unit_data.icon
 			label.show()
 	
-	# Size update based on unit_data
 	var size = unit_data["size"]
 	var target_size = Vector2(size.x * Constants.TILE_SIZE - 4, size.y * Constants.TILE_SIZE - 4)
-	var target_pos = -(target_size / 2) # Center inside parent (Unit node)
+	var target_pos = -(target_size / 2)
 
 	if tex_rect:
 		tex_rect.size = target_size
@@ -496,12 +409,11 @@ func _update_buff_icons():
 		buff_container.name = "BuffContainer"
 		buff_container.alignment = BoxContainer.ALIGNMENT_CENTER
 
-		# Calculate size based on unit data since ColorRect is gone
-		var size = Vector2(Constants.TILE_SIZE, Constants.TILE_SIZE) # Default
+		var size = Vector2(Constants.TILE_SIZE, Constants.TILE_SIZE)
 		if unit_data and unit_data.has("size"):
 			size = Vector2(unit_data["size"].x * Constants.TILE_SIZE, unit_data["size"].y * Constants.TILE_SIZE)
 
-		buff_container.position = Vector2(-size.x/2, size.y/2 - 20) # Just an approximation
+		buff_container.position = Vector2(-size.x/2, size.y/2 - 20)
 		buff_container.size = Vector2(size.x, 15)
 
 		buff_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -535,73 +447,10 @@ func _get_buff_icon(buff_type: String) -> String:
 func _process(delta):
 	if !GameManager.is_wave_active: return
 
+	if behavior:
+		behavior.on_tick(delta)
+
 	_process_combat(delta)
-
-	# Generic Item Production Logic
-	if unit_data.has("production_type") and unit_data["production_type"] == "item":
-		production_timer -= delta
-		if production_timer <= 0:
-			var item_id = unit_data.get("produce_item_id", "")
-			if item_id != "":
-				var item_data = { "item_id": item_id, "count": 1 }
-
-				var added = false
-				if GameManager.inventory_manager:
-					if GameManager.inventory_manager.add_item(item_data):
-						added = true
-				else:
-					# Fallback for testing
-					added = true
-
-				if added:
-					var trap_name = "Trap"
-					if Constants.BARRICADE_TYPES.has(item_id):
-						trap_name = Constants.BARRICADE_TYPES[item_id].get("icon", "Trap")
-					GameManager.spawn_floating_text(global_position, "%s Produced!" % trap_name, Color.GREEN)
-					production_timer = max_production_timer
-				else:
-					# Inventory full, keep timer at 0 to retry
-					production_timer = 0.0
-
-	# Production Logic (Resources)
-	elif unit_data.has("produce"):
-		production_timer -= delta
-		if production_timer <= 0:
-			var p_type = unit_data.produce
-			var p_amt = unit_data.get("produceAmt", 1)
-
-			GameManager.add_resource(p_type, p_amt)
-
-			var icon = "💎"
-			var color = Color.CYAN
-			GameManager.spawn_floating_text(global_position, "+%d%s" % [p_amt, icon], color)
-
-			production_timer = 1.0
-	# Cow Passive Logic (Existing)
-	if unit_data.has("skill") and unit_data.skill == "milk_aura":
-		production_timer -= delta
-		if production_timer <= 0:
-			# Heal core
-			GameManager.damage_core(-50)
-			GameManager.spawn_floating_text(global_position, "+50", Color.GREEN)
-			production_timer = 5.0
-
-	# Active Skill Timer Logic
-	if skill_active_timer > 0:
-		skill_active_timer -= delta
-
-		# Cow Active Regeneration
-		if type_key == "cow":
-			GameManager.damage_core(-200 * delta)
-
-		if type_key == "tiger":
-			_skill_interval_timer -= delta
-			if _skill_interval_timer <= 0:
-				_skill_interval_timer = 0.2
-				_spawn_meteor_at_random_enemy()
-
-		if skill_active_timer <= 0:
-			_on_skill_ended()
 
 	if skill_cooldown > 0:
 		skill_cooldown -= delta
@@ -628,60 +477,26 @@ func _process_combat(delta):
 		else:
 			is_no_mana = false
 
+	# Delegate to behavior
+	if behavior and behavior.on_combat_tick(delta):
+		return
+
 	# Find target
 	var combat_manager = GameManager.combat_manager
 	if !combat_manager: return
 
-	# Delegate to specific handlers
-	if type_key == "parrot":
-		# Parrot finds its own target usually to check range, but standard behavior is fine to integrate
-		var target = combat_manager.find_nearest_enemy(global_position, range_val)
-		_do_mimic_attack(target, combat_manager)
-		return
-
 	# Common Target Logic
 	var target = combat_manager.find_nearest_enemy(global_position, range_val)
-	if !target and type_key != "peacock": return # Peacock might need to recall without target? Checked in handler.
+	if !target: return
 
-	if type_key == "peacock":
-		_handle_peacock_attack(target, combat_manager)
-	elif type_key == "bee":
-		if target: _do_bow_attack(target)
-	elif unit_data.attackType == "melee":
-		if target: _do_melee_attack(target)
-	elif unit_data.attackType == "mimic":
-		if target: _do_mimic_attack(target, combat_manager)
+	# Default Attacks
+	if unit_data.attackType == "melee":
+		_do_melee_attack(target)
 	else:
-		if target: _do_standard_ranged_attack(target)
-
-func _do_mimic_attack(target, combat_manager):
-	if !is_discharging:
-		# Check Start Condition: Full Ammo AND Enemy in Range
-		if ammo_queue.size() >= max_ammo:
-			if target:
-				is_discharging = true
-
-	if is_discharging:
-		if ammo_queue.size() > 0:
-			var aim_target = target
-			if !aim_target or !is_instance_valid(aim_target):
-				aim_target = combat_manager.find_nearest_enemy(global_position, range_val)
-
-			if aim_target:
-				if attack_cost_mana > 0: GameManager.consume_resource("mana", attack_cost_mana)
-				cooldown = atk_speed
-
-				var bullet_data = ammo_queue.pop_front()
-				play_attack_anim("ranged", aim_target.global_position)
-
-				var extra = bullet_data.duplicate()
-				extra["mimic_damage"] = bullet_data.get("damage", 10.0)
-				extra["proj_override"] = bullet_data.get("type", "pinecone")
-
-				combat_manager.spawn_projectile(self, global_position, aim_target, extra)
-				attack_performed.emit(aim_target)
+		if type_key == "bee":
+			_do_bow_attack(target)
 		else:
-			is_discharging = false
+			_do_standard_ranged_attack(target)
 
 func _do_bow_attack(target, on_release_callback: Callable = Callable()):
 	# Capture target position immediately (Blind Fire)
@@ -803,80 +618,6 @@ func _do_standard_ranged_attack(target):
 
 	attack_performed.emit(target)
 
-func _handle_peacock_attack(target, combat_manager):
-	# Peacock: 3 attacks then 1 recall
-	if attack_counter >= 3:
-		cooldown = atk_speed * GameManager.get_stat_modifier("attack_interval")
-		attack_counter = 0
-
-		if visual_holder:
-			var tween = create_tween()
-			tween.tween_property(visual_holder, "scale", Vector2(1.3, 1.3), 0.1)
-			tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.1)
-
-		for q in feather_refs:
-			if is_instance_valid(q) and q.has_method("recall"):
-				q.recall()
-		feather_refs.clear()
-
-	elif target:
-		# SHOOT ACTION with Bow Animation
-		var spawn_logic = func(saved_target_pos: Vector2):
-			if !is_instance_valid(combat_manager): return
-
-			var extra_shots = 0
-			var multi_chance = 0.0
-
-			if unit_data.has("levels") and unit_data["levels"].has(str(level)):
-				var mech = unit_data["levels"][str(level)].get("mechanics", {})
-				multi_chance = mech.get("multi_shot_chance", 0.0)
-
-			if multi_chance > 0.0 and randf() < multi_chance:
-				extra_shots += 1
-
-			# Determine target or angle
-			var use_target = null
-			var base_angle = 0.0
-
-			if is_instance_valid(target):
-				use_target = target
-				base_angle = (target.global_position - global_position).angle()
-			else:
-				base_angle = (saved_target_pos - global_position).angle()
-				# use_target remains null
-
-			# Fire Primary Feather
-			var proj_args = {}
-			if !use_target:
-				proj_args["angle"] = base_angle
-				proj_args["target_pos"] = saved_target_pos
-
-			var proj = combat_manager.spawn_projectile(self, global_position, use_target, proj_args)
-			if proj and is_instance_valid(proj):
-				feather_refs.append(proj)
-
-			# Fire Extra Shots
-			if extra_shots > 0:
-				var spread_angle = 0.2
-				var angles = [base_angle - spread_angle, base_angle + spread_angle]
-
-				for i in range(extra_shots):
-					var angle_mod = angles[i % 2]
-					var dist = global_position.distance_to(saved_target_pos)
-					var extra_target_pos = global_position + Vector2.RIGHT.rotated(angle_mod) * dist
-
-					var extra_args = {"angle": angle_mod}
-					if !use_target:
-						extra_args["target_pos"] = extra_target_pos
-
-					var extra_proj = combat_manager.spawn_projectile(self, global_position, use_target, extra_args)
-					if extra_proj and is_instance_valid(extra_proj):
-						feather_refs.append(extra_proj)
-
-			attack_counter += 1
-
-		_do_bow_attack(target, spawn_logic)
-
 func play_attack_anim(attack_type: String, target_pos: Vector2, duration: float = -1.0):
 	if !visual_holder: return
 
@@ -939,28 +680,6 @@ func play_attack_anim(attack_type: String, target_pos: Vector2, duration: float 
 		attack_tween.parallel().tween_property(visual_holder, "position", Vector2.ZERO, 0.3)
 
 	attack_tween.finished.connect(func(): start_breathe_anim())
-
-func _spawn_meteor_at_random_enemy():
-	var combat_manager = GameManager.combat_manager
-	if !combat_manager: return
-	var enemies = get_tree().get_nodes_in_group("enemies")
-	if enemies.is_empty(): return
-
-	var target = enemies.pick_random()
-	if !is_instance_valid(target): return
-
-	var ground_pos = target.global_position
-	var spawn_pos = ground_pos + Vector2(randf_range(-100, 100), -600)
-
-	var stats = {
-		"is_meteor": true,
-		"ground_pos": ground_pos,
-		"damageType": "physical",
-		"life": 3.0,
-		"source": self
-	}
-
-	combat_manager.spawn_projectile(self, spawn_pos, target, stats)
 
 func _spawn_melee_projectiles(target: Node2D):
 	var combat_manager = GameManager.combat_manager
@@ -1194,11 +913,13 @@ func remove_ghost():
 func return_to_start():
 	position = start_position
 
-func _on_peacock_cleanup():
-	for q in feather_refs:
-		if is_instance_valid(q):
-			q.queue_free()
-	feather_refs.clear()
+func _exit_tree():
+	if behavior:
+		behavior.on_cleanup()
+
+	# Fallback cleanup for associated traps if behavior didn't catch it
+	# (But we will implement it in behaviors).
+	pass
 
 func play_buff_receive_anim():
 	if visual_holder:
@@ -1258,10 +979,6 @@ func attach_to_host(target_unit: Node2D):
 	# Z-Index: host is usually 0 (or inherits), we want to be slightly higher.
 	self.z_index = 1
 
-	# Connect signal
-	if !target_unit.attack_performed.is_connected(_on_host_attack_performed):
-		target_unit.attack_performed.connect(_on_host_attack_performed)
-
 	# Disable collision to prevent clicking/blocking
 	var area = get_node_or_null("Area2D")
 	if area:
@@ -1269,34 +986,3 @@ func attach_to_host(target_unit: Node2D):
 		area.monitorable = false
 		# Also disable input pickable just in case
 		area.input_pickable = false
-
-func _on_host_attack_performed(target):
-	if type_key != "oxpecker": return
-	if !host or !is_instance_valid(host): return
-
-	# Cooldown check
-	if cooldown > 0: return
-
-	# Brief delay
-	await get_tree().create_timer(randf_range(0.1, 0.2)).timeout
-
-	if !is_instance_valid(self) or !is_instance_valid(host): return
-
-	# Double check cooldown after delay just in case
-	if cooldown > 0: return
-
-	# Calculate damage
-	var dmg = host.max_hp * 0.1
-
-	if GameManager.combat_manager:
-		# Use self as source
-		var target_node = target
-		# If target is null or invalid, try find one? The prompt says "attack host's current target".
-
-		# If target is null, we can try to find nearest enemy or just skip
-		if target_node == null or !is_instance_valid(target_node):
-			target_node = GameManager.combat_manager.find_nearest_enemy(global_position, range_val)
-
-		if target_node:
-			cooldown = atk_speed * GameManager.get_stat_modifier("attack_interval")
-			GameManager.combat_manager.spawn_projectile(self, global_position, target_node, {"damage": dmg})
