@@ -58,11 +58,12 @@ var cheat_fast_cooldown: bool = false
 
 var _hit_stop_end_time: int = 0
 
-# Core Mechanics Variables
-var moonwell_pool: float = 0.0
+var current_mechanic: CoreMechanic = null
 
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
+
+	_init_core_mechanic()
 
 	# Connect signals for Core mechanics
 	damage_dealt.connect(_on_damage_dealt)
@@ -97,34 +98,44 @@ func _set_ignore_mouse_recursive(node: Node):
 	for child in node.get_children():
 		_set_ignore_mouse_recursive(child)
 
+func _init_core_mechanic():
+	if current_mechanic:
+		current_mechanic.queue_free()
+
+	var script_path = "res://src/Scripts/CoreMechanics/MechanicGeneral.gd"
+
+	match core_type:
+		"abundance": script_path = "res://src/Scripts/CoreMechanics/MechanicAbundance.gd"
+		"moon_well": script_path = "res://src/Scripts/CoreMechanics/MechanicMoonWell.gd"
+		"holy_sword": script_path = "res://src/Scripts/CoreMechanics/MechanicHolySword.gd"
+		"cow_totem": script_path = "res://src/Scripts/CoreMechanics/MechanicCowTotem.gd"
+
+	var script = load(script_path)
+	if script:
+		current_mechanic = script.new()
+		add_child(current_mechanic)
 
 func _on_damage_dealt(unit, amount):
-	if core_type == "moon_well":
-		moonwell_pool += amount * 0.1
+	if current_mechanic:
+		current_mechanic.on_damage_dealt_by_unit(unit, amount)
 
 func _on_wave_started():
-	# Distribute core items
+	if current_mechanic:
+		current_mechanic.on_wave_started()
+
+	# Distribute core items (Data Driven / Legacy Check if needed, but mechanics handle hardcoded types now)
 	if inventory_manager:
 		var item_id = ""
 
-		# Try to get from data first
+		# Try to get from data first (preserving support for future data-driven types)
 		if data_manager and data_manager.data.has("CORE_TYPES") and data_manager.data["CORE_TYPES"].has(core_type):
 			var core_data = data_manager.data["CORE_TYPES"][core_type]
 			item_id = core_data.get("wave_item", "")
-
-		# Fallback if not found in data (or for legacy types)
-		if item_id == "":
-			match core_type:
-				"abundance": item_id = "rice_ear"
-				"moon_well": item_id = "moon_water"
-				"holy_sword": item_id = "holy_sword"
 
 		if item_id != "":
 			var item_data = { "item_id": item_id, "count": 1 }
 			if !inventory_manager.add_item(item_data):
 				spawn_floating_text(Vector2(0, 0), "Inventory Full!", Color.RED)
-				# Drop item on ground logic could be added here
-				# For now just warn as per requirements
 
 func use_item_effect(item_id: String, target_unit = null) -> bool:
 	match item_id:
@@ -134,8 +145,10 @@ func use_item_effect(item_id: String, target_unit = null) -> bool:
 			spawn_floating_text(Vector2(0, 0), "Mana +50%", Color.CYAN)
 			return true
 		"moon_water":
-			var heal_amount = moonwell_pool
-			moonwell_pool = 0
+			var heal_amount = 0.0
+			if current_mechanic and current_mechanic.has_method("consume_moonwell_pool"):
+				heal_amount = current_mechanic.consume_moonwell_pool()
+
 			var missing_hp = max_core_health - core_health
 			var actual_heal = min(heal_amount, missing_hp)
 			var overflow = heal_amount - actual_heal
@@ -191,10 +204,13 @@ func _process(delta):
 		update_resources(delta)
 
 func get_stat_modifier(stat_type: String, context: Dictionary = {}) -> float:
-	if not reward_manager:
-		return 1.0
-
 	var modifier: float = 1.0
+
+	if current_mechanic:
+		modifier *= current_mechanic.get_stat_modifier(stat_type, context)
+
+	if not reward_manager:
+		return modifier
 
 	match stat_type:
 		"cooldown":
@@ -279,6 +295,9 @@ func damage_core(amount: float):
 
 	if amount > 0 and reward_manager and "biomass_armor" in reward_manager.acquired_artifacts:
 		amount = min(amount, max_core_health * 0.05)
+
+	if current_mechanic:
+		current_mechanic.on_core_damaged(amount)
 
 	# Indomitable Will Trigger Check (Prevent Death)
 	if amount > 0 and (core_health - amount <= 0):

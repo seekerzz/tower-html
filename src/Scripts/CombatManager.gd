@@ -452,3 +452,9 @@ func check_kill_bonuses(killer_unit):
 		if "wealth" in killer_unit.active_buffs:
 			GameManager.add_gold(1)
 			GameManager.spawn_floating_text(killer_unit.global_position, "+1 Gold", Color.YELLOW)
+
+func deal_global_damage(damage: float, type: String):
+	var enemies = get_tree().get_nodes_in_group("enemies")
+	for enemy in enemies:
+		if is_instance_valid(enemy):
+			enemy.take_damage(damage, GameManager, type)
