@@ -53,4 +53,6 @@ func _do_attack(target):
 			GameManager.combat_manager.spawn_projectile(unit, unit.global_position, target_node, {"damage": dmg})
 
 func on_combat_tick(delta: float) -> bool:
+	if unit.cooldown > 0:
+		unit.cooldown -= delta
 	return true
