@@ -47,6 +47,11 @@ func _ready():
 	add_child(visuals)
 	visual_node = visuals
 
+	# Initialize visuals if setup was already called
+	if type != "":
+		visual_node.update_visuals(type, stats)
+		_update_collision_shape()
+
 	# Hide legacy nodes if they exist in the scene (ColorRect)
 	if has_node("ColorRect"): get_node("ColorRect").hide()
 	if has_node("Sprite2D"): get_node("Sprite2D").hide()
@@ -58,6 +63,10 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 	damage = dmg
 	speed = proj_speed
 	type = proj_type
+	# Explicitly assign to the member variable `stats`.
+	# Note: incoming_stats is passed by reference if it's a Dictionary.
+	# To prevent modification of the original dictionary if used elsewhere, duplication is safer but overhead.
+	# For now, assignment is correct for referencing.
 	stats = incoming_stats
 
 	if stats.has("source"):
@@ -163,15 +172,20 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 		scale *= 1.2
 
 	# Update Visuals
+	# If setup is called before _ready (which is typical for manual instantiation), visual_node is null.
+	# We rely on _ready calling update_visuals later.
 	if visual_node:
 		visual_node.update_visuals(type, stats)
-		if type == "feather":
-			# Adjust collision for feather
-			var col_shape = get_node_or_null("CollisionShape2D")
-			if col_shape:
-				var new_shape = CircleShape2D.new()
-				new_shape.radius = 12.0
-				col_shape.shape = new_shape
+		_update_collision_shape()
+
+func _update_collision_shape():
+	if type == "feather":
+		# Adjust collision for feather
+		var col_shape = get_node_or_null("CollisionShape2D")
+		if col_shape:
+			var new_shape = CircleShape2D.new()
+			new_shape.radius = 12.0
+			col_shape.shape = new_shape
 
 func fade_out():
 	if is_fading: return
@@ -358,6 +372,8 @@ func _handle_hit(target_node):
 		if freeze_duration > 0.0:
 			if target_node.has_method("apply_freeze"):
 				target_node.apply_freeze(freeze_duration)
+			elif "freeze_timer" in target_node:
+				target_node.freeze_timer = max(target_node.freeze_timer, freeze_duration)
 
 		# Trigger Source Behavior
 		if source_unit and is_instance_valid(source_unit) and "behavior" in source_unit and source_unit.behavior:
