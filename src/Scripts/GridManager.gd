@@ -525,7 +525,7 @@ func can_place_item_at(grid_pos: Vector2i, item_id: String) -> bool:
 
 	var tile = tiles[key]
 
-	if "trap" in item_id or item_id == "poison_trap" or item_id == "fang_trap":
+	if "trap" in item_id or item_id == "poison" or item_id == "fang" or Constants.BARRICADE_TYPES.has(item_id):
 		if obstacles.has(grid_pos): return false
 		if tile.unit != null: return false
 		if tile.occupied_by != Vector2i.ZERO: return false
@@ -786,28 +786,30 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 
 	var tile = tiles[key]
 
-	# --- OXPECKER CHECK ---
-	if unit_key == "oxpecker":
-		var target_unit = tile.unit
-		if target_unit == null and tile.occupied_by != Vector2i.ZERO:
-			# Check origin of large unit
-			var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
-			if tiles.has(origin_key):
-				target_unit = tiles[origin_key].unit
-
-		if target_unit and target_unit.type_key != "oxpecker" and target_unit.attachment == null:
-			# Valid attachment target
-			var oxpecker_unit = UNIT_SCENE.instantiate()
-			oxpecker_unit.setup(unit_key)
-
-			# Attach logic
-			oxpecker_unit.attach_to_host(target_unit)
-			return true
-
-	if tile.unit != null or tile.occupied_by != Vector2i.ZERO: return false
-
+	# Instantiate unit first to check behavior capabilities
 	var unit = UNIT_SCENE.instantiate()
 	unit.setup(unit_key)
+
+	# Check overlapping unit for Attachment (e.g. Oxpecker)
+	var target_unit = tile.unit
+	if target_unit == null and tile.occupied_by != Vector2i.ZERO:
+		var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
+		if tiles.has(origin_key):
+			target_unit = tiles[origin_key].unit
+
+	if target_unit:
+		if unit.behavior.has_method("can_attach_to") and unit.behavior.can_attach_to(target_unit):
+			unit.behavior.perform_attach(target_unit)
+			recalculate_buffs()
+			return true
+
+		# Failed overlap
+		unit.queue_free()
+		return false
+
+	if tile.unit != null or tile.occupied_by != Vector2i.ZERO:
+		unit.queue_free()
+		return false
 
 	var w = unit.unit_data.size.x
 	var h = unit.unit_data.size.y
@@ -832,9 +834,9 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 
 	var info = unit.get_interaction_info()
 
-	if unit_key == "viper" or unit_key == "scorpion":
-		start_trap_placement_sequence(unit)
-	elif info.has_interaction:
+	# If trap placement sequence started by on_setup, interaction_state will be set.
+	# Only start interaction selection if idle.
+	if interaction_state == STATE_IDLE and info.has_interaction:
 		start_interaction_selection(unit)
 
 	return true
@@ -1343,13 +1345,8 @@ func recalculate_buffs():
 			processed_units.append(tile.unit)
 
 	for unit in processed_units:
-		if "buffProvider" in unit.unit_data:
-			var buff_type = unit.unit_data["buffProvider"]
-			_apply_buff_to_neighbors(unit, buff_type)
-
-		# Parrot Range Update
-		if unit.type_key == "parrot":
-			unit.update_parrot_range()
+		if unit.behavior:
+			unit.behavior.broadcast_buffs()
 
 		# Interaction Buffs
 		var info = unit.get_interaction_info()
@@ -1544,15 +1541,10 @@ func _handle_input_trap_placement(event):
 
 			if can_place_trap_at(grid_pos):
 				# Place Trap
-				var trap_type = "poison_trap" # Default
-				if interaction_source_unit.type_key == "scorpion":
-					trap_type = "fang_trap"
-				elif interaction_source_unit.type_key == "viper":
-					trap_type = "poison_trap"
-
-				# Mapping:
-				if trap_type == "poison_trap": trap_type = "poison"
-				if trap_type == "fang_trap": trap_type = "fang"
+				var trap_type = "poison"
+				if interaction_source_unit and interaction_source_unit.behavior.has_method("get_trap_type"):
+					var t = interaction_source_unit.behavior.get_trap_type()
+					if t != "": trap_type = t
 
 				spawn_trap_custom(grid_pos, trap_type)
 
@@ -1589,9 +1581,9 @@ func _handle_input_trap_placement(event):
 func _process_trap_placement_preview():
 	# Mimic dragging trap
 	var trap_type = "poison_trap"
-	if interaction_source_unit and is_instance_valid(interaction_source_unit):
-		if interaction_source_unit.type_key == "scorpion":
-			trap_type = "fang_trap"
+	if interaction_source_unit and interaction_source_unit.behavior.has_method("get_trap_type"):
+		var t = interaction_source_unit.behavior.get_trap_type()
+		if t != "": trap_type = t
 
 	var local_mouse = get_local_mouse_position()
 	var gx = int(round(local_mouse.x / TILE_SIZE))
