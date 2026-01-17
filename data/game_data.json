@@ -18,6 +18,10 @@
 		"cow_totem": {
 			"name": "牛图腾",
 			"desc": "受伤充能，5秒一次全屏反击"
+		},
+		"bat_totem": {
+			"name": "Bat Totem",
+			"desc": "每5秒攻击3个最近的敌人，施加流血标记。攻击流血敌人可回复核心生命。"
 		}
 	},
 	"ITEM_TYPES": {

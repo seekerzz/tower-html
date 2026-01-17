@@ -511,6 +511,31 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 	GameManager.spawn_floating_text(global_position, str(display_val), damage_type, hit_dir)
 	if source_unit:
 		GameManager.damage_dealt.emit(source_unit, amount)
+
+		# Bat Totem / Bleed Interaction
+		var valid_source = true
+		if typeof(source_unit) != TYPE_OBJECT:
+			valid_source = false
+		elif source_unit == GameManager:
+			valid_source = false
+		elif source_unit.get("is_core"):
+			valid_source = false
+		elif source_unit.has_method("is_in_group") and source_unit.is_in_group("enemies"):
+			valid_source = false
+		elif is_trap(source_unit):
+			valid_source = false
+
+		if valid_source:
+			var bleed_stack = 0
+			for c in get_children():
+				if c.get("type_key") == "bleed":
+					bleed_stack = c.get("stack_count", 1)
+					break
+
+			if bleed_stack > 0:
+				GameManager.damage_core(-float(bleed_stack))
+				GameManager.spawn_floating_text(global_position, "+%d" % bleed_stack, Color.GREEN)
+
 	if hp <= 0:
 		die(source_unit)
 
