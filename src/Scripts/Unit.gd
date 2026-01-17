@@ -10,6 +10,9 @@ var buff_sources: Dictionary = {} # Key: buff_type, Value: source_unit (Node2D)
 var traits: Array = []
 var unit_data: Dictionary
 
+var attachment: Node2D = null
+var host: Node2D = null
+
 # Stats
 var damage: float
 var range_val: float
@@ -73,6 +76,7 @@ const MAX_LEVEL = 3
 const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 
 signal unit_clicked(unit)
+signal attack_performed(target_node)
 
 func _start_skill_cooldown(base_duration: float):
 	if GameManager.cheat_fast_cooldown and base_duration > 1.0:
@@ -129,7 +133,24 @@ func _ensure_visual_hierarchy():
 func setup(key: String):
 	_ensure_visual_hierarchy()
 	type_key = key
-	unit_data = Constants.UNIT_TYPES[key].duplicate()
+
+	if key == "oxpecker" and not Constants.UNIT_TYPES.has(key):
+		# Fallback if oxpecker not in constants
+		unit_data = {
+			"size": Vector2(1, 1),
+			"hp": 100,
+			"damage": 10,
+			"range": 300,
+			"atkSpeed": 1.0,
+			"attackType": "ranged",
+			"icon": "Ox"
+		}
+	else:
+		unit_data = Constants.UNIT_TYPES[key].duplicate()
+
+	if type_key == "oxpecker":
+		unit_data["attackType"] = "ranged"
+
 	# reset_stats will handle reading stats from levels
 	reset_stats()
 	# Initialize production timer
@@ -675,6 +696,7 @@ func _do_mimic_attack(target, combat_manager):
 				extra["proj_override"] = bullet_data.get("type", "pinecone")
 
 				combat_manager.spawn_projectile(self, global_position, aim_target, extra)
+				attack_performed.emit(aim_target)
 		else:
 			is_discharging = false
 
@@ -705,10 +727,12 @@ func _do_bow_attack(target, on_release_callback: Callable = Callable()):
 		if GameManager.combat_manager:
 			if is_instance_valid(target):
 				GameManager.combat_manager.spawn_projectile(self, global_position, target)
+				attack_performed.emit(target)
 			else:
 				# Target dead, use last pos
 				var angle = (target_last_pos - global_position).angle()
 				GameManager.combat_manager.spawn_projectile(self, global_position, null, {"angle": angle, "target_pos": target_last_pos})
+				attack_performed.emit(null)
 
 func _do_melee_attack(target):
 	var target_last_pos = target.global_position
@@ -725,8 +749,10 @@ func _do_melee_attack(target):
 
 	if is_instance_valid(target):
 		_spawn_melee_projectiles(target)
+		attack_performed.emit(target)
 	else:
 		_spawn_melee_projectiles_blind(target_last_pos)
+		attack_performed.emit(null)
 
 func _spawn_melee_projectiles_blind(target_pos: Vector2):
 	var combat_manager = GameManager.combat_manager
@@ -782,6 +808,7 @@ func _do_standard_ranged_attack(target):
 
 	if proj_count == 1:
 		combat_manager.spawn_projectile(self, global_position, target)
+		attack_performed.emit(target)
 	else:
 		var base_angle = (target.global_position - global_position).angle()
 		var start_angle = base_angle - spread / 2.0
@@ -790,6 +817,8 @@ func _do_standard_ranged_attack(target):
 		for i in range(proj_count):
 			var angle = start_angle + (i * step)
 			combat_manager.spawn_projectile(self, global_position, target, {"angle": angle})
+
+	attack_performed.emit(target)
 
 func _handle_peacock_attack(target, combat_manager):
 	# Peacock: 3 attacks then 1 recall
@@ -1224,3 +1253,60 @@ func spawn_buff_effect(icon_char: String):
 	tween.parallel().tween_property(effect_node, "modulate:a", 0.0, 0.6)
 
 	tween.finished.connect(effect_node.queue_free)
+
+
+func attach_to_host(target_unit: Node2D):
+	if !is_instance_valid(target_unit): return
+
+	# Remove from current parent if any
+	if get_parent():
+		get_parent().remove_child(self)
+
+	target_unit.add_child(self)
+	self.host = target_unit
+	target_unit.attachment = self
+
+	# Visual adjustment
+	# 0.35 * TILE_SIZE offset
+	var offset_val = Constants.TILE_SIZE * 0.35
+	self.position = Vector2(offset_val, -offset_val)
+	self.scale = Vector2(0.5, 0.5)
+
+	# Z-Index: host is usually 0 (or inherits), we want to be slightly higher.
+	self.z_index = 1
+
+	# Connect signal
+	if !target_unit.attack_performed.is_connected(_on_host_attack_performed):
+		target_unit.attack_performed.connect(_on_host_attack_performed)
+
+	# Disable collision to prevent clicking/blocking
+	var area = get_node_or_null("Area2D")
+	if area:
+		area.monitoring = false
+		area.monitorable = false
+		# Also disable input pickable just in case
+		area.input_pickable = false
+
+func _on_host_attack_performed(target):
+	if type_key != "oxpecker": return
+	if !host or !is_instance_valid(host): return
+
+	# Brief delay
+	await get_tree().create_timer(randf_range(0.1, 0.2)).timeout
+
+	if !is_instance_valid(self) or !is_instance_valid(host): return
+
+	# Calculate damage
+	var dmg = host.max_hp * 0.1
+
+	if GameManager.combat_manager:
+		# Use self as source
+		var target_node = target
+		# If target is null or invalid, try find one? The prompt says "attack host's current target".
+
+		# If target is null, we can try to find nearest enemy or just skip
+		if target_node == null or !is_instance_valid(target_node):
+			target_node = GameManager.combat_manager.find_nearest_enemy(global_position, range_val)
+
+		if target_node:
+			GameManager.combat_manager.spawn_projectile(self, global_position, target_node, {"damage": dmg})

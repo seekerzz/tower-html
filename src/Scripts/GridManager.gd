@@ -785,6 +785,25 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 	if !tiles.has(key): return false
 
 	var tile = tiles[key]
+
+	# --- OXPECKER CHECK ---
+	if unit_key == "oxpecker":
+		var target_unit = tile.unit
+		if target_unit == null and tile.occupied_by != Vector2i.ZERO:
+			# Check origin of large unit
+			var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
+			if tiles.has(origin_key):
+				target_unit = tiles[origin_key].unit
+
+		if target_unit and target_unit.type_key != "oxpecker" and target_unit.attachment == null:
+			# Valid attachment target
+			var oxpecker_unit = UNIT_SCENE.instantiate()
+			oxpecker_unit.setup(unit_key)
+
+			# Attach logic
+			oxpecker_unit.attach_to_host(target_unit)
+			return true
+
 	if tile.unit != null or tile.occupied_by != Vector2i.ZERO: return false
 
 	var unit = UNIT_SCENE.instantiate()
@@ -1111,6 +1130,11 @@ func remove_unit_from_grid(unit):
 				trap.queue_free()
 		unit.associated_traps.clear()
 
+	# Clean up attachment
+	if "attachment" in unit and unit.attachment and is_instance_valid(unit.attachment):
+		unit.attachment.queue_free()
+		unit.attachment = null
+
 	_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
 	unit.queue_free()
 	recalculate_buffs()
@@ -1211,6 +1235,22 @@ func try_move_unit(unit, from_tile, to_tile) -> bool:
 	if can_swap(unit, target_unit):
 		_perform_swap(unit, target_unit)
 		return true
+
+	# Oxpecker Attachment (Grid to Grid)
+	if unit.type_key == "oxpecker":
+		if target_unit.type_key != "oxpecker" and target_unit.attachment == null:
+			# We are moving an oxpecker from grid onto a host
+			# Remove oxpecker from its old grid position
+			var old_w = unit.unit_data.size.x
+			var old_h = unit.unit_data.size.y
+			_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, old_w, old_h)
+
+			# Attach
+			unit.attach_to_host(target_unit)
+
+			# It is no longer on the grid as an independent unit
+			recalculate_buffs()
+			return true
 
 	return false
 
