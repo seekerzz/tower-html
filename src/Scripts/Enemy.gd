@@ -1,5 +1,11 @@
 extends CharacterBody2D
 
+const EnemyBehaviorScript = preload("res://src/Scripts/Enemies/Behaviors/EnemyBehavior.gd")
+const DefaultBehaviorScript = preload("res://src/Scripts/Enemies/Behaviors/DefaultBehavior.gd")
+const MutantSlimeBehaviorScript = preload("res://src/Scripts/Enemies/Behaviors/MutantSlimeBehavior.gd")
+const BossBehaviorScript = preload("res://src/Scripts/Enemies/Behaviors/BossBehavior.gd")
+const SuicideBehaviorScript = preload("res://src/Scripts/Enemies/Behaviors/SuicideBehavior.gd")
+
 enum State { MOVE, ATTACK_BASE, STUNNED, SUPPORT }
 var state: State = State.MOVE
 
@@ -32,26 +38,6 @@ var visual_controller: Node2D = null
 var anim_config: Dictionary = {}
 var base_speed: float = 40.0 # Default fallback
 
-var path: PackedVector2Array = []
-var nav_timer: float = 0.0
-var path_index: int = 0
-
-var current_target_tile: Node2D = null
-var base_attack_timer: float = 0.0
-
-var anim_tween: Tween
-
-var knockback_velocity: Vector2 = Vector2.ZERO
-var knockback_resistance: float = 1.0
-
-# Boss / Special Properties
-var stationary_timer: float = 0.0
-var boss_skill: String = ""
-var skill_cd_timer: float = 0.0
-var is_suicide: bool = false
-var is_stationary: bool = false
-var last_hit_direction: Vector2 = Vector2.ZERO
-
 # Physics Constants
 const WALL_SLAM_FACTOR = 0.5
 const HEAVY_IMPACT_THRESHOLD = 50.0
@@ -63,17 +49,19 @@ var mass: float = 1.0
 var is_facing_left: bool = false
 var is_dying: bool = false
 
+# Knockback
+var knockback_velocity: Vector2 = Vector2.ZERO
+var knockback_resistance: float = 1.0
+
 # Rotation Physics (Crab)
 var angular_velocity: float = 0.0
 var rotational_damping: float = 5.0
 var rotation_sensitivity = 5.0
 
-# Mutant Slime Properties
-var split_generation: int = 0
-var hit_count: int = 0
-var ancestor_max_hp: float = 0.0
 var invincible_timer: float = 0.0
-var is_splitting: bool = false
+var last_hit_direction: Vector2 = Vector2.ZERO
+
+var behavior: EnemyBehaviorScript
 
 func _ready():
 	add_to_group("enemies")
@@ -96,45 +84,43 @@ func setup(key: String, wave: int):
 	hp = base_hp * enemy_data.hpMod
 	max_hp = hp
 
-	if split_generation == 0:
-		ancestor_max_hp = max_hp
-		if type_key == "mutant_slime":
-			scale = Vector2(1.5, 1.5)
-
-	# Store the initial speed calculation as base_speed reference for animation freq
-	# But actually the requirement says (speed * temp_speed_mod) / base_speed.
-	# If we assume base_speed is just the initial speed of this unit type for this wave:
 	speed = (40 + (wave * 2)) * enemy_data.spdMod
 	base_speed = speed
 
-	stationary_timer = enemy_data.get("stationary_time", 0.0)
-	boss_skill = enemy_data.get("boss_skill", "")
-	is_suicide = enemy_data.get("is_suicide", false)
+	# Instantiate Behavior
+	if type_key == "mutant_slime":
+		behavior = MutantSlimeBehaviorScript.new()
+	elif enemy_data.get("is_suicide", false):
+		behavior = SuicideBehaviorScript.new()
+	elif enemy_data.get("is_boss", false) or type_key == "boss" or type_key == "tank":
+		behavior = BossBehaviorScript.new()
+	else:
+		behavior = DefaultBehaviorScript.new()
 
-	if stationary_timer > 0.0:
-		is_stationary = true
+	behavior.init(self, enemy_data)
 
 	# Collision Shape Logic
+	_setup_collision_shape()
+
+	var mass_mod = GameManager.get_stat_modifier("enemy_mass")
+	mass *= mass_mod
+	knockback_resistance *= mass_mod
+
+	visual_controller.setup(anim_config, base_speed, speed)
+	update_visuals()
+
+func _setup_collision_shape():
 	var col_shape = get_node_or_null("CollisionShape2D")
 	if !col_shape:
 		col_shape = CollisionShape2D.new()
 		col_shape.name = "CollisionShape2D"
 		add_child(col_shape)
 
-	if type_key == "boss" or type_key == "tank":
-		knockback_resistance = 10.0
-		mass = 5.0
-		# Boss default shape (Circle)
-		var circle_shape = CircleShape2D.new()
-		circle_shape.radius = enemy_data.radius
-		col_shape.shape = circle_shape
-
-	elif enemy_data.get("shape") == "rect":
-		# Crab Setup
+	if enemy_data.get("shape") == "rect":
+		# Setup Rectangle Collision
 		knockback_resistance = 8.0
 		mass = 5.0
 
-		# Setup Rectangle Collision
 		var size_grid = enemy_data.get("size_grid", [1, 1])
 		var tile_size = 60 # Default
 		if GameManager.grid_manager:
@@ -147,18 +133,10 @@ func setup(key: String, wave: int):
 		col_shape.shape = rect_shape
 
 	else:
-		mass = 1.0
 		# Default Circle Collision
 		var circle_shape = CircleShape2D.new()
 		circle_shape.radius = enemy_data.radius
 		col_shape.shape = circle_shape
-
-	var mass_mod = GameManager.get_stat_modifier("enemy_mass")
-	mass *= mass_mod
-	knockback_resistance *= mass_mod
-
-	visual_controller.setup(anim_config, base_speed, speed)
-	update_visuals()
 
 func _ensure_visual_controller():
 	if not visual_controller:
@@ -259,18 +237,16 @@ func _physics_process(delta):
 
 	_process_effects(delta)
 
-	# Update visual controller speed info and apply transforms
-	# Note: We must apply visual transforms AFTER _process_effects or carefully coordinate
-	# because _process_effects also sets scale (flip X).
-	# However, _process_effects relies on visual_controller.wobble_scale.
-	# The best approach: Let VisualController set the base transform, then apply facing flip.
-	# _process_effects currently does exactly this (reads wobble_scale, sets scale with flip).
-	# So we just need to update the speed on the controller here.
+	# Visual Controller Sync
 	if visual_controller:
 		visual_controller.update_speed(speed, temp_speed_mod)
-		# Disable idle animation if a legacy attack tween is playing
-		var is_legacy_anim_playing = (anim_tween and anim_tween.is_valid())
-		visual_controller.set_idle_enabled(not is_legacy_anim_playing)
+
+		var is_animating = false
+		if behavior and "anim_tween" in behavior:
+			var tw = behavior.anim_tween
+			if tw and tw.is_valid():
+				is_animating = true
+		visual_controller.set_idle_enabled(not is_animating)
 
 	if is_dying:
 		return
@@ -292,89 +268,15 @@ func _physics_process(delta):
 	if freeze_timer > 0:
 		return
 
-	# check_unit_interactions(delta) # Removed Rabbit interaction
+	# Delegate to Behavior
+	if behavior:
+		behavior.physics_process(delta)
 
-	if is_stationary:
-		stationary_timer -= delta
-		skill_cd_timer -= delta
-		if stationary_timer <= 0:
-			is_stationary = false
-		else:
-			if boss_skill != "" and skill_cd_timer <= 0:
-				perform_boss_skill(boss_skill)
-				skill_cd_timer = 2.0
-			return
-
-	if is_suicide:
-		check_suicide_collision()
-
-	match state:
-		State.STUNNED:
-			velocity = velocity.move_toward(Vector2.ZERO, 500 * delta)
-			move_and_slide()
-
-		State.MOVE:
-			nav_timer -= delta
-			if nav_timer <= 0:
-				update_path()
-				nav_timer = 0.5
-
-			var desired_velocity = calculate_move_velocity()
-
-			# Check transition to Attack Base
-			if _should_attack_base():
-				state = State.ATTACK_BASE
-				velocity = Vector2.ZERO
-			else:
-				velocity = desired_velocity
-				move_and_slide()
-
-		State.ATTACK_BASE:
-			if _should_stop_attacking_base():
-				state = State.MOVE
-			else:
-				attack_base_logic(delta)
-				velocity = Vector2.ZERO
+	if state == State.STUNNED:
+		velocity = velocity.move_toward(Vector2.ZERO, 500 * delta)
+		move_and_slide()
 
 	handle_collisions(delta)
-
-func _should_attack_base() -> bool:
-	# If ranged, check distance to Core directly if we want to shoot core.
-	# But original logic uses current_target_tile which is a path node.
-	# For ranged enemies, we want to stop when within range of the CORE, not just the tile.
-	# However, update_path() targets the core or closest tile.
-	var target_pos = GameManager.grid_manager.global_position
-
-	if enemy_data.get("attackType") == "ranged":
-		var dist = global_position.distance_to(target_pos)
-		var range_val = enemy_data.get("range", 200.0)
-		if dist < range_val:
-			return true
-	else:
-		# Melee logic: close to next tile (which leads to core)
-		if current_target_tile and is_instance_valid(current_target_tile):
-			var d = global_position.distance_to(current_target_tile.global_position)
-			var attack_range = enemy_data.radius + 10.0
-			if d < attack_range:
-				return true
-	return false
-
-func _should_stop_attacking_base() -> bool:
-	var target_pos = GameManager.grid_manager.global_position
-
-	if enemy_data.get("attackType") == "ranged":
-		var dist = global_position.distance_to(target_pos)
-		var range_val = enemy_data.get("range", 200.0)
-		# Hysteresis
-		return dist > range_val * 1.1
-	else:
-		if current_target_tile and is_instance_valid(current_target_tile):
-			target_pos = current_target_tile.global_position
-
-		var dist = global_position.distance_to(target_pos)
-		var attack_range = enemy_data.radius + 10.0
-
-		return dist > attack_range * 1.5
 
 func handle_environmental_impact(trap_node):
 	var trap_id = trap_node.get_instance_id()
@@ -516,31 +418,12 @@ func handle_collisions(delta):
 					else:
 						knockback_velocity = knockback_velocity * 0.5
 
-func calculate_move_velocity() -> Vector2:
-	var target_pos = GameManager.grid_manager.global_position
-	if current_target_tile and is_instance_valid(current_target_tile):
-		target_pos = current_target_tile.global_position
-
-	if path.size() > path_index:
-		target_pos = path[path_index]
-
-	var dist = global_position.distance_to(target_pos)
-	if dist < 10:
-		if path.size() > path_index:
-			path_index += 1
-			if path_index < path.size():
-				target_pos = path[path_index]
-
-	var direction = (target_pos - global_position).normalized()
-
-	temp_speed_mod = 1.0
-	if slow_timer > 0: temp_speed_mod = 0.5
-
-	return direction * speed * temp_speed_mod
-
 func apply_physics_stagger(duration: float):
-	if anim_tween and anim_tween.is_valid():
-		anim_tween.kill()
+	if behavior and "anim_tween" in behavior:
+		var tw = behavior.anim_tween
+		if tw and tw.is_valid():
+			tw.kill()
+
 	if visual_controller:
 		visual_controller.kill_tween()
 		visual_controller.wobble_scale = Vector2.ONE
@@ -560,35 +443,6 @@ func apply_poison(source_unit, stacks_added, duration):
 		var damage_increment = base_dmg * Constants.POISON_DAMAGE_RATIO * stacks_added
 		poison_power += damage_increment
 
-func check_suicide_collision():
-	if GameManager.grid_manager:
-		var core_dist = global_position.distance_to(GameManager.grid_manager.global_position)
-		if core_dist < 40.0:
-			explode_suicide(null)
-
-func explode_suicide(target_wall):
-	GameManager.damage_core(enemy_data.dmg)
-	GameManager.spawn_floating_text(global_position, "BOOM!", Color.RED)
-	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
-	get_parent().add_child(effect)
-	effect.global_position = global_position
-	effect.configure("cross", Color.ORANGE)
-	effect.scale = Vector2(2, 2)
-	effect.play()
-	queue_free()
-
-func perform_boss_skill(skill_name: String):
-	if skill_name == "summon":
-		GameManager.spawn_floating_text(global_position, "Summon!", Color.PURPLE)
-		for i in range(3):
-			var offset = Vector2(randf_range(-40, 40), randf_range(-40, 40))
-			if GameManager.combat_manager:
-				GameManager.combat_manager._spawn_enemy_at_pos(global_position + offset, "minion")
-	elif skill_name == "shoot_enemy":
-		GameManager.spawn_floating_text(global_position, "Fire!", Color.ORANGE)
-		if GameManager.combat_manager:
-			GameManager.combat_manager._spawn_enemy_at_pos(global_position, "bullet_entity")
-
 func apply_stun(duration: float):
 	stun_timer = duration
 	GameManager.spawn_floating_text(global_position, "Stunned!", Color.GRAY)
@@ -597,212 +451,26 @@ func apply_freeze(duration: float):
 	freeze_timer = duration
 	GameManager.spawn_floating_text(global_position, "Frozen!", Color.CYAN)
 
-func attack_base_logic(delta):
-	var target_pos = GameManager.grid_manager.global_position
-	if current_target_tile and is_instance_valid(current_target_tile):
-		target_pos = current_target_tile.global_position
-
-	base_attack_timer -= delta
-	if base_attack_timer <= 0:
-		base_attack_timer = 1.0 / enemy_data.atkSpeed
-
-		if enemy_data.get("attackType") == "ranged":
-			play_attack_animation(target_pos, func():
-				# Ranged Attack Logic
-				if GameManager.combat_manager:
-					var proj_type = enemy_data.get("proj", "pinecone")
-					# Ranged enemies aim at Core center
-					var core_pos = GameManager.grid_manager.global_position
-
-					var stats = {
-						"damageType": "physical", # Enemies usually physical?
-						"source": self
-					}
-					GameManager.combat_manager.spawn_projectile(self, global_position, null, {
-						"target_pos": core_pos,
-						"type": proj_type,
-						"damage": enemy_data.dmg,
-						"speed": enemy_data.get("projectileSpeed", 300.0),
-						"damageType": "physical" # Or from data
-					})
-			)
-		else:
-			# Melee Attack Logic
-			play_attack_animation(target_pos, func():
-				GameManager.damage_core(enemy_data.dmg)
-				if current_target_tile and not is_instance_valid(current_target_tile):
-					state = State.MOVE
-					current_target_tile = null
-					update_path()
-			)
-
-func update_path():
-	if !GameManager.grid_manager: return
-	var target_pos = Vector2.ZERO
-	current_target_tile = null
-	if GameManager.grid_manager.has_method("get_closest_unlocked_tile"):
-		current_target_tile = GameManager.grid_manager.get_closest_unlocked_tile(global_position)
-		if current_target_tile:
-			target_pos = current_target_tile.global_position
-		else:
-			target_pos = GameManager.grid_manager.global_position
-	else:
-		target_pos = GameManager.grid_manager.global_position
-	path = GameManager.grid_manager.get_nav_path(global_position, target_pos)
-	if path.size() == 0:
-		path = []
-	else:
-		path_index = 0
-		if path.size() > 0 and global_position.distance_to(path[0]) < 10:
-			path_index = 1
-
-func play_attack_animation(target_pos: Vector2, hit_callback: Callable = Callable()):
-	if anim_tween and anim_tween.is_valid():
-		anim_tween.kill()
-
-	anim_tween = create_tween()
-	var original_pos = global_position
-	var diff = target_pos - original_pos
-	var direction = diff.normalized()
-
-	var anim_type = "melee"
-	if enemy_data.get("attackType") == "ranged":
-		anim_type = enemy_data.get("rangedAnimType", "recoil")
-
-	if anim_type == "melee":
-		# Melee: Windup -> Strike -> Recovery (Unified with Unit.gd)
-		# Phase 1: Windup
-		anim_tween.set_parallel(true)
-		anim_tween.tween_property(self, "global_position", original_pos - direction * Constants.ANIM_WINDUP_DIST, Constants.ANIM_WINDUP_TIME)\
-			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		if visual_controller:
-			anim_tween.tween_property(visual_controller, "wobble_scale", Constants.ANIM_WINDUP_SCALE, Constants.ANIM_WINDUP_TIME)\
-				.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		anim_tween.set_parallel(false)
-
-		# Phase 2: Strike
-		anim_tween.set_parallel(true)
-		anim_tween.tween_property(self, "global_position", original_pos + direction * Constants.ANIM_STRIKE_DIST, Constants.ANIM_STRIKE_TIME)\
-			.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
-		if visual_controller:
-			anim_tween.tween_property(visual_controller, "wobble_scale", Constants.ANIM_STRIKE_SCALE, Constants.ANIM_STRIKE_TIME)\
-				.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
-		anim_tween.set_parallel(false)
-
-		# Callback on impact
-		anim_tween.tween_callback(func():
-			spawn_slash_effect(target_pos)
-			if hit_callback.is_valid():
-				hit_callback.call()
-		)
-
-		# Phase 3: Recovery
-		anim_tween.set_parallel(true)
-		anim_tween.tween_property(self, "global_position", original_pos, Constants.ANIM_RECOVERY_TIME)\
-			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		if visual_controller:
-			anim_tween.tween_property(visual_controller, "wobble_scale", Vector2.ONE, Constants.ANIM_RECOVERY_TIME)\
-				.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		anim_tween.set_parallel(false)
-
-	elif anim_type == "recoil":
-		# Ranged Recoil: Scale 0.8 -> 1.0
-		anim_tween.tween_callback(func():
-			if hit_callback.is_valid():
-				hit_callback.call()
-		)
-		if visual_controller:
-			anim_tween.tween_property(visual_controller, "wobble_scale", Vector2(0.8, 0.8), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-			anim_tween.tween_property(visual_controller, "wobble_scale", Vector2.ONE, 0.2)
-		# Ensure position reset if it was modified
-		anim_tween.parallel().tween_property(self, "global_position", original_pos, 0.1)
-
-	elif anim_type == "lunge":
-		# Ranged Lunge: Small forward dash -> Fire -> Return
-		# Lunge forward
-		anim_tween.tween_property(self, "global_position", original_pos + direction * 10.0, 0.15)\
-			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-
-		# Fire callback
-		anim_tween.tween_callback(func():
-			if hit_callback.is_valid():
-				hit_callback.call()
-		)
-
-		# Return
-		anim_tween.tween_property(self, "global_position", original_pos, 0.2)\
-			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-
-	elif anim_type == "elastic_shoot":
-		if visual_controller:
-			var tween = visual_controller.play_elastic_shoot()
-			# Sync firing with the middle of the animation
-			tween.tween_callback(func():
-				if hit_callback.is_valid():
-					hit_callback.call()
-			).set_delay(0.4) # Wait for windup (0.3) + shoot (0.1) start
-		else:
-			if hit_callback.is_valid():
-				hit_callback.call()
-
-	elif anim_type == "elastic_slash":
-		if visual_controller:
-			var tween = visual_controller.play_elastic_slash()
-			tween.tween_callback(func():
-				spawn_slash_effect(target_pos)
-				if hit_callback.is_valid():
-					hit_callback.call()
-			).set_delay(0.4) # Wait for windup
-		else:
-			if hit_callback.is_valid():
-				hit_callback.call()
-
-func spawn_slash_effect(pos: Vector2):
-	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
-	get_parent().add_child(effect)
-	effect.global_position = pos
-	effect.rotation = randf() * TAU
-	var shape = "slash"
-	var col = Color.WHITE
-	if type_key in ["wolf", "boss"]:
-		shape = "bite"
-		col = Color.RED
-	elif type_key in ["slime", "poison"]:
-		shape = "bite"
-		col = Color.WHITE
-	else:
-		shape = "cross"
-		col = Color.WHITE
-	if randf() > 0.5: col = Color(1.0, 0.8, 0.8)
-	effect.configure(shape, col)
-	effect.play()
-
-func is_trap(node):
-	if node.get("type") and Constants.BARRICADE_TYPES.has(node.type):
-		var b_type = Constants.BARRICADE_TYPES[node.type].type
-		return b_type == "slow" or b_type == "poison" or b_type == "reflect"
-	return false
-
 func heal(amount: float):
 	if hp <= 0: return # Can't heal dead
 	hp = min(hp + amount, max_hp)
 	queue_redraw()
-	# Optional: Spawn healing text here if not done by the healer
-	# But healer does it.
 
 func take_damage(amount: float, source_unit = null, damage_type: String = "physical", hit_source: Node2D = null, kb_force: float = 0.0):
 	if source_unit == GameManager:
 		print("[Enemy] Taking global damage from GameManager: ", amount)
 
-	if invincible_timer > 0 or is_splitting:
+	if invincible_timer > 0:
 		return
 
-	hit_count += 1
-
-	if type_key == "mutant_slime" and hit_count >= 5 and split_generation < 2 and hp > 0:
-		is_splitting = true
-		_perform_split()
-		return
+	if behavior:
+		if behavior.on_hit({
+			"amount": amount,
+			"source": source_unit,
+			"type": damage_type,
+			"hit_source": hit_source
+		}):
+			return
 
 	hp -= amount
 	hit_flash_timer = 0.1
@@ -814,23 +482,18 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 
 	if enemy_data.get("shape") == "rect":
 		# Torque calculation
-		# hit_source position relative to center
 		var hit_pos = global_position # Default
 		if hit_source and "global_position" in hit_source:
 			hit_pos = hit_source.global_position
 
 		var r = hit_pos - global_position
-		# F is force vector. Approximate from hit_dir
 		var force_dir = hit_dir
 		if force_dir == Vector2.ZERO and hit_source:
 			force_dir = (global_position - hit_source.global_position).normalized()
 
-		# Torque = r x F (2D Cross Product is scalar)
-		# A x B = Ax*By - Ay*Bx
 		var torque = r.x * force_dir.y - r.y * force_dir.x
 
-		# Scale torque
-		angular_velocity += torque * 0.05 # Sensitivity factor reduced
+		angular_velocity += torque * 0.05
 
 	if kb_force > 0:
 		var applied_force = kb_force / max(0.1, knockback_resistance)
@@ -842,36 +505,10 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 	if hp <= 0:
 		die(source_unit)
 
-func _perform_split():
-	var child_hp = min(hp, max_hp / 2.0)
-
-	for i in range(2):
-		var child = load("res://src/Scenes/Game/Enemy.tscn").instantiate()
-		child.setup(type_key, GameManager.wave)
-
-		child.split_generation = split_generation + 1
-		child.ancestor_max_hp = ancestor_max_hp
-		child.max_hp = child_hp
-		child.hp = child_hp
-		child.hit_count = 0
-
-		var new_scale = 1.0
-		if child.split_generation == 1:
-			new_scale = 1.0
-		elif child.split_generation == 2:
-			new_scale = 0.75
-
-		child.scale = Vector2(new_scale, new_scale)
-		child.invincible_timer = 0.5
-
-		var offset = Vector2(randf_range(-20, 20), randf_range(-20, 20))
-		child.global_position = global_position + offset
-
-		get_parent().add_child(child)
-
-	queue_free()
-
 func die(killer_unit = null):
+	if behavior:
+		behavior.on_death()
+
 	# Kill Bonus Check
 	if GameManager.combat_manager and killer_unit:
 		GameManager.combat_manager.check_kill_bonuses(killer_unit)
