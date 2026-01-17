@@ -114,6 +114,9 @@ class MeteorSource:
 	func calculate_damage_against(_target):
 		return damage
 
+	func is_in_group(_group):
+		return false
+
 func spawn_boss_wave():
 	# Hardcoded Wave 5 Event
 	# Pick 2 different bosses from [summoner, ranger, tank]

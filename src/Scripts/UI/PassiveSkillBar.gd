@@ -261,11 +261,21 @@ func _process(_delta):
 
 			if unit.type_key == "parrot":
 				var ammo_lbl = layout.get_node_or_null("AmmoLabel")
-				if ammo_lbl:
-					ammo_lbl.text = "%d/%d" % [unit.ammo_queue.size(), unit.max_ammo]
+				if ammo_lbl and unit.behavior:
+					var size = 0
+					var max_a = 0
+					if "ammo_queue" in unit.behavior: size = unit.behavior.ammo_queue.size()
+					if "max_ammo" in unit.behavior: max_a = unit.behavior.max_ammo
+					ammo_lbl.text = "%d/%d" % [size, max_a]
 			else:
 				var prev_timer = card.get_meta("prev_timer", 0.0)
-				var current_timer = unit.production_timer
+				var current_timer = 0.0
+				var max_timer = 1.0
+
+				if unit.behavior and "production_timer" in unit.behavior:
+					current_timer = unit.behavior.production_timer
+				if unit.behavior and "max_production_timer" in unit.behavior:
+					max_timer = unit.behavior.max_production_timer
 
 				if prev_timer > 0 and current_timer <= 0:
 					_trigger_flash(card)
@@ -274,8 +284,8 @@ func _process(_delta):
 
 				card.set_meta("prev_timer", current_timer)
 
-				cd_bar.max_value = unit.max_production_timer
-				cd_bar.value = unit.production_timer
+				cd_bar.max_value = max_timer
+				cd_bar.value = current_timer
 
 func _trigger_flash(card):
 	if !card.has_meta("flashing") or !card.get_meta("flashing"):
