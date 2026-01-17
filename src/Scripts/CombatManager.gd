@@ -455,7 +455,9 @@ func check_kill_bonuses(killer_unit):
 
 
 func deal_global_damage(damage: float, type: String):
-	for enemy in get_tree().get_nodes_in_group("enemies"):
+	var enemies = get_tree().get_nodes_in_group("enemies")
+	print("[CombatManager] Global Damage: ", damage, " Enemies found: ", enemies.size())
+	for enemy in enemies:
 		if is_instance_valid(enemy):
 			# Pass GameManager as source since it's a core effect
 			enemy.take_damage(damage, GameManager, type)

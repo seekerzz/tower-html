@@ -791,6 +791,9 @@ func heal(amount: float):
 	# But healer does it.
 
 func take_damage(amount: float, source_unit = null, damage_type: String = "physical", hit_source: Node2D = null, kb_force: float = 0.0):
+	if source_unit == GameManager:
+		print("[Enemy] Taking global damage from GameManager: ", amount)
+
 	if invincible_timer > 0 or is_splitting:
 		return
 
