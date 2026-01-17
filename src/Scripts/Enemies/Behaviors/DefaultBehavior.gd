@@ -60,7 +60,7 @@ func calculate_move_velocity() -> Vector2:
 	var direction = (target_pos - enemy.global_position).normalized()
 
 	enemy.temp_speed_mod = 1.0
-	if enemy.slow_timer > 0: enemy.temp_speed_mod = 0.5
+	# slow_timer logic removed; handled by StatusEffect (SlowEffect)
 
 	return direction * enemy.speed * enemy.temp_speed_mod
 
