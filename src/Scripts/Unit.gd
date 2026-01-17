@@ -1274,10 +1274,16 @@ func _on_host_attack_performed(target):
 	if type_key != "oxpecker": return
 	if !host or !is_instance_valid(host): return
 
+	# Cooldown check
+	if cooldown > 0: return
+
 	# Brief delay
 	await get_tree().create_timer(randf_range(0.1, 0.2)).timeout
 
 	if !is_instance_valid(self) or !is_instance_valid(host): return
+
+	# Double check cooldown after delay just in case
+	if cooldown > 0: return
 
 	# Calculate damage
 	var dmg = host.max_hp * 0.1
@@ -1292,4 +1298,5 @@ func _on_host_attack_performed(target):
 			target_node = GameManager.combat_manager.find_nearest_enemy(global_position, range_val)
 
 		if target_node:
+			cooldown = atk_speed * GameManager.get_stat_modifier("attack_interval")
 			GameManager.combat_manager.spawn_projectile(self, global_position, target_node, {"damage": dmg})
