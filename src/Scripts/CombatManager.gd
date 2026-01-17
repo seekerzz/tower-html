@@ -10,19 +10,12 @@ var enemies_to_spawn: int = 0
 var total_enemies_for_wave: int = 0
 # spawn_timer removed as we use coroutines now
 
-var explosion_queue: Array = []
-
 func _ready():
 	GameManager.combat_manager = self
 	GameManager.wave_started.connect(_on_wave_started)
 
 func _process(delta):
-	# Process Explosion Queue (Burn Chain Reaction)
-	if explosion_queue.size() > 0:
-		var current_batch = explosion_queue.duplicate()
-		explosion_queue.clear()
-		for expl in current_batch:
-			_process_burn_explosion(expl)
+	pass
 
 func _on_wave_started():
 	start_wave_logic()
@@ -427,28 +420,6 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 						neighbor.capture_bullet(snapshot)
 
 	return proj
-
-func queue_burn_explosion(pos: Vector2, damage: float, source: Node2D):
-	explosion_queue.append({ "pos": pos, "damage": damage, "source": source })
-
-func _process_burn_explosion(expl):
-	var pos = expl.pos
-	var damage = expl.damage
-	var source = expl.source
-	var radius = 120.0
-
-	var enemies = get_tree().get_nodes_in_group("enemies")
-	for enemy in enemies:
-		if !is_instance_valid(enemy): continue
-		# Note: We can't check 'enemy == self' easily here as source is the Killer, not the Victim.
-		# The victim is already dead/dying at 'pos'.
-		# However, checking distance > 0 might help avoid some issues, but distance check covers it.
-
-		var dist = pos.distance_to(enemy.global_position)
-		if dist <= radius:
-			enemy.take_damage(damage, source, "fire")
-			enemy.effects["burn"] = 5.0
-			enemy.burn_source = source
 
 func check_kill_bonuses(killer_unit):
 	if killer_unit and "active_buffs" in killer_unit:
