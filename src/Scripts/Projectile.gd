@@ -392,25 +392,9 @@ func _handle_hit(target_node):
 			else:
 				target_node.set("freeze_timer", max(target_node.get("freeze_timer") if target_node.get("freeze_timer") else 0.0, effects["freeze"]))
 
-		# Lifesteal Logic
-		if source_unit and is_instance_valid(source_unit) and "unit_data" in source_unit and source_unit.unit_data.get("trait") == "lifesteal":
-			var lifesteal_pct = source_unit.unit_data.get("lifesteal_percent", 0.0)
-			var heal_amt = damage * lifesteal_pct
-			if heal_amt > 0:
-				GameManager.damage_core(-heal_amt)
-				GameManager.spawn_floating_text(source_unit.global_position, "+%d" % int(heal_amt), Color.GREEN)
-
-		# Trap Spawning Logic
-		if source_unit and is_instance_valid(source_unit) and randf() < 0.25:
-			var trap_type = ""
-			match source_unit.type_key:
-				"scorpion": trap_type = "fang"
-				"viper": trap_type = "poison"
-				"spider": trap_type = "mucus"
-
-			if trap_type != "":
-				if GameManager.grid_manager and GameManager.grid_manager.has_method("try_spawn_trap"):
-					GameManager.grid_manager.try_spawn_trap(target_node.global_position, trap_type)
+		# Behavior Hook
+		if source_unit and is_instance_valid(source_unit) and source_unit.behavior:
+			source_unit.behavior.on_projectile_hit(target_node, damage, self)
 
 		hit_list.append(target_node)
 		if shared_hit_list_ref != null:
