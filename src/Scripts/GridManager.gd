@@ -785,6 +785,22 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 	if !tiles.has(key): return false
 
 	var tile = tiles[key]
+
+	# Oxpecker Attachment Logic
+	if unit_key == "oxpecker":
+		var host_candidate = tile.unit
+		if host_candidate == null and tile.occupied_by != Vector2i.ZERO:
+			var origin_key = get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
+			if tiles.has(origin_key):
+				host_candidate = tiles[origin_key].unit
+
+		if host_candidate and host_candidate.type_key != "oxpecker" and host_candidate.attachment == null:
+			var oxpecker = UNIT_SCENE.instantiate()
+			oxpecker.setup(unit_key)
+			add_child(oxpecker) # Add to scene tree first
+			oxpecker.attach_to_host(host_candidate)
+			return true
+
 	if tile.unit != null or tile.occupied_by != Vector2i.ZERO: return false
 
 	var unit = UNIT_SCENE.instantiate()
@@ -1097,6 +1113,12 @@ func _on_tile_clicked(tile):
 
 func remove_unit_from_grid(unit):
 	if unit == null: return
+
+	if unit.attachment != null:
+		if is_instance_valid(unit.attachment):
+			unit.attachment.queue_free()
+		unit.attachment = null
+
 	var w = unit.unit_data.size.x
 	var h = unit.unit_data.size.y
 
@@ -1193,6 +1215,14 @@ func try_move_unit(unit, from_tile, to_tile) -> bool:
 
 	if target_unit == null: return false
 	if target_unit == unit: return false
+
+	if unit.type_key == "oxpecker" and target_unit.type_key != "oxpecker" and target_unit.attachment == null:
+		var w = unit.unit_data.size.x
+		var h = unit.unit_data.size.y
+		_clear_tiles_occupied(unit.grid_pos.x, unit.grid_pos.y, w, h)
+		unit.attach_to_host(target_unit)
+		recalculate_buffs()
+		return true
 
 	if target_unit.can_merge_with(unit):
 		target_unit.merge_with(unit)

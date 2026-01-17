@@ -7,6 +7,8 @@ var cooldown: float = 0.0
 var skill_cooldown: float = 0.0
 var active_buffs: Array = []
 var buff_sources: Dictionary = {} # Key: buff_type, Value: source_unit (Node2D)
+var attachment: Node2D = null
+var host: Node2D = null
 var traits: Array = []
 var unit_data: Dictionary
 
@@ -73,6 +75,7 @@ const MAX_LEVEL = 3
 const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 
 signal unit_clicked(unit)
+signal attack_performed(target_node)
 
 func _start_skill_cooldown(base_duration: float):
 	if GameManager.cheat_fast_cooldown and base_duration > 1.0:
@@ -138,12 +141,64 @@ func setup(key: String):
 
 	start_breathe_anim()
 
+	if type_key == "oxpecker":
+		unit_data.attackType = "ranged"
+
 	var drag_handler = Control.new()
 	drag_handler.set_script(DRAG_HANDLER_SCRIPT)
 	add_child(drag_handler)
 	drag_handler.setup(self)
 
+func attach_to_host(target_unit: Node2D):
+	if target_unit == null: return
+
+	if get_parent():
+		get_parent().remove_child(self)
+
+	target_unit.add_child(self)
+
+	host = target_unit
+	target_unit.attachment = self
+
+	var t_size = Constants.TILE_SIZE
+	var offset_val = t_size * 0.35
+	position = Vector2(offset_val, -offset_val)
+	scale = Vector2(0.5, 0.5)
+
+	if "z_index" in target_unit:
+		z_index = target_unit.z_index + 1
+	else:
+		z_index = 1
+
+	if !target_unit.attack_performed.is_connected(_on_host_attack_performed):
+		target_unit.attack_performed.connect(_on_host_attack_performed)
+
+	var area = get_node_or_null("Area2D")
+	if area:
+		area.monitorable = false
+		area.monitoring = false
+		area.input_pickable = false
+		for child in area.get_children():
+			if child is CollisionShape2D or child is CollisionPolygon2D:
+				child.disabled = true
+
+func _on_host_attack_performed(target):
+	if type_key != "oxpecker": return
+	if !is_instance_valid(target): return
+
+	var delay = randf_range(0.1, 0.2)
+	await get_tree().create_timer(delay).timeout
+
+	if !is_instance_valid(self) or !is_instance_valid(host): return
+	if !is_instance_valid(target) or target.is_queued_for_deletion(): return
+
+	var dmg = host.max_hp * 0.1
+	if GameManager.combat_manager:
+		GameManager.combat_manager.spawn_projectile(self, global_position, target, {"damage": dmg})
+
 func take_damage(amount: float, source_enemy = null):
+	if host != null: return # Invulnerable when attached
+
 	# Handle Reflect (Hedgehog)
 	if unit_data.get("trait") == "reflect":
 		var reflect_pct = unit_data.get("reflect_percent", 0.3)
@@ -609,6 +664,8 @@ func _process(delta):
 		modulate = Color.WHITE
 
 func _process_combat(delta):
+	if host != null: return # Oxpecker acts via host signal
+
 	if !unit_data.has("attackType") or unit_data.attackType == "none":
 		return
 
@@ -675,6 +732,7 @@ func _do_mimic_attack(target, combat_manager):
 				extra["proj_override"] = bullet_data.get("type", "pinecone")
 
 				combat_manager.spawn_projectile(self, global_position, aim_target, extra)
+				attack_performed.emit(aim_target)
 		else:
 			is_discharging = false
 
@@ -700,15 +758,18 @@ func _do_bow_attack(target, on_release_callback: Callable = Callable()):
 	if on_release_callback.is_valid():
 		# Pass last pos to callback
 		on_release_callback.call(target_last_pos)
+		attack_performed.emit(target if is_instance_valid(target) else null)
 	else:
 		# Default (Bee)
 		if GameManager.combat_manager:
 			if is_instance_valid(target):
 				GameManager.combat_manager.spawn_projectile(self, global_position, target)
+				attack_performed.emit(target)
 			else:
 				# Target dead, use last pos
 				var angle = (target_last_pos - global_position).angle()
 				GameManager.combat_manager.spawn_projectile(self, global_position, null, {"angle": angle, "target_pos": target_last_pos})
+				attack_performed.emit(null)
 
 func _do_melee_attack(target):
 	var target_last_pos = target.global_position
@@ -725,8 +786,10 @@ func _do_melee_attack(target):
 
 	if is_instance_valid(target):
 		_spawn_melee_projectiles(target)
+		attack_performed.emit(target)
 	else:
 		_spawn_melee_projectiles_blind(target_last_pos)
+		attack_performed.emit(null)
 
 func _spawn_melee_projectiles_blind(target_pos: Vector2):
 	var combat_manager = GameManager.combat_manager
@@ -768,6 +831,7 @@ func _do_standard_ranged_attack(target):
 	if unit_data.get("proj") == "lightning":
 		play_attack_anim("lightning", target.global_position)
 		combat_manager.perform_lightning_attack(self, global_position, target, unit_data.get("chain", 0))
+		attack_performed.emit(target)
 		return
 
 	play_attack_anim("ranged", target.global_position)
@@ -782,6 +846,7 @@ func _do_standard_ranged_attack(target):
 
 	if proj_count == 1:
 		combat_manager.spawn_projectile(self, global_position, target)
+		attack_performed.emit(target)
 	else:
 		var base_angle = (target.global_position - global_position).angle()
 		var start_angle = base_angle - spread / 2.0
@@ -790,6 +855,7 @@ func _do_standard_ranged_attack(target):
 		for i in range(proj_count):
 			var angle = start_angle + (i * step)
 			combat_manager.spawn_projectile(self, global_position, target, {"angle": angle})
+		attack_performed.emit(target)
 
 func _handle_peacock_attack(target, combat_manager):
 	# Peacock: 3 attacks then 1 recall

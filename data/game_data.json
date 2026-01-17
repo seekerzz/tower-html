@@ -1398,6 +1398,45 @@
 			},
 			"type_key": "peacock"
 		},
+		"oxpecker": {
+			"name": "牛椋鸟",
+			"icon": "🐦",
+			"size": [
+				1,
+				1
+			],
+			"range": 0,
+			"atkSpeed": 0,
+			"manaCost": 0,
+			"attackType": "ranged",
+			"damageType": "physical",
+			"hp": 1,
+			"cost": 50,
+			"levels": {
+				"1": {
+					"damage": 0,
+					"hp": 1,
+					"cost": 50,
+					"desc": "附身单位，协同攻击",
+					"mechanics": {}
+				},
+				"2": {
+					"damage": 0,
+					"hp": 1,
+					"cost": 100,
+					"desc": "附身单位，协同攻击",
+					"mechanics": {}
+				},
+				"3": {
+					"damage": 0,
+					"hp": 1,
+					"cost": 200,
+					"desc": "附身单位，协同攻击",
+					"mechanics": {}
+				}
+			},
+			"type_key": "oxpecker"
+		},
 		"lucky_cat": {
 			"name": "招财猫",
 			"icon": "🐱",
