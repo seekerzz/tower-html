@@ -12,8 +12,7 @@ func _ready():
 	add_child(timer)
 
 func on_core_damaged(amount: float):
-	if amount > 0:
-		hit_count += 1
+	hit_count += 1
 
 func _on_timer_timeout():
 	var damage = hit_count * 5.0
