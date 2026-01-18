@@ -22,6 +22,11 @@
 		"bat_totem": {
 			"name": "Bat Totem",
 			"desc": "每5秒攻击3个最近的敌人，施加流血标记。攻击流血敌人可回复核心生命。"
+		},
+		"viper_totem": {
+			"name": "毒蛇图腾",
+			"desc": "每5秒对距离最远的3个敌人降下毒液，造成伤害并施加3层中毒。",
+			"wave_item": "poison"
 		}
 	},
 	"ITEM_TYPES": {
