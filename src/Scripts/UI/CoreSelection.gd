@@ -1,6 +1,8 @@
 extends Control
 
-@onready var container = $CenterContainer/HBoxContainer
+const CoreCardScene = preload("res://src/Scenes/UI/CoreCard.tscn")
+
+@onready var container = $ScrollContainer/HBoxContainer
 
 func _ready():
 	_create_cards()
@@ -11,21 +13,15 @@ func _create_cards():
 		core_data = GameManager.data_manager.data["CORE_TYPES"]
 	else:
 		print("Error: CORE_TYPES not found in DataManager!")
-		# Fallback just in case, or show error
 		return
 
 	for key in core_data.keys():
 		var data = core_data[key]
-		var button = Button.new()
+		var card = CoreCardScene.instantiate()
 
-		# Format text
-		var title = data.get("name", key)
-		var desc = data.get("desc", "No description")
-		button.text = "%s\n\n%s" % [title, desc]
-
-		button.custom_minimum_size = Vector2(200, 300)
-		button.pressed.connect(func(): _on_core_selected(key))
-		container.add_child(button)
+		container.add_child(card)
+		card.setup(key, data)
+		card.card_selected.connect(_on_core_selected)
 
 func _on_core_selected(core_key: String):
 	GameManager.core_type = core_key
