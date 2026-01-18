@@ -7,7 +7,7 @@ func setup(target: Node, source: Node, params: Dictionary):
 	type_key = "bleed"
 	# If initial setup passes stack_count, use it, otherwise default 1
 	if params.has("stack_count"):
-		stack_count = params.stack_count
+		stack_count = params["stack_count"]
 
 func stack(params: Dictionary):
 	# Refresh duration handled in super

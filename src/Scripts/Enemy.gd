@@ -529,7 +529,9 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 			var bleed_stack = 0
 			for c in get_children():
 				if c.get("type_key") == "bleed":
-					bleed_stack = c.get("stack_count", 1)
+					bleed_stack = c.get("stack_count")
+					if bleed_stack == null:
+						bleed_stack = 1
 					break
 
 			if bleed_stack > 0:
