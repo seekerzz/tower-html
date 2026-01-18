@@ -2,7 +2,7 @@ extends StatusEffect
 
 var stack_count: int = 1
 
-func setup(target: Node, source: Node, params: Dictionary):
+func setup(target: Node, source: Object, params: Dictionary):
 	super.setup(target, source, params)
 	type_key = "bleed"
 	# If initial setup passes stack_count, use it, otherwise default 1

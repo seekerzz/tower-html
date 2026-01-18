@@ -4,11 +4,11 @@ class_name StatusEffect
 # Properties
 var duration: float = 0.0
 var stacks: int = 1
-var source_unit: Node = null
+var source_unit: Object = null
 var type_key: String = ""
 
 # Virtual Methods
-func setup(target: Node, source: Node, params: Dictionary):
+func setup(target: Node, source: Object, params: Dictionary):
 	# Initialize effect
 	source_unit = source
 	if params.has("duration"):
