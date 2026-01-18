@@ -355,6 +355,9 @@ func _handle_hit(target_node):
 		if type == "roar": kb_force *= 2.0
 		if type == "snowball": kb_force *= 1.5
 
+		if is_critical and GameManager.current_mechanic and GameManager.current_mechanic.has_method("on_projectile_crit"):
+			GameManager.current_mechanic.on_projectile_crit(self, target_node)
+
 		if target_node.has_method("take_damage"):
 			target_node.take_damage(damage, source_unit, final_damage_type, self, kb_force)
 
@@ -594,3 +597,14 @@ func perform_physical_bounce(hit_node):
 	life = 1.0
 
 	return true
+
+func trigger_eagle_echo(target_node, multiplier: float):
+	if !is_instance_valid(target_node): return
+
+	var echo_damage = damage * multiplier
+	var kb_force = damage * speed * 0.005
+
+	if target_node.has_method("take_damage"):
+		target_node.take_damage(echo_damage, source_unit, "eagle_crit", self, kb_force)
+
+	apply_payload(target_node)
