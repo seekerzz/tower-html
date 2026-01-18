@@ -518,7 +518,9 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 			var bleed_stacks = 0
 			for c in get_children():
 				if c.get("type_key") == "bleed":
-					bleed_stacks += c.get("stack_count", 0)
+					var stacks = c.get("stack_count")
+					if stacks != null:
+						bleed_stacks += stacks
 
 			if bleed_stacks > 0:
 				GameManager.damage_core(-bleed_stacks)
