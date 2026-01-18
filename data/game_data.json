@@ -31,6 +31,12 @@
 		"butterfly_totem": {
 			"name": "蝴蝶图腾",
 			"desc": "生成3颗环绕法球，无限穿透。命中敌人造成20伤害并恢复20法力。"
+		},
+		"eagle_totem": {
+			"name": "鹰之图腾",
+			"desc": "暴击时有30%概率触发一次回响，造成等额伤害并施加攻击特效。",
+			"crit_echo_chance": 0.3,
+			"crit_echo_mult": 1.0
 		}
 	},
 	"ITEM_TYPES": {

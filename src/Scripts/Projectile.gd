@@ -350,6 +350,8 @@ func _handle_hit(target_node):
 		var final_damage_type = damage_type
 		if is_critical:
 			final_damage_type = "crit"
+			if GameManager.current_mechanic and GameManager.current_mechanic.has_method("on_projectile_crit"):
+				GameManager.current_mechanic.on_projectile_crit(self, target_node)
 
 		var kb_force = damage * speed * 0.005
 		if type == "roar": kb_force *= 2.0
@@ -594,3 +596,16 @@ func perform_physical_bounce(hit_node):
 	life = 1.0
 
 	return true
+
+func trigger_eagle_echo(target_node, multiplier: float):
+	if not is_instance_valid(target_node): return
+
+	var echo_damage = damage * multiplier
+	var kb_force = damage * speed * 0.005 # Keep consistent with original
+
+	if target_node.has_method("take_damage"):
+		# Important: damage_type "eagle_crit" prevents infinite recursion
+		target_node.take_damage(echo_damage, source_unit, "eagle_crit", self, kb_force)
+
+	# Apply effects again (poison, burn, etc)
+	apply_payload(target_node)
