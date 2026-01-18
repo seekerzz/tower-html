@@ -104,6 +104,7 @@ func _initialize_mechanic():
 		"holy_sword": mech_script = load("res://src/Scripts/CoreMechanics/MechanicHolySword.gd")
 		"cow_totem": mech_script = load("res://src/Scripts/CoreMechanics/MechanicCowTotem.gd")
 		"bat_totem": mech_script = load("res://src/Scripts/CoreMechanics/MechanicBatTotem.gd")
+		"viper_totem": mech_script = load("res://src/Scripts/CoreMechanics/MechanicViperTotem.gd")
 		_: mech_script = load("res://src/Scripts/CoreMechanics/MechanicGeneral.gd")
 
 	if mech_script:
