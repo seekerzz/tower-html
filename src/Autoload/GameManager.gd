@@ -434,6 +434,9 @@ func add_resource(type: String, amount: float):
 
 	resource_changed.emit()
 
+func add_mana(amount: float):
+	add_resource("mana", amount)
+
 func trigger_impact(direction: Vector2, strength: float):
 	if main_game:
 		# Shake camera via MainGame
