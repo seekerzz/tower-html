@@ -93,6 +93,8 @@ func setup(start_pos, target_node, dmg, proj_speed, proj_type, incoming_stats = 
 		meteor_target = stats["ground_pos"]
 		if type == "fireball":
 			type = "fireball" # Logic in Visuals handles fallback
+		elif type != "pinecone":
+			pass # Keep passed type (e.g. ink)
 		else:
 			type = "dragon_breath"
 
@@ -152,7 +154,7 @@ func _parse_effects_to_payload():
 			"params": {
 				"duration": effects["poison"],
 				"damage": damage, # Using projectile damage
-				"stacks": 1
+				"stacks": effects.get("poison_stacks", 1)
 			}
 		})
 
