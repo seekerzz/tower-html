@@ -4,7 +4,7 @@ var slow_factor: float = 0.5
 var original_val_cache: float = 0.0
 var applied: bool = false
 
-func setup(target: Node, source: Node, params: Dictionary):
+func setup(target: Node, source: Object, params: Dictionary):
 	super.setup(target, source, params)
 	type_key = "slow"
 	slow_factor = params.get("slow_factor", 0.5)
