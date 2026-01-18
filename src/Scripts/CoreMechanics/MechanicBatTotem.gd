@@ -12,6 +12,9 @@ class BatTotemSource:
 	func calculate_damage_against(_target):
 		return damage
 
+	func is_in_group(_group):
+		return false
+
 var timer: Timer
 
 func _ready():
