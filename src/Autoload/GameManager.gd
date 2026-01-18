@@ -106,6 +106,7 @@ func _initialize_mechanic():
 		"bat_totem": mech_script = load("res://src/Scripts/CoreMechanics/MechanicBatTotem.gd")
 		"viper_totem": mech_script = load("res://src/Scripts/CoreMechanics/MechanicViperTotem.gd")
 		"butterfly_totem": mech_script = load("res://src/Scripts/CoreMechanics/MechanicButterflyTotem.gd")
+		"eagle_totem": mech_script = load("res://src/Scripts/CoreMechanics/MechanicEagleTotem.gd")
 		_: mech_script = load("res://src/Scripts/CoreMechanics/MechanicGeneral.gd")
 
 	if mech_script:
@@ -456,6 +457,7 @@ func spawn_floating_text(pos: Vector2, value: String, type_or_color: Variant, di
 			"lightning": color = Color.PURPLE
 			"magic": color = Color.BLUE
 			"crit": color = Color(1, 0.8, 0.2)
+			"eagle_crit": color = Color(0.8, 0.5, 0.0)
 			_: color = Color.WHITE
 
 	ftext_spawn_requested.emit(pos, value, color, direction)
