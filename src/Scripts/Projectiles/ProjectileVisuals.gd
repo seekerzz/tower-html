@@ -33,6 +33,8 @@ func update_visuals(type: String, stats: Dictionary):
 		# Original code: if type == "fireball": type = "dragon_breath" (logic in setup)
 		# So we treat fireball as dragon_breath visually if requested
 		_setup_dragon_breath()
+	elif type == "magic_missile":
+		_setup_simple_visual(Color("9370DB"), "star")
 	else:
 		# Default fallback
 		_setup_simple_visual(Color.WHITE, "circle")
