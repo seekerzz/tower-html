@@ -352,6 +352,9 @@ func _handle_hit(target_node):
 			final_damage_type = "crit"
 			if GameManager.current_mechanic and GameManager.current_mechanic.has_method("on_projectile_crit"):
 				GameManager.current_mechanic.on_projectile_crit(self, target_node)
+			# Emit global crit signal for units like Storm Eagle
+			if GameManager.has_signal("projectile_crit"):
+				GameManager.projectile_crit.emit(source_unit, target_node, damage)
 
 		var kb_force = damage * speed * 0.005
 		if type == "roar": kb_force *= 2.0
