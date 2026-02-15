@@ -13,6 +13,7 @@ signal world_impact(direction: Vector2, strength: float)
 signal ftext_spawn_requested(pos, value, color, direction)
 signal show_tooltip(data, stats, buffs, pos)
 signal hide_tooltip()
+signal projectile_crit(source_unit, target, damage)
 
 var core_type: String = "cornucopia":
 	set(value):

@@ -140,6 +140,22 @@
 
 ---
 
+## 测试结果
+
+**测试日期**: 2026-02-15
+
+**测试脚本**: `/home/zhangzhan/tower-html/src/Scripts/Tests/TestCowTotemUnits.gd`
+
+**测试结果**:
+- yak_guardian: PASS
+- mushroom_healer: PASS
+- rock_armor_cow: PASS
+- cow_golem: PASS
+
+所有4个单位的配置和行为脚本均已通过测试验证。
+
+---
+
 ## 注意事项
 
 1. **guardian_shield buff**: 这是一个特殊的buff，其效果在 `Unit.take_damage()` 中处理，而不是在 `apply_buff()` 中

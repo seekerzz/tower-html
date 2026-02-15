@@ -11,6 +11,9 @@ var trap_timer: float = 0.0
 var is_triggered: bool = false
 var flash_timer: float = 0.0
 
+# Signal for trap trigger - used by LureSnake
+signal trap_triggered(enemy: Node2D, trap_position: Vector2)
+
 func init(grid_pos: Vector2i, type_key: String):
 	type = type_key
 	if Constants.BARRICADE_TYPES.has(type_key):
@@ -111,6 +114,10 @@ func spawn_splash_effect(pos: Vector2):
 	effect.play()
 
 func _on_body_entered(body):
+	# Emit signal for any enemy entering trap - used by LureSnake
+	if body.is_in_group("enemies"):
+		emit_signal("trap_triggered", body, global_position)
+
 	if props.get("type") == "reflect":
 		if body.has_method("handle_environmental_impact"):
 			body.handle_environmental_impact(self)
