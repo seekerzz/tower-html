@@ -143,6 +143,13 @@ func _ensure_visual_hierarchy():
 		highlight.position = -(target_size / 2)
 
 func take_damage(amount: float, source_enemy = null):
+	# 检查是否有guardian_shield buff，应用减伤
+	if "guardian_shield" in active_buffs:
+		var source = buff_sources.get("guardian_shield")
+		if source and is_instance_valid(source) and source.behavior:
+			var reduction = source.behavior.get_damage_reduction() if source.behavior.has_method("get_damage_reduction") else 0.05
+			amount = amount * (1.0 - reduction)
+
 	amount = behavior.on_damage_taken(amount, source_enemy)
 	GameManager.damage_core(amount)
 
@@ -228,6 +235,9 @@ func apply_buff(buff_type: String, source_unit: Node2D = null):
 			bounce_count += 1
 		"split":
 			split_count += 1
+		"guardian_shield":
+			# 牦牛守护的减伤buff，效果在take_damage中处理
+			pass
 
 func set_highlight(active: bool, color: Color = Color.WHITE):
 	_is_skill_highlight_active = active

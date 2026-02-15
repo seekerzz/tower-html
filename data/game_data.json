@@ -1054,6 +1054,56 @@
 			},
 			"type_key": "iron_turtle"
 		},
+		"mushroom_healer": {
+			"name": "菌菇治愈者",
+			"icon": "🍄",
+			"size": [
+				1,
+				1
+			],
+			"range": 0,
+			"atkSpeed": 1.0,
+			"manaCost": 0,
+			"attackType": "none",
+			"skill": "burst_heal",
+			"skillCd": 15,
+			"crit_rate": 0.0,
+			"crit_dmg": 1.5,
+			"levels": {
+				"1": {
+					"damage": 0,
+					"hp": 250,
+					"cost": 50,
+					"desc": "过量转化:核心治疗溢出80%转为延迟回血",
+					"mechanics": {
+						"conversion_rate": 0.8,
+						"delay_seconds": 3.0
+					}
+				},
+				"2": {
+					"damage": 0,
+					"hp": 375,
+					"cost": 100,
+					"desc": "过量转化:核心治疗溢出100%转为延迟回血",
+					"mechanics": {
+						"conversion_rate": 1.0,
+						"delay_seconds": 3.0
+					}
+				},
+				"3": {
+					"damage": 0,
+					"hp": 562,
+					"cost": 200,
+					"desc": "过量转化:核心治疗溢出100%转为延迟回血，转化量+50%",
+					"mechanics": {
+						"conversion_rate": 1.0,
+						"delay_seconds": 3.0,
+						"enhancement": 1.5
+					}
+				}
+			},
+			"type_key": "mushroom_healer"
+		},
 		"cow": {
 			"name": "奶牛",
 			"icon": "🐄",
@@ -1673,6 +1723,148 @@
 				}
 			},
 			"type_key": "fairy_dragon"
+		},
+		"rock_armor_cow": {
+			"name": "岩甲牛",
+			"icon": "🪨",
+			"size": [
+				1,
+				1
+			],
+			"range": 80,
+			"atkSpeed": 1.0,
+			"manaCost": 0,
+			"attackType": "melee",
+			"damageType": "physical",
+			"crit_rate": 0.0,
+			"crit_dmg": 1.5,
+			"levels": {
+				"1": {
+					"damage": 40,
+					"hp": 500,
+					"cost": 55,
+					"desc": "岩盾再生: 脱战5秒后生成最大生命值10%的护盾",
+					"mechanics": {
+						"out_of_combat_time": 5.0,
+						"shield_percent": 0.1
+					}
+				},
+				"2": {
+					"damage": 60,
+					"hp": 750,
+					"cost": 110,
+					"desc": "岩盾再生: 脱战4秒后生成最大生命值15%的护盾",
+					"mechanics": {
+						"out_of_combat_time": 4.0,
+						"shield_percent": 0.15
+					}
+				},
+				"3": {
+					"damage": 90,
+					"hp": 1125,
+					"cost": 220,
+					"desc": "岩盾再生: 脱战3秒后生成最大生命值20%的护盾",
+					"mechanics": {
+						"out_of_combat_time": 3.0,
+						"shield_percent": 0.2
+					}
+				}
+			},
+			"type_key": "rock_armor_cow"
+		},
+		"cow_golem": {
+			"name": "牛魔像",
+			"icon": "🗿",
+			"size": [
+				1,
+				1
+			],
+			"range": 0,
+			"atkSpeed": 0,
+			"manaCost": 0,
+			"attackType": "none",
+			"crit_rate": 0.0,
+			"crit_dmg": 1.5,
+			"levels": {
+				"1": {
+					"damage": 0,
+					"hp": 800,
+					"cost": 80,
+					"desc": "震荡反击: 每受到15次攻击触发全屏震荡，晕眩1秒",
+					"mechanics": {
+						"hits_threshold": 15,
+						"stun_duration": 1.0
+					}
+				},
+				"2": {
+					"damage": 0,
+					"hp": 1200,
+					"cost": 160,
+					"desc": "震荡反击: 每受到12次攻击触发全屏震荡，晕眩1秒",
+					"mechanics": {
+						"hits_threshold": 12,
+						"stun_duration": 1.0
+					}
+				},
+				"3": {
+					"damage": 0,
+					"hp": 1800,
+					"cost": 320,
+					"desc": "震荡反击: 每受到10次攻击触发全屏震荡，晕眩1.5秒",
+					"mechanics": {
+						"hits_threshold": 10,
+						"stun_duration": 1.5
+					}
+				}
+			},
+			"type_key": "cow_golem"
+		},
+		"yak_guardian": {
+			"name": "牦牛守护",
+			"icon": "🦬",
+			"size": [
+				1,
+				1
+			],
+			"range": 0,
+			"atkSpeed": 0,
+			"manaCost": 0,
+			"attackType": "none",
+			"crit_rate": 0.0,
+			"crit_dmg": 1.5,
+			"levels": {
+				"1": {
+					"damage": 0,
+					"hp": 500,
+					"cost": 60,
+					"desc": "守护领域: 周围1格友方受到伤害减少5%",
+					"mechanics": {
+						"guardian_range": 1,
+						"damage_reduction": 0.05
+					}
+				},
+				"2": {
+					"damage": 0,
+					"hp": 750,
+					"cost": 120,
+					"desc": "守护领域: 周围1格友方受到伤害减少10%",
+					"mechanics": {
+						"guardian_range": 1,
+						"damage_reduction": 0.10
+					}
+				},
+				"3": {
+					"damage": 0,
+					"hp": 1125,
+					"cost": 240,
+					"desc": "守护领域: 周围1格友方受到伤害减少15%",
+					"mechanics": {
+						"guardian_range": 1,
+						"damage_reduction": 0.15
+					}
+				}
+			},
+			"type_key": "yak_guardian"
 		}
 	},
 	"TRAITS": [
