@@ -98,6 +98,40 @@
 
 ---
 
+## 测试报告
+
+| 流派 | 单位数 | 测试状态 | 报告位置 |
+|------|--------|----------|----------|
+| 牛图腾 | 4 | ✅ 全部通过 | `tasks/cow_totem_units/test_result.md` |
+| 蝙蝠图腾 | 4 | ✅ 全部通过 | `tasks/bat_totem_units/test_result.md` |
+| 眼镜蛇图腾 | 2 | ✅ 全部通过 | `tasks/cobra_totem_units/test_result.md` |
+| 鹰图腾 | 4 | ✅ 全部通过 | `tasks/eagle_totem_units/test_result.md` |
+| **总计** | **14** | **✅ 14/14 PASS** | - |
+
+### 详细测试结果
+
+**牛图腾 (2026-02-15)**
+- yak_guardian: PASS
+- mushroom_healer: PASS
+- rock_armor_cow: PASS
+- cow_golem: PASS
+
+**蝙蝠图腾 (2026-02-16)**
+- vampire_bat: PASS
+- plague_spreader: PASS
+- blood_mage: PASS
+- blood_ancestor: PASS
+
+**眼镜蛇图腾 (2026-02-16)**
+- lure_snake: PASS
+- medusa: PASS
+
+**鹰图腾 (2026-02-16)**
+- storm_eagle: PASS
+- gale_eagle: PASS
+- harpy_eagle: PASS
+- vulture: PASS
+
 ## 完成报告位置
 
 - 牛图腾: `tasks/cow_totem_units/readme.md`
