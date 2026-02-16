@@ -117,7 +117,7 @@ func _trigger_petrify_end_effect(data: Dictionary):
 func _deal_aoe_damage(center_pos: Vector2, damage: float):
 	var range_sq = (Constants.TILE_SIZE * 2.0) ** 2  # 2格范围
 
-	var enemies = get_tree().get_nodes_in_group("enemies")
+	var enemies = unit.get_tree().get_nodes_in_group("enemies")
 	for enemy in enemies:
 		if enemy.global_position.distance_squared_to(center_pos) <= range_sq:
 			enemy.take_damage(damage, unit, "magic", unit)
@@ -129,7 +129,7 @@ func _spawn_petrify_effect(pos: Vector2):
 	# 创建石化视觉效果
 	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
 	if effect:
-		get_tree().current_scene.add_child(effect)
+		unit.get_tree().current_scene.add_child(effect)
 		effect.global_position = pos
 		effect.configure("cross", Color.GRAY)
 		effect.scale = Vector2(1.5, 1.5)
@@ -139,7 +139,7 @@ func _spawn_aoe_effect(pos: Vector2):
 	# 创建范围爆炸效果
 	var effect = load("res://src/Scripts/Effects/SlashEffect.gd").new()
 	if effect:
-		get_tree().current_scene.add_child(effect)
+		unit.get_tree().current_scene.add_child(effect)
 		effect.global_position = pos
 		effect.configure("circle", Color.DARK_GRAY)
 		effect.scale = Vector2(3, 3)

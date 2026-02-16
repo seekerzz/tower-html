@@ -33,7 +33,12 @@ func on_stats_updated():
 
 func _connect_to_enemy_deaths():
 	# 连接到场上的敌人死亡信号
-	var enemies = unit.get_tree().get_nodes_in_group("enemies")
+	if not unit.is_inside_tree():
+		return
+	var tree = unit.get_tree()
+	if not tree:
+		return
+	var enemies = tree.get_nodes_in_group("enemies")
 	for enemy in enemies:
 		if enemy.has_signal("died"):
 			if not enemy.died.is_connected(_on_enemy_died):

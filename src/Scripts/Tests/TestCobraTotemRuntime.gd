@@ -56,9 +56,9 @@ func run_tests():
 func test_lure_snake():
 	var unit_key = "lure_snake"
 
-	# 1. 放置测试
+	# 1. 放置测试 - 使用解锁的位置 (-1, 0)
 	print("\n[放置测试] 放置 lure_snake...")
-	var lure_snake = await place_test_unit(unit_key, -2, 0)
+	var lure_snake = await place_test_unit(unit_key, -1, 0)
 	if lure_snake:
 		test_results[unit_key]["placement"] = true
 		print("[PASS] lure_snake 放置成功")
@@ -104,9 +104,9 @@ func test_lure_snake():
 func test_medusa():
 	var unit_key = "medusa"
 
-	# 1. 放置测试
+	# 1. 放置测试 - 使用解锁的位置 (1, 0)
 	print("\n[放置测试] 放置 medusa...")
-	var medusa = await place_test_unit(unit_key, 2, 0)
+	var medusa = await place_test_unit(unit_key, 1, 0)
 	if medusa:
 		test_results[unit_key]["placement"] = true
 		print("[PASS] medusa 放置成功")
