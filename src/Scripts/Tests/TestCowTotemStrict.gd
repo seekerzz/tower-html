@@ -214,9 +214,10 @@ func _test_mushroom_healer_strict():
 
 		# 5. 调用_process_core_heal进行测试
 		if healer.behavior and healer.behavior.has_method("_process_core_heal"):
+			# 清空队列以确保测试准确
+			healer.behavior.delayed_heal_queue.clear()
 			# 模拟治疗溢出 - 直接调用方法
 			healer.behavior._process_core_heal(overflow_heal)
-			await get_tree().create_timer(0.2).timeout
 
 			# 6. 检查存储的延迟治疗量
 			if healer.behavior.has_method("get_stored_heal_amount"):
