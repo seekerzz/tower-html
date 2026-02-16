@@ -27,7 +27,7 @@ func on_skill_executed_at(grid_pos: Vector2i):
 func _create_blood_pool(center_pos: Vector2, size: int, efficiency: float):
 	# 创建血池视觉效果和逻辑
 	var pool_duration = 8.0  # 血池持续8秒
-	var tile_size = Constants.TILE_SIZE if "Constants" in get_tree().root else 60.0
+	var tile_size = Constants.TILE_SIZE
 
 	# 计算血池覆盖范围
 	var pool_radius = (size * tile_size) / 2.0
