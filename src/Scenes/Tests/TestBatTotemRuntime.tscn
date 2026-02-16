@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://battotemtest123"]
+[gd_scene load_steps=6 format=3 uid="uid://vn82hes4dypm"]
 
 [ext_resource type="Script" path="res://src/Scripts/Tests/TestBatTotemRuntime.gd" id="1_test"]
 [ext_resource type="PackedScene" uid="uid://grid123456" path="res://src/Scenes/Game/GridManager.tscn" id="2_grid"]

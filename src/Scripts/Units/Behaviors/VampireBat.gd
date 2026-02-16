@@ -4,8 +4,8 @@ extends DefaultBehavior
 # 生命值越低，吸血比例越高
 
 func on_projectile_hit(target: Node2D, damage: float, projectile: Node2D):
-	# 获取单位当前生命值比例
-	var hp_percent = unit.hp / unit.max_hp if unit.max_hp > 0 else 1.0
+	# 获取核心当前生命值比例
+	var hp_percent = GameManager.core_health / GameManager.max_core_health if GameManager.max_core_health > 0 else 1.0
 
 	# 从mechanics获取等级相关的吸血加成
 	var mechanics = unit.unit_data.get("levels", {}).get(str(unit.level), {}).get("mechanics", {})

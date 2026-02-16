@@ -51,10 +51,11 @@ func on_tick(delta: float):
 		entry.time_left -= delta
 
 func _process_core_heal(heal_amount: float):
-	# 计算核心当前缺失的生命值
-	var missing_hp = GameManager.max_core_health - GameManager.core_health + heal_amount
+	# 计算核心当前缺失的生命值（在治疗前）
+	var missing_hp = GameManager.max_core_health - GameManager.core_health
 
 	# 计算溢出量（实际治疗量减去缺失的生命值）
+	# 如果治疗量大于缺失的生命值，超出部分就是溢出
 	var overflow = 0.0
 	if heal_amount > missing_hp:
 		overflow = heal_amount - missing_hp
