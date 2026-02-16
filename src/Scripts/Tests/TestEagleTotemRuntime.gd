@@ -29,9 +29,16 @@ func _ready():
 	await get_tree().create_timer(1.0).timeout
 
 	# 依次测试每个单位
+	# 注意: 由于某些单位使用await可能导致崩溃，我们逐个测试并增加延迟
 	await _test_unit("storm_eagle", "storm_eagle", Vector2i(0, -1))
+	await get_tree().create_timer(1.0).timeout
+
 	await _test_unit("gale_eagle", "gale_eagle", Vector2i(-1, 0))
+	await get_tree().create_timer(1.0).timeout
+
 	await _test_unit("harpy_eagle", "harpy_eagle", Vector2i(1, 0))
+	await get_tree().create_timer(1.0).timeout
+
 	await _test_unit("vulture", "vulture", Vector2i(0, 1))
 
 	_finish_all_tests()
@@ -113,8 +120,8 @@ func _test_unit(test_name: String, unit_type: String, grid_pos: Vector2i):
 
 		print("  测试敌人已生成: slime at %s" % str(enemy_pos))
 
-		# 等待敌人被攻击
-		await get_tree().create_timer(2.5).timeout
+		# 等待敌人被攻击 - 减少等待时间以避免与单位的async操作冲突
+		await get_tree().create_timer(1.5).timeout
 
 		# 检查敌人状态
 		if is_instance_valid(enemy):
@@ -191,6 +198,9 @@ func _record_result(unit_name: String, passed: bool, placement: bool, attack: bo
 		for error in _test_errors:
 			print("    - %s" % error)
 
+	# 立即保存结果，防止崩溃丢失数据
+	_save_partial_results()
+
 func _finish_all_tests():
 	print("\n============================================================")
 	print("测试结果汇总")
@@ -209,6 +219,35 @@ func _finish_all_tests():
 
 	await get_tree().create_timer(0.5).timeout
 	get_tree().quit()
+
+func _save_partial_results():
+	"""保存部分测试结果，用于防止崩溃时丢失数据"""
+	var result_text = "# 鹰图腾系列运行时测试报告 (部分结果)\n\n"
+	result_text += "## 测试时间\n%s\n\n" % test_date
+	result_text += "## 当前进度\n通过: %d, 失败: %d\n\n" % [tests_passed, tests_failed]
+
+	result_text += "## 已完成测试\n\n"
+	for unit_name in ["storm_eagle", "gale_eagle", "harpy_eagle", "vulture"]:
+		if test_results.has(unit_name):
+			var result = test_results[unit_name]
+			result_text += "### %s\n" % unit_name
+			result_text += "- 放置测试: %s\n" % ("PASS" if result.placement else "FAIL")
+			result_text += "- 攻击测试: %s\n" % ("PASS" if result.attack else "FAIL")
+			result_text += "- 受击测试: %s\n" % ("PASS" if result.damage_taken else "FAIL")
+			if not result.errors.is_empty():
+				result_text += "- 错误信息:\n"
+				for error in result.errors:
+					result_text += "  - %s\n" % error
+			result_text += "\n"
+
+	var dir = DirAccess.open("res://")
+	if not dir.dir_exists("tasks/eagle_totem_units"):
+		dir.make_dir_recursive("tasks/eagle_totem_units")
+
+	var file = FileAccess.open("res://tasks/eagle_totem_units/runtime_test_result.md", FileAccess.WRITE)
+	if file:
+		file.store_string(result_text)
+		file.close()
 
 func _save_test_results():
 	var result_text = "# 鹰图腾系列运行时测试报告\n\n"
