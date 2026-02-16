@@ -256,6 +256,38 @@ func get_stat_modifier(stat_type: String, context: Dictionary) -> float
 5. **效果系统**: 状态效果需要继承StatusEffect并实现apply方法
 
 ### 12.2 调试建议
-1. 使用TestBenchScene进行单位测试
-2. 查看Test*.gd文件了解测试模式
+1. 使用仿照MainGame的测试场景进行运行时测试
+2. 测试必须验证: 放置、攻击敌人、被敌人攻击三个环节
 3. CombatManager处理伤害计算和效果应用
+4. 运行Godot进行完整测试，检查运行时报错
+
+## 13. 测试规范
+
+### 13.1 测试要求
+每个单位必须通过以下运行时测试：
+
+| 测试项 | 说明 | 验证方式 |
+|--------|------|----------|
+| 放置测试 | 单位能正确放置在棋盘上 | 无报错，单位显示正常 |
+| 攻击测试 | 单位能正确攻击敌人 | 敌人受到伤害，技能效果触发 |
+| 受击测试 | 单位被攻击时逻辑正确 | 单位受到伤害/减伤/反击等机制正常 |
+
+### 13.2 测试步骤
+1. 创建测试场景（仿照MainGame.tscn结构）
+2. 实例化被测单位并放置
+3. 生成测试敌人
+4. 运行Godot进行实际测试
+5. 检查控制台输出是否有报错
+6. 验证单位行为是否符合设计
+
+### 13.3 测试场景结构
+```
+TestScene (Node2D)
+├── GridManager (GridManager.tscn)
+├── CombatManager (CombatManager.tscn)
+├── DrawManager (DrawManager.tscn)
+└── TestController (Script)
+    ├── 生成测试单位
+    ├── 生成测试敌人
+    └── 验证测试结果
+```
