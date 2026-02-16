@@ -4,3 +4,10 @@
 *.uid
 *.import
 *.png
+
+# Project documentation and tracking
+docs/
+tasks/
+progress.md
+summary.md
+CLAUDE.md
