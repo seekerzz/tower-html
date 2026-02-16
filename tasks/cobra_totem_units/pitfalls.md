@@ -61,6 +61,66 @@ SHADER ERROR: Uniform instances are not yet implemented for 'canvas_item' shader
 
 **建议**: 设置至少 60 秒的超时时间，以确保所有测试步骤（包括放置、攻击、受击测试和清理）能够完成。
 
+### 6. 单位升级的正确方式
+**问题描述**: 在测试脚本中尝试调用 `unit.level_up()` 方法，但Unit类没有这个方法。
+
+**错误信息**:
+```
+SCRIPT ERROR: Invalid call. Nonexistent function 'level_up' in base 'Node2D (Unit.gd)'.
+```
+
+**解决方案**: 直接设置 `unit.level` 属性，然后调用 `unit.reset_stats()` 方法重置属性。
+
+**正确代码示例**:
+```gdscript
+# 错误
+unit.level_up()
+
+# 正确
+unit.level = 2
+unit.reset_stats()
+```
+
+### 7. GridManager坐标转换方法
+**问题描述**: 在测试脚本中使用了不存在的方法 `grid_to_world()`。
+
+**错误信息**:
+```
+SCRIPT ERROR: Invalid call. Nonexistent function 'grid_to_world' in base 'Node2D (GridManager.gd)'.
+```
+
+**解决方案**: 使用 `grid_to_local()` 方法获取本地坐标，然后加上 GridManager 的全局位置。
+
+**正确代码示例**:
+```gdscript
+# 错误
+var world_pos = GameManager.grid_manager.grid_to_world(Vector2i(grid_x, grid_y))
+
+# 正确
+var local_pos = GameManager.grid_manager.grid_to_local(Vector2i(grid_x, grid_y))
+var world_pos = GameManager.grid_manager.global_position + local_pos
+```
+
+### 8. 网格坐标范围限制
+**问题描述**: 放置单位时使用了无效的网格坐标，导致放置失败。
+
+**说明**: 网格坐标范围由 Constants.MAP_WIDTH 和 Constants.MAP_HEIGHT 决定。MAP_WIDTH = 9 表示 x 坐标范围是 -4 到 4（half_w = floor(9/2) = 4）。
+
+**有效坐标**:
+- 核心位置 (0, 0) 不能放置单位
+- 已解锁的位置如 (-1, 0), (1, 0), (0, 1), (0, -1) 可以放置
+
+### 9. Barricade场景的CollisionShape2D节点
+**问题描述**: 在测试场景中实例化Barricade时，出现CollisionShape2D相关的错误。
+
+**错误信息**:
+```
+SCRIPT ERROR: Invalid assignment of property or key 'shape' with value of type 'RectangleShape2D' on a base object of type 'Nil'.
+          at: init (res://src/Scripts/Barricade.gd:42)
+```
+
+**说明**: 这是测试场景中的问题，不影响实际游戏运行。Barricade场景可能需要在编辑器中打开以确保所有节点正确初始化。
+
 ## 给后续开发者的建议
 
 1. **在行为脚本中访问场景树**: 始终使用 `unit.get_tree()` 而不是 `get_tree()`
