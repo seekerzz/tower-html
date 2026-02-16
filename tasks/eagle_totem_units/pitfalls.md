@@ -60,7 +60,71 @@ func _connect_to_enemy_deaths():
 
 6. **测试超时设置**: 为Godot测试设置合理的超时时间(建议180-250秒)，防止无限等待。
 
+## 本次严格测试新增发现 (2026-02-16)
+
+### 6. GaleEagle段错误问题
+**问题**: 在严格测试过程中，GaleEagle在放置后导致Godot崩溃（段错误）
+**代码位置**: `/home/zhangzhan/tower-html/src/Scripts/Units/Behaviors/GaleEagle.gd:53`
+**详细现象**:
+```
+timeout: the monitored command dumped core
+Exit code: 139
+/bin/bash: line 1: 2388681 Segmentation fault
+```
+**根因分析**:
+- `await unit.get_tree().create_timer(pull_time).timeout` 在headless模式下可能不稳定
+- 测试脚本与被测单位的await可能产生冲突
+- 缺少对unit有效性的二次检查
+
+**建议修复**:
+```gdscript
+func _do_wind_blade_attack(target):
+    # ... 前置代码 ...
+    var pull_time = anim_duration * 0.6
+
+    # 添加安全检查
+    if not is_instance_valid(unit) or not unit.get_tree():
+        return
+
+    await unit.get_tree().create_timer(pull_time).timeout
+
+    # await后再次检查
+    if not is_instance_valid(unit):
+        return
+
+    _fire_wind_blades(target_last_pos)
+```
+
+### 7. StormEagle信号连接问题
+**问题**: StormEagle依赖`GameManager.projectile_crit`信号，如果信号不存在会静默失败
+**代码位置**: `/home/zhangzhan/tower-html/src/Scripts/Units/Behaviors/StormEagle.gd:16-17`
+**建议**: 虽然代码有`has_signal`检查，但建议添加日志以便调试
+
+### 8. HarpyEagle连击中断问题
+**问题**: 如果敌人在三连击过程中死亡，连击可能异常终止
+**代码位置**: `/home/zhangzhan/tower-html/src/Scripts/Units/Behaviors/HarpyEagle.gd:208-212`
+**现状**: 代码已有`is_instance_valid(_combo_target)`检查，但建议添加更明确的清理逻辑
+
+### 9. Vulture Buff重置问题
+**问题**: 如果Vulture在Buff持续期间升级，原始伤害记录可能不准确
+**代码位置**: `/home/zhangzhan/tower-html/src/Scripts/Units/Behaviors/Vulture.gd:82-85`
+**建议**: 在`on_stats_updated`中重新计算原始伤害基准值
+
+## 严格测试总结
+
+### 测试通过率
+- StormEagle: PASS (3/3)
+- GaleEagle: CONDITIONAL PASS (稳定性问题)
+- HarpyEagle: PASS (3/3)
+- Vulture: PASS (3/3)
+
+### 关键建议
+1. **GaleEagle需要稳定性修复**后再进行生产环境部署
+2. 所有单位在await后都应该进行二次有效性检查
+3. 建议增加更详细的日志输出以便问题排查
+
 ## 测试文件位置
 - 测试场景: `/home/zhangzhan/tower-html/src/Scenes/Tests/TestEagleTotemRuntime.tscn`
 - 测试脚本: `/home/zhangzhan/tower-html/src/Scripts/Tests/TestEagleTotemRuntime.gd`
-- 测试结果: `/home/zhangzhan/tower-html/tasks/eagle_totem_units/runtime_test_result.md`
+- 运行时测试结果: `/home/zhangzhan/tower-html/tasks/eagle_totem_units/runtime_test_result.md`
+- 严格测试结果: `/home/zhangzhan/tower-html/tasks/eagle_totem_units/strict_test_result.md`
