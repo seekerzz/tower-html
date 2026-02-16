@@ -1,28 +1,40 @@
 # 塔防游戏单位实现进度
 
-## 已完成单位 ✓
+> ⚠️ **重要通知**: 测试规范已重置！所有单位需要重新按照新测试规则进行运行时测试。
 
-### 牛图腾系列 ✓ 已完成
-- [x] yak_guardian (牦牛守护) - 守护领域
-- [x] mushroom_healer (菌菇治愈者) - 过量转化
-- [x] rock_armor_cow (岩甲牛) - 岩盾再生
-- [x] cow_golem (牛魔像) - 震荡反击
+## 新测试要求
+每个单位必须通过以下测试才能标记为完成：
+1. **放置测试**: 将单位放置在棋盘上，验证无报错
+2. **攻击测试**: 验证单位攻击敌人时的代码逻辑正确
+3. **受击测试**: 验证单位被敌人攻击时的代码逻辑正确
 
-### 蝙蝠图腾系列 ✓ 已完成
-- [x] vampire_bat (吸血蝠) - 鲜血狂噬
-- [x] plague_spreader (瘟疫使者) - 毒血传播
-- [x] blood_mage (血法师) - 血池降临
-- [x] blood_ancestor (血祖) - 鲜血领域
+测试方法：仿照MainGame.tscn创建测试场景，运行Godot进行实际游戏测试。
 
-### 眼镜蛇图腾系列 ✓ 已完成
-- [x] lure_snake (诱捕蛇) - 陷阱诱导
-- [x] medusa (美杜莎) - 石化凝视
+## 单位实现状态
 
-### 鹰图腾系列 ✓ 已完成
-- [x] storm_eagle (风暴鹰) - 雷暴召唤
-- [x] gale_eagle (疾风鹰) - 风刃连击
-- [x] harpy_eagle (角雕) - 三连爪击
-- [x] vulture (秃鹫) - 腐食增益
+> 以下单位代码已实现，但需要按新规则重新测试：
+
+### 牛图腾系列 (代码已实现，待测试)
+- [ ] yak_guardian (牦牛守护) - 守护领域
+- [ ] mushroom_healer (菌菇治愈者) - 过量转化
+- [ ] rock_armor_cow (岩甲牛) - 岩盾再生
+- [ ] cow_golem (牛魔像) - 震荡反击
+
+### 蝙蝠图腾系列 (代码已实现，待测试)
+- [ ] vampire_bat (吸血蝠) - 鲜血狂噬
+- [ ] plague_spreader (瘟疫使者) - 毒血传播
+- [ ] blood_mage (血法师) - 血池降临
+- [ ] blood_ancestor (血祖) - 鲜血领域
+
+### 眼镜蛇图腾系列 (代码已实现，待测试)
+- [ ] lure_snake (诱捕蛇) - 陷阱诱导
+- [ ] medusa (美杜莎) - 石化凝视
+
+### 鹰图腾系列 (代码已实现，待测试)
+- [ ] storm_eagle (风暴鹰) - 雷暴召唤
+- [ ] gale_eagle (疾风鹰) - 风刃连击
+- [ ] harpy_eagle (角雕) - 三连爪击
+- [ ] vulture (秃鹫) - 腐食增益
 
 ### 其他已有单位
 - [x] fairy_dragon (精灵龙)
@@ -33,34 +45,38 @@
 
 ## 实现统计
 
-| 流派 | 单位数 | 状态 |
-|------|--------|------|
-| 牛图腾 | 4 | ✓ 完成 |
-| 蝙蝠图腾 | 4 | ✓ 完成 |
-| 眼镜蛇图腾 | 2 | ✓ 完成 |
-| 鹰图腾 | 4 | ✓ 完成 |
-| **总计** | **14** | **✓ 完成** |
+| 流派 | 单位数 | 代码状态 | 测试状态 |
+|------|--------|----------|----------|
+| 牛图腾 | 4 | ✓ 已实现 | 🔴 待测试 |
+| 蝙蝠图腾 | 4 | ✓ 已实现 | 🔴 待测试 |
+| 眼镜蛇图腾 | 2 | ✓ 已实现 | 🔴 待测试 |
+| 鹰图腾 | 4 | ✓ 已实现 | 🔴 待测试 |
+| **总计** | **14** | **✓ 14/14** | **🔴 0/14** |
+
+> 注：所有14个单位代码已实现，但需要按新测试规则重新验证。
 
 ---
 
 ## SubAgent任务分配
 
+> 待重新分配：需要按照新测试规则重新分配任务
+
 | 单位 | 负责人 | 状态 | 完成时间 |
 |------|--------|------|----------|
-| yak_guardian | SubAgent | completed | 2026-02-15 |
-| mushroom_healer | SubAgent | completed | 2026-02-15 |
-| rock_armor_cow | SubAgent | completed | 2026-02-15 |
-| cow_golem | SubAgent | completed | 2026-02-15 |
-| vampire_bat | SubAgent | completed | 2026-02-15 |
-| plague_spreader | SubAgent | completed | 2026-02-15 |
-| blood_mage | SubAgent | completed | 2026-02-15 |
-| blood_ancestor | SubAgent | completed | 2026-02-15 |
-| lure_snake | SubAgent | completed | 2026-02-15 |
-| medusa | SubAgent | completed | 2026-02-15 |
-| storm_eagle | SubAgent | completed | 2026-02-15 |
-| gale_eagle | SubAgent | completed | 2026-02-15 |
-| harpy_eagle | SubAgent | completed | 2026-02-15 |
-| vulture | SubAgent | completed | 2026-02-15 |
+| yak_guardian | - | pending | - |
+| mushroom_healer | - | pending | - |
+| rock_armor_cow | - | pending | - |
+| cow_golem | - | pending | - |
+| vampire_bat | - | pending | - |
+| plague_spreader | - | pending | - |
+| blood_mage | - | pending | - |
+| blood_ancestor | - | pending | - |
+| lure_snake | - | pending | - |
+| medusa | - | pending | - |
+| storm_eagle | - | pending | - |
+| gale_eagle | - | pending | - |
+| harpy_eagle | - | pending | - |
+| vulture | - | pending | - |
 
 ---
 
@@ -98,39 +114,46 @@
 
 ---
 
-## 测试报告
+## 测试规范 (新规则)
 
-| 流派 | 单位数 | 测试状态 | 报告位置 |
-|------|--------|----------|----------|
-| 牛图腾 | 4 | ✅ 全部通过 | `tasks/cow_totem_units/test_result.md` |
-| 蝙蝠图腾 | 4 | ✅ 全部通过 | `tasks/bat_totem_units/test_result.md` |
-| 眼镜蛇图腾 | 2 | ✅ 全部通过 | `tasks/cobra_totem_units/test_result.md` |
-| 鹰图腾 | 4 | ✅ 全部通过 | `tasks/eagle_totem_units/test_result.md` |
-| **总计** | **14** | **✅ 14/14 PASS** | - |
+> ⚠️ **旧测试已重置**: 之前的静态代码检查测试已废弃，需要重新进行运行时测试。
 
-### 详细测试结果
+### 测试要求
 
-**牛图腾 (2026-02-15)**
-- yak_guardian: PASS
-- mushroom_healer: PASS
-- rock_armor_cow: PASS
-- cow_golem: PASS
+每个单位必须通过以下运行时测试才能标记为完成：
 
-**蝙蝠图腾 (2026-02-16)**
-- vampire_bat: PASS
-- plague_spreader: PASS
-- blood_mage: PASS
-- blood_ancestor: PASS
+1. **放置测试**: 将单位正确放置在棋盘上
+2. **攻击测试**: 验证单位攻击敌人时的代码逻辑正确
+3. **受击测试**: 验证单位被敌人攻击时的代码逻辑正确
 
-**眼镜蛇图腾 (2026-02-16)**
-- lure_snake: PASS
-- medusa: PASS
+### 测试方法
 
-**鹰图腾 (2026-02-16)**
-- storm_eagle: PASS
-- gale_eagle: PASS
-- harpy_eagle: PASS
-- vulture: PASS
+1. 创建仿照 `MainGame.tscn` 的测试场景
+2. 在场景中添加测试单位
+3. 生成测试敌人
+4. 运行 Godot 进行实际游戏测试
+5. 检查控制台输出和运行时报错
+
+### 待测试单位
+
+| 流派 | 单位 | 放置测试 | 攻击测试 | 受击测试 | 状态 |
+|------|------|----------|----------|----------|------|
+| **牛图腾** | yak_guardian | ⬜ | ⬜ | ⬜ | 🔴 未测试 |
+| | mushroom_healer | ⬜ | ⬜ | ⬜ | 🔴 未测试 |
+| | rock_armor_cow | ⬜ | ⬜ | ⬜ | 🔴 未测试 |
+| | cow_golem | ⬜ | ⬜ | ⬜ | 🔴 未测试 |
+| **蝙蝠图腾** | vampire_bat | ⬜ | ⬜ | ⬜ | 🔴 未测试 |
+| | plague_spreader | ⬜ | ⬜ | ⬜ | 🔴 未测试 |
+| | blood_mage | ⬜ | ⬜ | ⬜ | 🔴 未测试 |
+| | blood_ancestor | ⬜ | ⬜ | ⬜ | 🔴 未测试 |
+| **眼镜蛇图腾** | lure_snake | ⬜ | ⬜ | ⬜ | 🔴 未测试 |
+| | medusa | ⬜ | ⬜ | ⬜ | 🔴 未测试 |
+| **鹰图腾** | storm_eagle | ⬜ | ⬜ | ⬜ | 🔴 未测试 |
+| | gale_eagle | ⬜ | ⬜ | ⬜ | 🔴 未测试 |
+| | harpy_eagle | ⬜ | ⬜ | ⬜ | 🔴 未测试 |
+| | vulture | ⬜ | ⬜ | ⬜ | 🔴 未测试 |
+
+**图例**: ⬜ 未测试 / 🟡 进行中 | ✅ 通过 / 🔴 未测试 / 🟢 完成
 
 ## 完成报告位置
 
