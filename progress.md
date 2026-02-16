@@ -59,24 +59,14 @@
 
 ## SubAgent任务分配
 
-> 待重新分配：需要按照新测试规则重新分配任务
+| 流派 | 负责人 | 状态 | 启动时间 | 超时时间 |
+|------|--------|------|----------|----------|
+| 牛图腾 (4单位) | SubAgent-1 | 🟡 测试中 | 2026-02-16 09:45 | 30分钟后 |
+| 蝙蝠图腾 (4单位) | SubAgent-2 | 🟡 测试中 | 2026-02-16 09:45 | 30分钟后 |
+| 眼镜蛇图腾 (2单位) | SubAgent-3 | 🟡 测试中 | 2026-02-16 09:45 | 30分钟后 |
+| 鹰图腾 (4单位) | SubAgent-4 | 🟡 测试中 | 2026-02-16 09:45 | 30分钟后 |
 
-| 单位 | 负责人 | 状态 | 完成时间 |
-|------|--------|------|----------|
-| yak_guardian | - | pending | - |
-| mushroom_healer | - | pending | - |
-| rock_armor_cow | - | pending | - |
-| cow_golem | - | pending | - |
-| vampire_bat | - | pending | - |
-| plague_spreader | - | pending | - |
-| blood_mage | - | pending | - |
-| blood_ancestor | - | pending | - |
-| lure_snake | - | pending | - |
-| medusa | - | pending | - |
-| storm_eagle | - | pending | - |
-| gale_eagle | - | pending | - |
-| harpy_eagle | - | pending | - |
-| vulture | - | pending | - |
+> 下次检查时间: 2026-02-16 10:05 (20分钟后)
 
 ---
 
