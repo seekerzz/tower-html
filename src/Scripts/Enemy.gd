@@ -62,6 +62,7 @@ func _ready():
 	GameManager._set_ignore_mouse_recursive(self)
 
 	_ensure_visual_controller()
+	GameManager.enemy_spawned.emit(self)
 
 func setup(key: String, wave: int):
 	_ensure_visual_controller()
@@ -511,6 +512,9 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 		knockback_velocity += hit_dir * applied_force
 	var display_val = max(1, int(amount))
 	GameManager.spawn_floating_text(global_position, str(display_val), damage_type, hit_dir)
+
+	GameManager.enemy_hit.emit(self, source_unit, amount)
+
 	if source_unit:
 		GameManager.damage_dealt.emit(source_unit, amount)
 

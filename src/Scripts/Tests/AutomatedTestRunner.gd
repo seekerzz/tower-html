@@ -3,11 +3,10 @@ extends Node
 var config: Dictionary = {}
 var elapsed_time: float = 0.0
 var logs: Array = []
-var next_log_time: float = 0.0
-var log_interval: float = 0.5
 var scheduled_actions_executed: Array = []
 var _is_tearing_down: bool = false
 var _wave_has_started: bool = false
+var _frame_events: Array = []
 
 func _ready():
 	config = GameManager.current_test_scenario
@@ -45,12 +44,44 @@ func _setup_test():
 
 	GameManager.game_over.connect(_on_game_over)
 	GameManager.wave_started.connect(_on_wave_started)
+	GameManager.enemy_spawned.connect(_on_enemy_spawned)
+	GameManager.enemy_hit.connect(_on_enemy_hit)
+
 	GameManager.start_wave()
 	# GameManager.wave_ended is only emitted after UI interaction, which we skip in headless.
 	# So we monitor is_wave_active in _process instead.
 
 func _on_wave_started():
 	_wave_has_started = true
+
+func _on_enemy_spawned(enemy):
+	var pos = enemy.global_position
+	if "enemy_data" in enemy:
+		pos = enemy.global_position # Redundant but safe
+
+	_frame_events.append({
+		"type": "spawn",
+		"enemy_id": enemy.get_instance_id(),
+		"enemy_type": enemy.type_key,
+		"pos_x": pos.x,
+		"pos_y": pos.y
+	})
+
+func _on_enemy_hit(enemy, source, amount):
+	var source_id = "unknown"
+	if source:
+		if source is Node:
+			source_id = source.name
+		if "type_key" in source:
+			source_id = source.type_key
+
+	_frame_events.append({
+		"type": "hit",
+		"target_id": enemy.get_instance_id(),
+		"source": source_id,
+		"damage": amount,
+		"target_hp_after": enemy.hp
+	})
 
 func _execute_setup_action(action: Dictionary):
 	match action.type:
@@ -107,10 +138,8 @@ func _process(delta):
 				_execute_scheduled_action(action)
 				scheduled_actions_executed.append(i)
 
-	# Logging
-	if elapsed_time >= next_log_time:
-		_log_status()
-		next_log_time += log_interval
+	# Logging (Every Frame)
+	_log_status()
 
 	# End conditions
 	if config.has("duration") and elapsed_time >= config["duration"]:
@@ -138,21 +167,45 @@ func _execute_scheduled_action(action: Dictionary):
 					break
 
 func _log_status():
-	var unit_count = 0
+	var units_info = []
 	var gm = GameManager.grid_manager
 	if gm:
 		for key in gm.tiles:
-			if gm.tiles[key].unit:
-				unit_count += 1
+			var tile = gm.tiles[key]
+			if tile.unit:
+				var u = tile.unit
+				units_info.append({
+					"id": u.type_key,
+					"grid_x": tile.x,
+					"grid_y": tile.y,
+					"level": u.level,
+					"damage_stat": u.damage # Base damage stat
+				})
+
+	var enemies_info = []
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if is_instance_valid(enemy):
+			enemies_info.append({
+				"instance_id": enemy.get_instance_id(),
+				"type": enemy.type_key,
+				"hp": enemy.hp,
+				"max_hp": enemy.max_hp,
+				"pos_x": enemy.global_position.x,
+				"pos_y": enemy.global_position.y
+			})
 
 	var entry = {
+		"frame": Engine.get_process_frames(),
 		"time": elapsed_time,
 		"gold": GameManager.gold,
 		"mana": GameManager.mana,
 		"core_health": GameManager.core_health,
-		"unit_count": unit_count
+		"units": units_info,
+		"enemies": enemies_info,
+		"events": _frame_events.duplicate()
 	}
 	logs.append(entry)
+	_frame_events.clear()
 
 func _on_game_over():
 	_teardown("Game Over Signal")
