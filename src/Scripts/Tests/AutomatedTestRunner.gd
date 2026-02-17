@@ -7,6 +7,7 @@ var next_log_time: float = 0.0
 var log_interval: float = 0.5
 var scheduled_actions_executed: Array = []
 var _is_tearing_down: bool = false
+var _wave_has_started: bool = false
 
 func _ready():
 	config = GameManager.current_test_scenario
@@ -42,9 +43,14 @@ func _setup_test():
 		for action in config["setup_actions"]:
 			_execute_setup_action(action)
 
-	GameManager.start_wave()
 	GameManager.game_over.connect(_on_game_over)
-	GameManager.wave_ended.connect(_on_wave_ended)
+	GameManager.wave_started.connect(_on_wave_started)
+	GameManager.start_wave()
+	# GameManager.wave_ended is only emitted after UI interaction, which we skip in headless.
+	# So we monitor is_wave_active in _process instead.
+
+func _on_wave_started():
+	_wave_has_started = true
 
 func _execute_setup_action(action: Dictionary):
 	match action.type:
@@ -110,6 +116,10 @@ func _process(delta):
 	if config.has("duration") and elapsed_time >= config["duration"]:
 		_teardown("Duration Reached")
 
+	if config.get("end_condition") == "wave_end_or_fail":
+		if _wave_has_started and not GameManager.is_wave_active:
+			_teardown("Wave Combat Ended")
+
 	# Fallback safety if wave logic fails or infinite loop
 	if elapsed_time > 300.0:
 		_teardown("Timeout Safety")
@@ -146,10 +156,6 @@ func _log_status():
 
 func _on_game_over():
 	_teardown("Game Over Signal")
-
-func _on_wave_ended():
-	if config.get("end_condition") == "wave_end_or_fail":
-		_teardown("Wave Ended")
 
 func _teardown(reason: String):
 	if _is_tearing_down: return
