@@ -56,7 +56,7 @@ func setup(width_in_tiles: int):
 
 	# Load texture
 	if not ResourceLoader.exists(texture_path):
-		print("Error: Tree texture not found: ", texture_path)
+		# print("Error: Tree texture not found: ", texture_path)
 		return
 
 	var texture = load(texture_path)
