@@ -15,6 +15,9 @@ signal show_tooltip(data, stats, buffs, pos)
 signal hide_tooltip()
 signal projectile_crit(source_unit, target, damage)
 
+var is_running_test: bool = false
+var current_test_scenario: Dictionary = {}
+
 var core_type: String = "cornucopia":
 	set(value):
 		core_type = value
@@ -65,6 +68,12 @@ var _hit_stop_end_time: int = 0
 
 # Core Mechanics Variables
 var current_mechanic: Node = null
+
+func set_test_scenario(scenario: Dictionary):
+	current_test_scenario = scenario
+	is_running_test = true
+	if scenario.has("initial_gold"):
+		gold = scenario["initial_gold"]
 
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
