@@ -42,10 +42,22 @@ func _ready():
 	call_deferred("zoom_to_shop_open")
 
 	# Initial Setup
-	grid_manager.place_unit("squirrel", 0, 1) # Starting unit
+	if not GameManager.is_running_test:
+		grid_manager.place_unit("squirrel", 0, 1) # Starting unit
 	update_bench_ui() # Ensure UI is initialized
 
 	get_tree().root.size_changed.connect(_on_viewport_size_changed)
+
+	if GameManager.is_running_test:
+		call_deferred("_attach_test_runner")
+
+func _attach_test_runner():
+	var runner_script = load("res://src/Scripts/Tests/AutomatedTestRunner.gd")
+	if runner_script:
+		var runner = runner_script.new()
+		add_child(runner)
+	else:
+		printerr("[MainGame] Failed to load AutomatedTestRunner.gd")
 
 func _on_viewport_size_changed():
 	calculate_min_allowed_zoom()
@@ -111,7 +123,10 @@ func setup_background():
 
 	var req_w = view_w # No shift in X usually
 
-	var tex_size = background.texture.get_size()
+	var tex_size = Vector2.ZERO
+	if background.texture:
+		tex_size = background.texture.get_size()
+
 	if tex_size.x > 0 and tex_size.y > 0:
 		var scale_x = req_w / tex_size.x
 		var scale_y = req_h / tex_size.y
