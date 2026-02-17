@@ -11,8 +11,14 @@ var random_frame_index: int = 0
 signal tile_clicked(tile)
 
 const DROP_HANDLER_SCRIPT = preload("res://src/Scripts/UI/TileDropHandler.gd")
-var TEXTURE_SHEET = load("res://assets/images/UI/tile_sheet.png")
-var TEXTURE_SPAWN = load("res://assets/images/UI/tile_spawn.png")
+var TEXTURE_SHEET = null
+var TEXTURE_SPAWN = null
+
+func _init():
+	if ResourceLoader.exists("res://assets/images/UI/tile_sheet.png"):
+		TEXTURE_SHEET = load("res://assets/images/UI/tile_sheet.png")
+	if ResourceLoader.exists("res://assets/images/UI/tile_spawn.png"):
+		TEXTURE_SPAWN = load("res://assets/images/UI/tile_spawn.png")
 
 func setup(grid_x: int, grid_y: int, tile_type: String = "normal"):
 	x = grid_x

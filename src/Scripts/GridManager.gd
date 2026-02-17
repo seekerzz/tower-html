@@ -181,6 +181,9 @@ func _setup_plant_decorations(texture_path: String = Constants.PLANT_CONFIG.text
 	plant_container.y_sort_enabled = true
 	add_child(plant_container)
 
+	if not ResourceLoader.exists(texture_path):
+		return
+
 	var tex = load(texture_path)
 	if not tex:
 		print("Warning: Plant texture not found at ", texture_path)
