@@ -11,8 +11,8 @@ var random_frame_index: int = 0
 signal tile_clicked(tile)
 
 const DROP_HANDLER_SCRIPT = preload("res://src/Scripts/UI/TileDropHandler.gd")
-const TEXTURE_SHEET = preload("res://assets/images/UI/tile_sheet.png")
-const TEXTURE_SPAWN = preload("res://assets/images/UI/tile_spawn.png")
+var TEXTURE_SHEET = load("res://assets/images/UI/tile_sheet.png")
+var TEXTURE_SPAWN = load("res://assets/images/UI/tile_spawn.png")
 
 func setup(grid_x: int, grid_y: int, tile_type: String = "normal"):
 	x = grid_x
@@ -64,14 +64,16 @@ func update_visuals():
 	if cs: cs.visible = false
 
 	if state == "spawn":
-		bs.texture = TEXTURE_SPAWN
+		if TEXTURE_SPAWN:
+			bs.texture = TEXTURE_SPAWN
 		bs.hframes = 5
 		bs.vframes = 5
 		bs.frame = random_frame_index
 		_adjust_sprite_scale(bs, 60.0)
 
 	elif state == "unlocked" or type == "core":
-		bs.texture = TEXTURE_SHEET
+		if TEXTURE_SHEET:
+			bs.texture = TEXTURE_SHEET
 		bs.hframes = 5
 		bs.vframes = 5
 		bs.frame = random_frame_index
