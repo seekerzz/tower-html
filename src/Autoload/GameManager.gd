@@ -14,6 +14,8 @@ signal ftext_spawn_requested(pos, value, color, direction)
 signal show_tooltip(data, stats, buffs, pos)
 signal hide_tooltip()
 signal projectile_crit(source_unit, target, damage)
+signal enemy_hit(enemy, source, amount)
+signal enemy_spawned(enemy)
 
 var is_running_test: bool = false
 var current_test_scenario: Dictionary = {}

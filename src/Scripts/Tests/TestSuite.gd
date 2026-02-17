@@ -21,7 +21,7 @@ func get_test_config(case_id: String) -> Dictionary:
 				"start_wave_index": 1,
 				"duration": 10.0,
 				"units": [
-					{"id": "phoenix", "x": 0, "y": 0}
+					{"id": "phoenix", "x": 0, "y": 1}
 				],
 				"scheduled_actions": [
 					{
@@ -40,8 +40,8 @@ func get_test_config(case_id: String) -> Dictionary:
 				"start_wave_index": 1,
 				"end_condition": "wave_end_or_fail",
 				"units": [
-					{"id": "squirrel", "x": 0, "y": 2},
-					{"id": "viper", "x": -2, "y": 0}
+					{"id": "squirrel", "x": 0, "y": 1},
+					{"id": "viper", "x": -1, "y": 0}
 				],
 				"setup_actions": [
 					{
