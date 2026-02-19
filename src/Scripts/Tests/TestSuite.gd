@@ -148,4 +148,14 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "pigeon", "x": 0, "y": 1}]
 			}
+		"test_shop_faction_refresh":
+			return {
+				"id": "test_shop_faction_refresh",
+				"core_type": "wolf_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 5.0,
+				"test_shop": true,
+				"validate_shop_faction": "wolf_totem"
+			}
 	return {}

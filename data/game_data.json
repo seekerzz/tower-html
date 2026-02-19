@@ -89,7 +89,10 @@
 			"hp": 30,
 			"lifetime": 25,
 			"icon": "🕷️",
-			"size": [1, 1],
+			"size": [
+				1,
+				1
+			],
 			"attackType": "melee",
 			"damageType": "physical",
 			"levels": {
@@ -100,15 +103,23 @@
 					"desc": "Summoned Spiderling"
 				}
 			},
-			"type_key": "spiderling"
+			"type_key": "spiderling",
+			"faction": "universal"
 		},
 		"enemy_clone": {
 			"name": "克隆体",
 			"type": "summoned_clone",
-			"inherit_stats": ["damage", "attack_speed", "range"],
+			"inherit_stats": [
+				"damage",
+				"attack_speed",
+				"range"
+			],
 			"lifetime": -1,
 			"icon": "👥",
-			"size": [1, 1],
+			"size": [
+				1,
+				1
+			],
 			"attackType": "melee",
 			"damageType": "physical",
 			"levels": {
@@ -119,7 +130,8 @@
 					"desc": "Clone of a unit"
 				}
 			},
-			"type_key": "enemy_clone"
+			"type_key": "enemy_clone",
+			"faction": "universal"
 		},
 		"tiger": {
 			"name": "猛虎",
@@ -164,7 +176,8 @@
 					}
 				}
 			},
-			"type_key": "tiger"
+			"type_key": "tiger",
+			"faction": "wolf_totem"
 		},
 		"scorpion": {
 			"name": "蝎子",
@@ -202,7 +215,8 @@
 					}
 				}
 			},
-			"type_key": "scorpion"
+			"type_key": "scorpion",
+			"faction": "viper_totem"
 		},
 		"squirrel": {
 			"name": "松鼠",
@@ -247,7 +261,8 @@
 					}
 				}
 			},
-			"type_key": "squirrel"
+			"type_key": "squirrel",
+			"faction": "universal"
 		},
 		"octopus": {
 			"name": "八爪鱼",
@@ -296,7 +311,8 @@
 					}
 				}
 			},
-			"type_key": "octopus"
+			"type_key": "octopus",
+			"faction": "butterfly_totem"
 		},
 		"bee": {
 			"name": "蜜蜂",
@@ -342,7 +358,8 @@
 					}
 				}
 			},
-			"type_key": "bee"
+			"type_key": "bee",
+			"faction": "butterfly_totem"
 		},
 		"eel": {
 			"name": "电鳗",
@@ -388,7 +405,8 @@
 					}
 				}
 			},
-			"type_key": "eel"
+			"type_key": "eel",
+			"faction": "universal"
 		},
 		"lion": {
 			"name": "狮子",
@@ -433,7 +451,8 @@
 					}
 				}
 			},
-			"type_key": "lion"
+			"type_key": "lion",
+			"faction": "wolf_totem"
 		},
 		"dragon": {
 			"name": "龙",
@@ -484,7 +503,8 @@
 					}
 				}
 			},
-			"type_key": "dragon"
+			"type_key": "dragon",
+			"faction": "butterfly_totem"
 		},
 		"dog": {
 			"name": "恶霸犬",
@@ -531,7 +551,8 @@
 					}
 				}
 			},
-			"type_key": "dog"
+			"type_key": "dog",
+			"faction": "wolf_totem"
 		},
 		"bear": {
 			"name": "暴怒熊",
@@ -576,7 +597,8 @@
 					}
 				}
 			},
-			"type_key": "bear"
+			"type_key": "bear",
+			"faction": "wolf_totem"
 		},
 		"butterfly": {
 			"name": "蝴蝶",
@@ -622,7 +644,8 @@
 					}
 				}
 			},
-			"type_key": "butterfly"
+			"type_key": "butterfly",
+			"faction": "butterfly_totem"
 		},
 		"phoenix": {
 			"name": "凤凰",
@@ -677,7 +700,8 @@
 			},
 			"type_key": "phoenix",
 			"skillType": "point",
-			"skillId": "firestorm"
+			"skillId": "firestorm",
+			"faction": "butterfly_totem"
 		},
 		"plant": {
 			"name": "向日葵",
@@ -721,7 +745,8 @@
 					}
 				}
 			},
-			"type_key": "plant"
+			"type_key": "plant",
+			"faction": "cow_totem"
 		},
 		"torch": {
 			"name": "红莲火炬",
@@ -764,7 +789,8 @@
 					}
 				}
 			},
-			"type_key": "torch"
+			"type_key": "torch",
+			"faction": "universal"
 		},
 		"cauldron": {
 			"name": "剧毒大锅",
@@ -807,7 +833,8 @@
 					}
 				}
 			},
-			"type_key": "cauldron"
+			"type_key": "cauldron",
+			"faction": "universal"
 		},
 		"drum": {
 			"name": "战鼓",
@@ -850,7 +877,8 @@
 					}
 				}
 			},
-			"type_key": "drum"
+			"type_key": "drum",
+			"faction": "universal"
 		},
 		"mirror": {
 			"name": "反射魔镜",
@@ -893,7 +921,8 @@
 					}
 				}
 			},
-			"type_key": "mirror"
+			"type_key": "mirror",
+			"faction": "universal"
 		},
 		"splitter": {
 			"name": "多重棱镜",
@@ -936,7 +965,8 @@
 					}
 				}
 			},
-			"type_key": "splitter"
+			"type_key": "splitter",
+			"faction": "universal"
 		},
 		"meat": {
 			"name": "五花肉",
@@ -980,7 +1010,8 @@
 					}
 				}
 			},
-			"type_key": "meat"
+			"type_key": "meat",
+			"faction": "universal"
 		},
 		"hedgehog": {
 			"name": "刺猬",
@@ -1025,7 +1056,8 @@
 					}
 				}
 			},
-			"type_key": "hedgehog"
+			"type_key": "hedgehog",
+			"faction": "cow_totem"
 		},
 		"iron_turtle": {
 			"name": "铁甲龟",
@@ -1070,7 +1102,8 @@
 					}
 				}
 			},
-			"type_key": "iron_turtle"
+			"type_key": "iron_turtle",
+			"faction": "cow_totem"
 		},
 		"mushroom_healer": {
 			"name": "菌菇治愈者",
@@ -1120,7 +1153,8 @@
 					}
 				}
 			},
-			"type_key": "mushroom_healer"
+			"type_key": "mushroom_healer",
+			"faction": "cow_totem"
 		},
 		"cow": {
 			"name": "奶牛",
@@ -1164,7 +1198,8 @@
 					}
 				}
 			},
-			"type_key": "cow"
+			"type_key": "cow",
+			"faction": "cow_totem"
 		},
 		"mosquito": {
 			"name": "蚊子",
@@ -1210,7 +1245,8 @@
 					}
 				}
 			},
-			"type_key": "mosquito"
+			"type_key": "mosquito",
+			"faction": "bat_totem"
 		},
 		"snowman": {
 			"name": "雪人",
@@ -1259,7 +1295,8 @@
 					}
 				}
 			},
-			"type_key": "snowman"
+			"type_key": "snowman",
+			"faction": "cow_totem"
 		},
 		"rabbit": {
 			"name": "兔子",
@@ -1304,7 +1341,8 @@
 					}
 				}
 			},
-			"type_key": "rabbit"
+			"type_key": "rabbit",
+			"faction": "universal"
 		},
 		"viper": {
 			"name": "毒蛇",
@@ -1350,7 +1388,8 @@
 					}
 				}
 			},
-			"type_key": "viper"
+			"type_key": "viper",
+			"faction": "viper_totem"
 		},
 		"spider": {
 			"name": "蜘蛛",
@@ -1396,7 +1435,8 @@
 					}
 				}
 			},
-			"type_key": "spider"
+			"type_key": "spider",
+			"faction": "viper_totem"
 		},
 		"parrot": {
 			"name": "鹦鹉",
@@ -1440,7 +1480,8 @@
 					}
 				}
 			},
-			"type_key": "parrot"
+			"type_key": "parrot",
+			"faction": "eagle_totem"
 		},
 		"peacock": {
 			"name": "孔雀",
@@ -1487,7 +1528,8 @@
 					}
 				}
 			},
-			"type_key": "peacock"
+			"type_key": "peacock",
+			"faction": "eagle_totem"
 		},
 		"lucky_cat": {
 			"name": "招财猫",
@@ -1529,7 +1571,8 @@
 					}
 				}
 			},
-			"type_key": "lucky_cat"
+			"type_key": "lucky_cat",
+			"faction": "universal"
 		},
 		"oxpecker": {
 			"name": "牛椋鸟",
@@ -1570,7 +1613,8 @@
 					}
 				}
 			},
-			"type_key": "oxpecker"
+			"type_key": "oxpecker",
+			"faction": "cow_totem"
 		},
 		"woodpecker": {
 			"name": "啄木鸟",
@@ -1615,7 +1659,8 @@
 					}
 				}
 			},
-			"type_key": "woodpecker"
+			"type_key": "woodpecker",
+			"faction": "eagle_totem"
 		},
 		"eagle": {
 			"name": "老鹰",
@@ -1658,7 +1703,8 @@
 					}
 				}
 			},
-			"type_key": "eagle"
+			"type_key": "eagle",
+			"faction": "eagle_totem"
 		},
 		"arrow_frog": {
 			"name": "箭毒蛙",
@@ -1701,7 +1747,8 @@
 					}
 				}
 			},
-			"type_key": "arrow_frog"
+			"type_key": "arrow_frog",
+			"faction": "viper_totem"
 		},
 		"fairy_dragon": {
 			"name": "精灵龙",
@@ -1740,7 +1787,8 @@
 					}
 				}
 			},
-			"type_key": "fairy_dragon"
+			"type_key": "fairy_dragon",
+			"faction": "butterfly_totem"
 		},
 		"rock_armor_cow": {
 			"name": "岩甲牛",
@@ -1788,7 +1836,8 @@
 					}
 				}
 			},
-			"type_key": "rock_armor_cow"
+			"type_key": "rock_armor_cow",
+			"faction": "cow_totem"
 		},
 		"cow_golem": {
 			"name": "牛魔像",
@@ -1835,7 +1884,8 @@
 					}
 				}
 			},
-			"type_key": "cow_golem"
+			"type_key": "cow_golem",
+			"faction": "cow_totem"
 		},
 		"yak_guardian": {
 			"name": "牦牛守护",
@@ -1882,7 +1932,8 @@
 					}
 				}
 			},
-			"type_key": "yak_guardian"
+			"type_key": "yak_guardian",
+			"faction": "cow_totem"
 		},
 		"storm_eagle": {
 			"name": "风暴鹰",
@@ -1931,7 +1982,8 @@
 					}
 				}
 			},
-			"type_key": "storm_eagle"
+			"type_key": "storm_eagle",
+			"faction": "eagle_totem"
 		},
 		"gale_eagle": {
 			"name": "疾风鹰",
@@ -1980,7 +2032,8 @@
 					}
 				}
 			},
-			"type_key": "gale_eagle"
+			"type_key": "gale_eagle",
+			"faction": "eagle_totem"
 		},
 		"harpy_eagle": {
 			"name": "角雕",
@@ -2031,7 +2084,8 @@
 					}
 				}
 			},
-			"type_key": "harpy_eagle"
+			"type_key": "harpy_eagle",
+			"faction": "eagle_totem"
 		},
 		"vulture": {
 			"name": "秃鹫",
@@ -2082,7 +2136,8 @@
 					}
 				}
 			},
-			"type_key": "vulture"
+			"type_key": "vulture",
+			"faction": "eagle_totem"
 		},
 		"lure_snake": {
 			"name": "诱捕蛇",
@@ -2127,7 +2182,8 @@
 					}
 				}
 			},
-			"type_key": "lure_snake"
+			"type_key": "lure_snake",
+			"faction": "viper_totem"
 		},
 		"medusa": {
 			"name": "美杜莎",
@@ -2173,7 +2229,8 @@
 					}
 				}
 			},
-			"type_key": "medusa"
+			"type_key": "medusa",
+			"faction": "viper_totem"
 		},
 		"vampire_bat": {
 			"name": "吸血蝠",
@@ -2222,7 +2279,8 @@
 					}
 				}
 			},
-			"type_key": "vampire_bat"
+			"type_key": "vampire_bat",
+			"faction": "bat_totem"
 		},
 		"plague_spreader": {
 			"name": "瘟疫使者",
@@ -2270,7 +2328,8 @@
 					}
 				}
 			},
-			"type_key": "plague_spreader"
+			"type_key": "plague_spreader",
+			"faction": "viper_totem"
 		},
 		"blood_mage": {
 			"name": "血法师",
@@ -2328,7 +2387,8 @@
 					}
 				}
 			},
-			"type_key": "blood_mage"
+			"type_key": "blood_mage",
+			"faction": "bat_totem"
 		},
 		"blood_ancestor": {
 			"name": "血祖",
@@ -2379,67 +2439,144 @@
 					}
 				}
 			},
-			"type_key": "blood_ancestor"
+			"type_key": "blood_ancestor",
+			"faction": "bat_totem"
 		},
 		"kestrel": {
 			"name": "红隼",
 			"icon": "🐦",
-			"size": [1, 1],
+			"size": [
+				1,
+				1
+			],
 			"range": 250,
 			"atkSpeed": 1.0,
 			"attackType": "ranged",
 			"damageType": "physical",
 			"type_key": "kestrel",
 			"levels": {
-				"1": { "damage": 40, "hp": 150, "cost": 120, "desc": "攻击概率眩晕敌人" },
-				"2": { "damage": 60, "hp": 225, "cost": 240, "desc": "眩晕概率和时间增加" },
-				"3": { "damage": 90, "hp": 337, "cost": 480, "desc": "眩晕时触发音爆伤害" }
-			}
+				"1": {
+					"damage": 40,
+					"hp": 150,
+					"cost": 120,
+					"desc": "攻击概率眩晕敌人"
+				},
+				"2": {
+					"damage": 60,
+					"hp": 225,
+					"cost": 240,
+					"desc": "眩晕概率和时间增加"
+				},
+				"3": {
+					"damage": 90,
+					"hp": 337,
+					"cost": 480,
+					"desc": "眩晕时触发音爆伤害"
+				}
+			},
+			"faction": "eagle_totem"
 		},
 		"owl": {
 			"name": "猫头鹰",
 			"icon": "🦉",
-			"size": [1, 1],
+			"size": [
+				1,
+				1
+			],
 			"range": 0,
 			"atkSpeed": 1.0,
 			"attackType": "none",
 			"buffProvider": "crit",
 			"type_key": "owl",
 			"levels": {
-				"1": { "damage": 0, "hp": 120, "cost": 100, "desc": "邻接友军暴击率+12%" },
-				"2": { "damage": 0, "hp": 180, "cost": 200, "desc": "周围2格友军暴击率+20%" },
-				"3": { "damage": 0, "hp": 270, "cost": 400, "desc": "友军触发回响时增加攻速" }
-			}
+				"1": {
+					"damage": 0,
+					"hp": 120,
+					"cost": 100,
+					"desc": "邻接友军暴击率+12%"
+				},
+				"2": {
+					"damage": 0,
+					"hp": 180,
+					"cost": 200,
+					"desc": "周围2格友军暴击率+20%"
+				},
+				"3": {
+					"damage": 0,
+					"hp": 270,
+					"cost": 400,
+					"desc": "友军触发回响时增加攻速"
+				}
+			},
+			"faction": "eagle_totem"
 		},
 		"magpie": {
 			"name": "喜鹊",
 			"icon": "🐧",
-			"size": [1, 1],
+			"size": [
+				1,
+				1
+			],
 			"range": 200,
 			"atkSpeed": 1.2,
 			"attackType": "ranged",
 			"damageType": "physical",
 			"type_key": "magpie",
 			"levels": {
-				"1": { "damage": 35, "hp": 120, "cost": 100, "desc": "攻击概率偷取敌人属性" },
-				"2": { "damage": 50, "hp": 180, "cost": 200, "desc": "偷取属性效果提升" },
-				"3": { "damage": 75, "hp": 270, "cost": 400, "desc": "偷取成功回复核心HP或金币" }
-			}
+				"1": {
+					"damage": 35,
+					"hp": 120,
+					"cost": 100,
+					"desc": "攻击概率偷取敌人属性"
+				},
+				"2": {
+					"damage": 50,
+					"hp": 180,
+					"cost": 200,
+					"desc": "偷取属性效果提升"
+				},
+				"3": {
+					"damage": 75,
+					"hp": 270,
+					"cost": 400,
+					"desc": "偷取成功回复核心HP或金币"
+				}
+			},
+			"faction": "eagle_totem"
 		},
 		"pigeon": {
 			"name": "鸽子",
 			"icon": "🕊️",
-			"size": [1, 1],
+			"size": [
+				1,
+				1
+			],
 			"range": 200,
 			"atkSpeed": 1.0,
 			"attackType": "ranged",
 			"damageType": "physical",
 			"type_key": "pigeon",
 			"levels": {
-				"1": { "damage": 30, "hp": 100, "cost": 80, "desc": "有几率闪避敌人攻击" },
-				"2": { "damage": 45, "hp": 150, "cost": 160, "desc": "闪避后短暂无敌" },
-				"3": { "damage": 67, "hp": 225, "cost": 320, "desc": "闪避时反击并增加友军暴击" }
-			}
+				"1": {
+					"damage": 30,
+					"hp": 100,
+					"cost": 80,
+					"desc": "有几率闪避敌人攻击"
+				},
+				"2": {
+					"damage": 45,
+					"hp": 150,
+					"cost": 160,
+					"desc": "闪避后短暂无敌"
+				},
+				"3": {
+					"damage": 67,
+					"hp": 225,
+					"cost": 320,
+					"desc": "闪避时反击并增加友军暴击"
+				}
+			},
+			"faction": "eagle_totem"
 		}
 	},
 	"TRAITS": [
