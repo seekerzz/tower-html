@@ -2380,6 +2380,66 @@
 				}
 			},
 			"type_key": "blood_ancestor"
+		},
+		"kestrel": {
+			"name": "红隼",
+			"icon": "🐦",
+			"size": [1, 1],
+			"range": 250,
+			"atkSpeed": 1.0,
+			"attackType": "ranged",
+			"damageType": "physical",
+			"type_key": "kestrel",
+			"levels": {
+				"1": { "damage": 40, "hp": 150, "cost": 120, "desc": "攻击概率眩晕敌人" },
+				"2": { "damage": 60, "hp": 225, "cost": 240, "desc": "眩晕概率和时间增加" },
+				"3": { "damage": 90, "hp": 337, "cost": 480, "desc": "眩晕时触发音爆伤害" }
+			}
+		},
+		"owl": {
+			"name": "猫头鹰",
+			"icon": "🦉",
+			"size": [1, 1],
+			"range": 0,
+			"atkSpeed": 1.0,
+			"attackType": "none",
+			"buffProvider": "crit",
+			"type_key": "owl",
+			"levels": {
+				"1": { "damage": 0, "hp": 120, "cost": 100, "desc": "邻接友军暴击率+12%" },
+				"2": { "damage": 0, "hp": 180, "cost": 200, "desc": "周围2格友军暴击率+20%" },
+				"3": { "damage": 0, "hp": 270, "cost": 400, "desc": "友军触发回响时增加攻速" }
+			}
+		},
+		"magpie": {
+			"name": "喜鹊",
+			"icon": "🐧",
+			"size": [1, 1],
+			"range": 200,
+			"atkSpeed": 1.2,
+			"attackType": "ranged",
+			"damageType": "physical",
+			"type_key": "magpie",
+			"levels": {
+				"1": { "damage": 35, "hp": 120, "cost": 100, "desc": "攻击概率偷取敌人属性" },
+				"2": { "damage": 50, "hp": 180, "cost": 200, "desc": "偷取属性效果提升" },
+				"3": { "damage": 75, "hp": 270, "cost": 400, "desc": "偷取成功回复核心HP或金币" }
+			}
+		},
+		"pigeon": {
+			"name": "鸽子",
+			"icon": "🕊️",
+			"size": [1, 1],
+			"range": 200,
+			"atkSpeed": 1.0,
+			"attackType": "ranged",
+			"damageType": "physical",
+			"type_key": "pigeon",
+			"levels": {
+				"1": { "damage": 30, "hp": 100, "cost": 80, "desc": "有几率闪避敌人攻击" },
+				"2": { "damage": 45, "hp": 150, "cost": 160, "desc": "闪避后短暂无敌" },
+				"3": { "damage": 67, "hp": 225, "cost": 320, "desc": "闪避时反击并增加友军暴击" }
+			}
 		}
 	},
 	"TRAITS": [

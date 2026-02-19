@@ -16,6 +16,7 @@ signal hide_tooltip()
 signal projectile_crit(source_unit, target, damage)
 signal enemy_hit(enemy, source, amount)
 signal enemy_spawned(enemy)
+signal totem_echo_triggered(source_unit, damage)
 
 var is_running_test: bool = false
 var current_test_scenario: Dictionary = {}

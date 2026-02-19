@@ -9,6 +9,7 @@ var cooldown: float = 0.0
 var skill_cooldown: float = 0.0
 var active_buffs: Array = []
 var buff_sources: Dictionary = {} # Key: buff_type, Value: source_unit (Node2D)
+var temporary_buffs: Array = [] # Array of {stat, amount, duration, source}
 var traits: Array = []
 var unit_data: Dictionary
 
@@ -400,6 +401,8 @@ func _process(delta):
 	if !GameManager.is_wave_active: return
 
 	behavior.on_tick(delta)
+
+	_update_temporary_buffs(delta)
 
 	if !behavior.on_combat_tick(delta):
 		_process_combat(delta)
@@ -829,3 +832,46 @@ func spawn_buff_effect(icon_char: String):
 	tween.parallel().tween_property(effect_node, "modulate:a", 0.0, 0.6)
 
 	tween.finished.connect(effect_node.queue_free)
+
+func add_stat_bonus(stat: String, amount: float):
+	match stat:
+		"attack_speed":
+			atk_speed *= (1.0 + amount)
+		"defense":
+			# No defense stat on unit currently?
+			pass
+		"move_speed":
+			# Units don't move.
+			pass
+		"crit_chance":
+			crit_rate += amount
+
+func add_temporary_buff(stat: String, amount: float, duration: float):
+	temporary_buffs.append({
+		"stat": stat,
+		"amount": amount,
+		"duration": duration
+	})
+	_apply_temp_buff_effect(stat, amount)
+
+func _update_temporary_buffs(delta: float):
+	for i in range(temporary_buffs.size() - 1, -1, -1):
+		var buff = temporary_buffs[i]
+		buff["duration"] -= delta
+		if buff["duration"] <= 0:
+			_remove_temp_buff_effect(buff["stat"], buff["amount"])
+			temporary_buffs.remove_at(i)
+
+func _apply_temp_buff_effect(stat: String, amount: float):
+	match stat:
+		"attack_speed":
+			atk_speed *= (1.0 + amount)
+		"crit_chance":
+			crit_rate += amount
+
+func _remove_temp_buff_effect(stat: String, amount: float):
+	match stat:
+		"attack_speed":
+			atk_speed /= (1.0 + amount)
+		"crit_chance":
+			crit_rate -= amount
