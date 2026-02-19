@@ -58,6 +58,10 @@ func _petrify_nearest_enemy():
 	if target.has_method("apply_stun"):
 		target.apply_stun(petrify_duration)
 
+	if target.has_signal("died"):
+		if not target.died.is_connected(_on_petrified_enemy_killed):
+			target.died.connect(_on_petrified_enemy_killed.bind(target))
+
 	# 记录被石化的敌人
 	var enemy_id = target.get_instance_id()
 	_petrified_enemies[enemy_id] = {
@@ -144,6 +148,26 @@ func _spawn_aoe_effect(pos: Vector2):
 		effect.configure("circle", Color.DARK_GRAY)
 		effect.scale = Vector2(3, 3)
 		effect.play()
+
+func _on_petrified_enemy_killed(enemy):
+	var stone = _create_stone_projectile(enemy.global_position)
+	if unit.level >= 3 and stone:
+		stone.damage = enemy.max_hp * 0.8
+
+func _create_stone_projectile(pos: Vector2) -> Node:
+	var stone_scene = load("res://src/Scenes/Projectiles/StoneProjectile.tscn")
+	if not stone_scene: return null
+	var stone = stone_scene.instantiate()
+
+	var target = GameManager.combat_manager.find_nearest_enemy(pos, 600.0)
+	if target:
+		stone.setup(pos, target, unit.damage * 0.5, 600.0, "stone")
+		stone.pierce = 1
+		unit.get_tree().current_scene.add_child(stone)
+		return stone
+
+	stone.queue_free()
+	return null
 
 func _get_mechanics() -> Dictionary:
 	if unit.unit_data.has("levels") and unit.unit_data["levels"].has(str(unit.level)):

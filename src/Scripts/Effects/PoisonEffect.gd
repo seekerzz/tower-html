@@ -5,8 +5,8 @@ var tick_timer: float = 0.0
 const MAX_STACKS = 50 # Constants.POISON_MAX_STACKS was used
 
 func setup(target: Node, source: Object, params: Dictionary):
-	super.setup(target, source, params)
 	type_key = "poison"
+	super.setup(target, source, params)
 	base_damage = params.get("damage", 10.0)
 
 func apply(delta: float):

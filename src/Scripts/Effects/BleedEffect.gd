@@ -3,8 +3,8 @@ extends "res://src/Scripts/Effects/StatusEffect.gd"
 var stack_count: int = 0
 
 func setup(target: Node, source: Object, params: Dictionary):
-	super.setup(target, source, params)
 	type_key = "bleed"
+	super.setup(target, source, params)
 	# Initialize stack_count
 	stack_count = 1
 

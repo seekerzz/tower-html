@@ -5,8 +5,8 @@ var original_val_cache: float = 0.0
 var applied: bool = false
 
 func setup(target: Node, source: Object, params: Dictionary):
-	super.setup(target, source, params)
 	type_key = "slow"
+	super.setup(target, source, params)
 	slow_factor = params.get("slow_factor", 0.5)
 
 	_apply_slow()

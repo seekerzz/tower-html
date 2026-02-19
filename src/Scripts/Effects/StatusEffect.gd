@@ -16,6 +16,9 @@ func setup(target: Node, source: Object, params: Dictionary):
 	if params.has("stacks"):
 		stacks = params.stacks
 
+	if type_key != "":
+		EventBus.debuff_applied.emit(target, type_key, stacks, source_unit)
+
 	# Connect to host death if needed
 	if target.has_signal("died"):
 		if not target.died.is_connected(_on_host_died):
@@ -38,6 +41,9 @@ func stack(params: Dictionary):
 		duration = max(duration, params.duration) # Refresh duration
 	if params.has("stacks"):
 		stacks += params.stacks
+
+	if type_key != "":
+		EventBus.debuff_applied.emit(get_parent(), type_key, stacks, source_unit)
 
 func _on_host_died():
 	# Override for death rattle

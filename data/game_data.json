@@ -2175,6 +2175,82 @@
 			},
 			"type_key": "medusa"
 		},
+		"rat": {
+			"name": "老鼠",
+			"icon": "🐀",
+			"size": [
+				1,
+				1
+			],
+			"range": 0,
+			"atkSpeed": 0,
+			"manaCost": 0,
+			"attackType": "none",
+			"levels": {
+				"1": {
+					"damage": 0,
+					"hp": 150,
+					"cost": 80,
+					"desc": "瘟疫传播: 友方施毒时标记，标记敌人死亡传播中毒",
+					"mechanics": {}
+				},
+				"2": {
+					"damage": 0,
+					"hp": 225,
+					"cost": 160,
+					"desc": "瘟疫传播: 传播层数增加",
+					"mechanics": {}
+				},
+				"3": {
+					"damage": 0,
+					"hp": 337,
+					"cost": 320,
+					"desc": "瘟疫传播: 额外传播随机Debuff",
+					"mechanics": {}
+				}
+			},
+			"type_key": "rat"
+		},
+		"toad": {
+			"name": "蟾蜍",
+			"icon": "🐸",
+			"size": [
+				1,
+				1
+			],
+			"range": 200,
+			"atkSpeed": 0,
+			"manaCost": 0,
+			"attackType": "none",
+			"skill": "poison_trap",
+			"skillType": "point",
+			"skillCd": 15.0,
+			"skillCost": 50,
+			"levels": {
+				"1": {
+					"damage": 0,
+					"hp": 200,
+					"cost": 100,
+					"desc": "主动: 放置毒陷阱 (上限1)",
+					"mechanics": {}
+				},
+				"2": {
+					"damage": 0,
+					"hp": 300,
+					"cost": 200,
+					"desc": "主动: 放置毒陷阱 (上限2)",
+					"mechanics": {}
+				},
+				"3": {
+					"damage": 0,
+					"hp": 450,
+					"cost": 400,
+					"desc": "主动: 放置毒陷阱 (附带距离伤害)",
+					"mechanics": {}
+				}
+			},
+			"type_key": "toad"
+		},
 		"vampire_bat": {
 			"name": "吸血蝠",
 			"icon": "🦇",

@@ -466,6 +466,16 @@ func apply_status(effect_script: Script, params: Dictionary):
 		add_child(effect)
 		effect.setup(self, params.get("source", null), params)
 
+func add_poison_stacks(stacks: int):
+	var poison_script = load("res://src/Scripts/Effects/PoisonEffect.gd")
+	apply_status(poison_script, {"stacks": stacks})
+
+func apply_debuff(type: String, stacks: int):
+	var script_path = "res://src/Scripts/Effects/%sEffect.gd" % type.capitalize()
+	if ResourceLoader.exists(script_path):
+		var script = load(script_path)
+		apply_status(script, {"stacks": stacks})
+
 
 func apply_stun(duration: float):
 	stun_timer = duration
