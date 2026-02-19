@@ -534,6 +534,10 @@ func _process_bleed_damage(delta: float):
 		var damage = bleed_stacks * bleed_damage_per_stack * delta
 		take_damage(damage, null, "bleed")
 
+func add_debuff(type: String, stacks: int, duration: float):
+	if type == "vulnerable":
+		apply_status(load("res://src/Scripts/Effects/VulnerableEffect.gd"), {"duration": duration, "stacks": stacks})
+
 func take_damage(amount: float, source_unit = null, damage_type: String = "physical", hit_source: Node2D = null, kb_force: float = 0.0):
 	if source_unit == GameManager:
 		print("[Enemy] Taking global damage from GameManager: ", amount)
@@ -550,6 +554,11 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 			"kb_force": kb_force
 		})
 		if handled: return
+
+	# Vulnerable Effect Check
+	for child in get_children():
+		if child.has_method("get_damage_multiplier"):
+			amount *= child.get_damage_multiplier()
 
 	hp -= amount
 	hit_flash_timer = 0.1

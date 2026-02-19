@@ -109,88 +109,108 @@ func get_test_config(case_id: String) -> Dictionary:
 					}
 				]
 			}
-		"test_viper_rat":
+		"test_cow_ascetic":
 			return {
-				"id": "test_viper_rat",
-				"core_type": "viper_totem",
+				"id": "test_cow_ascetic",
+				"core_type": "cow_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 20.0,
+				"units": [
+					{"id": "ascetic", "x": 0, "y": 0},
+					{"id": "iron_turtle", "x": 0, "y": 1}
+				]
+			}
+		"test_cow_plant":
+			return {
+				"id": "test_cow_plant",
+				"core_type": "cow_totem",
 				"initial_gold": 1000,
 				"start_wave_index": 1,
 				"duration": 15.0,
-				"units": [{"id": "rat", "x": 0, "y": 1}]
+				"units": [
+					{"id": "plant", "x": 0, "y": 0},
+					{"id": "plant", "x": 1, "y": 0}
+				]
 			}
-		"test_viper_toad":
+		"test_cow_turtle":
 			return {
-				"id": "test_viper_toad",
-				"core_type": "viper_totem",
+				"id": "test_cow_turtle",
+				"core_type": "cow_totem",
 				"initial_gold": 1000,
 				"start_wave_index": 1,
 				"duration": 15.0,
-				"units": [{"id": "toad", "x": 0, "y": 1}]
+				"units": [
+					{"id": "iron_turtle", "x": 0, "y": 1}
+				]
 			}
-		"test_wolf_tiger":
+		"test_cow_hedgehog":
 			return {
-				"id": "test_wolf_tiger",
-				"core_type": "wolf_totem",
+				"id": "test_cow_hedgehog",
+				"core_type": "cow_totem",
 				"initial_gold": 1000,
 				"start_wave_index": 1,
 				"duration": 15.0,
-				"units": [{"id": "tiger", "x": 0, "y": 1}]
+				"units": [
+					{"id": "hedgehog", "x": 0, "y": 1}
+				]
 			}
-		"test_wolf_dog":
+		"test_cow_yak":
 			return {
-				"id": "test_wolf_dog",
-				"core_type": "wolf_totem",
+				"id": "test_cow_yak",
+				"core_type": "cow_totem",
 				"initial_gold": 1000,
 				"start_wave_index": 1,
 				"duration": 15.0,
-				"units": [{"id": "dog", "x": 0, "y": 1}]
+				"units": [
+					{"id": "yak_guardian", "x": 0, "y": 1}
+				]
 			}
-		"test_wolf_wolf":
+		"test_cow_rock":
 			return {
-				"id": "test_wolf_wolf",
-				"core_type": "wolf_totem",
+				"id": "test_cow_rock",
+				"core_type": "cow_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [
+					{"id": "rock_armor_cow", "x": 0, "y": 1},
+					{"id": "cow", "x": 0, "y": 0}
+				]
+			}
+		"test_cow_oxpecker":
+			return {
+				"id": "test_cow_oxpecker",
+				"core_type": "cow_totem",
 				"initial_gold": 1000,
 				"start_wave_index": 1,
 				"duration": 15.0,
 				"units": [
 					{"id": "squirrel", "x": 0, "y": 1},
-					{"id": "wolf", "x": 0, "y": 0}
+					{"id": "oxpecker", "x": 0, "y": 1}
 				]
 			}
-		"test_wolf_hyena":
+		"test_cow_mushroom":
 			return {
-				"id": "test_wolf_hyena",
-				"core_type": "wolf_totem",
+				"id": "test_cow_mushroom",
+				"core_type": "cow_totem",
 				"initial_gold": 1000,
 				"start_wave_index": 1,
-				"duration": 15.0,
-				"units": [{"id": "hyena", "x": 0, "y": 1}]
+				"duration": 20.0,
+				"units": [
+					{"id": "mushroom_healer", "x": 0, "y": 0},
+					{"id": "iron_turtle", "x": 0, "y": 1}
+				]
 			}
-		"test_wolf_fox":
+		"test_cow_cow":
 			return {
-				"id": "test_wolf_fox",
-				"core_type": "wolf_totem",
+				"id": "test_cow_cow",
+				"core_type": "cow_totem",
 				"initial_gold": 1000,
 				"start_wave_index": 1,
 				"duration": 15.0,
-				"units": [{"id": "fox", "x": 0, "y": 1}]
-			}
-		"test_wolf_sheep":
-			return {
-				"id": "test_wolf_sheep",
-				"core_type": "wolf_totem",
-				"initial_gold": 1000,
-				"start_wave_index": 1,
-				"duration": 15.0,
-				"units": [{"id": "sheep_spirit", "x": 0, "y": 1}]
-			}
-		"test_wolf_lion":
-			return {
-				"id": "test_wolf_lion",
-				"core_type": "wolf_totem",
-				"initial_gold": 1000,
-				"start_wave_index": 1,
-				"duration": 15.0,
-				"units": [{"id": "lion", "x": 0, "y": 1}]
+				"units": [
+					{"id": "cow", "x": 0, "y": 0}
+				]
 			}
 	return {}

@@ -29,7 +29,7 @@
 | P1-C | pending | 蝙蝠图腾单位群 (依赖: P0-04) | - |
 | P1-D | pending | 蝴蝶图腾单位群 | - |
 | P1-E | pending | 鹰图腾单位群 | - |
-| P1-F | pending | 牛图腾单位群 (依赖: P0-02) | - |
+| P1-F | completed | 已实现所有牛图腾单位(Ascetic, Plant, Turtle, Hedgehog, Yak, RockArmorCow, Oxpecker, Mushroom, Cow) | 2026-02-19T22:00:00 |
 
 ## 状态说明
 

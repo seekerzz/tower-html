@@ -1554,6 +1554,46 @@
 			},
 			"type_key": "oxpecker"
 		},
+		"ascetic": {
+			"name": "苦修者",
+			"icon": "🙏",
+			"size": [
+				1,
+				1
+			],
+			"range": 0,
+			"atkSpeed": 1.0,
+			"manaCost": 0,
+			"attackType": "none",
+			"levels": {
+				"1": {
+					"damage": 0,
+					"hp": 200,
+					"cost": 120,
+					"desc": "将友方受伤转化为法力",
+					"mechanics": {}
+				},
+				"2": {
+					"damage": 0,
+					"hp": 300,
+					"cost": 240,
+					"desc": "将友方受伤转化为法力",
+					"mechanics": {
+						"mana_conversion_bonus": 0.06
+					}
+				},
+				"3": {
+					"damage": 0,
+					"hp": 450,
+					"cost": 480,
+					"desc": "将友方受伤转化为法力，同时连结2个单位",
+					"mechanics": {
+						"targets_count": 2
+					}
+				}
+			},
+			"type_key": "ascetic"
+		},
 		"woodpecker": {
 			"name": "啄木鸟",
 			"icon": "🐦",
