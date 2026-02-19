@@ -624,6 +624,131 @@
 			},
 			"type_key": "butterfly"
 		},
+		"ice_butterfly": {
+			"name": "冰晶蝶",
+			"faction": "butterfly",
+			"type": "buff",
+			"icon": "❄️🦋",
+			"size": [
+				1,
+				1
+			],
+			"range": 300,
+			"atkSpeed": 1.0,
+			"manaCost": 0,
+			"attackType": "ranged",
+			"proj": "ice_shard",
+			"damageType": "magic",
+			"crit_rate": 0.1,
+			"crit_dmg": 1.5,
+			"levels": {
+				"1": {
+					"damage": 50,
+					"hp": 120,
+					"cost": 120,
+					"desc": "攻击叠加冰冻，3层冻结",
+					"mechanics": {}
+				},
+				"2": {
+					"damage": 75,
+					"hp": 180,
+					"cost": 240,
+					"desc": "攻击叠加冰冻，3层冻结，冻结时间+0.5s",
+					"mechanics": {}
+				},
+				"3": {
+					"damage": 112,
+					"hp": 270,
+					"cost": 480,
+					"desc": "攻击叠加冰冻，3层冻结，冻结时间+0.5s",
+					"mechanics": {}
+				}
+			},
+			"type_key": "ice_butterfly"
+		},
+		"firefly": {
+			"name": "萤火虫",
+			"faction": "butterfly",
+			"type": "attack",
+			"icon": "🔦",
+			"size": [
+				1,
+				1
+			],
+			"range": 250,
+			"atkSpeed": 1.5,
+			"manaCost": 0,
+			"attackType": "ranged",
+			"proj": "light_beam",
+			"damageType": "magic",
+			"crit_rate": 0.0,
+			"crit_dmg": 1.0,
+			"levels": {
+				"1": {
+					"damage": 0,
+					"hp": 100,
+					"cost": 100,
+					"desc": "攻击致盲敌人，造成0伤害",
+					"mechanics": {}
+				},
+				"2": {
+					"damage": 0,
+					"hp": 150,
+					"cost": 200,
+					"desc": "攻击致盲敌人，致盲时间+2s",
+					"mechanics": {}
+				},
+				"3": {
+					"damage": 0,
+					"hp": 225,
+					"cost": 400,
+					"desc": "攻击致盲敌人，敌人Miss回复8法力",
+					"mechanics": {}
+				}
+			},
+			"type_key": "firefly"
+		},
+		"forest_sprite": {
+			"name": "木精灵",
+			"faction": "butterfly",
+			"type": "buff",
+			"icon": "🧚",
+			"size": [
+				1,
+				1
+			],
+			"range": 150,
+			"atkSpeed": 0,
+			"manaCost": 0,
+			"attackType": "none",
+			"damageType": "magic",
+			"crit_rate": 0.0,
+			"crit_dmg": 1.5,
+			"levels": {
+				"1": {
+					"damage": 0,
+					"hp": 120,
+					"cost": 120,
+					"desc": "周围友军攻击8%概率附加Debuff",
+					"mechanics": {}
+				},
+				"2": {
+					"damage": 0,
+					"hp": 180,
+					"cost": 240,
+					"desc": "周围友军攻击12%概率附加Debuff",
+					"mechanics": {}
+				},
+				"3": {
+					"damage": 0,
+					"hp": 270,
+					"cost": 480,
+					"desc": "周围友军攻击15%概率附加Debuff，概率叠加2层",
+					"mechanics": {}
+				}
+			},
+			"type_key": "forest_sprite"
+		},
 		"phoenix": {
 			"name": "凤凰",
 			"icon": "🦅",

@@ -109,4 +109,31 @@ func get_test_config(case_id: String) -> Dictionary:
 					}
 				]
 			}
+		"test_butterfly_ice":
+			return {
+				"id": "test_butterfly_ice",
+				"core_type": "butterfly_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "ice_butterfly", "x": 0, "y": 1}]
+			}
+		"test_butterfly_firefly":
+			return {
+				"id": "test_butterfly_firefly",
+				"core_type": "butterfly_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "firefly", "x": 0, "y": 1}]
+			}
+		"test_butterfly_sprite":
+			return {
+				"id": "test_butterfly_sprite",
+				"core_type": "butterfly_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "forest_sprite", "x": 0, "y": 1}, {"id": "squirrel", "x": 0, "y": 2}]
+			}
 	return {}

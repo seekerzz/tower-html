@@ -450,11 +450,14 @@ func _process_burn_explosion_logic(pos: Vector2, damage: float, source: Node2D):
 					"stacks": 1
 				})
 
-func check_kill_bonuses(killer_unit):
+func check_kill_bonuses(killer_unit, victim = null):
 	if killer_unit and "active_buffs" in killer_unit:
 		if "wealth" in killer_unit.active_buffs:
 			GameManager.add_gold(1)
 			GameManager.spawn_floating_text(killer_unit.global_position, "+1 Gold", Color.YELLOW)
+
+	if killer_unit and killer_unit.behavior and killer_unit.behavior.has_method("on_kill"):
+		killer_unit.behavior.on_kill(victim)
 
 
 func deal_global_damage(damage: float, type: String):

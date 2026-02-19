@@ -255,7 +255,11 @@ func execute_skill_at(grid_pos: Vector2i):
 	if skill_cooldown > 0: return
 	if not unit_data.has("skill"): return
 
-	if GameManager.consume_resource("mana", skill_mana_cost):
+	var final_cost = skill_mana_cost
+	if GameManager.skill_cost_reduction > 0:
+		final_cost *= (1.0 - GameManager.skill_cost_reduction)
+
+	if GameManager.consume_resource("mana", final_cost):
 		is_no_mana = false
 		_start_skill_cooldown(unit_data.get("skillCd", 10.0))
 
@@ -286,7 +290,11 @@ func activate_skill():
 		# Behavior handles targeting initiation
 		return
 
-	if GameManager.consume_resource("mana", skill_mana_cost):
+	var final_cost = skill_mana_cost
+	if GameManager.skill_cost_reduction > 0:
+		final_cost *= (1.0 - GameManager.skill_cost_reduction)
+
+	if GameManager.consume_resource("mana", final_cost):
 		is_no_mana = false
 		_start_skill_cooldown(unit_data.get("skillCd", 10.0))
 

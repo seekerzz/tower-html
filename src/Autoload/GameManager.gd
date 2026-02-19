@@ -74,6 +74,9 @@ var cheat_fast_cooldown: bool = false
 
 var _hit_stop_end_time: int = 0
 
+# Global Buffs
+var skill_cost_reduction: float = 0.0
+
 # Core Mechanics Variables
 var current_mechanic: Node = null
 
@@ -433,6 +436,19 @@ func spawn_floating_text(pos: Vector2, value: String, type_or_color: Variant, di
 			_: color = Color.WHITE
 
 	ftext_spawn_requested.emit(pos, value, color, direction)
+
+func apply_global_buff(type: String, amount: float):
+	match type:
+		"skill_mana_cost_reduction":
+			skill_cost_reduction = amount
+			# Trigger resource changed to update UI if necessary
+			resource_changed.emit()
+
+func remove_global_buff(type: String):
+	match type:
+		"skill_mana_cost_reduction":
+			skill_cost_reduction = 0.0
+			resource_changed.emit()
 
 func execute_skill_effect(source_key: String, target_pos: Vector2i) -> bool:
 	if !grid_manager: return false

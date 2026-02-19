@@ -152,6 +152,11 @@ func attack_logic(delta, target: Node2D):
 	if base_attack_timer <= 0:
 		base_attack_timer = 1.0 / data.atkSpeed
 
+		if enemy.blind_timer > 0:
+			enemy.attack_missed.emit(enemy)
+			GameManager.spawn_floating_text(enemy.global_position, "MISS", Color.GRAY)
+			return
+
 		if data.get("attackType") == "ranged":
 			play_attack_animation(target_pos, func():
 				if GameManager.combat_manager:
