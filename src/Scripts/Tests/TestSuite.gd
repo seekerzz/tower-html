@@ -109,4 +109,22 @@ func get_test_config(case_id: String) -> Dictionary:
 					}
 				]
 			}
+		"test_viper_rat":
+			return {
+				"id": "test_viper_rat",
+				"core_type": "viper_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "rat", "x": 0, "y": 1}]
+			}
+		"test_viper_toad":
+			return {
+				"id": "test_viper_toad",
+				"core_type": "viper_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "toad", "x": 0, "y": 1}]
+			}
 	return {}

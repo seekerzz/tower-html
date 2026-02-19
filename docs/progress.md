@@ -25,7 +25,7 @@
 | 任务ID | 状态 | 描述 | 更新时间 |
 |--------|------|------|----------|
 | P1-A | pending | 狼图腾单位群 (依赖: P0-01, P0-03) | - |
-| P1-B | pending | 眼镜蛇图腾单位群 | - |
+| P1-B | completed | Implemented Rat, Toad, Medusa Lv3 | 2026-02-19T17:00:00 |
 | P1-C | pending | 蝙蝠图腾单位群 (依赖: P0-04) | - |
 | P1-D | pending | 蝴蝶图腾单位群 | - |
 | P1-E | pending | 鹰图腾单位群 | - |

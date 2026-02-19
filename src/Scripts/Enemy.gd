@@ -466,6 +466,41 @@ func apply_status(effect_script: Script, params: Dictionary):
 		add_child(effect)
 		effect.setup(self, params.get("source", null), params)
 
+	# Emit debuff_applied signal
+	var stacks = params.get("stacks", 1)
+	if existing and existing.get("stacks"):
+		stacks = existing.stacks
+
+	var type_key = ""
+	if existing:
+		type_key = existing.type_key
+	else:
+		# Temporarily instantiate to check type or use passed params if available?
+		# Or rely on effect.setup having set type_key.
+		# If new effect was added, it is the last child or we can reference it.
+		# But we didn't keep reference in variable 'effect' in 'else' block available here easily without refactoring.
+		# Let's refactor slightly to keep reference.
+		pass
+
+	# Refactoring to capture effect type
+	var effect_ref = existing
+	if not effect_ref:
+		# Retrieve the newly added child (last child)
+		effect_ref = get_child(get_child_count() - 1)
+
+	if effect_ref and "type_key" in effect_ref:
+		type_key = effect_ref.type_key
+		if "stacks" in effect_ref:
+			stacks = effect_ref.stacks
+		GameManager.debuff_applied.emit(self, type_key, stacks)
+
+func add_poison_stacks(amount: int):
+	apply_status(load("res://src/Scripts/Effects/PoisonEffect.gd"), {
+		"duration": 5.0,
+		"damage": 10.0,
+		"stacks": amount,
+		"source": null # Or pass self/GameManager if needed
+	})
 
 func apply_stun(duration: float):
 	stun_timer = duration

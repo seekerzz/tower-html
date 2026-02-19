@@ -73,6 +73,42 @@ func _petrify_nearest_enemy():
 	# 创建石化视觉效果
 	_spawn_petrify_effect(target.global_position)
 
+	# Connect death signal for Lv3 Stone Projectile
+	if target.has_signal("died") and not target.is_connected("died", _on_petrified_enemy_killed):
+		target.died.connect(_on_petrified_enemy_killed.bind(target))
+
+func _on_petrified_enemy_killed(enemy):
+	var enemy_id = enemy.get_instance_id()
+	if not _petrified_enemies.has(enemy_id): return
+
+	var data = _petrified_enemies[enemy_id]
+	if data.level >= 3:
+		var stone = _create_stone_projectile(enemy.global_position)
+		if stone:
+			stone.damage = enemy.max_hp * 0.8
+
+func _create_stone_projectile(pos: Vector2) -> Node:
+	var stone_scene = load("res://src/Scenes/Projectiles/StoneProjectile.tscn")
+	if not stone_scene: return null
+
+	var stone = stone_scene.instantiate()
+	var target = GameManager.combat_manager.find_nearest_enemy(pos, 500.0)
+
+	var stats = {
+		"pierce": 1,
+		"damageType": "physical",
+		"source": unit
+	}
+
+	if target:
+		stone.setup(pos, target, unit.damage * 0.5, 600.0, "stone", stats)
+	else:
+		stats["angle"] = randf() * TAU
+		stone.setup(pos, null, unit.damage * 0.5, 600.0, "stone", stats)
+
+	unit.get_tree().current_scene.add_child(stone)
+	return stone
+
 func _check_petrified_enemies():
 	var current_time = Time.get_time_dict_from_system()["second"]
 	var to_remove = []
