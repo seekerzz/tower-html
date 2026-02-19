@@ -109,51 +109,31 @@ func get_test_config(case_id: String) -> Dictionary:
 					}
 				]
 			}
-		"test_bat_gargoyle":
+		"test_butterfly_ice":
 			return {
-				"id": "test_bat_gargoyle",
-				"core_type": "bat_totem",
+				"id": "test_butterfly_ice",
+				"core_type": "butterfly_totem",
 				"initial_gold": 1000,
 				"start_wave_index": 1,
-				"duration": 20.0,
-				"units": [{"id": "gargoyle", "x": 0, "y": 1}]
+				"duration": 15.0,
+				"units": [{"id": "ice_butterfly", "x": 0, "y": 1}]
 			}
-		"test_bat_life_chain":
+		"test_butterfly_firefly":
 			return {
-				"id": "test_bat_life_chain",
-				"core_type": "bat_totem",
+				"id": "test_butterfly_firefly",
+				"core_type": "butterfly_totem",
 				"initial_gold": 1000,
 				"start_wave_index": 1,
-				"duration": 20.0,
-				"units": [{"id": "life_chain", "x": 0, "y": 1}]
+				"duration": 15.0,
+				"units": [{"id": "firefly", "x": 0, "y": 1}]
 			}
-		"test_bat_chalice":
+		"test_butterfly_sprite":
 			return {
-				"id": "test_bat_chalice",
-				"core_type": "bat_totem",
+				"id": "test_butterfly_sprite",
+				"core_type": "butterfly_totem",
 				"initial_gold": 1000,
 				"start_wave_index": 1,
-				"duration": 20.0,
-				"units": [
-					{"id": "blood_chalice", "x": 0, "y": 1},
-					{"id": "mosquito", "x": 0, "y": -1}
-				]
-			}
-		"test_bat_ritualist":
-			return {
-				"id": "test_bat_ritualist",
-				"core_type": "bat_totem",
-				"initial_gold": 1000,
-				"start_wave_index": 1,
-				"duration": 20.0,
-				"units": [{"id": "blood_ritualist", "x": 0, "y": 1}],
-				"scheduled_actions": [
-					{
-						"time": 2.0,
-						"type": "skill",
-						"source": "blood_ritualist",
-						"target": {"x": 0, "y": 0}
-					}
-				]
+				"duration": 15.0,
+				"units": [{"id": "forest_sprite", "x": 0, "y": 1}, {"id": "squirrel", "x": 0, "y": 2}]
 			}
 	return {}

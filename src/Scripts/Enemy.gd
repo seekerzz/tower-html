@@ -3,6 +3,7 @@ extends CharacterBody2D
 const UNIT_SCRIPT = preload("res://src/Scripts/Unit.gd")
 
 signal died
+signal attack_missed(enemy)
 
 enum State { MOVE, ATTACK_BASE, STUNNED, SUPPORT }
 var state: State = State.MOVE
@@ -19,6 +20,7 @@ var enemy_data: Dictionary
 # Preserving freeze/stun as timers for now (or could be effects too, but keeping scope focused)
 var freeze_timer: float = 0.0
 var stun_timer: float = 0.0
+var blind_timer: float = 0.0
 var _env_cooldowns = {} # Trap Instance ID -> Cooldown Timer
 
 var hit_flash_timer: float = 0.0
@@ -249,6 +251,9 @@ func _physics_process(delta):
 			angular_velocity = lerp(angular_velocity, 0.0, rotational_damping * delta)
 		else:
 			_update_facing_logic()
+
+	if blind_timer > 0:
+		blind_timer -= delta
 
 	_process_effects(delta)
 	_process_bleed_damage(delta)
@@ -511,6 +516,21 @@ func apply_freeze(duration: float):
 	freeze_timer = duration
 	GameManager.spawn_floating_text(global_position, "Frozen!", Color.CYAN)
 
+func apply_blind(duration: float):
+	blind_timer = duration
+	GameManager.spawn_floating_text(global_position, "Blind!", Color.GRAY)
+
+func apply_debuff(type: String, stacks: int = 1):
+	match type:
+		"poison":
+			apply_status(load("res://src/Scripts/Effects/PoisonEffect.gd"), {"duration": 5.0, "damage": 20.0, "stacks": stacks})
+		"burn":
+			apply_status(load("res://src/Scripts/Effects/BurnEffect.gd"), {"duration": 5.0, "damage": 20.0, "stacks": stacks})
+		"bleed":
+			add_bleed_stacks(stacks)
+		"slow":
+			apply_status(load("res://src/Scripts/Effects/SlowEffect.gd"), {"duration": 3.0, "slow_factor": 0.5})
+
 func is_trap(node):
 	if node.get("type") and Constants.BARRICADE_TYPES.has(node.type):
 		var b_type = Constants.BARRICADE_TYPES[node.type].type
@@ -607,7 +627,7 @@ func die(killer_unit = null):
 
 	# Kill Bonus Check
 	if GameManager.combat_manager and killer_unit:
-		GameManager.combat_manager.check_kill_bonuses(killer_unit)
+		GameManager.combat_manager.check_kill_bonuses(killer_unit, self)
 
 	emit_signal("died")
 	GameManager.enemy_died.emit(self, killer_unit)

@@ -51,6 +51,10 @@ func on_skill_executed_at(grid_pos: Vector2i):
 func get_trap_type() -> String:
 	return ""
 
+# Called when this unit kills a victim
+func on_kill(victim: Node2D):
+	pass
+
 # Called before unit is destroyed
 func on_cleanup():
 	pass
