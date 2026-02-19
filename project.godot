@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Core Ranch: Ultimate Battle"
-run/main_scene="res://src/Scenes/Game/MainGame.tscn"
+run/main_scene="uid://brwpl4oqltv87"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
 

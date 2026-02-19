@@ -21,7 +21,7 @@ from datetime import datetime
 # 加载 .env
 env_path = Path(__file__).parent / ".." / "secrets" / ".env"
 if env_path.exists():
-    with open(env_path) as f:
+    with open(env_path, encoding='utf-8') as f:
         for line in f:
             if line.strip() and not line.startswith('#'):
                 key, value = line.strip().split('=', 1)
@@ -33,27 +33,27 @@ API_URL = "https://jules.googleapis.com/v1alpha/sessions"
 
 
 def submit_task(task_id: str, prompt_file: str, title: str = None):
-    """提交任务到 Jules"""
+    """Submit task to Jules"""
 
     if not API_KEY:
-        print("错误: JULES_API_KEY 未设置")
-        print("请在 docs/secrets/.env 文件中设置或导出环境变量")
+        print("Error: JULES_API_KEY not set")
+        print("Set in docs/secrets/.env or export as environment variable")
         sys.exit(1)
 
-    # 读取 prompt
+    # Read prompt
     prompt_path = Path(prompt_file)
     if not prompt_path.is_absolute():
         prompt_path = Path(__file__).parent / prompt_path
 
     if not prompt_path.exists():
-        print(f"错误: 文件不存在 {prompt_path}")
+        print(f"Error: File not found {prompt_path}")
         sys.exit(1)
 
     with open(prompt_path, 'r', encoding='utf-8') as f:
         prompt_content = f.read()
 
-    # 添加任务标识
-    prompt_content += f"\n\n## 任务标识\n\n你正在执行的任务ID是: {task_id}\n"
+    # Add task identifier
+    prompt_content += f"\n\n## Task ID\n\nTask being executed: {task_id}\n"
 
     headers = {
         "Content-Type": "application/json",
@@ -72,9 +72,9 @@ def submit_task(task_id: str, prompt_file: str, title: str = None):
 
     proxies = {"http": PROXY, "https": PROXY} if PROXY else None
 
-    print(f"=" * 60)
-    print(f"提交任务: {task_id}")
-    print(f"=" * 60)
+    print("=" * 60)
+    print(f"Submitting task: {task_id}")
+    print("=" * 60)
 
     try:
         resp = requests.post(
@@ -88,21 +88,21 @@ def submit_task(task_id: str, prompt_file: str, title: str = None):
         result = resp.json()
 
         session_id = result.get('id')
-        print(f"✓ 成功! Session ID: {session_id}")
-        print(f"✓ URL: https://jules.google.com/session/{session_id}")
+        print(f"[OK] Success! Session ID: {session_id}")
+        print(f"[OK] URL: https://jules.google.com/session/{session_id}")
 
-        # 更新进度
-        update_progress(task_id, "submitted", f"任务已提交, Session: {session_id}")
+        # Update progress
+        update_progress(task_id, "submitted", f"Task submitted, Session: {session_id}")
 
         return session_id
 
     except Exception as e:
-        print(f"✗ 错误: {e}")
+        print(f"[ERROR] {e}")
         sys.exit(1)
 
 
 def update_progress(task_id: str, status: str, desc: str):
-    """更新进度文件"""
+    """Update progress file"""
     progress_file = Path(__file__).parent / ".." / "progress.md"
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -110,7 +110,7 @@ def update_progress(task_id: str, status: str, desc: str):
     if progress_file.exists():
         content = progress_file.read_text(encoding='utf-8')
 
-    # 简单替换任务行
+    # Simple task line replacement
     lines = content.split('\n')
     new_lines = []
     found = False
@@ -123,14 +123,14 @@ def update_progress(task_id: str, status: str, desc: str):
             new_lines.append(line)
 
     if not found:
-        # 添加到表格末尾
+        # Add to end of table
         for i, line in enumerate(new_lines):
-            if line.startswith('| P0-') or line.startswith('| P1-'):
+            if line.startswith('| P0-') or line.startswith('| P1-') or line.startswith('| P2-'):
                 new_lines.insert(i, f"| {task_id} | {status} | {desc} | {now} |")
                 break
 
     progress_file.write_text('\n'.join(new_lines), encoding='utf-8')
-    print(f"✓ 进度已更新: docs/progress.md")
+    print(f"[OK] Progress updated: docs/progress.md")
 
 
 if __name__ == "__main__":
