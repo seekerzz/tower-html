@@ -2380,6 +2380,165 @@
 				}
 			},
 			"type_key": "blood_ancestor"
+		},
+		"gargoyle": {
+			"name": "石像鬼",
+			"icon": "🗿",
+			"size": [1, 1],
+			"range": 100,
+			"atkSpeed": 1.0,
+			"manaCost": 0,
+			"attackType": "melee",
+			"damageType": "physical",
+			"crit_rate": 0.1,
+			"crit_dmg": 1.5,
+			"levels": {
+				"1": {
+					"damage": 60,
+					"hp": 400,
+					"cost": 150,
+					"desc": "核心血量<35%时石化，反弹15%伤害",
+					"mechanics": {}
+				},
+				"2": {
+					"damage": 90,
+					"hp": 600,
+					"cost": 300,
+					"desc": "核心血量<35%时石化，反弹15%伤害",
+					"mechanics": {
+						"crit_rate_bonus": 0.1
+					}
+				},
+				"3": {
+					"damage": 135,
+					"hp": 900,
+					"cost": 600,
+					"desc": "核心血量<35%时石化，反弹15%伤害",
+					"mechanics": {
+						"crit_rate_bonus": 0.2
+					}
+				}
+			},
+			"type_key": "gargoyle"
+		},
+		"life_chain": {
+			"name": "生命链条",
+			"icon": "🔗",
+			"size": [1, 1],
+			"range": 300,
+			"atkSpeed": 0,
+			"manaCost": 0,
+			"attackType": "none",
+			"crit_rate": 0.0,
+			"crit_dmg": 1.5,
+			"levels": {
+				"1": {
+					"damage": 0,
+					"hp": 250,
+					"cost": 120,
+					"desc": "连接最远敌人并偷取生命",
+					"mechanics": {}
+				},
+				"2": {
+					"damage": 0,
+					"hp": 375,
+					"cost": 240,
+					"desc": "连接2个最远敌人并偷取生命",
+					"mechanics": {
+						"crit_rate_bonus": 0.1
+					}
+				},
+				"3": {
+					"damage": 0,
+					"hp": 562,
+					"cost": 480,
+					"desc": "连接2个最远敌人并偷取生命，且造成范围伤害",
+					"mechanics": {
+						"crit_rate_bonus": 0.2
+					}
+				}
+			},
+			"type_key": "life_chain"
+		},
+		"blood_chalice": {
+			"name": "鲜血圣杯",
+			"icon": "🏆",
+			"size": [1, 1],
+			"range": 150,
+			"atkSpeed": 0,
+			"manaCost": 0,
+			"attackType": "none",
+			"crit_rate": 0.0,
+			"crit_dmg": 1.5,
+			"levels": {
+				"1": {
+					"damage": 0,
+					"hp": 300,
+					"cost": 150,
+					"desc": "允许吸血溢出，溢出值缓慢衰减",
+					"mechanics": {}
+				},
+				"2": {
+					"damage": 0,
+					"hp": 450,
+					"cost": 300,
+					"desc": "允许吸血溢出，溢出值衰减减慢",
+					"mechanics": {
+						"crit_rate_bonus": 0.1
+					}
+				},
+				"3": {
+					"damage": 0,
+					"hp": 675,
+					"cost": 600,
+					"desc": "允许吸血溢出，且核心失血时对敌人造成伤害",
+					"mechanics": {
+						"crit_rate_bonus": 0.2
+					}
+				}
+			},
+			"type_key": "blood_chalice"
+		},
+		"blood_ritualist": {
+			"name": "血祭术士",
+			"icon": "🧙",
+			"size": [1, 1],
+			"range": 250,
+			"atkSpeed": 0,
+			"manaCost": 0,
+			"attackType": "none",
+			"skill": "ritual",
+			"skillCd": 15,
+			"crit_rate": 0.0,
+			"crit_dmg": 1.5,
+			"levels": {
+				"1": {
+					"damage": 0,
+					"hp": 200,
+					"cost": 120,
+					"desc": "技能: 消耗20%核心生命，使范围敌人流血",
+					"mechanics": {}
+				},
+				"2": {
+					"damage": 0,
+					"hp": 300,
+					"cost": 240,
+					"desc": "技能: 消耗20%核心生命，使范围敌人强力流血",
+					"mechanics": {
+						"crit_rate_bonus": 0.1
+					}
+				},
+				"3": {
+					"damage": 0,
+					"hp": 450,
+					"cost": 480,
+					"desc": "技能: 消耗20%核心生命，使范围敌人流血，并获得全局吸血翻倍",
+					"mechanics": {
+						"crit_rate_bonus": 0.2
+					}
+				}
+			},
+			"type_key": "blood_ritualist"
 		}
 	},
 	"TRAITS": [

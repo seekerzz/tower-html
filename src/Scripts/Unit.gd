@@ -25,6 +25,7 @@ var attack_cost_mana: float = 0.0
 var skill_mana_cost: float = 30.0
 
 var max_hp: float = 0.0
+var current_hp: float = 0.0
 
 # Visual Holder for animations and structure
 var visual_holder: Node2D = null
@@ -90,6 +91,7 @@ func setup(key: String):
 	_load_behavior()
 
 	reset_stats()
+	current_hp = max_hp
 	behavior.on_setup()
 
 	update_visuals()
@@ -154,6 +156,8 @@ func take_damage(amount: float, source_enemy = null):
 			amount = amount * (1.0 - reduction)
 
 	amount = behavior.on_damage_taken(amount, source_enemy)
+
+	current_hp = max(0, current_hp - amount)
 	GameManager.damage_core(amount)
 
 	if visual_holder:
@@ -170,6 +174,13 @@ func reset_stats():
 
 	damage = stats.get("damage", unit_data.get("damage", 0))
 	max_hp = stats.get("hp", unit_data.get("hp", 0))
+	# Note: current_hp is NOT reset here to avoid full heal on level up,
+	# but usually max_hp changes, so maybe we should proportional update?
+	# For simplicity, we assume heal on level up (merge) or just clamp.
+	if current_hp > max_hp: current_hp = max_hp
+	# If max_hp increased, we don't necessarily heal, but we could.
+	# Standard behavior: Keep current_hp, unless we want to "heal on upgrade".
+	# Let's simple clamp.
 
 	range_val = unit_data.get("range", 0)
 	atk_speed = unit_data.get("atkSpeed", 1.0)
@@ -637,6 +648,7 @@ func merge_with(other_unit):
 	merged.emit(other_unit)
 	level += 1
 	reset_stats()
+	current_hp = max_hp # Full heal on level up
 
 	GameManager.spawn_floating_text(global_position, "Level Up!", Color.GOLD)
 	if visual_holder:
@@ -797,6 +809,10 @@ func remove_ghost():
 
 func return_to_start():
 	position = start_position
+
+func heal(amount: float):
+	current_hp = min(current_hp + amount, max_hp)
+	GameManager.spawn_floating_text(global_position, "+%d" % int(amount), Color.GREEN)
 
 func play_buff_receive_anim():
 	if visual_holder:
