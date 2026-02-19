@@ -1,5 +1,7 @@
+class_name Unit
 extends Node2D
 
+var is_summoned: bool = false
 var type_key: String
 var level: int = 1
 var stats_multiplier: float = 1.0

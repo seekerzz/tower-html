@@ -67,4 +67,21 @@ func get_test_config(case_id: String) -> Dictionary:
 					}
 				]
 			}
+		"test_summon_system":
+			return {
+				"id": "test_summon_system",
+				"core_type": "viper_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 30.0,
+				"units": [],
+				"scheduled_actions": [
+					{
+						"time": 1.0,
+						"type": "summon_test",
+						"summon_type": "spiderling",
+						"position": {"x": 0, "y": 1}
+					}
+				]
+			}
 	return {}

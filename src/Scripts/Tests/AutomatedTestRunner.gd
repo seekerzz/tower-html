@@ -165,6 +165,26 @@ func _execute_scheduled_action(action: Dictionary):
 					tile.unit.execute_skill_at(target_pos)
 					print("[TestRunner] Executed skill for ", source_id, " at ", target_pos)
 					break
+		"summon_test":
+			var summon_type = action.summon_type
+			var pos_dict = action.position
+
+			var pos = Vector2.ZERO
+			if GameManager.grid_manager:
+				pos = GameManager.grid_manager.get_world_pos_from_grid(Vector2i(pos_dict.x, pos_dict.y))
+			else:
+				pos = Vector2(pos_dict.x * 60, pos_dict.y * 60) # Fallback TILE_SIZE=60
+
+			if GameManager.summon_manager:
+				var data = {
+					"unit_id": summon_type,
+					"position": pos,
+					"lifetime": 5.0 # Test lifetime override if needed, or rely on default
+				}
+				GameManager.summon_manager.create_summon(data)
+				print("[TestRunner] Summoned ", summon_type, " at ", pos)
+			else:
+				printerr("[TestRunner] SummonManager not available")
 
 func _log_status():
 	var units_info = []
