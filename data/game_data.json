@@ -80,6 +80,47 @@
 		}
 	},
 	"UNIT_TYPES": {
+		"spiderling": {
+			"name": "小蜘蛛",
+			"type": "summoned",
+			"damage": 8,
+			"atkSpeed": 1.5,
+			"range": 80,
+			"hp": 30,
+			"lifetime": 25,
+			"icon": "🕷️",
+			"size": [1, 1],
+			"attackType": "melee",
+			"damageType": "physical",
+			"levels": {
+				"1": {
+					"damage": 8,
+					"hp": 30,
+					"cost": 0,
+					"desc": "Summoned Spiderling"
+				}
+			},
+			"type_key": "spiderling"
+		},
+		"enemy_clone": {
+			"name": "克隆体",
+			"type": "summoned_clone",
+			"inherit_stats": ["damage", "attack_speed", "range"],
+			"lifetime": -1,
+			"icon": "👥",
+			"size": [1, 1],
+			"attackType": "melee",
+			"damageType": "physical",
+			"levels": {
+				"1": {
+					"damage": 0,
+					"hp": 0,
+					"cost": 0,
+					"desc": "Clone of a unit"
+				}
+			},
+			"type_key": "enemy_clone"
+		},
 		"tiger": {
 			"name": "猛虎",
 			"icon": "🐯",

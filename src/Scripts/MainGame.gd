@@ -21,7 +21,16 @@ var min_allowed_zoom: Vector2 = Vector2(0.5, 0.5)
 var shake_offset: Vector2 = Vector2.ZERO
 var noise_shake_strength: float = 0.0
 
+var summon_manager: Node
+
 func _ready():
+	# Initialize SummonManager
+	var SummonManagerScript = load("res://src/Scripts/Managers/SummonManager.gd")
+	summon_manager = SummonManagerScript.new()
+	summon_manager.name = "SummonManager"
+	add_child(summon_manager)
+	GameManager.summon_manager = summon_manager
+
 	# Initialize bench array with nulls based on constant
 	bench.resize(Constants.BENCH_SIZE)
 	bench.fill(null)
