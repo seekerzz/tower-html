@@ -165,6 +165,12 @@ godot --path . --headless -- --run-test=test_summon_system
 - 视觉区分明显
 - 每个来源的最大召唤数限制生效
 
+**测试框架扩展权限：**
+如果当前测试框架无法覆盖本任务所需的测试场景（如需要验证召唤物生命周期、克隆体属性继承、多个召唤物同时存在等），你有权：
+1. 修改 `src/Scripts/Tests/AutomatedTestRunner.gd` 以增加新的测试能力
+2. 更新 `docs/GameDesign.md` 中的自动化测试框架文档，记录新的测试功能和配置方法
+3. 确保新增的测试功能不会破坏现有的其他测试用例
+
 ## 进度同步要求
 
 完成每个步骤后，更新 docs/progress.md 中任务 P0-03 的行：

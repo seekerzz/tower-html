@@ -22,9 +22,19 @@
 
 ### 2. 任务提交规范
 
-- 使用 API Key: (从环境变量或用户处获取，不要在代码中硬编码)
+**API Key 获取位置:**
+- 访问 https://jules.google.com/settings#api
+- 在 Jules Web App 的 Settings 页面创建 API Key
+- 最多可同时拥有 3 个 API Key
+
+**API Key 使用方式:**
+- 优先从环境变量读取: `export JULES_API_KEY='your_key_here'`
+- 或从 `docs/secrets/.env` 文件读取 (已配置 .gitignore 保护)
+- **绝不要**将真实 API Key 硬编码在脚本或文档中
+
+**请求配置:**
 - 代理: `127.0.0.1:10808`
-- 认证头: `X-Goog-Api-Key`
+- 认证头: `X-Goog-Api-Key: ${JULES_API_KEY}`
 - 必须包含 `sourceContext` 指定 GitHub 仓库
 
 ### 3. 执行顺序 (关键!)

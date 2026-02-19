@@ -251,6 +251,12 @@ godot --path . --headless -- --run-test=test_viper_toad
 - Lv3蟾蜍陷阱附加距离伤害Debuff
 - 美杜莎Lv3石块造成80%最大HP伤害
 
+**测试框架扩展权限：**
+如果当前测试框架无法覆盖本任务所需的测试场景（如需要验证毒素传播范围、陷阱触发机制、距离伤害计算等），你有权：
+1. 修改 `src/Scripts/Tests/AutomatedTestRunner.gd` 以增加新的测试能力
+2. 更新 `docs/GameDesign.md` 中的自动化测试框架文档，记录新的测试功能和配置方法
+3. 确保新增的测试功能不会破坏现有的其他测试用例
+
 ## 进度同步要求
 
 完成每个单位后，更新 docs/progress.md 中任务 P1-B 的行：

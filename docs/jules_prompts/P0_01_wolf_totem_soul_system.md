@@ -142,6 +142,12 @@ godot --path . --headless -- --run-test=test_soul_system
 - 魂魄数在波次间保持
 - UI正确更新
 
+**测试框架扩展权限：**
+如果当前测试框架无法覆盖本任务所需的测试场景（如需要验证魂魄数值变化、跨波次状态保持等），你有权：
+1. 修改 `src/Scripts/Tests/AutomatedTestRunner.gd` 以增加新的测试能力
+2. 更新 `docs/GameDesign.md` 中的自动化测试框架文档，记录新的测试功能和配置方法
+3. 确保新增的测试功能不会破坏现有的其他测试用例
+
 ## 进度同步要求
 
 完成每个重要步骤后，立即更新 docs/progress.md：

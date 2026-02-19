@@ -27,11 +27,21 @@ docs/jules_prompts/
 
 ### 1. 配置 API 密钥
 
+**检查是否已有 .env 文件:**
+```bash
+ls docs/secrets/.env
+```
+
+如果已存在 `.env` 文件，直接编辑即可，**不需要**重复复制。
+
+**如果还没有 .env 文件:**
 ```bash
 cd docs/secrets
 cp .env.example .env
-# 编辑 .env 文件，填入 API 密钥
+# 编辑 .env 文件，填入从 https://jules.google.com/settings#api 获取的 API 密钥
 ```
+
+**注意:** `.env` 文件已被 `.gitignore` 保护，不会被提交到 Git 仓库。
 
 ### 2. 安装依赖
 

@@ -152,6 +152,12 @@ godot --path . --headless -- --run-test=test_bleed_lifesteal
 - 吸血有每秒5%最大生命上限
 - 流血UI显示正确的层数
 
+**测试框架扩展权限：**
+如果当前测试框架无法覆盖本任务所需的测试场景（如需要验证流血层数堆叠、吸血数值计算、持续伤害跳字、吸血上限限制等），你有权：
+1. 修改 `src/Scripts/Tests/AutomatedTestRunner.gd` 以增加新的测试能力
+2. 更新 `docs/GameDesign.md` 中的自动化测试框架文档，记录新的测试功能和配置方法
+3. 确保新增的测试功能不会破坏现有的其他测试用例
+
 ## 进度同步要求
 
 更新 docs/progress.md 中任务 P0-04 的行：

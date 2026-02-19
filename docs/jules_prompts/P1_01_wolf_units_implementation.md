@@ -269,6 +269,12 @@ for test in test_wolf_tiger test_wolf_dog test_wolf_wolf test_wolf_hyena test_wo
 done
 ```
 
+**测试框架扩展权限：**
+如果当前测试框架无法覆盖狼图腾单位所需的测试场景（如需要验证吞噬继承机制、技能组合效果等），你有权：
+1. 修改 `src/Scripts/Tests/AutomatedTestRunner.gd` 以增加新的测试能力
+2. 更新 `docs/GameDesign.md` 中的自动化测试框架文档，记录新的测试功能和配置方法
+3. 确保新增的测试功能不会破坏现有的其他测试用例
+
 ## 进度同步要求
 
 实现每个单位后，更新 docs/progress.md：
