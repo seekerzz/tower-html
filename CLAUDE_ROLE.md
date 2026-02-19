@@ -60,8 +60,8 @@
 ### 4. 每个任务的必要步骤
 
 1. **提交前**: 确保 main 分支最新 (`git pull origin main`)
-2. **提交任务**: 使用 curl 或 Python 脚本 (API Key 从环境变量读取)
-3. **监控进度**: 使用 curl 或 Python 脚本轮询查询
+2. **提交任务**: 使用 `docs/jules_prompts/submit_jules_task.py` (API Key 从 .env 读取)
+3. **监控进度**: 使用 `docs/jules_prompts/check_jules_status.py --session-id <ID> --wait`
 4. **完成后**:
    - 获取 PR 信息
    - 拉取 PR 分支验证: `git fetch origin pull/{id}/head:pr-{id}`
@@ -74,22 +74,20 @@
 
 ## 可用工具脚本
 
-**注意**: 不要将 API Key 硬编码在脚本中，应从环境变量或用户输入获取。
+**注意**: 脚本从 `docs/secrets/.env` 或环境变量读取 API Key，不要硬编码。
 
 ```bash
-# 提交任务示例 (使用 curl)
-curl -X POST "https://jules.googleapis.com/v1alpha/sessions" \
-  -H "Content-Type: application/json" \
-  -H "X-Goog-Api-Key: $JULES_API_KEY" \
-  -d '{
-    "prompt": "任务描述",
-    "sourceContext": {"source": "sources/github/seekerzz/tower-html"},
-    "automationMode": "AUTO_CREATE_PR"
-  }'
+# 提交任务
+cd docs/jules_prompts
+python submit_jules_task.py \
+  --task-id P0-02 \
+  --prompt P0_02_taunt_aggro_system.md
 
-# 监控任务
-curl "https://jules.googleapis.com/v1alpha/sessions/{session_id}" \
-  -H "X-Goog-Api-Key: $JULES_API_KEY"
+# 检查状态
+python check_jules_status.py --session-id SESSION_ID
+
+# 持续监控直到完成
+python check_jules_status.py --session-id SESSION_ID --wait
 ```
 
 ---
@@ -100,6 +98,9 @@ curl "https://jules.googleapis.com/v1alpha/sessions/{session_id}" \
 |------|------|
 | `docs/jules_prompts/P0_*.md` | P0 任务提示词 (独立系统) |
 | `docs/jules_prompts/P1_*.md` | P1 任务提示词 (单位实现) |
+| `docs/jules_prompts/submit_jules_task.py` | **任务提交脚本** |
+| `docs/jules_prompts/check_jules_status.py` | **任务状态检查脚本** |
+| `docs/secrets/.env` | API Key 配置文件 (不要提交到 Git) |
 | `docs/progress.md` | 任务进度跟踪 |
 | `docs/GameDesign.md` | 游戏设计文档 |
 
