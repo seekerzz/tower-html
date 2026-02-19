@@ -1,6 +1,8 @@
 class_name LifestealManager
 extends Node
 
+signal lifesteal_occurred(source, amount)
+
 @export var lifesteal_ratio: float = 0.4
 
 func _ready():
@@ -24,7 +26,8 @@ func _on_damage_dealt(target, source, damage):
 		return
 
 	# Calculate lifesteal amount
-	var lifesteal_amount = target.bleed_stacks * 1.5 * lifesteal_ratio
+	var multiplier = GameManager.get_global_buff("lifesteal_multiplier", 1.0)
+	var lifesteal_amount = target.bleed_stacks * 1.5 * lifesteal_ratio * multiplier
 
 	# Cap lifesteal amount to 5% of max core health per hit
 	var max_heal = GameManager.max_core_health * 0.05
@@ -36,12 +39,13 @@ func _on_damage_dealt(target, source, damage):
 		else:
 			GameManager.damage_core(-lifesteal_amount)
 
+		lifesteal_occurred.emit(source, lifesteal_amount)
 		_show_lifesteal_effect(target.global_position, lifesteal_amount)
 
 func _is_bat_totem_unit(source: Node) -> bool:
 	# Check if source is a Unit and has type_key
 	if source.get("type_key"):
-		return source.type_key in ["mosquito", "blood_mage", "vampire_bat"]
+		return source.type_key in ["mosquito", "blood_mage", "vampire_bat", "gargoyle", "life_chain", "blood_chalice", "blood_ritualist"]
 	return false
 
 func _show_lifesteal_effect(pos: Vector2, amount: float):

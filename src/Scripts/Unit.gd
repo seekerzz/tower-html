@@ -26,7 +26,6 @@ var skill_mana_cost: float = 30.0
 
 var max_hp: float = 0.0
 var current_hp: float = 0.0
-var buff_values: Dictionary = {}
 
 # Visual Holder for animations and structure
 var visual_holder: Node2D = null
@@ -66,8 +65,6 @@ const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 signal unit_clicked(unit)
 signal attack_performed(target_node)
 signal merged(consumed_unit)
-signal damage_taken(amount, source)
-signal damage_blocked(unit, amount, source)
 
 func _start_skill_cooldown(base_duration: float):
 	if GameManager.cheat_fast_cooldown and base_duration > 1.0:
@@ -94,6 +91,7 @@ func setup(key: String):
 	_load_behavior()
 
 	reset_stats()
+	current_hp = max_hp
 	behavior.on_setup()
 
 	update_visuals()
@@ -150,14 +148,6 @@ func _ensure_visual_hierarchy():
 		highlight.position = -(target_size / 2)
 
 func take_damage(amount: float, source_enemy = null):
-	# Check for Spore Shield (Mushroom Healer)
-	if has_meta("spore_shield"):
-		var stacks = get_meta("spore_shield")
-		if stacks > 0:
-			damage_blocked.emit(self, amount, source_enemy)
-			# Damage fully blocked by spore shield
-			return
-
 	# 检查是否有guardian_shield buff，应用减伤
 	if "guardian_shield" in active_buffs:
 		var source = buff_sources.get("guardian_shield")
@@ -167,8 +157,7 @@ func take_damage(amount: float, source_enemy = null):
 
 	amount = behavior.on_damage_taken(amount, source_enemy)
 
-	damage_taken.emit(amount, source_enemy)
-
+	current_hp = max(0, current_hp - amount)
 	GameManager.damage_core(amount)
 
 	if visual_holder:
@@ -185,6 +174,13 @@ func reset_stats():
 
 	damage = stats.get("damage", unit_data.get("damage", 0))
 	max_hp = stats.get("hp", unit_data.get("hp", 0))
+	# Note: current_hp is NOT reset here to avoid full heal on level up,
+	# but usually max_hp changes, so maybe we should proportional update?
+	# For simplicity, we assume heal on level up (merge) or just clamp.
+	if current_hp > max_hp: current_hp = max_hp
+	# If max_hp increased, we don't necessarily heal, but we could.
+	# Standard behavior: Keep current_hp, unless we want to "heal on upgrade".
+	# Let's simple clamp.
 
 	range_val = unit_data.get("range", 0)
 	atk_speed = unit_data.get("atkSpeed", 1.0)
@@ -204,17 +200,9 @@ func reset_stats():
 	split_count = 0
 	active_buffs.clear()
 	buff_sources.clear()
-	buff_values.clear()
 
 	if GameManager.reward_manager and "focus_fire" in GameManager.reward_manager.acquired_artifacts:
 		range_val *= 1.2
-
-	# Apply buff values
-	if buff_values.has("max_hp_percent"):
-		var percent = buff_values["max_hp_percent"]
-		max_hp *= (1.0 + percent)
-
-	current_hp = max_hp
 
 	if behavior:
 		behavior.on_stats_updated()
@@ -240,27 +228,6 @@ func calculate_damage_against(target_node: Node2D) -> float:
 	final_damage *= GameManager.get_stat_modifier("damage")
 
 	return final_damage
-
-func add_buff(type: String, value: float, source: Node = null):
-	if buff_values.has(type):
-		buff_values[type] += value
-	else:
-		buff_values[type] = value
-
-	if type == "max_hp_percent":
-		# Trigger re-calc of stats for HP
-		# We don't want to full reset active_buffs so we just re-run the end of reset_stats
-		# Or just modify max_hp directly? No, safer to re-run part of reset logic
-		# For now, simplistic approach:
-		var base_hp = unit_data.get("hp", 0)
-		if unit_data.has("levels") and unit_data["levels"].has(str(level)):
-			base_hp = unit_data["levels"][str(level)].get("hp", base_hp)
-
-		# Re-apply percentage
-		max_hp = base_hp * (1.0 + buff_values["max_hp_percent"])
-		current_hp = max_hp # Heal up on buff application? Or keep ratio? Usually full heal on max hp increase in this simple logic
-
-		GameManager.recalculate_max_health()
 
 func apply_buff(buff_type: String, source_unit: Node2D = null):
 	if buff_type in active_buffs and buff_type != "bounce": return
@@ -681,6 +648,7 @@ func merge_with(other_unit):
 	merged.emit(other_unit)
 	level += 1
 	reset_stats()
+	current_hp = max_hp # Full heal on level up
 
 	GameManager.spawn_floating_text(global_position, "Level Up!", Color.GOLD)
 	if visual_holder:
@@ -842,6 +810,10 @@ func remove_ghost():
 func return_to_start():
 	position = start_position
 
+func heal(amount: float):
+	current_hp = min(current_hp + amount, max_hp)
+	GameManager.spawn_floating_text(global_position, "+%d" % int(amount), Color.GREEN)
+
 func play_buff_receive_anim():
 	if visual_holder:
 		var tween = create_tween()
@@ -873,60 +845,3 @@ func spawn_buff_effect(icon_char: String):
 	tween.parallel().tween_property(effect_node, "modulate:a", 0.0, 0.6)
 
 	tween.finished.connect(effect_node.queue_free)
-
-func get_all_player_units() -> Array[Unit]:
-	var units: Array[Unit] = []
-	if GameManager.grid_manager:
-		for key in GameManager.grid_manager.tiles:
-			var tile = GameManager.grid_manager.tiles[key]
-			if tile.unit and is_instance_valid(tile.unit) and not (tile.unit in units):
-				units.append(tile.unit)
-	return units
-
-func get_units_in_cell_range(center_unit: Unit, range_cells: int) -> Array[Unit]:
-	var units: Array[Unit] = []
-	if !GameManager.grid_manager: return units
-
-	var cx = center_unit.grid_pos.x
-	var cy = center_unit.grid_pos.y
-	var size_x = center_unit.unit_data.size.x
-	var size_y = center_unit.unit_data.size.y
-
-	# Iterate through potentially reachable tiles
-	# Range 1 means adjacent cells including diagonals if intended, usually 1 cell away
-	for x in range(cx - range_cells, cx + size_x + range_cells):
-		for y in range(cy - range_cells, cy + size_y + range_cells):
-			# Simple box check - is it within range_cells distance from the unit rect?
-			var dist_x = 0
-			if x < cx: dist_x = cx - x
-			elif x >= cx + size_x: dist_x = x - (cx + size_x - 1)
-
-			var dist_y = 0
-			if y < cy: dist_y = cy - y
-			elif y >= cy + size_y: dist_y = y - (cy + size_y - 1)
-
-			var dist = max(dist_x, dist_y)
-			if dist <= range_cells and dist > 0:
-				var key = GameManager.grid_manager.get_tile_key(x, y)
-				if GameManager.grid_manager.tiles.has(key):
-					var tile = GameManager.grid_manager.tiles[key]
-					var u = tile.unit
-					if u == null and tile.occupied_by != Vector2i.ZERO:
-						var origin_key = GameManager.grid_manager.get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
-						if GameManager.grid_manager.tiles.has(origin_key):
-							u = GameManager.grid_manager.tiles[origin_key].unit
-
-					if u and is_instance_valid(u) and u != center_unit and not (u in units):
-						units.append(u)
-
-	return units
-
-func get_host_unit() -> Unit:
-	if host and is_instance_valid(host) and host is Unit:
-		return host
-	return null
-
-func get_enemies_in_range(range_val_check: float) -> Array:
-	if GameManager.combat_manager:
-		return GameManager.combat_manager.get_enemies_in_range(global_position, range_val_check)
-	return []

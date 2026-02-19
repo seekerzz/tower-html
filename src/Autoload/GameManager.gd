@@ -15,11 +15,8 @@ signal show_tooltip(data, stats, buffs, pos)
 signal hide_tooltip()
 signal projectile_crit(source_unit, target, damage)
 signal enemy_hit(enemy, source, amount)
-signal enemy_died(enemy, killer)
 signal enemy_spawned(enemy)
-signal debuff_applied(enemy, debuff_type, stacks)
-signal core_healed(amount, overheal)
-signal totem_attacked(type)
+signal core_health_changed(current_hp, max_hp)
 
 var is_running_test: bool = false
 var current_test_scenario: Dictionary = {}
@@ -78,11 +75,10 @@ var cheat_fast_cooldown: bool = false
 
 var _hit_stop_end_time: int = 0
 
-# Global Buffs
-var global_buffs: Dictionary = {}
-
 # Core Mechanics Variables
 var current_mechanic: Node = null
+
+var global_buffs: Dictionary = {}
 
 func set_test_scenario(scenario: Dictionary):
 	current_test_scenario = scenario
@@ -194,9 +190,6 @@ func _process(delta):
 	if is_wave_active and core_health > 0:
 		update_resources(delta)
 
-func apply_global_buff(buff_type: String, value: float):
-	global_buffs[buff_type] = value
-
 func get_stat_modifier(stat_type: String, context: Dictionary = {}) -> float:
 	if not reward_manager:
 		return 1.0
@@ -213,9 +206,6 @@ func get_stat_modifier(stat_type: String, context: Dictionary = {}) -> float:
 				# If full HP: 1.0 + 0 = 1.0
 				# If 0 HP: 1.0 + 1.0 = 2.0
 				modifier *= (1.0 + (1.0 - (core_health / max_core_health)))
-
-			if global_buffs.has("damage_percent"):
-				modifier += global_buffs["damage_percent"]
 		"attack_interval":
 			if "berserker_horn" in reward_manager.acquired_artifacts:
 				if core_health < max_core_health * 0.2:
@@ -228,6 +218,16 @@ func get_stat_modifier(stat_type: String, context: Dictionary = {}) -> float:
 		modifier *= current_mechanic.get_stat_modifier(stat_type, context)
 
 	return modifier
+
+func apply_global_buff(name: String, value: Variant):
+	global_buffs[name] = value
+
+func remove_global_buff(name: String):
+	if global_buffs.has(name):
+		global_buffs.erase(name)
+
+func get_global_buff(name: String, default_value: Variant = null) -> Variant:
+	return global_buffs.get(name, default_value)
 
 func update_resources(delta):
 	if mana < max_mana:
@@ -282,19 +282,7 @@ func _on_upgrade_selected(upgrade_data):
 	_finish_wave_process()
 
 func heal_core(amount: float):
-	var overheal = 0.0
-	if core_health + amount > max_core_health:
-		overheal = (core_health + amount) - max_core_health
-
-	# Still call damage_core with negative amount to handle actual healing
 	damage_core(-amount)
-
-	# Clamp health
-	if core_health > max_core_health:
-		core_health = max_core_health
-		resource_changed.emit()
-
-	core_healed.emit(amount, overheal)
 
 func damage_core(amount: float):
 	if current_mechanic:
@@ -324,6 +312,7 @@ func damage_core(amount: float):
 
 	core_health -= amount
 	resource_changed.emit()
+	core_health_changed.emit(core_health, max_core_health)
 	if core_health <= 0:
 		core_health = 0
 		is_wave_active = false
@@ -383,6 +372,7 @@ func recalculate_max_health():
 			game_over.emit()
 
 		resource_changed.emit()
+		core_health_changed.emit(core_health, max_core_health)
 
 func _on_sacrifice_state_changed(is_active: bool):
 	if is_active:

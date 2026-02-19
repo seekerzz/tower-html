@@ -89,10 +89,7 @@
 			"hp": 30,
 			"lifetime": 25,
 			"icon": "🕷️",
-			"size": [
-				1,
-				1
-			],
+			"size": [1, 1],
 			"attackType": "melee",
 			"damageType": "physical",
 			"levels": {
@@ -108,17 +105,10 @@
 		"enemy_clone": {
 			"name": "克隆体",
 			"type": "summoned_clone",
-			"inherit_stats": [
-				"damage",
-				"attack_speed",
-				"range"
-			],
+			"inherit_stats": ["damage", "attack_speed", "range"],
 			"lifetime": -1,
 			"icon": "👥",
-			"size": [
-				1,
-				1
-			],
+			"size": [1, 1],
 			"attackType": "melee",
 			"damageType": "physical",
 			"levels": {
@@ -133,9 +123,6 @@
 		},
 		"tiger": {
 			"name": "猛虎",
-			"type": "attack",
-			"cost": 150,
-			"faction": "wolf",
 			"icon": "🐯",
 			"size": [
 				1,
@@ -143,29 +130,38 @@
 			],
 			"range": 250,
 			"atkSpeed": 1.5,
+			"manaCost": 0,
 			"attackType": "ranged",
 			"proj": "pinecone",
 			"damageType": "physical",
-			"skill": "meteor_shower",
+			"skill": "meteor_fall",
 			"skillCd": 15,
+			"skillDuration": 5.0,
 			"levels": {
 				"1": {
 					"damage": 300,
 					"hp": 500,
-					"cost": 150,
-					"desc": "击杀叠暴击，主动流星雨"
+					"cost": 250,
+					"desc": "主动：流星雨轰炸",
+					"mechanics": {}
 				},
 				"2": {
 					"damage": 450,
 					"hp": 750,
-					"cost": 300,
-					"desc": "击杀叠暴击，主动流星雨"
+					"cost": 500,
+					"desc": "主动：流星雨轰炸",
+					"mechanics": {
+						"crit_rate_bonus": 0.1
+					}
 				},
 				"3": {
 					"damage": 675,
 					"hp": 1125,
-					"cost": 600,
-					"desc": "击杀叠暴击，主动流星雨"
+					"cost": 1000,
+					"desc": "主动：流星雨轰炸",
+					"mechanics": {
+						"crit_rate_bonus": 0.2
+					}
 				}
 			},
 			"type_key": "tiger"
@@ -396,9 +392,6 @@
 		},
 		"lion": {
 			"name": "狮子",
-			"type": "attack",
-			"cost": 200,
-			"faction": "wolf",
 			"icon": "🦁",
 			"size": [
 				1,
@@ -406,25 +399,38 @@
 			],
 			"range": 200,
 			"atkSpeed": 2.0,
-			"attackType": "special",
+			"manaCost": 0,
+			"attackType": "ranged",
+			"proj": "roar",
+			"damageType": "poison",
+			"crit_rate": 0.1,
+			"crit_dmg": 1.5,
 			"levels": {
 				"1": {
 					"damage": 400,
-					"hp": 600,
-					"cost": 200,
-					"desc": "圆环震荡波攻击"
+					"hp": 200,
+					"cost": 90,
+					"desc": "声波: 狮吼造成范围伤害",
+					"mechanics": {}
 				},
 				"2": {
 					"damage": 600,
-					"hp": 900,
-					"cost": 400,
-					"desc": "圆环震荡波攻击"
+					"hp": 300,
+					"cost": 180,
+					"desc": "声波: 狮吼造成范围伤害",
+					"mechanics": {
+						"crit_rate_bonus": 0.1
+					}
 				},
 				"3": {
 					"damage": 900,
-					"hp": 1350,
-					"cost": 800,
-					"desc": "圆环震荡波攻击"
+					"hp": 450,
+					"cost": 360,
+					"desc": "声波: 狮吼造成范围伤害",
+					"mechanics": {
+						"crit_rate_bonus": 0.2,
+						"multi_shot_chance": 0.3
+					}
 				}
 			},
 			"type_key": "lion"
@@ -482,9 +488,6 @@
 		},
 		"dog": {
 			"name": "恶霸犬",
-			"type": "attack",
-			"cost": 80,
-			"faction": "wolf",
 			"icon": "🐕",
 			"size": [
 				1,
@@ -492,25 +495,40 @@
 			],
 			"range": 100,
 			"atkSpeed": 0.8,
+			"manaCost": 0,
 			"attackType": "melee",
+			"splash": 60,
+			"skill": "rage",
+			"skillCd": 10,
+			"skillDuration": 5.0,
+			"damageType": "physical",
+			"crit_rate": 0.1,
+			"crit_dmg": 1.5,
 			"levels": {
 				"1": {
 					"damage": 200,
 					"hp": 300,
-					"cost": 80,
-					"desc": "核心血量越低攻速越快"
+					"cost": 30,
+					"desc": "近战: 凶猛撕咬 (范围伤害)",
+					"mechanics": {}
 				},
 				"2": {
 					"damage": 300,
 					"hp": 450,
-					"cost": 160,
-					"desc": "核心血量越低攻速越快"
+					"cost": 60,
+					"desc": "近战: 凶猛撕咬 (范围伤害)",
+					"mechanics": {
+						"crit_rate_bonus": 0.1
+					}
 				},
 				"3": {
 					"damage": 450,
 					"hp": 675,
-					"cost": 320,
-					"desc": "核心血量越低攻速越快，高攻速获得溅射"
+					"cost": 120,
+					"desc": "近战: 凶猛撕咬 (范围伤害)",
+					"mechanics": {
+						"crit_rate_bonus": 0.2
+					}
 				}
 			},
 			"type_key": "dog"
@@ -1554,46 +1572,6 @@
 			},
 			"type_key": "oxpecker"
 		},
-		"ascetic": {
-			"name": "苦修者",
-			"icon": "🙏",
-			"size": [
-				1,
-				1
-			],
-			"range": 0,
-			"atkSpeed": 1.0,
-			"manaCost": 0,
-			"attackType": "none",
-			"levels": {
-				"1": {
-					"damage": 0,
-					"hp": 200,
-					"cost": 120,
-					"desc": "将友方受伤转化为法力",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 0,
-					"hp": 300,
-					"cost": 240,
-					"desc": "将友方受伤转化为法力",
-					"mechanics": {
-						"mana_conversion_bonus": 0.06
-					}
-				},
-				"3": {
-					"damage": 0,
-					"hp": 450,
-					"cost": 480,
-					"desc": "将友方受伤转化为法力，同时连结2个单位",
-					"mechanics": {
-						"targets_count": 2
-					}
-				}
-			},
-			"type_key": "ascetic"
-		},
 		"woodpecker": {
 			"name": "啄木鸟",
 			"icon": "🐦",
@@ -2403,251 +2381,164 @@
 			},
 			"type_key": "blood_ancestor"
 		},
-		"blood_food": {
-			"name": "血食",
-			"type": "buff",
-			"cost": 100,
-			"faction": "wolf",
-			"icon": "🩸",
-			"size": [
-				1,
-				1
-			],
-			"range": 0,
-			"atkSpeed": 0,
-			"attackType": "none",
-			"levels": {
-				"1": {
-					"hp": 100,
-					"cost": 100,
-					"desc": "提供全局伤害Buff"
-				},
-				"2": {
-					"hp": 150,
-					"cost": 200,
-					"desc": "提供全局伤害Buff"
-				},
-				"3": {
-					"hp": 225,
-					"cost": 400,
-					"desc": "提供全局伤害Buff"
-				}
-			},
-			"type_key": "blood_food"
-		},
-		"wolf": {
-			"name": "狼",
-			"type": "attack",
-			"cost": 120,
-			"faction": "wolf",
-			"icon": "🐺",
-			"size": [
-				1,
-				1
-			],
-			"range": 150,
-			"atkSpeed": 1.2,
-			"attackType": "melee",
-			"levels": {
-				"1": {
-					"damage": 150,
-					"hp": 400,
-					"cost": 120,
-					"desc": "吞噬单位获得属性和魂魄"
-				},
-				"2": {
-					"damage": 225,
-					"hp": 600,
-					"cost": 240,
-					"desc": "吞噬单位获得属性和魂魄"
-				}
-			},
-			"type_key": "wolf"
-		},
-		"hyena": {
-			"name": "鬣狗",
-			"type": "attack",
-			"cost": 100,
-			"faction": "wolf",
-			"icon": "🐕",
-			"size": [
-				1,
-				1
-			],
-			"range": 120,
+		"gargoyle": {
+			"name": "石像鬼",
+			"icon": "🗿",
+			"size": [1, 1],
+			"range": 100,
 			"atkSpeed": 1.0,
+			"manaCost": 0,
 			"attackType": "melee",
+			"damageType": "physical",
+			"crit_rate": 0.1,
+			"crit_dmg": 1.5,
 			"levels": {
 				"1": {
-					"damage": 120,
-					"hp": 350,
-					"cost": 100,
-					"desc": "对低血量敌人造成额外伤害"
+					"damage": 60,
+					"hp": 400,
+					"cost": 150,
+					"desc": "核心血量<35%时石化，反弹15%伤害",
+					"mechanics": {}
 				},
 				"2": {
-					"damage": 180,
-					"hp": 525,
-					"cost": 200,
-					"desc": "对低血量敌人造成额外伤害"
+					"damage": 90,
+					"hp": 600,
+					"cost": 300,
+					"desc": "核心血量<35%时石化，反弹15%伤害",
+					"mechanics": {
+						"crit_rate_bonus": 0.1
+					}
 				},
 				"3": {
-					"damage": 270,
-					"hp": 787,
-					"cost": 400,
-					"desc": "对低血量敌人造成额外伤害"
+					"damage": 135,
+					"hp": 900,
+					"cost": 600,
+					"desc": "核心血量<35%时石化，反弹15%伤害",
+					"mechanics": {
+						"crit_rate_bonus": 0.2
+					}
 				}
 			},
-			"type_key": "hyena"
+			"type_key": "gargoyle"
 		},
-		"fox": {
-			"name": "狐狸",
-			"type": "buff",
-			"cost": 120,
-			"faction": "wolf",
-			"icon": "🦊",
-			"size": [
-				1,
-				1
-			],
-			"range": 0,
-			"atkSpeed": 0,
-			"attackType": "none",
-			"levels": {
-				"1": {
-					"hp": 200,
-					"cost": 120,
-					"desc": "受击魅惑敌人"
-				},
-				"2": {
-					"hp": 300,
-					"cost": 240,
-					"desc": "受击魅惑敌人"
-				},
-				"3": {
-					"hp": 450,
-					"cost": 480,
-					"desc": "受击魅惑敌人"
-				}
-			},
-			"type_key": "fox"
-		},
-		"sheep_spirit": {
-			"name": "羊灵",
-			"type": "support",
-			"cost": 150,
-			"faction": "wolf",
-			"icon": "🐑",
-			"size": [
-				1,
-				1
-			],
+		"life_chain": {
+			"name": "生命链条",
+			"icon": "🔗",
+			"size": [1, 1],
 			"range": 300,
 			"atkSpeed": 0,
+			"manaCost": 0,
 			"attackType": "none",
+			"crit_rate": 0.0,
+			"crit_dmg": 1.5,
 			"levels": {
 				"1": {
+					"damage": 0,
 					"hp": 250,
-					"cost": 150,
-					"desc": "敌人死亡生成克隆体"
+					"cost": 120,
+					"desc": "连接最远敌人并偷取生命",
+					"mechanics": {}
 				},
 				"2": {
+					"damage": 0,
 					"hp": 375,
-					"cost": 300,
-					"desc": "敌人死亡生成克隆体"
+					"cost": 240,
+					"desc": "连接2个最远敌人并偷取生命",
+					"mechanics": {
+						"crit_rate_bonus": 0.1
+					}
 				},
 				"3": {
+					"damage": 0,
 					"hp": 562,
-					"cost": 600,
-					"desc": "敌人死亡生成克隆体"
+					"cost": 480,
+					"desc": "连接2个最远敌人并偷取生命，且造成范围伤害",
+					"mechanics": {
+						"crit_rate_bonus": 0.2
+					}
 				}
 			},
-			"type_key": "sheep_spirit"
+			"type_key": "life_chain"
 		},
-		"rat": {
-			"name": "老鼠",
-			"icon": "🐭",
-			"size": [
-				1,
-				1
-			],
-			"range": 120,
-			"atkSpeed": 1.0,
+		"blood_chalice": {
+			"name": "鲜血圣杯",
+			"icon": "🏆",
+			"size": [1, 1],
+			"range": 150,
+			"atkSpeed": 0,
 			"manaCost": 0,
-			"attackType": "melee",
-			"damageType": "poison",
-			"crit_rate": 0.1,
+			"attackType": "none",
+			"crit_rate": 0.0,
 			"crit_dmg": 1.5,
 			"levels": {
 				"1": {
-					"damage": 30,
-					"hp": 150,
-					"cost": 80,
-					"desc": "瘟疫传播: 攻击使敌人中毒，中毒敌人死亡时传播毒素",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 45,
-					"hp": 225,
-					"cost": 160,
-					"desc": "瘟疫传播: 攻击使敌人中毒，中毒敌人死亡时传播4层毒素",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 70,
-					"hp": 350,
-					"cost": 320,
-					"desc": "瘟疫传播: 攻击使敌人中毒，中毒敌人死亡时传播6层毒素",
-					"mechanics": {
-						"crit_rate_bonus": 0.15
-					}
-				}
-			}
-		},
-		"toad": {
-			"name": "蟾蜍",
-			"icon": "🐸",
-			"size": [
-				1,
-				1
-			],
-			"range": 250,
-			"atkSpeed": 0.8,
-			"manaCost": 0,
-			"attackType": "ranged",
-			"proj": "blob",
-			"damageType": "poison",
-			"skill": "poison_trap",
-			"skillCd": 15.0,
-			"skillCost": 100,
-			"crit_rate": 0.1,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 40,
-					"hp": 200,
-					"cost": 100,
-					"desc": "主动: 放置毒陷阱 (持续25秒)",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 60,
+					"damage": 0,
 					"hp": 300,
-					"cost": 200,
-					"desc": "主动: 放置毒陷阱 (上限2个)",
+					"cost": 150,
+					"desc": "允许吸血溢出，溢出值缓慢衰减",
+					"mechanics": {}
+				},
+				"2": {
+					"damage": 0,
+					"hp": 450,
+					"cost": 300,
+					"desc": "允许吸血溢出，溢出值衰减减慢",
 					"mechanics": {
 						"crit_rate_bonus": 0.1
 					}
 				},
 				"3": {
-					"damage": 90,
-					"hp": 450,
-					"cost": 400,
-					"desc": "主动: 放置毒陷阱，陷阱附加距离伤害",
-					"mechanics": {}
+					"damage": 0,
+					"hp": 675,
+					"cost": 600,
+					"desc": "允许吸血溢出，且核心失血时对敌人造成伤害",
+					"mechanics": {
+						"crit_rate_bonus": 0.2
+					}
 				}
-			}
+			},
+			"type_key": "blood_chalice"
+		},
+		"blood_ritualist": {
+			"name": "血祭术士",
+			"icon": "🧙",
+			"size": [1, 1],
+			"range": 250,
+			"atkSpeed": 0,
+			"manaCost": 0,
+			"attackType": "none",
+			"skill": "ritual",
+			"skillCd": 15,
+			"crit_rate": 0.0,
+			"crit_dmg": 1.5,
+			"levels": {
+				"1": {
+					"damage": 0,
+					"hp": 200,
+					"cost": 120,
+					"desc": "技能: 消耗20%核心生命，使范围敌人流血",
+					"mechanics": {}
+				},
+				"2": {
+					"damage": 0,
+					"hp": 300,
+					"cost": 240,
+					"desc": "技能: 消耗20%核心生命，使范围敌人强力流血",
+					"mechanics": {
+						"crit_rate_bonus": 0.1
+					}
+				},
+				"3": {
+					"damage": 0,
+					"hp": 450,
+					"cost": 480,
+					"desc": "技能: 消耗20%核心生命，使范围敌人流血，并获得全局吸血翻倍",
+					"mechanics": {
+						"crit_rate_bonus": 0.2
+					}
+				}
+			},
+			"type_key": "blood_ritualist"
 		}
 	},
 	"TRAITS": [

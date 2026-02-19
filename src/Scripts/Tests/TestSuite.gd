@@ -109,108 +109,51 @@ func get_test_config(case_id: String) -> Dictionary:
 					}
 				]
 			}
-		"test_cow_ascetic":
+		"test_bat_gargoyle":
 			return {
-				"id": "test_cow_ascetic",
-				"core_type": "cow_totem",
+				"id": "test_bat_gargoyle",
+				"core_type": "bat_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 20.0,
+				"units": [{"id": "gargoyle", "x": 0, "y": 1}]
+			}
+		"test_bat_life_chain":
+			return {
+				"id": "test_bat_life_chain",
+				"core_type": "bat_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 20.0,
+				"units": [{"id": "life_chain", "x": 0, "y": 1}]
+			}
+		"test_bat_chalice":
+			return {
+				"id": "test_bat_chalice",
+				"core_type": "bat_totem",
 				"initial_gold": 1000,
 				"start_wave_index": 1,
 				"duration": 20.0,
 				"units": [
-					{"id": "ascetic", "x": 0, "y": 0},
-					{"id": "iron_turtle", "x": 0, "y": 1}
+					{"id": "blood_chalice", "x": 0, "y": 1},
+					{"id": "mosquito", "x": 0, "y": -1}
 				]
 			}
-		"test_cow_plant":
+		"test_bat_ritualist":
 			return {
-				"id": "test_cow_plant",
-				"core_type": "cow_totem",
-				"initial_gold": 1000,
-				"start_wave_index": 1,
-				"duration": 15.0,
-				"units": [
-					{"id": "plant", "x": 0, "y": 0},
-					{"id": "plant", "x": 1, "y": 0}
-				]
-			}
-		"test_cow_turtle":
-			return {
-				"id": "test_cow_turtle",
-				"core_type": "cow_totem",
-				"initial_gold": 1000,
-				"start_wave_index": 1,
-				"duration": 15.0,
-				"units": [
-					{"id": "iron_turtle", "x": 0, "y": 1}
-				]
-			}
-		"test_cow_hedgehog":
-			return {
-				"id": "test_cow_hedgehog",
-				"core_type": "cow_totem",
-				"initial_gold": 1000,
-				"start_wave_index": 1,
-				"duration": 15.0,
-				"units": [
-					{"id": "hedgehog", "x": 0, "y": 1}
-				]
-			}
-		"test_cow_yak":
-			return {
-				"id": "test_cow_yak",
-				"core_type": "cow_totem",
-				"initial_gold": 1000,
-				"start_wave_index": 1,
-				"duration": 15.0,
-				"units": [
-					{"id": "yak_guardian", "x": 0, "y": 1}
-				]
-			}
-		"test_cow_rock":
-			return {
-				"id": "test_cow_rock",
-				"core_type": "cow_totem",
-				"initial_gold": 1000,
-				"start_wave_index": 1,
-				"duration": 15.0,
-				"units": [
-					{"id": "rock_armor_cow", "x": 0, "y": 1},
-					{"id": "cow", "x": 0, "y": 0}
-				]
-			}
-		"test_cow_oxpecker":
-			return {
-				"id": "test_cow_oxpecker",
-				"core_type": "cow_totem",
-				"initial_gold": 1000,
-				"start_wave_index": 1,
-				"duration": 15.0,
-				"units": [
-					{"id": "squirrel", "x": 0, "y": 1},
-					{"id": "oxpecker", "x": 0, "y": 1}
-				]
-			}
-		"test_cow_mushroom":
-			return {
-				"id": "test_cow_mushroom",
-				"core_type": "cow_totem",
+				"id": "test_bat_ritualist",
+				"core_type": "bat_totem",
 				"initial_gold": 1000,
 				"start_wave_index": 1,
 				"duration": 20.0,
-				"units": [
-					{"id": "mushroom_healer", "x": 0, "y": 0},
-					{"id": "iron_turtle", "x": 0, "y": 1}
-				]
-			}
-		"test_cow_cow":
-			return {
-				"id": "test_cow_cow",
-				"core_type": "cow_totem",
-				"initial_gold": 1000,
-				"start_wave_index": 1,
-				"duration": 15.0,
-				"units": [
-					{"id": "cow", "x": 0, "y": 0}
+				"units": [{"id": "blood_ritualist", "x": 0, "y": 1}],
+				"scheduled_actions": [
+					{
+						"time": 2.0,
+						"type": "skill",
+						"source": "blood_ritualist",
+						"target": {"x": 0, "y": 0}
+					}
 				]
 			}
 	return {}
