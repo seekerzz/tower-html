@@ -13,5 +13,9 @@ func add_souls_from_unit_merge(unit_data: Dictionary) -> void:
     current_souls = min(current_souls + 10, max_souls)
     soul_count_changed.emit(current_souls, 10)
 
+func add_souls(amount: int, _source: String = "") -> void:
+    current_souls = min(current_souls + amount, max_souls)
+    soul_count_changed.emit(current_souls, amount)
+
 func get_soul_damage_bonus() -> int:
     return current_souls

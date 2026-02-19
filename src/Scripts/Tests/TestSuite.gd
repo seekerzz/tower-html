@@ -109,4 +109,70 @@ func get_test_config(case_id: String) -> Dictionary:
 					}
 				]
 			}
+		"test_wolf_tiger":
+			return {
+				"id": "test_wolf_tiger",
+				"core_type": "wolf_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "tiger", "x": 0, "y": 1}]
+			}
+		"test_wolf_dog":
+			return {
+				"id": "test_wolf_dog",
+				"core_type": "wolf_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "dog", "x": 0, "y": 1}]
+			}
+		"test_wolf_wolf":
+			return {
+				"id": "test_wolf_wolf",
+				"core_type": "wolf_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [
+					{"id": "squirrel", "x": 0, "y": 1},
+					{"id": "wolf", "x": 0, "y": 0}
+				]
+			}
+		"test_wolf_hyena":
+			return {
+				"id": "test_wolf_hyena",
+				"core_type": "wolf_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "hyena", "x": 0, "y": 1}]
+			}
+		"test_wolf_fox":
+			return {
+				"id": "test_wolf_fox",
+				"core_type": "wolf_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "fox", "x": 0, "y": 1}]
+			}
+		"test_wolf_sheep":
+			return {
+				"id": "test_wolf_sheep",
+				"core_type": "wolf_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "sheep_spirit", "x": 0, "y": 1}]
+			}
+		"test_wolf_lion":
+			return {
+				"id": "test_wolf_lion",
+				"core_type": "wolf_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "lion", "x": 0, "y": 1}]
+			}
 	return {}

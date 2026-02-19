@@ -15,6 +15,7 @@ signal show_tooltip(data, stats, buffs, pos)
 signal hide_tooltip()
 signal projectile_crit(source_unit, target, damage)
 signal enemy_hit(enemy, source, amount)
+signal enemy_died(enemy, killer)
 signal enemy_spawned(enemy)
 
 var is_running_test: bool = false
@@ -73,6 +74,9 @@ var cheat_infinite_resources: bool = false
 var cheat_fast_cooldown: bool = false
 
 var _hit_stop_end_time: int = 0
+
+# Global Buffs
+var global_buffs: Dictionary = {}
 
 # Core Mechanics Variables
 var current_mechanic: Node = null
@@ -187,6 +191,9 @@ func _process(delta):
 	if is_wave_active and core_health > 0:
 		update_resources(delta)
 
+func apply_global_buff(buff_type: String, value: float):
+	global_buffs[buff_type] = value
+
 func get_stat_modifier(stat_type: String, context: Dictionary = {}) -> float:
 	if not reward_manager:
 		return 1.0
@@ -203,6 +210,9 @@ func get_stat_modifier(stat_type: String, context: Dictionary = {}) -> float:
 				# If full HP: 1.0 + 0 = 1.0
 				# If 0 HP: 1.0 + 1.0 = 2.0
 				modifier *= (1.0 + (1.0 - (core_health / max_core_health)))
+
+			if global_buffs.has("damage_percent"):
+				modifier += global_buffs["damage_percent"]
 		"attack_interval":
 			if "berserker_horn" in reward_manager.acquired_artifacts:
 				if core_health < max_core_health * 0.2:
