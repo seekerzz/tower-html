@@ -17,6 +17,7 @@ signal projectile_crit(source_unit, target, damage)
 signal enemy_hit(enemy, source, amount)
 signal enemy_spawned(enemy)
 signal totem_echo_triggered(source_unit, damage)
+signal core_type_changed(new_type)
 
 var is_running_test: bool = false
 var current_test_scenario: Dictionary = {}
@@ -25,6 +26,7 @@ var core_type: String = "":
 	set(value):
 		core_type = value
 		_initialize_mechanic()
+		core_type_changed.emit(core_type)
 
 # ===== 资源系统 =====
 # 法力系统

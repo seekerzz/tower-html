@@ -587,6 +587,25 @@ godot --path . --headless -- --run-test=test_new_unit
 
 通过分析这些日志，你可以验证新单位是否造成预期伤害、是否正确瞄准敌人、以及在正确的时间触发技能。
 
+#### 5. 商店阵营验证
+
+在测试配置中添加 `validate_shop_faction` 字段，可以验证商店刷新是否只包含指定阵营或通用单位。
+
+**配置示例：**
+
+```gdscript
+"test_shop_faction_refresh":
+    return {
+        "id": "test_shop_faction_refresh",
+        "core_type": "wolf_totem",
+        "initial_gold": 1000,
+        "start_wave_index": 1,
+        "duration": 5.0,
+        "test_shop": true, # 可选，仅用于标识
+        "validate_shop_faction": "wolf_totem" # 验证商店内容
+    }
+```
+
 ---
 
 ## Jules API 使用指南

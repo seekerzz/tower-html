@@ -31,6 +31,12 @@
 | P1-E | completed | 鹰图腾单位群: Kestrel, Owl, Magpie, Pigeon PR#443 | 2026-02-19 |
 | P1-F | completed | 牛图腾单位群: Ascetic, Plant, IronTurtle, Hedgehog, YakGuardian, RockArmorCow, Oxpecker, MushroomHealer, Cow PR#448 | 2026-02-19 |
 
+### P2 - 商店与UI系统
+
+| 任务ID | 状态 | 描述 | 更新时间 |
+|--------|------|------|----------|
+| P2-01 | completed | 商店改为按图腾阵营刷新单位 | 2026-02-19T12:00:00 |
+
 ## 状态说明
 
 - `pending` - 等待开始

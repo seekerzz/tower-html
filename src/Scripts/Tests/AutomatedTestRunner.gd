@@ -23,6 +23,17 @@ func _setup_test():
 		printerr("[TestRunner] GridManager not ready!")
 		return
 
+	# Set Core Type and force shop refresh if needed
+	if config.has("core_type"):
+		GameManager.core_type = config["core_type"]
+		if GameManager.main_game and GameManager.main_game.shop:
+			GameManager.main_game.shop.refresh_shop(true)
+			print("[TestRunner] Set core_type to ", config["core_type"], " and refreshed shop.")
+
+	# Validate Shop immediately if requested
+	if config.has("validate_shop_faction"):
+		_validate_shop_faction(config["validate_shop_faction"])
+
 	# Place units
 	if config.has("units"):
 		for u in config["units"]:
@@ -44,12 +55,17 @@ func _setup_test():
 
 	GameManager.game_over.connect(_on_game_over)
 	GameManager.wave_started.connect(_on_wave_started)
+	GameManager.wave_ended.connect(_on_wave_ended_custom)
 	GameManager.enemy_spawned.connect(_on_enemy_spawned)
 	GameManager.enemy_hit.connect(_on_enemy_hit)
 
 	GameManager.start_wave()
 	# GameManager.wave_ended is only emitted after UI interaction, which we skip in headless.
 	# So we monitor is_wave_active in _process instead.
+
+func _on_wave_ended_custom():
+	if config.has("validate_shop_faction"):
+		_validate_shop_faction(config["validate_shop_faction"])
 
 func _on_wave_started():
 	_wave_has_started = true
@@ -226,6 +242,31 @@ func _log_status():
 	}
 	logs.append(entry)
 	_frame_events.clear()
+
+func _validate_shop_faction(expected_faction):
+	var main_game = GameManager.main_game
+	if !main_game or !main_game.shop:
+		printerr("[TestRunner] Shop not found for validation")
+		return
+
+	var shop = main_game.shop
+	var items = shop.shop_items
+
+	if items.size() == 0:
+		printerr("[TestRunner] Shop is empty!")
+		return
+
+	print("[TestRunner] Validating shop items: ", items, " for faction: ", expected_faction)
+
+	for unit_key in items:
+		var unit_data = Constants.UNIT_TYPES[unit_key]
+		var faction = unit_data.get("faction", "universal")
+		if faction != "universal" and faction != expected_faction:
+			printerr("[TestRunner] FAIL: Shop item ", unit_key, " has faction ", faction, " expected ", expected_faction)
+			_teardown("Shop Faction Validation Failed")
+			return
+
+	print("[TestRunner] Shop validation PASSED for this check.")
 
 func _on_game_over():
 	_teardown("Game Over Signal")
