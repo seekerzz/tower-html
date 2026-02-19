@@ -81,4 +81,15 @@ func get_test_config(case_id: String) -> Dictionary:
 					{"id": "mosquito", "x": -1, "y": 0}
 				]
 			}
+		"test_taunt_system":
+			return {
+				"id": "test_taunt_system",
+				"core_type": "cow_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [
+					{"id": "yak_guardian", "x": 0, "y": 1}
+				]
+			}
 	return {}
