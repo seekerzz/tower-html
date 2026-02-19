@@ -91,7 +91,7 @@ def main():
         print("错误: JULES_API_KEY 环境变量未设置")
         print("请设置环境变量或将 API 密钥写入 docs/secrets/.env 文件")
         print("\n示例:")
-        print("  export JULES_API_KEY=''")
+        print("  export JULES_API_KEY='YOUR_JULES_API_KEY_HERE'")
         sys.exit(1)
 
     # 确保 prompt 文件存在

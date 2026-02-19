@@ -17,7 +17,7 @@
 
 2. 编辑 `.env` 文件，填入实际的API密钥:
    ```
-   JULES_API_KEY=
+   JULES_API_KEY=your_api_key_here
    ```
 
 3. 在调用脚本中读取环境变量:

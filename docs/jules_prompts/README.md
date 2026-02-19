@@ -135,7 +135,7 @@ cat docs/progress.md
 
 解决:
 ```bash
-export JULES_API_KEY=''
+export JULES_API_KEY='YOUR_JULES_API_KEY_HERE'
 # 或编辑 docs/secrets/.env 文件
 ```
 

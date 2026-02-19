@@ -22,7 +22,7 @@
 
 ### 2. 任务提交规范
 
-- 使用 API Key: ``
+- 使用 API Key: (从环境变量或用户处获取，不要在代码中硬编码)
 - 代理: `127.0.0.1:10808`
 - 认证头: `X-Goog-Api-Key`
 - 必须包含 `sourceContext` 指定 GitHub 仓库
@@ -50,8 +50,8 @@
 ### 4. 每个任务的必要步骤
 
 1. **提交前**: 确保 main 分支最新 (`git pull origin main`)
-2. **提交任务**: 使用 `submit_jules_task.py` 脚本
-3. **监控进度**: 使用 `monitor_jules_task.py` 脚本
+2. **提交任务**: 使用 curl 或 Python 脚本 (API Key 从环境变量读取)
+3. **监控进度**: 使用 curl 或 Python 脚本轮询查询
 4. **完成后**:
    - 获取 PR 信息
    - 拉取 PR 分支验证: `git fetch origin pull/{id}/head:pr-{id}`
@@ -64,15 +64,22 @@
 
 ## 可用工具脚本
 
+**注意**: 不要将 API Key 硬编码在脚本中，应从环境变量或用户输入获取。
+
 ```bash
-# 提交单个任务
-python submit_jules_task.py
+# 提交任务示例 (使用 curl)
+curl -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+  -H "Content-Type: application/json" \
+  -H "X-Goog-Api-Key: $JULES_API_KEY" \
+  -d '{
+    "prompt": "任务描述",
+    "sourceContext": {"source": "sources/github/seekerzz/tower-html"},
+    "automationMode": "AUTO_CREATE_PR"
+  }'
 
-# 监控任务进度
-python monitor_jules_task.py
-
-# 批量提交 (如需实现)
-python docs/jules_prompts/run_jules_batch.py
+# 监控任务
+curl "https://jules.googleapis.com/v1alpha/sessions/{session_id}" \
+  -H "X-Goog-Api-Key: $JULES_API_KEY"
 ```
 
 ---
@@ -85,8 +92,6 @@ python docs/jules_prompts/run_jules_batch.py
 | `docs/jules_prompts/P1_*.md` | P1 任务提示词 (单位实现) |
 | `docs/progress.md` | 任务进度跟踪 |
 | `docs/GameDesign.md` | 游戏设计文档 |
-| `submit_jules_task.py` | 任务提交脚本 |
-| `monitor_jules_task.py` | 任务监控脚本 |
 
 ---
 

@@ -772,7 +772,7 @@ python docs/jules_prompts/run_jules_batch.py --tasks P1-A,P1-C,P1-F
 
 2. 编辑 `.env` 文件，填入 API 密钥:
    ```
-   JULES_API_KEY=
+   JULES_API_KEY=YOUR_JULES_API_KEY_HERE
    ```
 
 3. **警告**: 不要将 `.env` 文件提交到 Git!
