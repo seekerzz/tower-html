@@ -61,6 +61,7 @@ const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 
 signal unit_clicked(unit)
 signal attack_performed(target_node)
+signal merged(consumed_unit)
 
 func _start_skill_cooldown(base_duration: float):
 	if GameManager.cheat_fast_cooldown and base_duration > 1.0:
@@ -631,6 +632,7 @@ func can_merge_with(other_unit) -> bool:
 	return true
 
 func merge_with(other_unit):
+	merged.emit(other_unit)
 	level += 1
 	reset_stats()
 

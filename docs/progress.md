@@ -15,7 +15,7 @@
 
 | 任务ID | 状态 | 描述 | 更新时间 |
 |--------|------|------|----------|
-| P0-01 | pending | 狼图腾魂魄系统 | - |
+| P0-01 | completed | Implemented SoulManager, MechanicWolfTotem, UI and Hooks. | 2024-05-23T12:00:00 |
 | P0-02 | pending | 嘲讽/仇恨系统 | - |
 | P0-03 | pending | 召唤物系统 | - |
 | P0-04 | pending | 流血吸血联动系统 | - |
