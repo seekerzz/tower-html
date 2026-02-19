@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 var attack_counter: int = 0
 var feather_refs: Array = []

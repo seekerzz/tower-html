@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 var extra_attack_damage_percent: float = 0.8
 

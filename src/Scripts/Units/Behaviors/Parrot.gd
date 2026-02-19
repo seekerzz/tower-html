@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 var ammo_queue: Array = []
 var max_ammo: int = 5

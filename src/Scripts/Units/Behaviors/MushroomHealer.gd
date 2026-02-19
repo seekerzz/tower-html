@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 class_name MushroomHealerBehavior
 
 var spore_stacks: int = 1

@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 var skill_active_timer: float = 0.0
 var _skill_interval_timer: float = 0.0

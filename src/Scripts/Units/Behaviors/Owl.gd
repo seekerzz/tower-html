@@ -1,4 +1,4 @@
-extends BuffProviderBehavior
+extends "res://src/Scripts/Units/Behaviors/BuffProviderBehavior.gd"
 
 # Owl - 猫头鹰
 # 辅助单位，增加周围友军暴击率

@@ -1,4 +1,4 @@
-class_name UIConstants
+extends Node
 
 const COLORS = {
     "primary": Color("#3498db"),

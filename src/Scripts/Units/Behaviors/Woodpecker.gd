@@ -1,4 +1,4 @@
-extends UnitBehavior
+extends "res://src/Scripts/Units/UnitBehavior.gd"
 
 # Woodpecker - 啄木鸟
 # 对同一目标连续攻击伤害增加

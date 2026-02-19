@@ -1,5 +1,7 @@
 extends Control
 
+const AssetLoader = preload("res://src/Scripts/Utils/AssetLoader.gd")
+
 var unit_key: String
 var bench_index: int
 
@@ -22,7 +24,7 @@ func setup(key: String, index: int):
 	add_child(panel)
 
 	# Visuals (Using existing children or creating new)
-	var icon_texture = AssetLoader.get_unit_icon(unit_key)
+	var icon_texture = AssetLoader.get_unit_icon(unit_key) if AssetLoader else null
 
 	if icon_texture:
 		# Use TextureRect

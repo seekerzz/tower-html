@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 # LureSnake - 诱捕蛇
 # 机制: 陷阱诱导 - 敌人触发陷阱后，被牵引向最近的另一个陷阱

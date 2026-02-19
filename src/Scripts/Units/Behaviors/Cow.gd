@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 var heal_interval: float = 6.0
 var heal_timer: float = 0.0

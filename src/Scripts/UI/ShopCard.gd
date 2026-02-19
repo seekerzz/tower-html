@@ -1,4 +1,3 @@
-class_name ShopCard
 extends PanelContainer
 
 signal card_clicked(unit_key)
@@ -14,8 +13,10 @@ var price_label: Label
 var content_container: VBoxContainer
 
 func _init():
-	# 1. Setup Base Style
-	base_style = StyleMaker.get_flat_style(Color("#2c3e50"), 8)
+	# 1. Setup Base Style - moved to _ready() to avoid autoload issues in headless mode
+	base_style = StyleBoxFlat.new()
+	base_style.bg_color = Color("#2c3e50")
+	base_style.set_corner_radius_all(8)
 	add_theme_stylebox_override("panel", base_style)
 
 	# 2. Setup Layout

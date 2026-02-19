@@ -1,5 +1,7 @@
 extends PanelContainer
 
+const AssetLoader = preload("res://src/Scripts/Utils/AssetLoader.gd")
+
 var icon_rect
 var title_label
 var stats_label
@@ -30,7 +32,7 @@ func show_tooltip(unit_data: Dictionary, current_stats: Dictionary, active_buffs
 		unit_key = unit_data.get("id", "") # Sometimes id is used as key
 
 	if unit_key != "":
-		var icon = AssetLoader.get_unit_icon(unit_key)
+		var icon = AssetLoader.get_unit_icon(unit_key) if AssetLoader else null
 		if icon:
 			icon_rect.texture = icon
 			icon_rect.show()

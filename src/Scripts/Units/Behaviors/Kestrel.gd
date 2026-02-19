@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 # Kestrel - 红隼
 # 攻击概率眩晕敌人，Lv2增加概率和时间

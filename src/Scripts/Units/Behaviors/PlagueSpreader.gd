@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 # 瘟疫使者 - 毒血传播机制
 # 攻击使敌人中毒，中毒敌人死亡时传播给附近敌人

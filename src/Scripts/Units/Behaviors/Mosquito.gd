@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 func on_projectile_hit(target: Node2D, damage: float, projectile: Node2D):
 	if not is_instance_valid(target): return

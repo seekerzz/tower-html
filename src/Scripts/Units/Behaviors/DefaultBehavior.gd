@@ -1,5 +1,4 @@
-extends UnitBehavior
-class_name DefaultBehavior
+extends "res://src/Scripts/Units/UnitBehavior.gd"
 
 # Default behavior for standard units.
 # Combat is handled by Unit.gd's default logic (since on_combat_tick returns false).

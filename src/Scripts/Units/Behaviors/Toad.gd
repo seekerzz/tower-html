@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 # Toad - 蟾蜍
 # 机制: 毒陷阱 - 主动技能放置毒陷阱

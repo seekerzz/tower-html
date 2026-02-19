@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 # 牛魔像 - 震荡反击机制
 # 每受到15/12/10次攻击触发全屏震荡，晕眩1/1/1.5秒

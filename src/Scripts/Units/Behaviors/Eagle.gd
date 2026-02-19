@@ -1,4 +1,4 @@
-extends FlyingMeleeBehavior
+extends "res://src/Scripts/Units/Behaviors/FlyingMeleeBehavior.gd"
 
 var first_strike_bonus: bool = true
 var _last_target: WeakRef = null

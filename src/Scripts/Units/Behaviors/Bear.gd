@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 func on_skill_activated():
 	var enemies = unit.get_tree().get_nodes_in_group("enemies")

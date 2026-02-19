@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 func on_combat_tick(delta: float) -> bool:
 	if unit.cooldown > 0:

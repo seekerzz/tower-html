@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 # Rat - 老鼠
 # 机制: 瘟疫传播 - 攻击使敌人中毒，中毒敌人死亡时传播毒素

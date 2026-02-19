@@ -1,5 +1,4 @@
-extends DefaultBehavior
-class_name BuffProviderBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 func broadcast_buffs():
 	var buff = unit.unit_data.get("buff_id", "")

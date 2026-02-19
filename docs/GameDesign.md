@@ -1166,6 +1166,116 @@ print(f"状态: {result['state']}")
 
 ---
 
+## Bug 反馈与测试覆盖分析
+
+### 2026-02-19 全面测试结果
+
+本次测试使用Subagents对6个图腾流派的全部单位进行了并行测试，发现了以下问题：
+
+#### 1. Headless模式类加载问题
+
+**问题描述**: Godot 4.3 headless模式下无法正确解析`class_name`定义的类继承关系，导致SCRIPT ERROR。
+
+**受影响的类**:
+- `BaseTotemMechanic` - 所有图腾机制基类
+- `DefaultBehavior` - 单位行为基类
+- `BuffProviderBehavior` - Buff提供者基类
+- `FlyingMeleeBehavior` - 飞行近战单位基类
+
+**为什么之前的测试没有检测出来**:
+- 之前的测试主要在GUI模式下运行，类加载正常
+- Headless模式的类加载机制与GUI模式不同
+- 测试用例没有覆盖所有单位类型，特别是新添加的单位
+
+**修复方案**:
+- 移除`class_name`声明，改用字符串路径继承
+- 例如：`extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"`
+
+#### 2. 远程攻击单位弹丸系统问题
+
+**问题描述**: 鹰图腾流派的远程攻击单位在Headless模式下无法产生攻击事件。
+
+**受影响的单位**:
+- 疾风鹰 (gale_eagle)
+- 红隼 (kestrel)
+- 猫头鹰 (owl)
+- 老鹰 (eagle)
+- 秃鹫 (vulture)
+- 喜鹊 (magpie)
+- 鸽子 (pigeon)
+- 啄木鸟 (woodpecker)
+- 鹦鹉 (parrot)
+- 孔雀 (peacock)
+- 风暴鹰 (storm_eagle)
+
+**为什么之前的测试没有检测出来**:
+- 只有角雕(harpy_eagle)使用`FlyingMeleeBehavior`直接造成伤害
+- 其他单位使用`DefaultBehavior`依赖弹丸系统
+- Headless模式下`Area2D`碰撞检测可能无法正常工作
+- 测试用例只验证了harpy_eagle，未覆盖其他远程单位
+
+**修复方案**:
+- 检查`CombatManager.spawn_projectile()`在Headless模式下的行为
+- 考虑为远程攻击添加非弹丸的攻击方式作为备选
+
+#### 3. 单位配置缺失
+
+**问题描述**: game_data.json中缺少部分单位的配置。
+
+**缺失配置的单位**:
+- 狼 (wolf) - 只有敌人配置，没有玩家单位配置
+- 鬣狗 (hyena) - 完全缺失
+- 狐狸 (fox) - 完全缺失
+
+**为什么之前的测试没有检测出来**:
+- 这些单位标记为"未实现"，没有创建对应的测试用例
+- 测试框架主要关注已标记为"已实现"的单位
+- 缺少配置导致单位无法被放置到战场上
+
+#### 4. Autoload类继承问题
+
+**问题描述**: `StyleMaker`和`UIConstants`作为Autoload必须继承`Node`，但代码中继承`RefCounted`或无继承。
+
+**为什么之前的测试没有检测出来**:
+- GUI模式下Godot对Autoload的继承检查较宽松
+- Headless模式下检查更严格，导致错误
+- 测试用例没有覆盖UI类的初始化路径
+
+#### 5. 代码重复定义问题
+
+**问题描述**: `UnitHyena.gd`中有两个`_on_attack_hit`函数定义。
+
+**为什么之前的测试没有检测出来**:
+- 该单位未在game_data.json中配置，无法被测试
+- 代码审查时未发现重复函数
+
+### 测试覆盖改进建议
+
+1. **必须测试所有单位类型**: 不仅测试标记为"已实现"的单位，还应测试"部分实现"和"未实现"的单位以发现配置问题
+
+2. **Headless模式必须作为标准测试流程**: 所有Jules任务必须在Headless模式下验证通过
+
+3. **主动技能必须测试**: 任何有主动技能的单位必须通过`scheduled_actions`测试技能释放流程
+
+4. **弹丸系统需要专门测试**: 远程攻击单位的弹丸系统需要专门的Headless兼容性测试
+
+5. **配置完整性检查**: 添加自动化检查确保game_data.json中包含所有单位的配置
+
+### 已修复的文件列表
+
+| 文件路径 | 修复内容 |
+|---------|---------|
+| `src/Scripts/Units/Behaviors/DefaultBehavior.gd` | 移除class_name，使用路径继承 |
+| `src/Scripts/Units/Behaviors/BuffProviderBehavior.gd` | 使用路径继承 |
+| `src/Scripts/Units/Behaviors/FlyingMeleeBehavior.gd` | 使用路径继承 |
+| `src/Scripts/Utils/StyleMaker.gd` | 改为继承Node |
+| `src/Scripts/Constants/UIConstants.gd` | 改为继承Node |
+| `src/Scripts/Game/Tree.gd` | 添加Headless模式检测 |
+| `src/Scripts/Unit.gd` | 添加预加载语句 |
+| `src/Scripts/Enemy.gd` | 添加预加载语句 |
+
+---
+
 *本文档包含 Jules API 的使用说明和项目特定的执行流程*
 *Jules API 文档: https://developers.google.com/jules/api*
-*本文档更新时间: 2026-02-19 (P0-P2 阶段全部完成)*
+*本文档更新时间: 2026-02-19 (P0-P2 阶段全部完成，添加Bug反馈章节)*

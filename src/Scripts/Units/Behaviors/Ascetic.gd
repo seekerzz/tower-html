@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 class_name AsceticBehavior
 
 var damage_to_mana_ratio: float = 0.12

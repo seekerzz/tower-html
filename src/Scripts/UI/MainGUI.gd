@@ -1,5 +1,8 @@
 extends Control
 
+const AssetLoader = preload("res://src/Scripts/Utils/AssetLoader.gd")
+const UIConstants = preload("res://src/Scripts/Constants/UIConstants.gd")
+
 signal sacrifice_requested
 
 @onready var hp_bar = $TopLeftPanel/HPBar
@@ -334,7 +337,7 @@ func _on_damage_dealt(unit, amount):
 		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-		if "type_key" in unit:
+		if "type_key" in unit and AssetLoader:
 			var icon = AssetLoader.get_unit_icon(unit.type_key)
 			if icon: icon_rect.texture = icon
 

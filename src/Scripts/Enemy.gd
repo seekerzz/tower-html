@@ -1,6 +1,8 @@
 extends CharacterBody2D
 
 const UNIT_SCRIPT = preload("res://src/Scripts/Unit.gd")
+const EnemyBehavior = preload("res://src/Scripts/Enemies/Behaviors/EnemyBehavior.gd")
+const AssetLoader = preload("res://src/Scripts/Utils/AssetLoader.gd")
 
 signal died
 signal attack_missed(enemy)

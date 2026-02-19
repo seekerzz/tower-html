@@ -1,4 +1,3 @@
-class_name AssetLoader
 extends Node
 
 static func get_unit_icon(unit_key: String) -> Texture2D:

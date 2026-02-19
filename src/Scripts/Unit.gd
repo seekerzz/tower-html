@@ -1,6 +1,9 @@
 class_name Unit
 extends Node2D
 
+const UnitBehavior = preload("res://src/Scripts/Units/UnitBehavior.gd")
+const AssetLoader = preload("res://src/Scripts/Utils/AssetLoader.gd")
+
 var is_summoned: bool = false
 var type_key: String
 var level: int = 1
@@ -419,6 +422,7 @@ func _get_buff_icon(buff_type: String) -> String:
 
 func _process(delta):
 	if !GameManager.is_wave_active: return
+	if not behavior: return
 
 	behavior.on_tick(delta)
 

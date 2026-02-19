@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 # Gale Eagle - 疾风鹰
 # 每次攻击发射多道风刃

@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 # Medusa - 美杜莎
 # 机制: 石化凝视 - 周期石化最近敌人，被石化敌人可触发陷阱连锁

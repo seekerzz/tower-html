@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 class_name ForestSprite
 
 var debuff_types: Array[String] = ["poison", "burn", "bleed", "slow"]

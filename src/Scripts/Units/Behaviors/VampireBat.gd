@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 # 吸血蝠 - 鲜血狂噬机制
 # 生命值越低，吸血比例越高

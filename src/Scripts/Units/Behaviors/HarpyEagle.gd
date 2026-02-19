@@ -1,4 +1,4 @@
-extends FlyingMeleeBehavior
+extends "res://src/Scripts/Units/Behaviors/FlyingMeleeBehavior.gd"
 
 # Harpy Eagle - 角雕
 # 三连爪击，第三次爪击暴击（Lv3）并施加流血

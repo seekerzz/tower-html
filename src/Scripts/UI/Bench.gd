@@ -1,5 +1,8 @@
 extends Control
 
+const UIConstants = preload("res://src/Scripts/Constants/UIConstants.gd")
+const StyleMaker = preload("res://src/Scripts/Utils/StyleMaker.gd")
+
 var bench_data = []
 
 @onready var slots_container = $PanelContainer/SlotsContainer

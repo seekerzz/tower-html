@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 enum State { NORMAL, PETRIFIED }
 var current_state: State = State.NORMAL

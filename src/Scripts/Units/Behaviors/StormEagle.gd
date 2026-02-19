@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 # Storm Eagle - 雷暴召唤
 # 友方暴击时积累电荷，满N层召唤全场雷击

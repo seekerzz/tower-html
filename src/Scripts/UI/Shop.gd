@@ -1,5 +1,9 @@
 extends Control
 
+const ShopCard = preload("res://src/Scripts/UI/ShopCard.gd")
+const UIConstants = preload("res://src/Scripts/Constants/UIConstants.gd")
+const StyleMaker = preload("res://src/Scripts/Utils/StyleMaker.gd")
+
 # Shop Logic
 var shop_items: Array = []
 var shop_locked: Array = [false, false, false, false]

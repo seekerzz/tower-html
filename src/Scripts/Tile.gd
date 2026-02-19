@@ -11,6 +11,7 @@ var random_frame_index: int = 0
 signal tile_clicked(tile)
 
 const DROP_HANDLER_SCRIPT = preload("res://src/Scripts/UI/TileDropHandler.gd")
+const AssetLoader = preload("res://src/Scripts/Utils/AssetLoader.gd")
 var TEXTURE_SHEET = null
 var TEXTURE_SPAWN = null
 

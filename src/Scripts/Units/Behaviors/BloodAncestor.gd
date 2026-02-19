@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 # 血祖 - 鲜血领域机制
 # 场上每有1个受伤敌人，自身攻击+10%/15%/20%且吸血+20%(L3)

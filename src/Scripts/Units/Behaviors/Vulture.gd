@@ -1,4 +1,4 @@
-extends FlyingMeleeBehavior
+extends "res://src/Scripts/Units/Behaviors/FlyingMeleeBehavior.gd"
 
 # Vulture - 秃鹫
 # 优先攻击生命值最低敌人

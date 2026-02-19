@@ -1,4 +1,4 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 const PoisonEffect = preload("res://src/Scripts/Effects/PoisonEffect.gd")
 const StatusEffect = preload("res://src/Scripts/Effects/StatusEffect.gd")

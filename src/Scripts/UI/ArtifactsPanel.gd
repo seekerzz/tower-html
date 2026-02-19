@@ -1,5 +1,7 @@
 extends MarginContainer
 
+const UIConstants = preload("res://src/Scripts/Constants/UIConstants.gd")
+
 var artifacts_container: GridContainer
 
 func _ready():
