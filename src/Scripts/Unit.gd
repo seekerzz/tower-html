@@ -268,8 +268,9 @@ func execute_skill_at(grid_pos: Vector2i):
 	if not unit_data.has("skill"): return
 
 	var final_cost = skill_mana_cost
-	if GameManager.skill_cost_reduction > 0:
-		final_cost *= (1.0 - GameManager.skill_cost_reduction)
+	var cost_reduction = GameManager.get_global_buff("skill_mana_cost_reduction", 0.0)
+	if cost_reduction > 0:
+		final_cost *= (1.0 - cost_reduction)
 
 	if GameManager.consume_resource("mana", final_cost):
 		is_no_mana = false

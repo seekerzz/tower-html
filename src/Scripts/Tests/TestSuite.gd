@@ -158,4 +158,429 @@ func get_test_config(case_id: String) -> Dictionary:
 				"test_shop": true,
 				"validate_shop_faction": "wolf_totem"
 			}
+		"test_enemy_death_no_duplicate":
+			return {
+				"id": "test_enemy_death_no_duplicate",
+				"core_type": "wolf_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 5.0,
+				"units": [
+					{"id": "tiger", "x": 0, "y": 0}
+				],
+				"scheduled_actions": [
+					{
+						"time": 2.0,
+						"type": "test_enemy_death"
+					}
+				],
+				"description": "测试敌人死亡时不会重复调用die()函数，防止重复添加魂魄/金币"
+			}
+		# ========== 牛图腾流派单位测试 (8个单位) ==========
+		"test_cow_totem_plant":
+			return {
+				"id": "test_cow_totem_plant",
+				"core_type": "cow_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "plant", "x": 0, "y": 1}]
+			}
+		"test_cow_totem_iron_turtle":
+			return {
+				"id": "test_cow_totem_iron_turtle",
+				"core_type": "cow_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "iron_turtle", "x": 0, "y": 1}]
+			}
+		"test_cow_totem_hedgehog":
+			return {
+				"id": "test_cow_totem_hedgehog",
+				"core_type": "cow_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "hedgehog", "x": 0, "y": 1}]
+			}
+		"test_cow_totem_yak_guardian":
+			return {
+				"id": "test_cow_totem_yak_guardian",
+				"core_type": "cow_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "yak_guardian", "x": 0, "y": 1}]
+			}
+		"test_cow_totem_cow_golem":
+			return {
+				"id": "test_cow_totem_cow_golem",
+				"core_type": "cow_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "cow_golem", "x": 0, "y": 1}]
+			}
+		"test_cow_totem_rock_armor_cow":
+			return {
+				"id": "test_cow_totem_rock_armor_cow",
+				"core_type": "cow_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "rock_armor_cow", "x": 0, "y": 1}]
+			}
+		"test_cow_totem_mushroom_healer":
+			return {
+				"id": "test_cow_totem_mushroom_healer",
+				"core_type": "cow_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "mushroom_healer", "x": 0, "y": 1}]
+			}
+		"test_cow_totem_cow":
+			return {
+				"id": "test_cow_totem_cow",
+				"core_type": "cow_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "cow", "x": 0, "y": 1}]
+			}
+		# ========== 蝙蝠图腾流派单位测试 (5个单位) ==========
+		"test_bat_totem_mosquito":
+			return {
+				"id": "test_bat_totem_mosquito",
+				"core_type": "bat_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "mosquito", "x": 0, "y": 1}]
+			}
+		"test_bat_totem_vampire_bat":
+			return {
+				"id": "test_bat_totem_vampire_bat",
+				"core_type": "bat_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "vampire_bat", "x": 0, "y": 1}]
+			}
+		"test_bat_totem_plague_spreader":
+			return {
+				"id": "test_bat_totem_plague_spreader",
+				"core_type": "bat_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "plague_spreader", "x": 0, "y": 1}]
+			}
+		"test_bat_totem_blood_mage":
+			return {
+				"id": "test_bat_totem_blood_mage",
+				"core_type": "bat_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 20.0,
+				"units": [{"id": "blood_mage", "x": 0, "y": 1}],
+				"scheduled_actions": [
+					{"type": "skill", "time": 5.0, "source": "blood_mage", "target": {"x": 2, "y": 2}}
+				]
+			}
+		"test_bat_totem_blood_mage_skill":
+			return {
+				"id": "test_bat_totem_blood_mage_skill",
+				"core_type": "bat_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 25.0,
+				"units": [{"id": "blood_mage", "x": 0, "y": 1}],
+				"scheduled_actions": [
+					{"type": "skill", "time": 3.0, "source": "blood_mage", "target": {"x": 2, "y": 2}},
+					{"type": "skill", "time": 12.0, "source": "blood_mage", "target": {"x": -2, "y": 2}}
+				]
+			}
+		"test_bat_totem_blood_ancestor":
+			return {
+				"id": "test_bat_totem_blood_ancestor",
+				"core_type": "bat_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "blood_ancestor", "x": 0, "y": 1}]
+			}
+		# ========== 蝴蝶图腾流派单位测试 (6个单位) ==========
+		"test_butterfly_totem_torch":
+			return {
+				"id": "test_butterfly_totem_torch",
+				"core_type": "butterfly_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [
+					{"id": "torch", "x": 0, "y": 1},
+					{"id": "squirrel", "x": 0, "y": 0}
+				]
+			}
+		"test_butterfly_totem_butterfly":
+			return {
+				"id": "test_butterfly_totem_butterfly",
+				"core_type": "butterfly_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "butterfly", "x": 0, "y": 1}]
+			}
+		"test_butterfly_totem_fairy_dragon":
+			return {
+				"id": "test_butterfly_totem_fairy_dragon",
+				"core_type": "butterfly_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "fairy_dragon", "x": 0, "y": 1}]
+			}
+		"test_butterfly_totem_phoenix":
+			return {
+				"id": "test_butterfly_totem_phoenix",
+				"core_type": "butterfly_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "phoenix", "x": 0, "y": 1}]
+			}
+		"test_butterfly_totem_eel":
+			return {
+				"id": "test_butterfly_totem_eel",
+				"core_type": "butterfly_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "eel", "x": 0, "y": 1}]
+			}
+		"test_butterfly_totem_dragon":
+			return {
+				"id": "test_butterfly_totem_dragon",
+				"core_type": "butterfly_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "dragon", "x": 0, "y": 1}]
+			}
+		# ========== 狼图腾流派单位测试 (3个单位) ==========
+		"test_wolf_totem_tiger":
+			return {
+				"id": "test_wolf_totem_tiger",
+				"core_type": "wolf_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "tiger", "x": 0, "y": 1}]
+			}
+		"test_wolf_totem_dog":
+			return {
+				"id": "test_wolf_totem_dog",
+				"core_type": "wolf_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "dog", "x": 0, "y": 1}]
+			}
+		"test_wolf_totem_lion":
+			return {
+				"id": "test_wolf_totem_lion",
+				"core_type": "wolf_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "lion", "x": 0, "y": 1}]
+			}
+		# ========== 眼镜蛇图腾流派单位测试 (7个单位) ==========
+		"test_viper_totem_spider":
+			return {
+				"id": "test_viper_totem_spider",
+				"core_type": "viper_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "spider", "x": 0, "y": 1}]
+			}
+		"test_viper_totem_snowman":
+			return {
+				"id": "test_viper_totem_snowman",
+				"core_type": "viper_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "snowman", "x": 0, "y": 1}]
+			}
+		"test_viper_totem_scorpion":
+			return {
+				"id": "test_viper_totem_scorpion",
+				"core_type": "viper_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "scorpion", "x": 0, "y": 1}]
+			}
+		"test_viper_totem_viper":
+			return {
+				"id": "test_viper_totem_viper",
+				"core_type": "viper_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "viper", "x": 0, "y": 1}]
+			}
+		"test_viper_totem_arrow_frog":
+			return {
+				"id": "test_viper_totem_arrow_frog",
+				"core_type": "viper_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "arrow_frog", "x": 0, "y": 1}]
+			}
+		"test_viper_totem_medusa":
+			return {
+				"id": "test_viper_totem_medusa",
+				"core_type": "viper_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "medusa", "x": 0, "y": 1}]
+			}
+		"test_viper_totem_lure_snake":
+			return {
+				"id": "test_viper_totem_lure_snake",
+				"core_type": "viper_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "lure_snake", "x": 0, "y": 1}]
+			}
+		# ========== 鹰图腾流派单位测试 (12个单位) ==========
+		"test_eagle_totem_harpy_eagle":
+			return {
+				"id": "test_eagle_totem_harpy_eagle",
+				"core_type": "eagle_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "harpy_eagle", "x": 0, "y": 1}]
+			}
+		"test_eagle_totem_gale_eagle":
+			return {
+				"id": "test_eagle_totem_gale_eagle",
+				"core_type": "eagle_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "gale_eagle", "x": 0, "y": 1}]
+			}
+		"test_eagle_totem_kestrel":
+			return {
+				"id": "test_eagle_totem_kestrel",
+				"core_type": "eagle_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "kestrel", "x": 0, "y": 1}]
+			}
+		"test_eagle_totem_owl":
+			return {
+				"id": "test_eagle_totem_owl",
+				"core_type": "eagle_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "owl", "x": 0, "y": 1}]
+			}
+		"test_eagle_totem_eagle":
+			return {
+				"id": "test_eagle_totem_eagle",
+				"core_type": "eagle_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "eagle", "x": 0, "y": 1}]
+			}
+		"test_eagle_totem_vulture":
+			return {
+				"id": "test_eagle_totem_vulture",
+				"core_type": "eagle_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "vulture", "x": 0, "y": 1}]
+			}
+		"test_eagle_totem_magpie":
+			return {
+				"id": "test_eagle_totem_magpie",
+				"core_type": "eagle_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "magpie", "x": 0, "y": 1}]
+			}
+		"test_eagle_totem_pigeon":
+			return {
+				"id": "test_eagle_totem_pigeon",
+				"core_type": "eagle_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "pigeon", "x": 0, "y": 1}]
+			}
+		"test_eagle_totem_woodpecker":
+			return {
+				"id": "test_eagle_totem_woodpecker",
+				"core_type": "eagle_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "woodpecker", "x": 0, "y": 1}]
+			}
+		"test_eagle_totem_parrot":
+			return {
+				"id": "test_eagle_totem_parrot",
+				"core_type": "eagle_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "parrot", "x": 0, "y": 1}]
+			}
+		"test_eagle_totem_peacock":
+			return {
+				"id": "test_eagle_totem_peacock",
+				"core_type": "eagle_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "peacock", "x": 0, "y": 1}]
+			}
+		"test_eagle_totem_storm_eagle":
+			return {
+				"id": "test_eagle_totem_storm_eagle",
+				"core_type": "eagle_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "storm_eagle", "x": 0, "y": 1}]
+			}
+		# ========== 流血和吸血系统测试 ==========
+		"test_bleed_lifesteal_system":
+			return {
+				"id": "test_bleed_lifesteal_system",
+				"core_type": "bat_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 20.0,
+				"units": [
+					{"id": "mosquito", "x": 0, "y": 1},
+					{"id": "blood_mage", "x": 1, "y": 1}
+				]
+			}
 	return {}

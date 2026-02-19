@@ -73,7 +73,7 @@ func _start_pool_processing(pool_data: Dictionary):
 
 				if unit.level >= 3:
 					if enemy.has_method("add_bleed_stacks"):
-						enemy.add_bleed_stacks(1)
+						enemy.add_bleed_stacks(1, unit)
 
 		if total_damage_dealt > 0:
 			var heal_amount = total_damage_dealt * 0.5 * pool_data.efficiency

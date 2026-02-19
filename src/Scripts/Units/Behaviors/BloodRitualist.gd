@@ -15,7 +15,7 @@ func on_skill_activated():
 	var enemies = unit.get_tree().get_nodes_in_group("enemies")
 	for enemy in enemies:
 		if is_instance_valid(enemy) and unit.global_position.distance_to(enemy.global_position) <= unit.range_val:
-			enemy.add_bleed_stacks(bleed_stacks)
+			enemy.add_bleed_stacks(bleed_stacks, unit)
 
 	if unit.level >= 3:
 		_start_ritual_buff()

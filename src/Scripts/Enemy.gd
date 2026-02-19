@@ -60,6 +60,9 @@ var behavior: EnemyBehavior
 var bleed_stacks: int = 0
 var max_bleed_stacks: int = 30
 var bleed_damage_per_stack: float = 3.0
+var _bleed_source_unit: Object = null
+var _bleed_display_timer: float = 0.0
+const BLEED_DISPLAY_INTERVAL: float = 0.3
 
 signal bleed_stack_changed(new_stacks: int)
 
@@ -542,17 +545,63 @@ func heal(amount: float):
 	hp = min(hp + amount, max_hp)
 	queue_redraw()
 
-func add_bleed_stacks(stacks: int):
+func add_bleed_stacks(stacks: int, source_unit = null):
 	var old_stacks = bleed_stacks
 	bleed_stacks = min(bleed_stacks + stacks, max_bleed_stacks)
 	if bleed_stacks != old_stacks:
 		bleed_stack_changed.emit(bleed_stacks)
 		queue_redraw()
 
+	# Track the bleed source for lifesteal
+	if source_unit and _bleed_source_unit == null:
+		_bleed_source_unit = source_unit
+
 func _process_bleed_damage(delta: float):
 	if bleed_stacks > 0:
 		var damage = bleed_stacks * bleed_damage_per_stack * delta
-		take_damage(damage, null, "bleed")
+
+		# Throttle floating text display
+		_bleed_display_timer -= delta
+		var should_show_text = _bleed_display_timer <= 0
+		if should_show_text:
+			_bleed_display_timer = BLEED_DISPLAY_INTERVAL
+
+		# Apply damage without floating text for small ticks, show text periodically
+		_take_bleed_damage(damage, _bleed_source_unit, should_show_text)
+
+func _take_bleed_damage(amount: float, source_unit = null, show_text: bool = true):
+	if invincible_timer > 0:
+		return
+
+	if behavior:
+		var handled = behavior.on_hit({
+			"amount": amount,
+			"source_unit": source_unit,
+			"damage_type": "bleed"
+		})
+		if handled: return
+
+	# Vulnerable Effect Check
+	for child in get_children():
+		if child.has_method("get_damage_multiplier"):
+			amount *= child.get_damage_multiplier()
+
+	hp -= amount
+
+	# Only show floating text periodically
+	if show_text:
+		hit_flash_timer = 0.1
+		queue_redraw()
+		var display_val = max(1, int(amount))
+		GameManager.spawn_floating_text(global_position, str(display_val), "bleed", Vector2.ZERO)
+
+	GameManager.enemy_hit.emit(self, source_unit, amount)
+
+	if source_unit:
+		GameManager.damage_dealt.emit(source_unit, amount)
+
+	if hp <= 0:
+		die(source_unit)
 
 func add_debuff(type: String, stacks: int, duration: float):
 	if type == "vulnerable":
@@ -623,6 +672,10 @@ func _on_death():
 	})
 
 func die(killer_unit = null):
+	if is_dying:
+		return
+	is_dying = true
+
 	_on_death()
 
 	# Kill Bonus Check

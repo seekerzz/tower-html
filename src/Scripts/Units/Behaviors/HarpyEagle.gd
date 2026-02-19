@@ -57,7 +57,7 @@ func _calculate_damage(target: Node2D) -> float:
 		_apply_bleed(target)
 		if unit.level >= 3:
 			if target.has_method("add_bleed_stacks"):
-				target.add_bleed_stacks(2)
+				target.add_bleed_stacks(2, unit)
 			GameManager.spawn_floating_text(target.global_position, "BLEED!", Color.RED)
 
 	return dmg

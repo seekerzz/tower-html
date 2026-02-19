@@ -18,7 +18,7 @@ func _on_totem_attack():
 	var targets = get_nearest_enemies(target_count)
 	for enemy in targets:
 		if is_instance_valid(enemy) and enemy.has_method("add_bleed_stacks"):
-			enemy.add_bleed_stacks(bleed_stacks_per_hit)
+			enemy.add_bleed_stacks(bleed_stacks_per_hit, self)
 			_play_bat_attack_effect(enemy)
 
 func _play_bat_attack_effect(enemy):

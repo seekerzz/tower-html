@@ -4,9 +4,9 @@ var config: Dictionary = {}
 var elapsed_time: float = 0.0
 var logs: Array = []
 var scheduled_actions_executed: Array = []
+var _frame_events: Array = []
 var _is_tearing_down: bool = false
 var _wave_has_started: bool = false
-var _frame_events: Array = []
 
 func _ready():
 	config = GameManager.current_test_scenario
@@ -192,6 +192,89 @@ func _execute_scheduled_action(action: Dictionary):
 				print("[TestRunner] Summoned ", summon_type, " at ", pos)
 			else:
 				printerr("[TestRunner] SummonManager not available")
+		"test_enemy_death":
+			_run_enemy_death_test()
+
+func _run_enemy_death_test():
+	print("[TestRunner] ========== 开始敌人死亡重复调用测试 ==========")
+
+	# 使用一个独立节点来跟踪信号计数（避免lambda的变量捕获问题）
+	var tracker = Node.new()
+	tracker.set_meta("death_count", 0)
+	tracker.set_meta("soul_before", SoulManager.current_souls)
+	get_tree().current_scene.add_child(tracker)
+
+	# 创建测试敌人
+	var enemy_scene = load("res://src/Scenes/Game/Enemy.tscn")
+	if not enemy_scene:
+		printerr("[TestRunner] 无法加载敌人场景")
+		return
+
+	var enemy = enemy_scene.instantiate()
+	enemy.global_position = Vector2(400, 400)
+	enemy.setup("slime", 1)
+	enemy.hp = 100
+	enemy.max_hp = 100
+
+	# 连接信号
+	enemy.died.connect(func():
+		var count = tracker.get_meta("death_count") + 1
+		tracker.set_meta("death_count", count)
+		print("[TestRunner] died 信号触发 #", count)
+	)
+
+	get_tree().current_scene.add_child(enemy)
+	print("[TestRunner] 测试敌人创建完成，HP: ", enemy.hp, ", 初始魂魄: ", tracker.get_meta("soul_before"))
+
+	await get_tree().process_frame
+
+	# 模拟多段伤害
+	print("[TestRunner] 模拟多段伤害 (3次 take_damage 调用)...")
+	enemy.take_damage(40, null)
+	enemy.take_damage(40, null)
+	enemy.take_damage(40, null)
+
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	# 验证结果
+	print("\n[TestRunner] ========== 测试结果 ==========")
+	var test_passed = true
+
+	var death_count = tracker.get_meta("death_count")
+	var soul_increase = SoulManager.current_souls - tracker.get_meta("soul_before")
+
+	# 验证1: died 信号只应该触发一次
+	if death_count == 0:
+		printerr("[TestRunner] ✗ died 信号没有被触发")
+		test_passed = false
+	elif death_count > 1:
+		printerr("[TestRunner] ✗ died 信号被触发了 ", death_count, " 次 - 存在重复调用bug!")
+		test_passed = false
+	else:
+		print("[TestRunner] ✓ died 信号正确触发1次")
+
+	# 验证2: 魂魄只应该增加1次
+	if soul_increase == 0:
+		printerr("[TestRunner] ✗ 魂魄没有增加")
+		test_passed = false
+	elif soul_increase > 1:
+		printerr("[TestRunner] ✗ 魂魄增加了 ", soul_increase, " 次!")
+		test_passed = false
+	else:
+		print("[TestRunner] ✓ 魂魄正确增加1次 (", SoulManager.current_souls, ")")
+
+	if test_passed:
+		print("\n[TestRunner] ========== 测试通过 ✓ ==========")
+	else:
+		print("\n[TestRunner] ========== 测试失败 ✗ ==========")
+
+	# 清理
+	if is_instance_valid(enemy):
+		enemy.queue_free()
+	tracker.queue_free()
+
+	print("[TestRunner] ========== 敌人死亡测试结束 ==========\n")
 
 func _log_status():
 	var units_info = []

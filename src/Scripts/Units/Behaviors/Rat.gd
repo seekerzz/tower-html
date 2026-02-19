@@ -55,9 +55,9 @@ func _spread_additional_debuff(enemy):
 	elif random_debuff == "bleed":
 		# Bleed usually handled by stacks logic in Enemy.gd
 		if enemy.has_method("add_bleed_stacks"):
-			enemy.add_bleed_stacks(1)
+			enemy.add_bleed_stacks(1, unit)
 		else:
-			enemy.apply_status(load("res://src/Scripts/Effects/BleedEffect.gd"), {"duration": 5.0, "stack_count": 1})
+			enemy.apply_status(load("res://src/Scripts/Effects/BleedEffect.gd"), {"duration": 5.0, "stack_count": 1, "source": unit})
 	elif random_debuff == "slow":
 		enemy.apply_status(load("res://src/Scripts/Effects/SlowEffect.gd"), {"duration": 3.0, "slow_factor": 0.5})
 

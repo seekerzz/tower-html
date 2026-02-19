@@ -17,6 +17,8 @@ signal hide_tooltip()
 signal projectile_crit(source_unit, target, damage)
 signal enemy_hit(enemy, source, amount)
 signal enemy_spawned(enemy)
+signal enemy_died(enemy, killer_unit)
+signal debuff_applied(enemy, debuff_type, stacks)
 signal totem_echo_triggered(source_unit, damage)
 
 var is_running_test: bool = false
@@ -65,6 +67,18 @@ var lifesteal_manager: Node = null
 var summon_manager: Node = null
 
 var permanent_health_bonus: float = 0.0
+
+# ===== 全局Buff系统 =====
+var _global_buffs: Dictionary = {}
+
+func apply_global_buff(buff_name: String, value: float):
+	_global_buffs[buff_name] = value
+
+func remove_global_buff(buff_name: String):
+	_global_buffs.erase(buff_name)
+
+func get_global_buff(buff_name: String, default_value: float = 1.0) -> float:
+	return _global_buffs.get(buff_name, default_value)
 
 # Relic Logic
 var indomitable_triggered: bool = false
