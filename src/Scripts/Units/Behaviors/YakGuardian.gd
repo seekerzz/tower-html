@@ -1,17 +1,23 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/TauntBehavior.gd"
 
-# 牦牛守护 - 守护领域机制
+# 牦牛守护 - 守护领域机制 + 嘲讽机制
 # 自身周围1格范围内友方受到伤害减少5%/10%/15%
-# 通过broadcast_buffs给周围友方添加guardian_shield buff
-# 被保护的单位在on_damage_taken时检查buff来源并应用减伤
+# 继承自TauntBehavior，拥有嘲讽能力
 
 var guardian_range: int = 1  # 守护范围（格）
 var damage_reduction: float = 0.05  # 当前等级减伤比例
 
 func on_setup():
+	super.on_setup()
 	_update_mechanics()
 
+	# Configure Taunt
+	taunt_radius = 150.0 # Slightly larger than 120 default
+	taunt_interval = 6.0
+	taunt_duration = 2.5
+
 func on_stats_updated():
+	super.on_stats_updated()
 	_update_mechanics()
 
 func _update_mechanics():

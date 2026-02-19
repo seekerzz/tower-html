@@ -564,3 +564,31 @@ func die(killer_unit = null):
 
 	if !handled:
 		queue_free()
+
+func find_attack_target() -> Node2D:
+	# First check taunt units
+	# Assuming AggroManager is available as Autoload
+	var target = AggroManager.get_target_for_enemy(self)
+	if target:
+		_show_taunt_indicator(true)
+		return target
+
+	_show_taunt_indicator(false)
+	# Default attack core (return null implies default behavior in DefaultBehavior)
+	return null
+
+func _show_taunt_indicator(active: bool):
+	var indicator = get_node_or_null("TauntIndicator")
+	if active:
+		if !indicator:
+			indicator = Label.new()
+			indicator.name = "TauntIndicator"
+			indicator.text = "!"
+			indicator.modulate = Color.RED
+			indicator.add_theme_font_size_override("font_size", 24)
+			indicator.position = Vector2(-10, -50)
+			add_child(indicator)
+		indicator.show()
+	else:
+		if indicator:
+			indicator.hide()
