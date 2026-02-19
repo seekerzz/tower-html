@@ -109,31 +109,43 @@ func get_test_config(case_id: String) -> Dictionary:
 					}
 				]
 			}
-		"test_butterfly_ice":
+		"test_eagle_kestrel":
 			return {
-				"id": "test_butterfly_ice",
-				"core_type": "butterfly_totem",
+				"id": "test_eagle_kestrel",
+				"core_type": "eagle_totem",
 				"initial_gold": 1000,
 				"start_wave_index": 1,
 				"duration": 15.0,
-				"units": [{"id": "ice_butterfly", "x": 0, "y": 1}]
+				"units": [{"id": "kestrel", "x": 0, "y": 1}]
 			}
-		"test_butterfly_firefly":
+		"test_eagle_owl":
 			return {
-				"id": "test_butterfly_firefly",
-				"core_type": "butterfly_totem",
+				"id": "test_eagle_owl",
+				"core_type": "eagle_totem",
 				"initial_gold": 1000,
 				"start_wave_index": 1,
 				"duration": 15.0,
-				"units": [{"id": "firefly", "x": 0, "y": 1}]
+				"units": [
+					{"id": "owl", "x": 0, "y": 1},
+					{"id": "kestrel", "x": 0, "y": 0}
+				]
 			}
-		"test_butterfly_sprite":
+		"test_eagle_magpie":
 			return {
-				"id": "test_butterfly_sprite",
-				"core_type": "butterfly_totem",
+				"id": "test_eagle_magpie",
+				"core_type": "eagle_totem",
 				"initial_gold": 1000,
 				"start_wave_index": 1,
 				"duration": 15.0,
-				"units": [{"id": "forest_sprite", "x": 0, "y": 1}, {"id": "squirrel", "x": 0, "y": 2}]
+				"units": [{"id": "magpie", "x": 0, "y": 1}]
+			}
+		"test_eagle_pigeon":
+			return {
+				"id": "test_eagle_pigeon",
+				"core_type": "eagle_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [{"id": "pigeon", "x": 0, "y": 1}]
 			}
 	return {}

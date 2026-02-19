@@ -28,7 +28,7 @@
 | P1-B | pending | 眼镜蛇图腾单位群 | - |
 | P1-C | completed | Implemented Bat Totem units: Gargoyle, LifeChain, BloodChalice, BloodRitualist | 2026-02-19T18:00:00 |
 | P1-D | pending | 蝴蝶图腾单位群 | - |
-| P1-E | pending | 鹰图腾单位群 | - |
+| P1-E | completed | 已实现鹰图腾全系单位及相关机制 | 2026-02-19T20:00:00 |
 | P1-F | pending | 牛图腾单位群 (依赖: P0-02) | - |
 
 ## 状态说明

@@ -624,131 +624,6 @@
 			},
 			"type_key": "butterfly"
 		},
-		"ice_butterfly": {
-			"name": "冰晶蝶",
-			"faction": "butterfly",
-			"type": "buff",
-			"icon": "❄️🦋",
-			"size": [
-				1,
-				1
-			],
-			"range": 300,
-			"atkSpeed": 1.0,
-			"manaCost": 0,
-			"attackType": "ranged",
-			"proj": "ice_shard",
-			"damageType": "magic",
-			"crit_rate": 0.1,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 50,
-					"hp": 120,
-					"cost": 120,
-					"desc": "攻击叠加冰冻，3层冻结",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 75,
-					"hp": 180,
-					"cost": 240,
-					"desc": "攻击叠加冰冻，3层冻结，冻结时间+0.5s",
-					"mechanics": {}
-				},
-				"3": {
-					"damage": 112,
-					"hp": 270,
-					"cost": 480,
-					"desc": "攻击叠加冰冻，3层冻结，冻结时间+0.5s",
-					"mechanics": {}
-				}
-			},
-			"type_key": "ice_butterfly"
-		},
-		"firefly": {
-			"name": "萤火虫",
-			"faction": "butterfly",
-			"type": "attack",
-			"icon": "🔦",
-			"size": [
-				1,
-				1
-			],
-			"range": 250,
-			"atkSpeed": 1.5,
-			"manaCost": 0,
-			"attackType": "ranged",
-			"proj": "light_beam",
-			"damageType": "magic",
-			"crit_rate": 0.0,
-			"crit_dmg": 1.0,
-			"levels": {
-				"1": {
-					"damage": 0,
-					"hp": 100,
-					"cost": 100,
-					"desc": "攻击致盲敌人，造成0伤害",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 0,
-					"hp": 150,
-					"cost": 200,
-					"desc": "攻击致盲敌人，致盲时间+2s",
-					"mechanics": {}
-				},
-				"3": {
-					"damage": 0,
-					"hp": 225,
-					"cost": 400,
-					"desc": "攻击致盲敌人，敌人Miss回复8法力",
-					"mechanics": {}
-				}
-			},
-			"type_key": "firefly"
-		},
-		"forest_sprite": {
-			"name": "木精灵",
-			"faction": "butterfly",
-			"type": "buff",
-			"icon": "🧚",
-			"size": [
-				1,
-				1
-			],
-			"range": 150,
-			"atkSpeed": 0,
-			"manaCost": 0,
-			"attackType": "none",
-			"damageType": "magic",
-			"crit_rate": 0.0,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 0,
-					"hp": 120,
-					"cost": 120,
-					"desc": "周围友军攻击8%概率附加Debuff",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 0,
-					"hp": 180,
-					"cost": 240,
-					"desc": "周围友军攻击12%概率附加Debuff",
-					"mechanics": {}
-				},
-				"3": {
-					"damage": 0,
-					"hp": 270,
-					"cost": 480,
-					"desc": "周围友军攻击15%概率附加Debuff，概率叠加2层",
-					"mechanics": {}
-				}
-			},
-			"type_key": "forest_sprite"
-		},
 		"phoenix": {
 			"name": "凤凰",
 			"icon": "🦅",
@@ -2506,164 +2381,65 @@
 			},
 			"type_key": "blood_ancestor"
 		},
-		"gargoyle": {
-			"name": "石像鬼",
-			"icon": "🗿",
-			"size": [1, 1],
-			"range": 100,
-			"atkSpeed": 1.0,
-			"manaCost": 0,
-			"attackType": "melee",
-			"damageType": "physical",
-			"crit_rate": 0.1,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 60,
-					"hp": 400,
-					"cost": 150,
-					"desc": "核心血量<35%时石化，反弹15%伤害",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 90,
-					"hp": 600,
-					"cost": 300,
-					"desc": "核心血量<35%时石化，反弹15%伤害",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 135,
-					"hp": 900,
-					"cost": 600,
-					"desc": "核心血量<35%时石化，反弹15%伤害",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "gargoyle"
-		},
-		"life_chain": {
-			"name": "生命链条",
-			"icon": "🔗",
-			"size": [1, 1],
-			"range": 300,
-			"atkSpeed": 0,
-			"manaCost": 0,
-			"attackType": "none",
-			"crit_rate": 0.0,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 0,
-					"hp": 250,
-					"cost": 120,
-					"desc": "连接最远敌人并偷取生命",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 0,
-					"hp": 375,
-					"cost": 240,
-					"desc": "连接2个最远敌人并偷取生命",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 0,
-					"hp": 562,
-					"cost": 480,
-					"desc": "连接2个最远敌人并偷取生命，且造成范围伤害",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "life_chain"
-		},
-		"blood_chalice": {
-			"name": "鲜血圣杯",
-			"icon": "🏆",
-			"size": [1, 1],
-			"range": 150,
-			"atkSpeed": 0,
-			"manaCost": 0,
-			"attackType": "none",
-			"crit_rate": 0.0,
-			"crit_dmg": 1.5,
-			"levels": {
-				"1": {
-					"damage": 0,
-					"hp": 300,
-					"cost": 150,
-					"desc": "允许吸血溢出，溢出值缓慢衰减",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 0,
-					"hp": 450,
-					"cost": 300,
-					"desc": "允许吸血溢出，溢出值衰减减慢",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 0,
-					"hp": 675,
-					"cost": 600,
-					"desc": "允许吸血溢出，且核心失血时对敌人造成伤害",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "blood_chalice"
-		},
-		"blood_ritualist": {
-			"name": "血祭术士",
-			"icon": "🧙",
+		"kestrel": {
+			"name": "红隼",
+			"icon": "🐦",
 			"size": [1, 1],
 			"range": 250,
-			"atkSpeed": 0,
-			"manaCost": 0,
-			"attackType": "none",
-			"skill": "ritual",
-			"skillCd": 15,
-			"crit_rate": 0.0,
-			"crit_dmg": 1.5,
+			"atkSpeed": 1.0,
+			"attackType": "ranged",
+			"damageType": "physical",
+			"type_key": "kestrel",
 			"levels": {
-				"1": {
-					"damage": 0,
-					"hp": 200,
-					"cost": 120,
-					"desc": "技能: 消耗20%核心生命，使范围敌人流血",
-					"mechanics": {}
-				},
-				"2": {
-					"damage": 0,
-					"hp": 300,
-					"cost": 240,
-					"desc": "技能: 消耗20%核心生命，使范围敌人强力流血",
-					"mechanics": {
-						"crit_rate_bonus": 0.1
-					}
-				},
-				"3": {
-					"damage": 0,
-					"hp": 450,
-					"cost": 480,
-					"desc": "技能: 消耗20%核心生命，使范围敌人流血，并获得全局吸血翻倍",
-					"mechanics": {
-						"crit_rate_bonus": 0.2
-					}
-				}
-			},
-			"type_key": "blood_ritualist"
+				"1": { "damage": 40, "hp": 150, "cost": 120, "desc": "攻击概率眩晕敌人" },
+				"2": { "damage": 60, "hp": 225, "cost": 240, "desc": "眩晕概率和时间增加" },
+				"3": { "damage": 90, "hp": 337, "cost": 480, "desc": "眩晕时触发音爆伤害" }
+			}
+		},
+		"owl": {
+			"name": "猫头鹰",
+			"icon": "🦉",
+			"size": [1, 1],
+			"range": 0,
+			"atkSpeed": 1.0,
+			"attackType": "none",
+			"buffProvider": "crit",
+			"type_key": "owl",
+			"levels": {
+				"1": { "damage": 0, "hp": 120, "cost": 100, "desc": "邻接友军暴击率+12%" },
+				"2": { "damage": 0, "hp": 180, "cost": 200, "desc": "周围2格友军暴击率+20%" },
+				"3": { "damage": 0, "hp": 270, "cost": 400, "desc": "友军触发回响时增加攻速" }
+			}
+		},
+		"magpie": {
+			"name": "喜鹊",
+			"icon": "🐧",
+			"size": [1, 1],
+			"range": 200,
+			"atkSpeed": 1.2,
+			"attackType": "ranged",
+			"damageType": "physical",
+			"type_key": "magpie",
+			"levels": {
+				"1": { "damage": 35, "hp": 120, "cost": 100, "desc": "攻击概率偷取敌人属性" },
+				"2": { "damage": 50, "hp": 180, "cost": 200, "desc": "偷取属性效果提升" },
+				"3": { "damage": 75, "hp": 270, "cost": 400, "desc": "偷取成功回复核心HP或金币" }
+			}
+		},
+		"pigeon": {
+			"name": "鸽子",
+			"icon": "🕊️",
+			"size": [1, 1],
+			"range": 200,
+			"atkSpeed": 1.0,
+			"attackType": "ranged",
+			"damageType": "physical",
+			"type_key": "pigeon",
+			"levels": {
+				"1": { "damage": 30, "hp": 100, "cost": 80, "desc": "有几率闪避敌人攻击" },
+				"2": { "damage": 45, "hp": 150, "cost": 160, "desc": "闪避后短暂无敌" },
+				"3": { "damage": 67, "hp": 225, "cost": 320, "desc": "闪避时反击并增加友军暴击" }
+			}
 		}
 	},
 	"TRAITS": [

@@ -16,7 +16,7 @@ signal hide_tooltip()
 signal projectile_crit(source_unit, target, damage)
 signal enemy_hit(enemy, source, amount)
 signal enemy_spawned(enemy)
-signal core_health_changed(current_hp, max_hp)
+signal totem_echo_triggered(source_unit, damage)
 
 var is_running_test: bool = false
 var current_test_scenario: Dictionary = {}
@@ -75,13 +75,8 @@ var cheat_fast_cooldown: bool = false
 
 var _hit_stop_end_time: int = 0
 
-# Global Buffs
-var skill_cost_reduction: float = 0.0
-
 # Core Mechanics Variables
 var current_mechanic: Node = null
-
-var global_buffs: Dictionary = {}
 
 func set_test_scenario(scenario: Dictionary):
 	current_test_scenario = scenario
@@ -222,16 +217,6 @@ func get_stat_modifier(stat_type: String, context: Dictionary = {}) -> float:
 
 	return modifier
 
-func apply_global_buff(name: String, value: Variant):
-	global_buffs[name] = value
-
-func remove_global_buff(name: String):
-	if global_buffs.has(name):
-		global_buffs.erase(name)
-
-func get_global_buff(name: String, default_value: Variant = null) -> Variant:
-	return global_buffs.get(name, default_value)
-
 func update_resources(delta):
 	if mana < max_mana:
 		mana = min(max_mana, mana + base_mana_rate * delta)
@@ -315,7 +300,6 @@ func damage_core(amount: float):
 
 	core_health -= amount
 	resource_changed.emit()
-	core_health_changed.emit(core_health, max_core_health)
 	if core_health <= 0:
 		core_health = 0
 		is_wave_active = false
@@ -375,7 +359,6 @@ func recalculate_max_health():
 			game_over.emit()
 
 		resource_changed.emit()
-		core_health_changed.emit(core_health, max_core_health)
 
 func _on_sacrifice_state_changed(is_active: bool):
 	if is_active:
@@ -451,19 +434,6 @@ func spawn_floating_text(pos: Vector2, value: String, type_or_color: Variant, di
 			_: color = Color.WHITE
 
 	ftext_spawn_requested.emit(pos, value, color, direction)
-
-func apply_global_buff(type: String, amount: float):
-	match type:
-		"skill_mana_cost_reduction":
-			skill_cost_reduction = amount
-			# Trigger resource changed to update UI if necessary
-			resource_changed.emit()
-
-func remove_global_buff(type: String):
-	match type:
-		"skill_mana_cost_reduction":
-			skill_cost_reduction = 0.0
-			resource_changed.emit()
 
 func execute_skill_effect(source_key: String, target_pos: Vector2i) -> bool:
 	if !grid_manager: return false
