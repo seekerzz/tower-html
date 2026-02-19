@@ -6,8 +6,8 @@ var tick_timer: float = 0.0
 const TICK_INTERVAL = 0.5
 
 func setup(target: Node, source: Object, params: Dictionary):
-	super.setup(target, source, params)
 	type_key = "burn"
+	super.setup(target, source, params)
 	base_damage = params.get("damage", 10.0)
 	explosion_damage = params.get("explosion_damage", base_damage * 3.0)
 
