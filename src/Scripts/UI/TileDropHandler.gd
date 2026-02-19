@@ -20,12 +20,6 @@ func _can_drop_data(at_position, data):
 				GameManager.grid_manager.update_placement_preview(grid_pos, tile_ref.global_position, item_id)
 				return GameManager.grid_manager.can_place_item_at(grid_pos, item_id)
 
-		# Allow dropping inventory items during wave
-		if data.item:
-			var item_id = data.item.get("item_id", "")
-			if item_id == "holy_sword" and tile_ref.unit != null:
-				return true
-
 		return true
 
 	if GameManager.is_wave_active: return false
@@ -49,21 +43,6 @@ func _drop_data(at_position, data):
 func _handle_inventory_drop(data):
 	var item_data = data.item
 	var item_id = item_data.get("item_id", "")
-
-	# Holy Sword Logic (Target Unit)
-	if item_id == "holy_sword":
-		var target_unit = tile_ref.unit
-		if target_unit == null and tile_ref.occupied_by != Vector2i.ZERO:
-			# Try to find unit occupying this tile
-			if GameManager.grid_manager:
-				var origin_key = GameManager.grid_manager.get_tile_key(tile_ref.occupied_by.x, tile_ref.occupied_by.y)
-				if GameManager.grid_manager.tiles.has(origin_key):
-					target_unit = GameManager.grid_manager.tiles[origin_key].unit
-
-		if target_unit:
-			if GameManager.use_item_effect("holy_sword", target_unit):
-				GameManager.inventory_manager.remove_item(data.slot_index)
-		return
 
 	# Trap Logic
 	if "trap" in item_id or Constants.BARRICADE_TYPES.has(item_id) or item_id in ["poison_trap", "fang_trap"]:

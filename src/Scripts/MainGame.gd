@@ -41,9 +41,7 @@ func _ready():
 	# Initial camera position will be set by zoom_to_fit_board later or we call it now to verify
 	call_deferred("zoom_to_shop_open")
 
-	# Initial Setup
-	if not GameManager.is_running_test:
-		grid_manager.place_unit("squirrel", 0, 1) # Starting unit
+	# Initial Setup - 开局不再赠送松鼠，玩家需自行购买
 	update_bench_ui() # Ensure UI is initialized
 
 	get_tree().root.size_changed.connect(_on_viewport_size_changed)

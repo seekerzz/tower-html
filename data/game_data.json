@@ -1,20 +1,5 @@
 {
 	"CORE_TYPES": {
-		"abundance": {
-			"name": "丰饶图腾",
-			"wave_item": "rice_ear",
-			"desc": "每波获得法力补给"
-		},
-		"moon_well": {
-			"name": "月亮井",
-			"wave_item": "moon_water",
-			"desc": "储存伤害转化为治疗"
-		},
-		"holy_sword": {
-			"name": "圣剑图腾",
-			"wave_item": "holy_sword",
-			"desc": "每波获得圣剑"
-		},
 		"cow_totem": {
 			"name": "牛图腾",
 			"desc": "受伤充能，5秒一次全屏反击"
@@ -39,26 +24,7 @@
 			"crit_echo_mult": 1.0
 		}
 	},
-	"ITEM_TYPES": {
-		"rice_ear": {
-			"name": "稻穗",
-			"icon": "🌾",
-			"type": "consumable",
-			"desc": "恢复50%法力值"
-		},
-		"moon_water": {
-			"name": "月亮井水",
-			"icon": "🧪",
-			"type": "consumable",
-			"desc": "释放储存的治疗量"
-		},
-		"holy_sword": {
-			"name": "神圣之剑",
-			"icon": "🗡️",
-			"type": "target_unit",
-			"desc": "下3次攻击必暴击"
-		}
-	},
+	"ITEM_TYPES": {},
 	"BARRICADE_TYPES": {
 		"mucus": {
 			"hp": 500,
@@ -2413,8 +2379,6 @@
 			"range": 40,
 			"dmg": 150,
 			"atkSpeed": 1.5,
-			"drop": "stone",
-			"dropRate": 0.5,
 			"anim_config": {
 				"style": "stiff",
 				"amplitude": 0.05,
@@ -2432,8 +2396,6 @@
 			"range": 30,
 			"dmg": 50,
 			"atkSpeed": 1.0,
-			"drop": "mucus",
-			"dropRate": 0.5,
 			"anim_config": {
 				"style": "squash",
 				"amplitude": 0.2,
@@ -2453,8 +2415,6 @@
 			"range": 30,
 			"dmg": 50,
 			"atkSpeed": 1.0,
-			"drop": "mucus",
-			"dropRate": 0.5,
 			"anim_config": {
 				"style": "squash",
 				"amplitude": 0.2,
@@ -2472,8 +2432,6 @@
 			"range": 30,
 			"dmg": 80,
 			"atkSpeed": 1.0,
-			"drop": "poison",
-			"dropRate": 0.4,
 			"anim_config": {
 				"style": "squash",
 				"amplitude": 0.25,
@@ -2491,8 +2449,6 @@
 			"range": 30,
 			"dmg": 120,
 			"atkSpeed": 0.8,
-			"drop": "fang",
-			"dropRate": 0.3,
 			"anim_config": {
 				"style": "bob",
 				"amplitude": 4.0,
@@ -2510,8 +2466,6 @@
 			"range": 30,
 			"dmg": 200,
 			"atkSpeed": 2.0,
-			"drop": "wood",
-			"dropRate": 0.6,
 			"anim_config": {
 				"style": "stiff",
 				"amplitude": 0.05,
@@ -2529,8 +2483,6 @@
 			"range": 40,
 			"dmg": 250,
 			"atkSpeed": 2.0,
-			"drop": "snow",
-			"dropRate": 0.5,
 			"anim_config": {
 				"style": "stiff",
 				"amplitude": 0.08,
@@ -2548,8 +2500,6 @@
 			"range": 40,
 			"dmg": 300,
 			"atkSpeed": 2.5,
-			"drop": "stone",
-			"dropRate": 0.5,
 			"anim_config": {
 				"style": "stiff",
 				"amplitude": 0.05,
@@ -2570,8 +2520,6 @@
 			"dmg": 80,
 			"atkSpeed": 2.0,
 			"projectileSpeed": 150,
-			"drop": "wood",
-			"dropRate": 0.3,
 			"anim_config": {
 				"style": "stiff",
 				"amplitude": 0.05,
@@ -2592,8 +2540,6 @@
 			"dmg": 80,
 			"atkSpeed": 2.0,
 			"projectileSpeed": 150,
-			"drop": "wood",
-			"dropRate": 0.3,
 			"anim_config": {
 				"style": "stiff",
 				"amplitude": 0.05,
@@ -2611,8 +2557,6 @@
 			"range": 50,
 			"dmg": 500,
 			"atkSpeed": 3.0,
-			"drop": "stone",
-			"dropRate": 1.0,
 			"is_boss": true,
 			"anim_config": {
 				"style": "float",
@@ -2631,8 +2575,6 @@
 			"range": 20,
 			"dmg": 20,
 			"atkSpeed": 1.0,
-			"drop": "mana",
-			"dropRate": 0.2,
 			"anim_config": {
 				"style": "bob",
 				"amplitude": 2.0,
@@ -2650,8 +2592,6 @@
 			"range": 20,
 			"dmg": 300,
 			"atkSpeed": 10.0,
-			"drop": "none",
-			"dropRate": 0.0,
 			"is_suicide": true,
 			"anim_config": {
 				"style": "squash",
@@ -2672,8 +2612,6 @@
 			"range": 150,
 			"dmg": 50,
 			"atkSpeed": 2.0,
-			"drop": "magic_dust",
-			"dropRate": 1.0,
 			"stationary_time": 8.0,
 			"boss_skill": "summon",
 			"is_boss": true,
@@ -2696,8 +2634,6 @@
 			"range": 300,
 			"dmg": 80,
 			"atkSpeed": 1.5,
-			"drop": "wood",
-			"dropRate": 1.0,
 			"stationary_time": 5.0,
 			"boss_skill": "shoot_enemy",
 			"is_boss": true,
@@ -2718,8 +2654,6 @@
 			"range": 60,
 			"dmg": 200,
 			"atkSpeed": 1.2,
-			"drop": "iron",
-			"dropRate": 1.0,
 			"stationary_time": 0.0,
 			"is_boss": true,
 			"anim_config": {
@@ -2739,8 +2673,6 @@
 			"range": 30,
 			"dmg": 20,
 			"atkSpeed": 1.0,
-			"drop": "mana",
-			"dropRate": 0.5,
 			"heal_power": 30.0,
 			"heal_range": 250.0,
 			"heal_cooldown": 4.0,
