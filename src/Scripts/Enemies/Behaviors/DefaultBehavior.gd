@@ -16,7 +16,9 @@ func physics_process(delta: float) -> bool:
 	if !GameManager.is_wave_active: return false
 
 	# Update taunt target
-	if enemy.has_method("find_attack_target"):
+	if enemy.get("faction") == "player":
+		current_taunt_target = _find_nearest_hostile()
+	elif enemy.has_method("find_attack_target"):
 		current_taunt_target = enemy.find_attack_target()
 	else:
 		current_taunt_target = null
@@ -52,7 +54,13 @@ func physics_process(delta: float) -> bool:
 func calculate_move_velocity() -> Vector2:
 	var target_pos = GameManager.grid_manager.global_position
 
-	if current_taunt_target and is_instance_valid(current_taunt_target):
+	if enemy.get("faction") == "player":
+		if current_taunt_target and is_instance_valid(current_taunt_target):
+			target_pos = current_taunt_target.global_position
+		else:
+			# Stay put if no target
+			return Vector2.ZERO
+	elif current_taunt_target and is_instance_valid(current_taunt_target):
 		target_pos = current_taunt_target.global_position
 	elif current_target_tile and is_instance_valid(current_target_tile):
 		target_pos = current_target_tile.global_position
@@ -100,6 +108,9 @@ func update_path():
 			path_index = 1
 
 func _should_attack(target: Node2D) -> bool:
+	if enemy.get("faction") == "player" and (!target or !is_instance_valid(target)):
+		return false
+
 	var target_pos = GameManager.grid_manager.global_position
 
 	if target and is_instance_valid(target):
@@ -189,6 +200,19 @@ func cancel_attack():
 	if enemy.visual_controller:
 		enemy.visual_controller.kill_tween()
 		enemy.visual_controller.wobble_scale = Vector2.ONE
+
+func _find_nearest_hostile() -> Node2D:
+	var nearest = null
+	var min_dist = 9999.0
+	for other in get_tree().get_nodes_in_group("enemies"):
+		if other == enemy: continue
+		if other.get("faction") == "player": continue # Don't attack other charmed enemies
+
+		var dist = enemy.global_position.distance_to(other.global_position)
+		if dist < min_dist:
+			min_dist = dist
+			nearest = other
+	return nearest
 
 func play_attack_animation(target_pos: Vector2, hit_callback: Callable = Callable()):
 	if anim_tween and anim_tween.is_valid():

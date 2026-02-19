@@ -7,6 +7,7 @@ signal died
 enum State { MOVE, ATTACK_BASE, STUNNED, SUPPORT }
 var state: State = State.MOVE
 
+var faction: String = "enemy"
 var type_key: String
 var hp: float
 var max_hp: float
@@ -600,6 +601,7 @@ func die(killer_unit = null):
 		GameManager.combat_manager.check_kill_bonuses(killer_unit)
 
 	emit_signal("died")
+	GameManager.enemy_died.emit(self, killer_unit)
 
 	GameManager.add_gold(1)
 	if GameManager.reward_manager and "scrap_recycling" in GameManager.reward_manager.acquired_artifacts:
