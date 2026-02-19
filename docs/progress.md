@@ -7,7 +7,7 @@
 | 阶段 | 总任务 | 已完成 | 进行中 | 待开始 |
 |------|--------|--------|--------|--------|
 | P0 - 基础系统 | 4 | 4 | 0 | 0 |
-| P1 - 单位实现 | 6 | 0 | 0 | 6 |
+| P1 - 单位实现 | 6 | 6 | 0 | 0 |
 
 ## 详细进度
 
@@ -24,12 +24,12 @@
 
 | 任务ID | 状态 | 描述 | 更新时间 |
 |--------|------|------|----------|
-| P1-A | pending | 狼图腾单位群 (依赖: P0-01, P0-03) | - |
-| P1-B | pending | 眼镜蛇图腾单位群 | - |
-| P1-C | completed | Implemented Bat Totem units: Gargoyle, LifeChain, BloodChalice, BloodRitualist | 2026-02-19T18:00:00 |
-| P1-D | pending | 蝴蝶图腾单位群 | - |
-| P1-E | completed | 已实现鹰图腾全系单位及相关机制 | 2026-02-19T20:00:00 |
-| P1-F | pending | 牛图腾单位群 (依赖: P0-02) | - |
+| P1-A | completed | 狼图腾单位群: Tiger, Dog, Wolf, Hyena, Fox, SheepSpirit, Lion PR#446 | 2026-02-19 |
+| P1-B | completed | 眼镜蛇图腾单位群: Rat, Toad, MedusaLv3 PR#445 | 2026-02-19 |
+| P1-C | completed | 蝙蝠图腾单位群: Gargoyle, LifeChain, BloodChalice, BloodRitualist PR#449 | 2026-02-19 |
+| P1-D | completed | 蝴蝶图腾单位群: Phoenix, IceMoth, Firefly, Sprite PR#447 | 2026-02-19 |
+| P1-E | completed | 鹰图腾单位群: Kestrel, Owl, Magpie, Pigeon PR#443 | 2026-02-19 |
+| P1-F | completed | 牛图腾单位群: Ascetic, Plant, IronTurtle, Hedgehog, YakGuardian, RockArmorCow, Oxpecker, MushroomHealer, Cow PR#448 | 2026-02-19 |
 
 ## 状态说明
 
