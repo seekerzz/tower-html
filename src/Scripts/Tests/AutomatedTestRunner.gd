@@ -16,6 +16,9 @@ func _ready():
 	if config.has("start_wave_index"):
 		GameManager.wave = config["start_wave_index"]
 
+	if config.has("core_type"):
+		GameManager.core_type = config["core_type"]
+
 	call_deferred("_setup_test")
 
 func _setup_test():
@@ -141,6 +144,10 @@ func _process(delta):
 	# Logging (Every Frame)
 	_log_status()
 
+	# Shop Validation
+	if config.has("validate_shop_faction"):
+		_validate_shop_faction(config["validate_shop_faction"])
+
 	# End conditions
 	if config.has("duration") and elapsed_time >= config["duration"]:
 		_teardown("Duration Reached")
@@ -229,6 +236,40 @@ func _log_status():
 
 func _on_game_over():
 	_teardown("Game Over Signal")
+
+func _validate_shop_faction(faction: String):
+	var shop = get_tree().root.find_child("Shop", true, false)
+	if not shop:
+		# Try MainGame CanvasLayer
+		if GameManager.main_game:
+			shop = GameManager.main_game.find_child("Shop", true, false)
+
+	if not shop:
+		# Shop might not be instantiated yet
+		return
+
+	# Assuming shop has 'shop_items' array of strings (unit keys)
+	if "shop_items" in shop:
+		var items = shop.shop_items
+		if items.size() == 0:
+			# Shop might not be ready yet
+			return
+
+		var all_valid = true
+		for item in items:
+			var unit_data = Constants.UNIT_TYPES.get(item, {})
+			var unit_faction = unit_data.get("faction", "universal")
+
+			if unit_faction != faction and unit_faction != "universal":
+				all_valid = false
+				printerr("[TestRunner] Shop validation FAILED. Found unit '%s' (faction: %s) but expected faction '%s'" % [item, unit_faction, faction])
+				_teardown("Shop Validation Failed")
+				return
+
+		if all_valid:
+			print("[TestRunner] Shop validation PASSED for faction: ", faction, ". Items: ", items)
+			# Only validate once successfully then stop checking to avoid log spam
+			config.erase("validate_shop_faction")
 
 func _teardown(reason: String):
 	if _is_tearing_down: return

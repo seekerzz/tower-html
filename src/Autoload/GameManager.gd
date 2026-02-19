@@ -1,6 +1,7 @@
 extends Node
 
 signal resource_changed
+signal core_type_changed
 signal wave_started
 signal wave_ended
 signal wave_reset
@@ -25,6 +26,7 @@ var core_type: String = "":
 	set(value):
 		core_type = value
 		_initialize_mechanic()
+		core_type_changed.emit()
 
 # ===== 资源系统 =====
 # 法力系统

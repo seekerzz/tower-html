@@ -31,6 +31,10 @@ func _ready():
 	if GameManager.has_signal("wave_reset"):
 		GameManager.wave_reset.connect(on_wave_reset)
 
+	# Wait for GameManager to be initialized
+	if GameManager.core_type == "":
+		await GameManager.core_type_changed
+
 	refresh_shop(true)
 	update_ui()
 	# update_wave_info() # Removed functionality
@@ -154,14 +158,19 @@ func refresh_shop(force: bool = false):
 	if !force:
 		GameManager.spend_gold(10)
 
-	var keys = Constants.UNIT_TYPES.keys()
+	# Get player's current totem
+	var player_faction = GameManager.core_type
+
+	# Get available unit pool
+	var available_units = _get_units_for_faction(player_faction)
+
 	var new_items = []
 
 	for i in range(SHOP_SIZE):
 		if !force and shop_items.size() > i and shop_locked[i]:
 			new_items.append(shop_items[i])
 		else:
-			new_items.append(keys.pick_random())
+			new_items.append(available_units.pick_random())
 
 	shop_items = new_items
 
@@ -170,6 +179,25 @@ func refresh_shop(force: bool = false):
 
 	for i in range(SHOP_SIZE):
 		create_shop_card(i, shop_items[i])
+
+# New: Get unit list for specific faction
+func _get_units_for_faction(faction: String) -> Array:
+	var result = []
+
+	for unit_key in Constants.UNIT_TYPES.keys():
+		var unit_data = Constants.UNIT_TYPES[unit_key]
+		var unit_faction = unit_data.get("faction", "universal")
+
+		# Include specific faction or universal units
+		if unit_faction == faction or unit_faction == "universal":
+			result.append(unit_key)
+
+	# Fallback if no units found (prevent crash)
+	if result.is_empty():
+		push_warning("No units found for faction: %s, falling back to all units" % faction)
+		return Constants.UNIT_TYPES.keys()
+
+	return result
 
 func create_shop_card(index, unit_key):
 	var card = ShopCard.new()
