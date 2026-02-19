@@ -264,6 +264,14 @@ func find_nearest_enemy(pos: Vector2, range_val: float):
 
 	return nearest
 
+func get_enemies_in_range(pos: Vector2, range_val: float) -> Array:
+	var found = []
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if is_instance_valid(enemy):
+			if pos.distance_to(enemy.global_position) <= range_val:
+				found.append(enemy)
+	return found
+
 func perform_lightning_attack(source_unit, start_pos, target, chain_left, hit_list = null):
 	if hit_list == null: hit_list = []
 	if !is_instance_valid(target): return
