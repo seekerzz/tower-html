@@ -533,7 +533,15 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 	if hp <= 0:
 		die(source_unit)
 
+func _on_death():
+	SoulManager.add_souls_from_enemy_death({
+		"type": type_key,
+		"wave": GameManager.wave
+	})
+
 func die(killer_unit = null):
+	_on_death()
+
 	# Kill Bonus Check
 	if GameManager.combat_manager and killer_unit:
 		GameManager.combat_manager.check_kill_bonuses(killer_unit)

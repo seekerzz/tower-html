@@ -2,6 +2,17 @@ extends RefCounted
 
 func get_test_config(case_id: String) -> Dictionary:
 	match case_id:
+		"test_soul_system":
+			return {
+				"id": "test_soul_system",
+				"core_type": "wolf_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 10.0,
+				"units": [
+					{"id": "squirrel", "x": 0, "y": 1}
+				]
+			}
 		"test_cow_squirrel":
 			return {
 				"id": "test_cow_squirrel",
