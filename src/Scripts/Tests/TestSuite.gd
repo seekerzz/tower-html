@@ -67,4 +67,18 @@ func get_test_config(case_id: String) -> Dictionary:
 					}
 				]
 			}
+		"test_bleed_lifesteal":
+			return {
+				"id": "test_bleed_lifesteal",
+				"core_type": "bat_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 8.0,
+				"units": [
+					{"id": "mosquito", "x": 0, "y": 1},
+					{"id": "mosquito", "x": 0, "y": -1},
+					{"id": "mosquito", "x": 1, "y": 0},
+					{"id": "mosquito", "x": -1, "y": 0}
+				]
+			}
 	return {}

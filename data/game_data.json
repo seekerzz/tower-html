@@ -13,8 +13,11 @@
 			"desc": "受伤充能，5秒一次全屏反击"
 		},
 		"bat_totem": {
-			"name": "Bat Totem",
-			"desc": "每5秒攻击3个最近的敌人，施加流血标记。攻击流血敌人可回复核心生命。"
+			"name": "蝙蝠图腾",
+			"desc": "每5秒攻击3个最近敌人施加流血。攻击流血敌人按层数回复核心生命",
+			"attack_interval": 5.0,
+			"bleed_stacks": 1,
+			"lifesteal_ratio": 0.4
 		},
 		"viper_totem": {
 			"name": "毒蛇图腾",

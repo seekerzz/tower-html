@@ -58,7 +58,7 @@ var ui_manager = null
 var main_game = null
 var reward_manager: Node = null
 var data_manager: Node = null
-
+var lifesteal_manager: Node = null
 
 var permanent_health_bonus: float = 0.0
 
@@ -106,6 +106,11 @@ func _ready():
 			reward_manager = rm_scene.new()
 			add_child(reward_manager)
 			reward_manager.sacrifice_state_changed.connect(_on_sacrifice_state_changed)
+
+	# Initialize LifestealManager
+	var LSManagerScript = load("res://src/Scripts/Managers/LifestealManager.gd")
+	lifesteal_manager = LSManagerScript.new()
+	add_child(lifesteal_manager)
 
 	_initialize_mechanic()
 
@@ -261,6 +266,9 @@ func _on_upgrade_selected(upgrade_data):
 
 	resource_changed.emit()
 	_finish_wave_process()
+
+func heal_core(amount: float):
+	damage_core(-amount)
 
 func damage_core(amount: float):
 	if current_mechanic:

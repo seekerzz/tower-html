@@ -53,6 +53,13 @@ var last_hit_direction: Vector2 = Vector2.ZERO
 
 var behavior: EnemyBehavior
 
+# Bleed System
+var bleed_stacks: int = 0
+var max_bleed_stacks: int = 30
+var bleed_damage_per_stack: float = 3.0
+
+signal bleed_stack_changed(new_stacks: int)
+
 func _ready():
 	add_to_group("enemies")
 	collision_layer = 2
@@ -210,6 +217,13 @@ func _draw():
 		draw_rect(Rect2(bar_pos, Vector2(bar_w, bar_h)), Color.RED)
 		draw_rect(Rect2(bar_pos, Vector2(bar_w * hp_pct, bar_h)), Color.GREEN)
 
+	# Bleed Indicator
+	if bleed_stacks > 0:
+		var bleed_pos = Vector2(0, -enemy_data.radius - 20)
+		var font = ThemeDB.fallback_font
+		var font_size = 12
+		draw_string(font, bleed_pos, str(bleed_stacks), HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.RED)
+
 func _physics_process(delta):
 	if !GameManager.is_wave_active: return
 
@@ -236,6 +250,7 @@ func _physics_process(delta):
 			_update_facing_logic()
 
 	_process_effects(delta)
+	_process_bleed_damage(delta)
 
 	if visual_controller:
 		visual_controller.update_speed(speed, temp_speed_mod)
@@ -351,6 +366,9 @@ func _process_effects(delta):
 
 	if has_node("Sprite2D"):
 		$Sprite2D.flip_h = is_facing_left
+
+	if bleed_stacks > 0:
+		modulate = Color(1.0, 0.5, 0.5) # Red tint for bleed
 
 	if hit_flash_timer > 0:
 		hit_flash_timer -= delta
@@ -468,6 +486,18 @@ func heal(amount: float):
 	hp = min(hp + amount, max_hp)
 	queue_redraw()
 
+func add_bleed_stacks(stacks: int):
+	var old_stacks = bleed_stacks
+	bleed_stacks = min(bleed_stacks + stacks, max_bleed_stacks)
+	if bleed_stacks != old_stacks:
+		bleed_stack_changed.emit(bleed_stacks)
+		queue_redraw()
+
+func _process_bleed_damage(delta: float):
+	if bleed_stacks > 0:
+		var damage = bleed_stacks * bleed_damage_per_stack * delta
+		take_damage(damage, null, "bleed")
+
 func take_damage(amount: float, source_unit = null, damage_type: String = "physical", hit_source: Node2D = null, kb_force: float = 0.0):
 	if source_unit == GameManager:
 		print("[Enemy] Taking global damage from GameManager: ", amount)
@@ -517,18 +547,6 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 
 	if source_unit:
 		GameManager.damage_dealt.emit(source_unit, amount)
-
-		if source_unit.get_script() == UNIT_SCRIPT:
-			var bleed_stacks = 0
-			for c in get_children():
-				if c.get("type_key") == "bleed":
-					var stacks = c.get("stack_count")
-					if stacks != null:
-						bleed_stacks += stacks
-
-			if bleed_stacks > 0:
-				GameManager.damage_core(-bleed_stacks)
-				GameManager.spawn_floating_text(global_position, "+%d HP" % bleed_stacks, Color.GREEN)
 
 	if hp <= 0:
 		die(source_unit)
