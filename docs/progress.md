@@ -6,7 +6,7 @@
 
 | 阶段 | 总任务 | 已完成 | 进行中 | 待开始 |
 |------|--------|--------|--------|--------|
-| P0 - 基础系统 | 4 | 1 | 1 | 2 |
+| P0 - 基础系统 | 4 | 4 | 0 | 0 |
 | P1 - 单位实现 | 6 | 0 | 0 | 6 |
 
 ## 详细进度
@@ -16,9 +16,9 @@
 | 任务ID | 状态 | 描述 | 更新时间 |
 |--------|------|------|----------|
 | P0-01 | completed | Implemented SoulManager, MechanicWolfTotem, UI and Hooks. | 2024-05-23T12:00:00 |
-| P0-02 | pending | 嘲讽/仇恨系统 | - |
-| P0-03 | pending | 召唤物系统 | - |
-| P0-04 | in_progress | 在Enemy类添加流血 | 2026-02-19T15:30:00 |
+| P0-02 | completed | AggroManager, TauntBehavior, YakGuardian PR#441 | 2026-02-19T07:32 |
+| P0-03 | completed | SummonedUnit, SummonManager, SummonSystem PR#442 | 2026-02-19T07:40 |
+| P0-04 | completed | Bleed stacks, LifestealManager, BatTotem PR#440 | 2026-02-19T07:28 |
 
 ### P1 - 图腾单位实现
 

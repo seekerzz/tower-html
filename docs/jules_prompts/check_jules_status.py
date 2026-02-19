@@ -17,7 +17,7 @@ from pathlib import Path
 # 加载 .env
 env_path = Path(__file__).parent / ".." / "secrets" / ".env"
 if env_path.exists():
-    with open(env_path) as f:
+    with open(env_path, encoding='utf-8') as f:
         for line in f:
             if line.strip() and not line.startswith('#'):
                 key, value = line.strip().split('=', 1)
@@ -131,4 +131,7 @@ if __name__ == "__main__":
     else:
         result = get_session_status(session_id)
         if result:
-            print(json.dumps(result, indent=2, ensure_ascii=False))
+            try:
+                print(json.dumps(result, indent=2, ensure_ascii=False))
+            except UnicodeEncodeError:
+                print(json.dumps(result, indent=2, ensure_ascii=True))
