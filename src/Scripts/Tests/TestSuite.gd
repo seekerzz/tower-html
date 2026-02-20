@@ -249,6 +249,59 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "cow", "x": 0, "y": 1}]
 			}
+		"test_cow_golem_lv1_rage":
+			return {
+				"id": "test_cow_golem_lv1_rage",
+				"core_type": "cow_totem",
+				"duration": 12.0,
+				"units": [
+					{"id": "cow_golem", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "attacker_enemy", "count": 1}
+				],
+				"scheduled_actions": [
+					{"time": 1.0, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10},
+					{"time": 2.0, "type": "record_damage", "unit_id": "cow_golem"},
+					{"time": 3.0, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10},
+					{"time": 4.0, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10},
+					{"time": 5.0, "type": "record_damage", "unit_id": "cow_golem"},
+					{"time": 6.0, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10},
+					{"time": 6.1, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10},
+					{"time": 6.2, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10},
+					{"time": 6.3, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10},
+					{"time": 6.4, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10},
+					{"time": 6.5, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10},
+					{"time": 6.6, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10},
+					{"time": 8.0, "type": "record_damage", "unit_id": "cow_golem"}
+				],
+				"expected_behavior": "每次受击攻击力+3%，上限30%(10层)"
+			}
+		"test_cow_golem_lv3_shockwave":
+			return {
+				"id": "test_cow_golem_lv3_shockwave",
+				"core_type": "cow_totem",
+				"duration": 10.0,
+				"units": [
+					{"id": "cow_golem", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3, "positions": [{"x": 1, "y": 1}, {"x": -1, "y": 1}, {"x": 0, "y": 2}]}
+				],
+				"scheduled_actions": [
+					{"time": 1.0, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10},
+					{"time": 1.1, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10},
+					{"time": 1.2, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10},
+					{"time": 1.3, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10},
+					{"time": 1.4, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10},
+					{"time": 1.5, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10},
+					{"time": 1.6, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10},
+					{"time": 1.7, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10},
+					{"time": 1.8, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10},
+					{"time": 1.9, "type": "hit_unit", "unit_id": "cow_golem", "amount": 10}
+				],
+				"expected_behavior": "受击时20%概率给敌人叠加瘟疫易伤Debuff"
+			}
 		# ========== 蝙蝠图腾流派单位测试 (5个单位) ==========
 		"test_bat_totem_mosquito":
 			return {

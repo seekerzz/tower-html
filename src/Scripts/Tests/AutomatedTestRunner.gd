@@ -40,6 +40,20 @@ func _setup_test():
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
 
+			if u.has("level") and u.level > 1:
+				# Reuse key from above
+				if GameManager.grid_manager.tiles.has(key):
+					var tile = GameManager.grid_manager.tiles[key]
+					if tile.unit:
+						print("[TestRunner] Updating level for ", u.id)
+						tile.unit.level = u.level
+						tile.unit.reset_stats()
+						print("[TestRunner] Set unit ", u.id, " level to ", u.level)
+
+	# Spawn test enemies
+	if config.has("enemies"):
+		_spawn_test_enemies(config["enemies"])
+
 	# Setup actions
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:
@@ -49,6 +63,7 @@ func _setup_test():
 	GameManager.wave_started.connect(_on_wave_started)
 	GameManager.enemy_spawned.connect(_on_enemy_spawned)
 	GameManager.enemy_hit.connect(_on_enemy_hit)
+	GameManager.debuff_applied.connect(_on_debuff_applied)
 
 	GameManager.start_wave()
 	# GameManager.wave_ended is only emitted after UI interaction, which we skip in headless.
@@ -86,6 +101,14 @@ func _on_enemy_hit(enemy, source, amount):
 		"target_hp_after": enemy.hp
 	})
 
+func _on_debuff_applied(enemy, debuff_type, stacks):
+	_frame_events.append({
+		"type": "debuff_applied",
+		"target_id": enemy.get_instance_id(),
+		"debuff_type": debuff_type,
+		"stacks": stacks
+	})
+
 func _execute_setup_action(action: Dictionary):
 	match action.type:
 		"spawn_trap":
@@ -114,6 +137,41 @@ func _spawn_random_trap(trap_id: String):
 		print("[TestRunner] Spawned trap ", real_trap_id, " at ", pos)
 	else:
 		printerr("[TestRunner] No valid position for trap ", real_trap_id)
+
+func _spawn_test_enemies(enemies_config: Array):
+	var enemy_scene = load("res://src/Scenes/Game/Enemy.tscn")
+	if not enemy_scene:
+		printerr("[TestRunner] Failed to load Enemy scene")
+		return
+
+	for e in enemies_config:
+		var count = e.get("count", 1)
+		var type = e.get("type", "slime")
+		var positions = e.get("positions", [])
+
+		# Map types to existing ones if needed
+		var real_type = type
+		if not Constants.ENEMY_VARIANTS.has(type):
+			if type == "attacker_enemy": real_type = "wolf"
+			elif type == "basic_enemy": real_type = "slime"
+			else: real_type = "slime"
+
+		for i in range(count):
+			var enemy = enemy_scene.instantiate()
+			var pos = Vector2(500, 300)
+			if positions.size() > i:
+				var p = positions[i]
+				if GameManager.grid_manager:
+					pos = GameManager.grid_manager.get_world_pos_from_grid(Vector2i(p.x, p.y))
+				else:
+					pos = Vector2(p.x * 60, p.y * 60)
+			else:
+				pos += Vector2(randf_range(-50, 50), randf_range(-50, 50))
+
+			get_tree().current_scene.add_child(enemy)
+			enemy.global_position = pos
+			enemy.setup(real_type, 1)
+			print("[TestRunner] Spawned test enemy: ", real_type, " at ", pos)
 
 func _apply_buff_to_unit(unit_id: String, buff_id: String):
 	var gm = GameManager.grid_manager
@@ -194,6 +252,24 @@ func _execute_scheduled_action(action: Dictionary):
 				printerr("[TestRunner] SummonManager not available")
 		"test_enemy_death":
 			_run_enemy_death_test()
+		"hit_unit":
+			var unit_id = action.get("unit_id")
+			var amount = action.get("amount", 10.0)
+			if GameManager.grid_manager:
+				for key in GameManager.grid_manager.tiles:
+					var tile = GameManager.grid_manager.tiles[key]
+					if tile.unit and tile.unit.type_key == unit_id:
+						tile.unit.take_damage(amount, null)
+						print("[TestRunner] Simulating hit on ", unit_id, " for ", amount, " damage")
+						break
+		"record_damage":
+			var unit_id = action.get("unit_id", "cow_golem")
+			if GameManager.grid_manager:
+				for key in GameManager.grid_manager.tiles:
+					var tile = GameManager.grid_manager.tiles[key]
+					if tile.unit and tile.unit.type_key == unit_id:
+						print("[TestRunner] RECORD_DAMAGE: ", unit_id, " damage=", tile.unit.damage)
+						break
 
 func _run_enemy_death_test():
 	print("[TestRunner] ========== 开始敌人死亡重复调用测试 ==========")
