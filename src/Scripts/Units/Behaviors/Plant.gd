@@ -7,6 +7,7 @@ func on_setup():
 	if not GameManager.wave_ended.is_connected(_on_wave_end):
 		GameManager.wave_ended.connect(_on_wave_end)
 
+func on_stats_updated():
 	# Re-apply permanent growth
 	var growth = unit.get_meta("permanent_hp_growth", 0.0)
 	if growth > 0:

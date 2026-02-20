@@ -40,6 +40,21 @@ func _setup_test():
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
 
+			# Apply overrides
+			key = GameManager.grid_manager.get_tile_key(u.x, u.y)
+			if GameManager.grid_manager.tiles.has(key):
+				var tile = GameManager.grid_manager.tiles[key]
+				if tile.unit:
+					var unit = tile.unit
+					if u.has("level"):
+						unit.level = u.level
+						unit.reset_stats()
+						unit.current_hp = unit.max_hp
+						unit.update_visuals()
+
+	if GameManager.grid_manager:
+		GameManager.grid_manager.recalculate_buffs()
+
 	# Setup actions
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:
@@ -194,6 +209,44 @@ func _execute_scheduled_action(action: Dictionary):
 				printerr("[TestRunner] SummonManager not available")
 		"test_enemy_death":
 			_run_enemy_death_test()
+		"end_wave":
+			if GameManager.is_wave_active:
+				GameManager.end_wave()
+				print("[TestRunner] Wave Ended")
+		"verify_hp":
+			_verify_hp(action)
+
+func _verify_hp(action: Dictionary):
+	var target_id = action.get("target", "")
+
+	if target_id == "" and config.has("units") and config.units.size() > 0:
+		target_id = config.units[0].id
+
+	var expected_percent = action.get("expected_hp_percent", 1.0)
+	var tolerance = 0.01 # 1% tolerance
+
+	var found = false
+	var gm = GameManager.grid_manager
+	if gm:
+		for key in gm.tiles:
+			var tile = gm.tiles[key]
+			if tile.unit and tile.unit.type_key == target_id:
+				found = true
+				var u = tile.unit
+				var base_hp = u.unit_data.get("hp", 0)
+				var expected_hp = base_hp * expected_percent
+
+				var diff = abs(u.max_hp - expected_hp)
+				if diff <= (expected_hp * tolerance) or diff < 1.0:
+					print("[TestRunner] VERIFY HP PASS: Unit %s HP is %.2f (Expected %.2f)" % [target_id, u.max_hp, expected_hp])
+				else:
+					printerr("[TestRunner] VERIFY HP FAIL: Unit %s HP is %.2f (Expected %.2f)" % [target_id, u.max_hp, expected_hp])
+					_teardown("HP Verification Failed")
+				break
+
+	if !found:
+		printerr("[TestRunner] VERIFY HP FAIL: Unit %s not found" % target_id)
+		_teardown("Unit Not Found")
 
 func _run_enemy_death_test():
 	print("[TestRunner] ========== 开始敌人死亡重复调用测试 ==========")

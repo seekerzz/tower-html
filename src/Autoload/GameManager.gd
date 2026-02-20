@@ -250,7 +250,7 @@ func end_wave():
 	# Pause logic implicitly by not emitting wave_ended immediately if we want to block new wave
 	# But actually we usually want to show the UI now.
 
-	if upgrade_selection_scene:
+	if upgrade_selection_scene and not is_running_test:
 		var upgrade_ui = upgrade_selection_scene.instantiate()
 		# Add directly to GameManager (Autoload) since the scene is a CanvasLayer
 		# This ensures it overlays on top of everything regardless of the current scene.
@@ -259,7 +259,7 @@ func end_wave():
 		# Connect signal
 		upgrade_ui.upgrade_selected.connect(_on_upgrade_selected)
 	else:
-		# Fallback if no scene
+		# Fallback if no scene or testing
 		_finish_wave_process()
 
 func _finish_wave_process():
