@@ -40,6 +40,10 @@ func get_wave_type(n: int) -> String:
 	return types[int(idx) % types.size()]
 
 func start_wave_logic():
+	if GameManager.is_running_test and GameManager.current_test_scenario.has("enemies"):
+		_spawn_test_enemies()
+		return
+
 	var wave = GameManager.wave
 
 	if wave == 5:
@@ -99,6 +103,49 @@ func start_meteor_shower(center_pos: Vector2, damage: float):
 			_spawn_single_projectile(dummy_source, start_pos, null, stats)
 
 		await get_tree().create_timer(0.1).timeout
+
+func _spawn_test_enemies():
+	var config = GameManager.current_test_scenario
+	var enemies_list = config.enemies
+
+	var total_count = 0
+	for entry in enemies_list:
+		total_count += entry.get("count", 1)
+
+	enemies_to_spawn = total_count
+
+	var offset_x = 0
+
+	for entry in enemies_list:
+		var count = entry.get("count", 1)
+		var hp = entry.get("hp", 100)
+
+		# Prompt test case uses "basic_enemy" and "high_hp_enemy" and "full_hp_enemy".
+		# These are NOT valid types in ENEMY_VARIANTS.
+		# We must use a valid type like "slime".
+		var type_key = "slime"
+
+		for i in range(count):
+			# Position logic to ensure they are distinct and in range.
+			# Eagle at (0,1) is approx (0, 60). Range 400.
+			# Place at X = 300..350.
+			var pos = Vector2(300 + offset_x, 60 + (i * 30) - (count * 15))
+
+			var enemy = ENEMY_SCENE.instantiate()
+			enemy.setup(type_key, 1)
+
+			enemy.hp = hp
+			enemy.max_hp = hp
+			enemy.global_position = pos
+
+			add_child(enemy)
+
+			enemies_to_spawn -= 1
+			await get_tree().create_timer(0.1).timeout
+
+		offset_x += 50
+
+	start_win_check_loop()
 
 # Inner class to act as a source unit for meteors, avoiding dictionary access errors
 class MeteorSource:

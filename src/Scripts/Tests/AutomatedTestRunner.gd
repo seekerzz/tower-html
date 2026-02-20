@@ -40,6 +40,18 @@ func _setup_test():
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
 
+			# Re-fetch tile to get the placed unit
+			key = GameManager.grid_manager.get_tile_key(u.x, u.y)
+			if GameManager.grid_manager.tiles.has(key):
+				var tile = GameManager.grid_manager.tiles[key]
+				if tile.unit:
+					var unit = tile.unit
+					if u.has("level") and u.level > 1:
+						unit.level = u.level
+						unit.reset_stats()
+					if u.has("attack"):
+						unit.damage = u.attack
+
 	# Setup actions
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:
