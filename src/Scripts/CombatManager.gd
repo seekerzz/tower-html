@@ -369,6 +369,12 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 			if buff == "split": stats["split"] += 1
 			if buff == "fire": effects["burn"] = 3.0
 			if buff == "poison": effects["poison"] = 5.0
+			if buff == "dispel": effects["dispel"] = true
+
+	if "temporary_buffs" in source_unit:
+		for buff in source_unit.temporary_buffs:
+			if buff.stat == "dispel":
+				effects["dispel"] = true
 
 	# Check native unit traits/attributes if they have intrinsic effects (Optional, based on task)
 	# But Task says "fire" buff or attribute.

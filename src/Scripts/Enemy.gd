@@ -780,3 +780,14 @@ func has_status(type_key: String) -> bool:
 		if c is StatusEffect and c.type_key == type_key:
 			return true
 	return false
+
+func dispel_buffs():
+	for c in get_children():
+		if c is StatusEffect:
+			c.queue_free()
+
+	freeze_timer = 0.0
+	stun_timer = 0.0
+	blind_timer = 0.0
+	if modulate != Color.WHITE:
+		modulate = Color.WHITE

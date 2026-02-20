@@ -366,6 +366,10 @@ func _handle_hit(target_node):
 		# Apply Status Effects via Payload (New System)
 		apply_payload(target_node)
 
+		if effects.get("dispel", false):
+			if target_node.has_method("dispel_buffs"):
+				target_node.dispel_buffs()
+
 		# Freeze (Legacy support since we didn't refactor FreezeEffect fully yet or projectile passes it differently)
 		if effects.get("freeze", 0.0) > 0.0:
 			if target_node.has_method("apply_freeze"):

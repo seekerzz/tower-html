@@ -2,6 +2,8 @@ extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 var attack_counter: int = 0
 var feather_refs: Array = []
+var screen_display_timer: float = 0.0
+const SCREEN_DISPLAY_INTERVAL: float = 5.0
 
 func on_cleanup():
 	for q in feather_refs:
@@ -10,6 +12,9 @@ func on_cleanup():
 	feather_refs.clear()
 
 func on_combat_tick(delta: float) -> bool:
+	_process_screen_display(delta)
+	_process_inspire(delta)
+
 	if unit.cooldown > 0:
 		unit.cooldown -= delta
 		return true
@@ -36,6 +41,53 @@ func on_combat_tick(delta: float) -> bool:
 		_do_bow_attack(target)
 
 	return true
+
+func _process_screen_display(delta: float):
+	screen_display_timer += delta
+	if screen_display_timer >= SCREEN_DISPLAY_INTERVAL:
+		screen_display_timer = 0.0
+		_trigger_screen_display()
+
+func _trigger_screen_display():
+	if unit.visual_holder:
+		var tween = unit.create_tween()
+		tween.tween_property(unit.visual_holder, "scale", Vector2(1.5, 1.5), 0.2).set_trans(Tween.TRANS_BACK)
+		tween.tween_property(unit.visual_holder, "scale", Vector2(1.0, 1.0), 0.2)
+
+	GameManager.spawn_floating_text(unit.global_position, "Display!", Color.GOLD)
+
+	var allies = _get_allies_in_range(unit.range_val)
+
+	# Lv1: 10%, Lv2: 20%
+	var amount = 0.1
+	if unit.level >= 2:
+		amount = 0.2
+
+	for ally in allies:
+		if ally == unit: continue
+		ally.add_temporary_buff("attack_speed", amount, 5.0)
+		ally.spawn_buff_effect("⚡")
+
+func _process_inspire(delta: float):
+	if unit.level >= 3:
+		var allies = _get_allies_in_range(unit.range_val)
+		for ally in allies:
+			# Apply short duration buff (0.5s) constantly refreshed
+			ally.add_temporary_buff("dispel", 1.0, 0.5)
+
+func _get_allies_in_range(range_val: float) -> Array:
+	var list = []
+	if !GameManager.grid_manager: return list
+
+	var checked_units = {}
+	for key in GameManager.grid_manager.tiles:
+		var tile = GameManager.grid_manager.tiles[key]
+		var u = tile.unit
+		if u and is_instance_valid(u) and not checked_units.has(u):
+			checked_units[u] = true
+			if unit.global_position.distance_to(u.global_position) <= range_val:
+				list.append(u)
+	return list
 
 func _do_bow_attack(target):
 	var target_last_pos = target.global_position
