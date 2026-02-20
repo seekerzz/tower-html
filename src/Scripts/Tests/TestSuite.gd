@@ -583,6 +583,33 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "storm_eagle", "x": 0, "y": 1}]
 			}
+		"test_harpy_eagle_lv1_triple":
+			return {
+				"id": "test_harpy_eagle_lv1_triple",
+				"core_type": "eagle_totem",
+				"duration": 15.0,
+				"units": [
+					{"id": "harpy_eagle", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3}
+				],
+				"expected_behavior": "快速3次攻击，第3次暴击概率*2"
+			}
+		"test_harpy_eagle_lv3_crit":
+			return {
+				"id": "test_harpy_eagle_lv3_crit",
+				"core_type": "eagle_totem",
+				"start_wave_index": 5,
+				"duration": 20.0,
+				"units": [
+					{"id": "harpy_eagle", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3}
+				],
+				"expected_behavior": "第3次攻击必定暴击并触发图腾回响"
+			}
 		# ========== 流血和吸血系统测试 ==========
 		"test_bleed_lifesteal_system":
 			return {
