@@ -26,6 +26,35 @@ func _setup_test():
 		printerr("[TestRunner] GridManager not ready!")
 		return
 
+	# Inject Test Enemy Types if missing
+	if not Constants.ENEMY_VARIANTS.has("basic_enemy"):
+		Constants.ENEMY_VARIANTS["basic_enemy"] = {
+			"name": "Basic Test Enemy",
+			"icon": "🧪",
+			"color": Color.WHITE,
+			"radius": 15,
+			"hpMod": 1.0,
+			"spdMod": 1.0,
+			"attackType": "melee",
+			"range": 30,
+			"dmg": 10,
+			"atkSpeed": 1.0
+		}
+
+	if not Constants.ENEMY_VARIANTS.has("low_hp_enemy"):
+		Constants.ENEMY_VARIANTS["low_hp_enemy"] = {
+			"name": "Low HP Test Enemy",
+			"icon": "💔",
+			"color": Color.RED,
+			"radius": 15,
+			"hpMod": 0.1,
+			"spdMod": 1.0,
+			"attackType": "melee",
+			"range": 30,
+			"dmg": 10,
+			"atkSpeed": 1.0
+		}
+
 	# Place units
 	if config.has("units"):
 		for u in config["units"]:

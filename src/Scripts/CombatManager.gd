@@ -42,6 +42,11 @@ func get_wave_type(n: int) -> String:
 func start_wave_logic():
 	var wave = GameManager.wave
 
+	# Check for Test Scenario Enemy Config
+	if GameManager.is_running_test and GameManager.current_test_scenario.has("enemies"):
+		_spawn_test_enemies(GameManager.current_test_scenario["enemies"])
+		return
+
 	if wave == 5:
 		spawn_boss_wave()
 		return
@@ -57,6 +62,63 @@ func start_wave_logic():
 	var enemies_per_batch = ceil(float(total_enemies_for_wave) / batch_count)
 
 	_run_batch_sequence(batch_count, int(enemies_per_batch))
+
+func _spawn_test_enemies(enemies_config: Array):
+	print("[CombatManager] Spawning Test Enemies: ", enemies_config)
+	var spawn_points = []
+	if GameManager.grid_manager:
+		spawn_points = GameManager.grid_manager.get_spawn_points()
+	if spawn_points.is_empty():
+		spawn_points.append(Vector2(-300, 0)) # Default
+
+	total_enemies_for_wave = 0
+	for entry in enemies_config:
+		total_enemies_for_wave += entry.get("count", 1)
+	enemies_to_spawn = total_enemies_for_wave
+
+	for entry in enemies_config:
+		var type = entry.get("type", "slime")
+		var count = entry.get("count", 1)
+		var fixed_hp = entry.get("hp", -1)
+		var specific_positions = entry.get("positions", [])
+
+		for i in range(count):
+			var pos = Vector2.ZERO
+			if i < specific_positions.size():
+				var p = specific_positions[i]
+				var px = p.get("x", 0)
+				var py = p.get("y", 0)
+				# Assuming positions are grid coords if small integers, or world if large?
+				# The test config usually uses grid coords for units, but maybe world for enemies?
+				# Let's assume grid coords relative to core if small numbers, else world.
+				# Actually, user example: "positions": [{"x": 2, "y": 0}] -> Grid Coords
+				if GameManager.grid_manager:
+					pos = GameManager.grid_manager.get_world_pos_from_grid(Vector2i(px, py))
+				else:
+					pos = Vector2(px * 60, py * 60)
+			else:
+				# Random spawn point
+				pos = spawn_points.pick_random() + Vector2(randf_range(-20, 20), randf_range(-20, 20))
+
+			var enemy = ENEMY_SCENE.instantiate()
+			enemy.setup(type, 1) # Force wave 1 stats base
+			enemy.global_position = pos
+
+			if fixed_hp > 0:
+				enemy.max_hp = fixed_hp
+				enemy.hp = fixed_hp
+
+			if entry.has("debuffs"):
+				for debuff in entry.debuffs:
+					enemy.call_deferred("apply_debuff", debuff.type, debuff.get("stacks", 1))
+
+			add_child(enemy)
+			enemies_to_spawn -= 1
+
+			# Brief delay to separate spawns slightly
+			await get_tree().create_timer(0.05).timeout
+
+	start_win_check_loop()
 
 func start_meteor_shower(center_pos: Vector2, damage: float):
 	# Wave Loop: 5 Waves, 0.1s interval (using async/await)
