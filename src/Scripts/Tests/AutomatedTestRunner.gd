@@ -7,8 +7,11 @@ var scheduled_actions_executed: Array = []
 var _frame_events: Array = []
 var _is_tearing_down: bool = false
 var _wave_has_started: bool = false
+var _test_unit_map: Dictionary = {}
 
 func _ready():
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	set_process(true)
 	config = GameManager.current_test_scenario
 
 	print("[TestRunner] Starting test: ", config.get("id", "Unknown"))
@@ -27,6 +30,7 @@ func _setup_test():
 		return
 
 	# Place units
+	_test_unit_map.clear()
 	if config.has("units"):
 		for u in config["units"]:
 			# Force unlock tile if needed (Test requirement override)
@@ -38,7 +42,23 @@ func _setup_test():
 					if not GameManager.grid_manager.active_territory_tiles.has(tile):
 						GameManager.grid_manager.active_territory_tiles.append(tile)
 
-			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
+			var type_key = u.get("type", u.id)
+			if GameManager.grid_manager.place_unit(type_key, u.x, u.y):
+				var unit = GameManager.grid_manager.tiles[key].unit
+				if unit:
+					_test_unit_map[u.id] = unit
+					if u.has("level"):
+						unit.level = u.level
+						unit.reset_stats()
+						unit.update_visuals()
+					if u.has("devoured"):
+						var dummy_key = u.devoured
+						var dummy = load("res://src/Scenes/Game/Unit.tscn").instantiate()
+						dummy.setup(dummy_key)
+						if unit.has_method("devour_target"):
+							unit.devour_target(dummy)
+						else:
+							dummy.queue_free()
 
 	# Setup actions
 	if config.has("setup_actions"):
@@ -93,6 +113,28 @@ func _execute_setup_action(action: Dictionary):
 				_spawn_random_trap(action.trap_id)
 		"apply_buff":
 			_apply_buff_to_unit(action.target_unit_id, action.buff_id)
+		"devour":
+			var source = _test_unit_map.get(action.source)
+			var target = _test_unit_map.get(action.target)
+			if source and target and is_instance_valid(source) and is_instance_valid(target):
+				if source.has_method("devour_target"):
+					print("[TestRunner] Action Devour: ", action.source, " -> ", action.target)
+					source.devour_target(target)
+				else:
+					printerr("[TestRunner] Source unit cannot devour: ", action.source)
+			else:
+				printerr("[TestRunner] Invalid source or target for devour action")
+		"merge":
+			var source = _test_unit_map.get(action.source)
+			var target = _test_unit_map.get(action.target)
+			if source and target and is_instance_valid(source) and is_instance_valid(target):
+				if target.can_merge_with(source):
+					print("[TestRunner] Action Merge: ", action.source, " -> ", action.target)
+					target.merge_with(source)
+				else:
+					printerr("[TestRunner] Target cannot merge with source: ", action.target, " <- ", action.source)
+			else:
+				printerr("[TestRunner] Invalid source or target for merge action")
 
 func _spawn_random_trap(trap_id: String):
 	# Map test IDs to game IDs

@@ -370,6 +370,50 @@ func get_test_config(case_id: String) -> Dictionary:
 				"units": [{"id": "dragon", "x": 0, "y": 1}]
 			}
 		# ========== 狼图腾流派单位测试 (3个单位) ==========
+		"test_wolf_lv1_devour":
+			return {
+				"id": "test_wolf_lv1_devour",
+				"core_type": "wolf_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "wolf", "x": 0, "y": 1, "level": 1},
+					{"id": "squirrel", "x": 1, "y": 0}
+				],
+				"setup_actions": [
+					{"type": "devour", "source": "wolf", "target": "squirrel"}
+				],
+				"expected_behavior": "登场时吞噬一个单位，继承50%攻击力和血量及攻击机制"
+			}
+		"test_wolf_lv2_dual_inherit":
+			return {
+				"id": "test_wolf_lv2_dual_inherit",
+				"core_type": "wolf_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "wolf", "x": 0, "y": 1, "level": 1},
+					{"id": "wolf2", "type": "wolf", "x": 1, "y": 0, "level": 1, "devoured": "bee"},
+					{"id": "squirrel", "x": -1, "y": 0}
+				],
+				"setup_actions": [
+					{"type": "devour", "source": "wolf", "target": "squirrel"},
+					{"type": "merge", "source": "wolf", "target": "wolf2"}
+				],
+				"expected_behavior": "合并升级时保留两只狼各自的攻击机制"
+			}
+		"test_wolf_lv3_limit":
+			return {
+				"id": "test_wolf_lv3_limit",
+				"core_type": "wolf_totem",
+				"duration": 15.0,
+				"units": [
+					{"id": "wolf", "x": 0, "y": 1, "level": 2},
+					{"id": "wolf2", "type": "wolf", "x": 1, "y": 0, "level": 2}
+				],
+				"setup_actions": [
+					{"type": "merge", "source": "wolf", "target": "wolf2"}
+				],
+				"expected_behavior": "狼无法升到Lv.3，合并时最多到Lv.2"
+			}
 		"test_wolf_devour_system":
 			return {
 				"id": "test_wolf_devour_system",
