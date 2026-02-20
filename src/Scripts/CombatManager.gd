@@ -42,6 +42,10 @@ func get_wave_type(n: int) -> String:
 func start_wave_logic():
 	var wave = GameManager.wave
 
+	if GameManager.is_running_test and GameManager.current_test_scenario.has("enemies"):
+		_spawn_test_enemies(GameManager.current_test_scenario["enemies"])
+		return
+
 	if wave == 5:
 		spawn_boss_wave()
 		return
@@ -116,6 +120,51 @@ class MeteorSource:
 
 	func is_in_group(_group):
 		return false
+
+func _spawn_test_enemies(enemies_config: Array):
+	enemies_to_spawn = 0
+	total_enemies_for_wave = 0
+
+	for enemy_conf in enemies_config:
+		var type = enemy_conf.get("type", "slime")
+		if type == "weak_enemy": type = "slime" # Map weak_enemy to slime
+		# Check if type exists in Constants.ENEMY_VARIANTS, if not fallback to slime
+		if not Constants.ENEMY_VARIANTS.has(type):
+			printerr("[CombatManager] Unknown enemy type in test: ", type, " defaulting to slime")
+			type = "slime"
+
+		var count = enemy_conf.get("count", 1)
+		var hp_override = enemy_conf.get("hp", -1)
+		var positions = enemy_conf.get("positions", [])
+
+		total_enemies_for_wave += count
+		enemies_to_spawn += count
+
+		for i in range(count):
+			var pos = Vector2.ZERO
+			if i < positions.size():
+				var p = positions[i]
+				if GameManager.grid_manager:
+					pos = GameManager.grid_manager.get_world_pos_from_grid(Vector2i(p.x, p.y))
+			else:
+				# Random spawn if positions not provided enough
+				if GameManager.grid_manager:
+					var points = GameManager.grid_manager.get_spawn_points()
+					if points.size() > 0:
+						pos = points.pick_random()
+
+			var enemy = _spawn_enemy_at_pos(pos, type)
+			if hp_override > 0:
+				enemy.hp = hp_override
+				enemy.max_hp = hp_override
+
+			if enemy_conf.has("debuffs"):
+				for debuff in enemy_conf.debuffs:
+					enemy.apply_debuff(debuff.type, debuff.stacks)
+
+			enemies_to_spawn -= 1
+
+	start_win_check_loop()
 
 func spawn_boss_wave():
 	# Hardcoded Wave 5 Event
@@ -251,6 +300,7 @@ func _spawn_enemy_at_pos(pos: Vector2, type_key: String):
 	enemy.setup(type_key, GameManager.wave)
 	enemy.global_position = pos
 	add_child(enemy)
+	return enemy
 
 func find_nearest_enemy(pos: Vector2, range_val: float):
 	var nearest = null
