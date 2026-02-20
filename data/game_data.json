@@ -2265,7 +2265,7 @@
                 1
             ],
             "range": 300,
-            "atkSpeed": 0,
+            "atkSpeed": 1.5,
             "manaCost": 0,
             "attackType": "ranged",
             "proj": "magic_missile",

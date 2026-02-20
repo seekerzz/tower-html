@@ -40,10 +40,19 @@ def submit_task(task_id: str, prompt_file: str, title: str = None):
         print("Set in docs/secrets/.env or export as environment variable")
         sys.exit(1)
 
-    # Read prompt
+    # Read prompt - handle both relative and paths with subdirs
+    import os
     prompt_path = Path(prompt_file)
     if not prompt_path.is_absolute():
-        prompt_path = Path(__file__).parent / prompt_path
+        # Normalize path separators for comparison
+        path_str = str(prompt_path).replace('\\', '/')
+        # If path already starts with docs/jules_prompts, use from repo root
+        if path_str.startswith("docs/jules_prompts/"):
+            repo_root = Path(__file__).parent.parent.parent
+            prompt_path = repo_root / prompt_path
+        else:
+            # Just filename, resolve relative to script dir
+            prompt_path = Path(__file__).parent / prompt_path
 
     if not prompt_path.exists():
         print(f"Error: File not found {prompt_path}")
