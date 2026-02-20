@@ -38,12 +38,29 @@ func _setup_test():
 					if not GameManager.grid_manager.active_territory_tiles.has(tile):
 						GameManager.grid_manager.active_territory_tiles.append(tile)
 
-			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
+			if GameManager.grid_manager.place_unit(u.id, u.x, u.y):
+				# Apply unit overrides (level, etc)
+				var tile_key = GameManager.grid_manager.get_tile_key(u.x, u.y)
+				if GameManager.grid_manager.tiles.has(tile_key):
+					var tile = GameManager.grid_manager.tiles[tile_key]
+					if tile.unit:
+						if u.has("level"):
+							tile.unit.level = u.level
+							tile.unit.reset_stats()
+						if u.has("initial_hp"):
+							tile.unit.max_hp = u.initial_hp
+							tile.unit.current_hp = u.initial_hp
 
 	# Setup actions
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:
 			_execute_setup_action(action)
+
+	# Override Core Health (must be done after unit placement)
+	if config.has("max_core_health"):
+		GameManager.max_core_health = config["max_core_health"]
+	if config.has("core_health"):
+		GameManager.core_health = config["core_health"]
 
 	GameManager.game_over.connect(_on_game_over)
 	GameManager.wave_started.connect(_on_wave_started)
@@ -194,6 +211,22 @@ func _execute_scheduled_action(action: Dictionary):
 				printerr("[TestRunner] SummonManager not available")
 		"test_enemy_death":
 			_run_enemy_death_test()
+		"damage_core":
+			if action.has("amount"):
+				GameManager.damage_core(action.amount)
+				print("[TestRunner] Damaged core by ", action.amount, ". New HP: ", GameManager.core_health)
+		"record_attack_speed":
+			var gm = GameManager.grid_manager
+			if gm:
+				var found = false
+				for key in gm.tiles:
+					var tile = gm.tiles[key]
+					if tile.unit and tile.unit.type_key == "dog":
+						var hp_percent = GameManager.core_health / GameManager.max_core_health
+						print("[TestRunner] Dog Attack Speed: ", tile.unit.atk_speed, " (Core HP: ", hp_percent * 100, "%)")
+						found = true
+				if not found:
+					printerr("[TestRunner] Dog unit not found for record_attack_speed")
 
 func _run_enemy_death_test():
 	print("[TestRunner] ========== 开始敌人死亡重复调用测试 ==========")

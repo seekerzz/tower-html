@@ -401,6 +401,59 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "dog", "x": 0, "y": 1}]
 			}
+		# ========== 恶霸犬 (Dog) 测试 (TEST-WOLF-DOG) ==========
+		"test_dog_lv1_rampage":
+			return {
+				"id": "test_dog_lv1_rampage",
+				"core_type": "wolf_totem",
+				"duration": 30.0,
+				"core_health": 10000,
+				"max_core_health": 10000,
+				"units": [
+					{"id": "dog", "x": 0, "y": 1, "level": 1}
+				],
+				"scheduled_actions": [
+					{"time": 2.0, "type": "record_attack_speed"},
+					{"time": 5.0, "type": "damage_core", "amount": 5000},
+					{"time": 8.0, "type": "record_attack_speed"},
+					{"time": 10.0, "type": "damage_core", "amount": 4000},
+					{"time": 13.0, "type": "record_attack_speed"}
+				],
+				"expected_behavior": "核心HP每降低10%，攻速+5%；50%时攻速+25%，10%时攻速+45%"
+			}
+		"test_dog_lv2_rampage":
+			return {
+				"id": "test_dog_lv2_rampage",
+				"core_type": "wolf_totem",
+				"duration": 20.0,
+				"core_health": 5000,
+				"max_core_health": 10000,
+				"units": [
+					{"id": "dog", "x": 0, "y": 1, "level": 2}
+				],
+				"scheduled_actions": [
+					{"time": 1.0, "type": "record_attack_speed"}
+				],
+				"expected_behavior": "核心HP每降低10%，攻速+10%；50%时攻速+50%"
+			}
+		"test_dog_lv3_splash":
+			return {
+				"id": "test_dog_lv3_splash",
+				"core_type": "wolf_totem",
+				"duration": 25.0,
+				"core_health": 1000,
+				"max_core_health": 10000,
+				"units": [
+					{"id": "dog", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3, "positions": [{"x": 2, "y": 0}, {"x": 2, "y": 1}]}
+				],
+				"scheduled_actions": [
+					{"time": 1.0, "type": "record_attack_speed"}
+				],
+				"expected_behavior": "攻速+80%以上时，可以造成溅射伤害"
+			}
 		"test_wolf_totem_lion":
 			return {
 				"id": "test_wolf_totem_lion",
