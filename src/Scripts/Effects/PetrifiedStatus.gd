@@ -30,6 +30,33 @@ func setup(target: Node, source: Object, params: Dictionary):
 		if target.has_method("apply_stun"):
 			target.apply_stun(duration)
 
+func apply(delta: float):
+	duration -= delta
+	if duration <= 0:
+		_on_expire()
+		queue_free()
+
+func _on_expire():
+	var target = get_parent()
+	if not (target and is_instance_valid(target)):
+		return
+
+	if petrify_source and is_instance_valid(petrify_source):
+		var level = 1
+		if "level" in petrify_source:
+			level = petrify_source.level
+
+		# Lv3: End damage (Deal target MaxHP damage)
+		if level >= 3:
+			if target.has_method("take_damage"):
+				# Use magic damage type
+				var damage_amount = 0
+				if "max_hp" in target:
+					damage_amount = target.max_hp
+
+				if damage_amount > 0:
+					target.take_damage(damage_amount, petrify_source, "magic")
+
 func _exit_tree():
 	var target = get_parent()
 	if is_instance_valid(target) and (target is Node2D):
