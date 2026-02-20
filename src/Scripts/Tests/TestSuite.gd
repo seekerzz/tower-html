@@ -410,6 +410,59 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "lion", "x": 0, "y": 1}]
 			}
+		"test_hyena_lv1_execute":
+			return {
+				"id": "test_hyena_lv1_execute",
+				"core_type": "wolf_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "hyena", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "high_hp_enemy", "count": 2, "hp": 200, "position": {"x": 0, "y": 2}}
+				],
+				"scheduled_actions": [
+					{"time": 2.0, "type": "damage_enemy", "enemy_index": 0, "amount": 150},
+					{"time": 2.0, "type": "damage_enemy", "enemy_index": 1, "amount": 100},
+					{"time": 5.0, "type": "record_damage", "enemy_index": 0},
+					{"time": 5.0, "type": "record_damage", "enemy_index": 1}
+				],
+				"expected_behavior": "攻击HP<30%敌人时额外附加1次20%伤害"
+			}
+		"test_hyena_lv2_execute":
+			return {
+				"id": "test_hyena_lv2_execute",
+				"core_type": "wolf_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "hyena", "x": 0, "y": 1, "level": 2}
+				],
+				"enemies": [
+					{"type": "high_hp_enemy", "count": 1, "hp": 200, "position": {"x": 0, "y": 2}}
+				],
+				"scheduled_actions": [
+					{"time": 2.0, "type": "damage_enemy", "enemy_index": 0, "amount": 150},
+					{"time": 5.0, "type": "record_damage", "enemy_index": 0}
+				],
+				"expected_behavior": "攻击HP<30%敌人时额外附加1次50%伤害"
+			}
+		"test_hyena_lv3_execute":
+			return {
+				"id": "test_hyena_lv3_execute",
+				"core_type": "wolf_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "hyena", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "high_hp_enemy", "count": 1, "hp": 300, "position": {"x": 0, "y": 2}}
+				],
+				"scheduled_actions": [
+					{"time": 2.0, "type": "damage_enemy", "enemy_index": 0, "amount": 220},
+					{"time": 5.0, "type": "record_damage", "enemy_index": 0}
+				],
+				"expected_behavior": "攻击HP<30%敌人时额外附加2次50%伤害"
+			}
 		# ========== 眼镜蛇图腾流派单位测试 (7个单位) ==========
 		"test_viper_totem_spider":
 			return {

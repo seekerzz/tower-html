@@ -112,6 +112,60 @@
             "type_key": "wolf",
             "faction": "wolf_totem"
         },
+        "hyena": {
+            "name": "鬣狗",
+            "icon": "🐕",
+            "size": [
+                1,
+                1
+            ],
+            "range": 100,
+            "atkSpeed": 1.0,
+            "manaCost": 0,
+            "attackType": "melee",
+            "damageType": "physical",
+            "crit_rate": 0.1,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 100,
+                    "hp": 250,
+                    "cost": 100,
+                    "desc": "残血收割：攻击HP<30%敌人时额外附加1次20%伤害",
+                    "mechanics": {
+                        "execute_threshold": 0.3,
+                        "execute_damage_bonus": 0.2,
+                        "execute_count": 1
+                    }
+                },
+                "2": {
+                    "damage": 150,
+                    "hp": 375,
+                    "cost": 200,
+                    "desc": "残血收割：攻击HP<30%敌人时额外附加1次50%伤害",
+                    "mechanics": {
+                        "execute_threshold": 0.3,
+                        "execute_damage_bonus": 0.5,
+                        "execute_count": 1,
+                        "crit_rate_bonus": 0.1
+                    }
+                },
+                "3": {
+                    "damage": 225,
+                    "hp": 562,
+                    "cost": 400,
+                    "desc": "残血收割：攻击HP<30%敌人时额外附加2次50%伤害",
+                    "mechanics": {
+                        "execute_threshold": 0.3,
+                        "execute_damage_bonus": 0.5,
+                        "execute_count": 2,
+                        "crit_rate_bonus": 0.2
+                    }
+                }
+            },
+            "type_key": "hyena",
+            "faction": "wolf_totem"
+        },
         "spiderling": {
             "name": "小蜘蛛",
             "type": "summoned",
