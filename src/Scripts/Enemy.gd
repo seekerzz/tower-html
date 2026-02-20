@@ -1,6 +1,6 @@
+class_name Enemy
 extends CharacterBody2D
 
-const UNIT_SCRIPT = preload("res://src/Scripts/Unit.gd")
 const EnemyBehavior = preload("res://src/Scripts/Enemies/Behaviors/EnemyBehavior.gd")
 const AssetLoader = preload("res://src/Scripts/Utils/AssetLoader.gd")
 
@@ -678,6 +678,10 @@ func die(killer_unit = null):
 		return
 	is_dying = true
 
+	# 检查是否处于石化状态
+	if has_status("petrified"):
+		set_meta("was_petrified", true)
+
 	_on_death()
 
 	# Kill Bonus Check
@@ -731,3 +735,9 @@ func _show_taunt_indicator(active: bool):
 	else:
 		if indicator:
 			indicator.hide()
+
+func has_status(type_key: String) -> bool:
+	for c in get_children():
+		if c is StatusEffect and c.type_key == type_key:
+			return true
+	return false

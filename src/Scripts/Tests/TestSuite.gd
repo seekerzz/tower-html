@@ -583,4 +583,16 @@ func get_test_config(case_id: String) -> Dictionary:
 					{"id": "blood_mage", "x": 1, "y": 1}
 				]
 			}
+		"test_medusa_petrify":
+			return {
+				"id": "test_medusa_petrify",
+				"core_type": "viper_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 30.0,
+				"units": [
+					{"id": "medusa", "x": 0, "y": 0}
+				],
+				"description": "测试美杜莎石化凝视和石块生成（需要等待石化触发）"
+			}
 	return {}
