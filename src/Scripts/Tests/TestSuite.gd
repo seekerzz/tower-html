@@ -213,6 +213,50 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "yak_guardian", "x": 0, "y": 1}]
 			}
+		"test_yak_guardian_lv1_taunt":
+			return {
+				"id": "test_yak_guardian_lv1_taunt",
+				"core_type": "cow_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [
+					{"id": "squirrel", "x": 0, "y": -1},
+					{"id": "yak_guardian", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3, "spawn_delay": 1.0}
+				],
+				"expected_behavior": "敌人初始攻击松鼠，5秒后转为攻击牦牛守护"
+			}
+		"test_yak_guardian_lv2_taunt":
+			return {
+				"id": "test_yak_guardian_lv2_taunt",
+				"core_type": "cow_totem",
+				"duration": 12.0,
+				"units": [
+					{"id": "squirrel", "x": 0, "y": -1},
+					{"id": "yak_guardian", "x": 0, "y": 1, "level": 2}
+				],
+				"expected_behavior": "嘲讽间隔为4秒，Buff提供10%减伤"
+			}
+		"test_yak_guardian_lv3_totem_counter":
+			return {
+				"id": "test_yak_guardian_lv3_totem_counter",
+				"core_type": "cow_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "yak_guardian", "x": 0, "y": 1, "level": 3}
+				],
+				"scheduled_actions": [
+					{
+						"time": 5.0,
+						"type": "damage_core",
+						"amount": 50
+					}
+				],
+				"expected_behavior": "牛图腾反击时，范围内敌人受到牦牛血量15%额外伤害"
+			}
 		"test_cow_totem_cow_golem":
 			return {
 				"id": "test_cow_totem_cow_golem",
