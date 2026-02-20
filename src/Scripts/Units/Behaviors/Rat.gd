@@ -1,49 +1,54 @@
 extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 # Rat - 老鼠
-# 机制: 瘟疫传播 - 攻击使敌人中毒，中毒敌人死亡时传播毒素
+# 机制: 瘟疫传播 - 攻击命中的敌人若在4秒内死亡，传播毒素
 # L1: 传播2层中毒
 # L2: 传播4层中毒
-# L3: 额外传播随机Debuff (burn, bleed, slow)
+# L3: 额外传播其他Debuff (burn, bleed, slow)
 
-var plague_duration: float = 4.0
+const PLAGUE_DURATION_MSEC = 4000
 
-func on_setup():
-	if not GameManager.debuff_applied.is_connected(_on_debuff_applied):
-		GameManager.debuff_applied.connect(_on_debuff_applied)
-
-func on_cleanup():
-	if GameManager.debuff_applied.is_connected(_on_debuff_applied):
-		GameManager.debuff_applied.disconnect(_on_debuff_applied)
-
-func _on_debuff_applied(enemy, debuff_type: String, stacks: int):
-	# Check if the debuff is poison
-	if debuff_type == "poison":
-		enemy.set_meta("plague_infected", true)
-		enemy.set_meta("plague_duration", plague_duration)
+func on_projectile_hit(target: Node2D, damage: float, projectile: Node2D):
+	if target and is_instance_valid(target) and target.is_in_group("enemies"):
+		target.set_meta("rat_plague_mark_time", Time.get_ticks_msec())
 
 		# Connect to death signal if not already connected
-		if enemy.has_signal("died") and not enemy.is_connected("died", _on_plagued_enemy_died):
-			enemy.died.connect(_on_plagued_enemy_died.bind(enemy))
+		if not target.is_connected("died", _on_marked_enemy_died):
+			target.died.connect(_on_marked_enemy_died.bind(target))
 
-func _on_plagued_enemy_died(enemy):
+func _on_marked_enemy_died(enemy):
 	if not is_instance_valid(enemy):
 		return
 
-	if not enemy.has_meta("plague_infected"):
+	if not enemy.has_meta("rat_plague_mark_time"):
+		return
+
+	var mark_time = enemy.get_meta("rat_plague_mark_time")
+	# Check if within 4 seconds (4000 msec)
+	if Time.get_ticks_msec() - mark_time > PLAGUE_DURATION_MSEC:
 		return
 
 	var level = unit.level
-	var spread_stacks = 2 if level < 2 else 4
-	var nearby = _get_enemies_in_radius(enemy.global_position, 120.0)
+	var mechanics = {}
+	if unit.unit_data.has("levels") and unit.unit_data["levels"].has(str(level)):
+		mechanics = unit.unit_data["levels"][str(level)].get("mechanics", {})
+
+	var spread_stacks = mechanics.get("plague_stacks", 2)
+	var radius = mechanics.get("spread_radius", 120.0)
+	var multi_debuff = mechanics.get("multi_debuff_spread", false)
+
+	var nearby = _get_enemies_in_radius(enemy.global_position, radius)
 
 	for e in nearby:
 		if e == enemy: continue
 
 		if e.has_method("add_poison_stacks"):
 			e.add_poison_stacks(spread_stacks)
+		else:
+			# Fallback if no method, use apply_status
+			e.apply_status(load("res://src/Scripts/Effects/PoisonEffect.gd"), {"duration": 5.0, "damage": 5.0, "stacks": spread_stacks})
 
-		if level >= 3:
+		if multi_debuff:
 			_spread_additional_debuff(e)
 
 func _spread_additional_debuff(enemy):
@@ -53,7 +58,6 @@ func _spread_additional_debuff(enemy):
 	if random_debuff == "burn":
 		enemy.apply_status(load("res://src/Scripts/Effects/BurnEffect.gd"), {"duration": 5.0, "damage": 10.0, "stacks": 1})
 	elif random_debuff == "bleed":
-		# Bleed usually handled by stacks logic in Enemy.gd
 		if enemy.has_method("add_bleed_stacks"):
 			enemy.add_bleed_stacks(1, unit)
 		else:
