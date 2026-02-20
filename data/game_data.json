@@ -2692,6 +2692,40 @@
         }
     },
     "ENEMY_VARIANTS": {
+        "fast_enemy": {
+            "name": "极速怪",
+            "icon": "⚡",
+            "color": "#f1c40f",
+            "radius": 15,
+            "hpMod": 1.0,
+            "spdMod": 2.5,
+            "attackType": "melee",
+            "range": 30,
+            "dmg": 50,
+            "atkSpeed": 1.0,
+            "anim_config": {
+                "style": "squash",
+                "amplitude": 0.2,
+                "base_freq": 6.0
+            }
+        },
+        "weak_enemy": {
+            "name": "虚弱怪",
+            "icon": "💀",
+            "color": "#bdc3c7",
+            "radius": 15,
+            "hpMod": 0.3,
+            "spdMod": 1.0,
+            "attackType": "melee",
+            "range": 30,
+            "dmg": 20,
+            "atkSpeed": 1.0,
+            "anim_config": {
+                "style": "bob",
+                "amplitude": 1.0,
+                "base_freq": 2.0
+            }
+        },
         "crab": {
             "name": "巨鳌蟹",
             "icon": "🦀",

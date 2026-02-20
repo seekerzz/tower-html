@@ -40,6 +40,10 @@ func get_wave_type(n: int) -> String:
 	return types[int(idx) % types.size()]
 
 func start_wave_logic():
+	if GameManager.is_running_test and GameManager.current_test_scenario.has("enemies"):
+		spawn_test_wave()
+		return
+
 	var wave = GameManager.wave
 
 	if wave == 5:
@@ -57,6 +61,70 @@ func start_wave_logic():
 	var enemies_per_batch = ceil(float(total_enemies_for_wave) / batch_count)
 
 	_run_batch_sequence(batch_count, int(enemies_per_batch))
+
+func spawn_test_wave():
+	var enemies_config = GameManager.current_test_scenario["enemies"]
+	total_enemies_for_wave = 0
+	for entry in enemies_config:
+		total_enemies_for_wave += entry.get("count", 1)
+	enemies_to_spawn = total_enemies_for_wave
+
+	# Start win check loop to ensure wave ends properly
+	start_win_check_loop()
+
+	for entry in enemies_config:
+		var count = entry.get("count", 1)
+		var type = entry.get("type", "slime")
+		var spawn_delay = entry.get("spawn_delay", 0.5)
+		var overrides = entry.duplicate()
+		overrides.erase("count")
+		overrides.erase("type")
+		overrides.erase("spawn_delay")
+
+		for i in range(count):
+			if !GameManager.is_wave_active: break
+			_spawn_test_enemy(type, overrides)
+			enemies_to_spawn -= 1
+			await get_tree().create_timer(spawn_delay).timeout
+
+func _spawn_test_enemy(type_key, overrides):
+	var points = []
+	if GameManager.grid_manager:
+		points = GameManager.grid_manager.get_spawn_points()
+	if points.is_empty(): points.append(Vector2.ZERO)
+
+	var spawn_point = points.pick_random()
+	var pos = spawn_point + Vector2(randf_range(-20, 20), randf_range(-20, 20))
+
+	if overrides.has("positions") and overrides["positions"].size() > 0:
+		# Simple handling: pick one or cycle?
+		# For now, just pick random from provided positions if they exist
+		# Ideally we'd map index to position but here we are in a loop
+		var p = overrides["positions"].pick_random()
+		if GameManager.grid_manager:
+			pos = GameManager.grid_manager.get_world_pos_from_grid(Vector2i(p.x, p.y))
+		else:
+			pos = Vector2(p.x * 60, p.y * 60)
+
+	var enemy = ENEMY_SCENE.instantiate()
+	if type_key == "healer":
+		enemy.set_script(HEALER_SCRIPT)
+
+	enemy.setup(type_key, GameManager.wave)
+	enemy.global_position = pos
+
+	# Apply overrides
+	if overrides.has("speed"):
+		enemy.speed = overrides["speed"]
+		enemy.base_speed = overrides["speed"]
+		if enemy.visual_controller:
+			enemy.visual_controller.base_speed = overrides["speed"]
+
+	if overrides.has("hp"):
+		enemy.hp = overrides["hp"]
+		enemy.max_hp = overrides["hp"]
+
+	add_child(enemy)
 
 func start_meteor_shower(center_pos: Vector2, damage: float):
 	# Wave Loop: 5 Waves, 0.1s interval (using async/await)

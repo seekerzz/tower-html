@@ -420,6 +420,45 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "spider", "x": 0, "y": 1}]
 			}
+		"test_spider_lv1_slow":
+			return {
+				"id": "test_spider_lv1_slow",
+				"core_type": "viper_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "spider", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "fast_enemy", "speed": 100, "count": 3}
+				],
+				"expected_behavior": "攻击使敌人减速40%，被攻击的敌人移动速度降至60"
+			}
+		"test_spider_lv2_slow":
+			return {
+				"id": "test_spider_lv2_slow",
+				"core_type": "viper_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "spider", "x": 0, "y": 1, "level": 2}
+				],
+				"enemies": [
+					{"type": "fast_enemy", "speed": 100, "count": 3}
+				],
+				"expected_behavior": "减速效果提升至60%，被攻击的敌人移动速度降至40"
+			}
+		"test_spider_lv3_cocoon":
+			return {
+				"id": "test_spider_lv3_cocoon",
+				"core_type": "viper_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "spider", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "weak_enemy", "count": 3, "hp": 50}
+				],
+				"expected_behavior": "被网住并死亡的敌人生成小蜘蛛，小蜘蛛为我方作战"
+			}
 		"test_viper_totem_snowman":
 			return {
 				"id": "test_viper_totem_snowman",
