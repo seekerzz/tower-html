@@ -456,6 +456,48 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "arrow_frog", "x": 0, "y": 1}]
 			}
+		"test_arrow_frog_lv1_execute":
+			return {
+				"id": "test_arrow_frog_lv1_execute",
+				"core_type": "viper_totem",
+				"duration": 20.0,
+				"disable_wave_spawning": true,
+				"units": [
+					{"id": "arrow_frog", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "poison", "hp": 100, "debuffs": [{"type": "poison", "stacks": 10}], "count": 3}
+				],
+				"expected_behavior": "若敌人HP<Debuff层数*200%，则引爆斩杀，10层中毒时，HP<2000的敌人被斩杀"
+			}
+		"test_arrow_frog_lv2_execute":
+			return {
+				"id": "test_arrow_frog_lv2_execute",
+				"core_type": "viper_totem",
+				"duration": 20.0,
+				"disable_wave_spawning": true,
+				"units": [
+					{"id": "arrow_frog", "x": 0, "y": 1, "level": 2}
+				],
+				"enemies": [
+					{"type": "poison", "hp": 100, "debuffs": [{"type": "poison", "stacks": 10}], "count": 3}
+				],
+				"expected_behavior": "引爆伤害提升至250%"
+			}
+		"test_arrow_frog_lv3_spread":
+			return {
+				"id": "test_arrow_frog_lv3_spread",
+				"core_type": "viper_totem",
+				"duration": 25.0,
+				"disable_wave_spawning": true,
+				"units": [
+					{"id": "arrow_frog", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "poison", "hp": 50, "debuffs": [{"type": "poison", "stacks": 5}], "count": 5, "positions": [{"x": 2, "y": 0}, {"x": 2, "y": 1}]}
+				],
+				"expected_behavior": "斩杀时将中毒层数传播给周围敌人，敌人被斩杀时，周围敌人获得5层中毒"
+			}
 		"test_viper_totem_medusa":
 			return {
 				"id": "test_viper_totem_medusa",

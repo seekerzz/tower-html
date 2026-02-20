@@ -45,6 +45,10 @@ func _setup_test():
 		for action in config["setup_actions"]:
 			_execute_setup_action(action)
 
+	# Setup Enemies (Manual Spawn)
+	if config.has("enemies"):
+		_setup_enemies()
+
 	GameManager.game_over.connect(_on_game_over)
 	GameManager.wave_started.connect(_on_wave_started)
 	GameManager.enemy_spawned.connect(_on_enemy_spawned)
@@ -85,6 +89,50 @@ func _on_enemy_hit(enemy, source, amount):
 		"damage": amount,
 		"target_hp_after": enemy.hp
 	})
+
+func _setup_enemies():
+	var enemy_scene = load("res://src/Scenes/Game/Enemy.tscn")
+	var poison_effect = load("res://src/Scripts/Effects/PoisonEffect.gd")
+	var TILE_SIZE = 60 # Default
+
+	for enemy_config in config["enemies"]:
+		var type = enemy_config.get("type", "slime")
+		var count = enemy_config.get("count", 1)
+		var hp = enemy_config.get("hp", 0)
+		var positions = enemy_config.get("positions", [])
+		var debuffs = enemy_config.get("debuffs", [])
+
+		for i in range(count):
+			var enemy = enemy_scene.instantiate()
+			# Determine position
+			var pos = Vector2(800, 300) # Default
+			if positions.size() > 0:
+				var p = positions[i % positions.size()]
+				pos = Vector2(p.x * TILE_SIZE, p.y * TILE_SIZE) # Grid to World
+			else:
+				# Simple stacking offset
+				pos = Vector2(800 + i * 20, 300 + (i % 5) * 20)
+
+			if GameManager.combat_manager:
+				GameManager.combat_manager.add_child(enemy)
+			else:
+				get_tree().current_scene.add_child(enemy)
+
+			enemy.global_position = pos
+			enemy.setup(type, 1) # Wave 1 default
+
+			if hp > 0:
+				enemy.hp = hp
+				enemy.max_hp = hp
+
+			# Apply debuffs
+			for debuff in debuffs:
+				if debuff.type == "poison":
+					enemy.apply_status(poison_effect, {"stacks": debuff.stacks, "damage": 10.0})
+					print("[TestRunner] Applied %d poison stacks to enemy at %s" % [debuff.stacks, pos])
+
+			print("[TestRunner] Spawned enemy %s at %s with HP %s" % [type, pos, hp])
+
 
 func _execute_setup_action(action: Dictionary):
 	match action.type:
