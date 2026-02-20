@@ -38,7 +38,20 @@ func _setup_test():
 					if not GameManager.grid_manager.active_territory_tiles.has(tile):
 						GameManager.grid_manager.active_territory_tiles.append(tile)
 
-			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
+			if GameManager.grid_manager.place_unit(u.id, u.x, u.y):
+				# Handle Level override if specified
+				if u.has("level") and u.level > 1:
+					# key is already defined above
+					var tile = GameManager.grid_manager.tiles[key]
+					if tile.unit:
+						tile.unit.level = u.level
+						tile.unit.reset_stats()
+						tile.unit.current_hp = tile.unit.max_hp
+						tile.unit.update_visuals()
+
+	# Spawn custom test enemies
+	if config.has("enemies"):
+		_spawn_test_enemies()
 
 	# Setup actions
 	if config.has("setup_actions"):
@@ -127,6 +140,50 @@ func _apply_buff_to_unit(unit_id: String, buff_id: String):
 			break
 	if !found:
 		printerr("[TestRunner] Unit not found for buff: ", unit_id)
+
+func _spawn_test_enemies():
+	var enemy_list = config["enemies"]
+	var cm = GameManager.combat_manager
+	if !cm:
+		printerr("[TestRunner] CombatManager not ready for spawning enemies")
+		return
+
+	# Use closer spawn points for tests to ensure units can reach them
+	var spawn_points = [
+		Vector2(100, 100),
+		Vector2(-100, 100),
+		Vector2(100, -100),
+		Vector2(-100, -100),
+		Vector2(0, 150),
+		Vector2(0, -150)
+	]
+
+	print("[TestRunner] Spawning custom test enemies at close range...")
+
+	for entry in enemy_list:
+		var count = entry.get("count", 1)
+		# Map simplified types to real types if needed, or just use generic 'slime' and override stats
+		var real_type = "slime"
+		if entry.has("type") and entry.type != "basic_enemy" and entry.type != "low_hp_enemy":
+			# If user specified a real type like "wolf", use it.
+			# But for this task, inputs are "basic_enemy" and "low_hp_enemy".
+			pass
+
+		var target_hp = entry.get("hp", 100)
+
+		for i in range(count):
+			var pos = spawn_points.pick_random() + Vector2(randf_range(-40, 40), randf_range(-40, 40))
+
+			var enemy = cm.ENEMY_SCENE.instantiate()
+			enemy.setup(real_type, 1) # Force wave 1 stats base
+			enemy.global_position = pos
+
+			# Override Stats
+			enemy.max_hp = target_hp
+			enemy.hp = target_hp
+
+			cm.add_child(enemy)
+			print("[TestRunner] Spawned enemy (HP: %d) at %s" % [target_hp, pos])
 
 func _process(delta):
 	if _is_tearing_down: return

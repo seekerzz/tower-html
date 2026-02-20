@@ -46,7 +46,7 @@ func _calculate_damage(target: Node2D) -> float:
 func on_stats_updated():
 	unit.damage += permanent_attack_bonus
 
-func _enter_claw_impact(t_impact, t_return, t_landing):
+func _enter_impact(t_impact, t_return, t_landing):
 	# Override to check kill
 	state = State.IMPACT
 	if is_instance_valid(current_target):
@@ -72,15 +72,15 @@ func _enter_claw_impact(t_impact, t_return, t_landing):
 		_combat_tween.tween_property(unit.visual_holder, "scale", target_scale, t_impact * 0.5)\
 			.set_trans(Tween.TRANS_BOUNCE)
 		_combat_tween.tween_property(unit.visual_holder, "scale", recovery_scale, t_impact * 0.5)
-		_combat_tween.tween_callback(func(): _enter_claw_return(t_return, t_landing))
+		_combat_tween.tween_callback(func(): _enter_return(t_return, t_landing))
 	else:
 		if _combat_tween: _combat_tween.kill()
 		_combat_tween = unit.create_tween()
 		_combat_tween.tween_interval(t_impact)
-		_combat_tween.tween_callback(func(): _enter_claw_return(t_return, t_landing))
+		_combat_tween.tween_callback(func(): _enter_return(t_return, t_landing))
 
 func _on_kill(enemy, damage):
-	if permanent_attack_bonus < 15:
+	if permanent_attack_bonus < 15 or unit.level >= 3:
 		permanent_attack_bonus += 1
 		kill_count += 1
 		unit.damage += 1 # Update current stat immediately
