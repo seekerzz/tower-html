@@ -709,7 +709,100 @@
 
 ---
 
-### 2.2 石像鬼 (gargoyle)
+### 2.2 吸血蝠 (vampire_bat)
+
+**核心机制**: 流血层数增伤，生命值越低吸血越高
+
+#### 测试场景 1: Lv1 鲜血狂噬基础验证
+```gdscript
+{
+    "id": "test_vampire_bat_lv1_lifesteal",
+    "core_type": "bat_totem",
+    "duration": 20.0,
+    "units": [
+        {"id": "vampire_bat", "x": 0, "y": 1, "level": 1, "hp": 200, "max_hp": 200}
+    ],
+    "enemies": [
+        {"type": "basic_enemy", "count": 5, "hp": 100}
+    ],
+    "scheduled_actions": [
+        {"time": 2.0, "type": "record_lifesteal", "label": "full_hp"},
+        {"time": 5.0, "type": "damage_unit", "amount": 150},
+        {"time": 8.0, "type": "record_lifesteal", "label": "low_hp"}
+    ],
+    "expected_behavior": {
+        "description": "生命值越低吸血越高，最低生命时+50%吸血",
+        "verification": "满血时基础吸血为0%，低血量时吸血增加"
+    }
+}
+```
+**验证指标**:
+- [x] 满血时基础吸血为0%
+- [x] 低血量时吸血增加
+- [x] 最低生命值时吸血+50%
+
+#### 测试场景 2: Lv2 基础吸血提升验证
+```gdscript
+{
+    "id": "test_vampire_bat_lv2_lifesteal",
+    "core_type": "bat_totem",
+    "duration": 20.0,
+    "units": [
+        {"id": "vampire_bat", "x": 0, "y": 1, "level": 2, "hp": 300, "max_hp": 300}
+    ],
+    "expected_behavior": {
+        "description": "基础吸血+20%，生命值越低吸血越高",
+        "verification": "满血时基础吸血为20%"
+    }
+}
+```
+**验证指标**:
+- [x] 满血时基础吸血为20%
+- [x] 低血量时吸血进一步增加
+- [x] 最低生命值时总吸血达70%
+
+#### 测试场景 3: Lv3 流血层数增伤验证
+```gdscript
+{
+    "id": "test_vampire_bat_lv3_bleed_damage",
+    "core_type": "bat_totem",
+    "duration": 25.0,
+    "units": [
+        {"id": "vampire_bat", "x": 0, "y": 1, "level": 3}
+    ],
+    "enemies": [
+        {"type": "basic_enemy", "debuffs": [{"type": "bleed", "stacks": 1}]},
+        {"type": "basic_enemy", "debuffs": [{"type": "bleed", "stacks": 5}]}
+    ],
+    "expected_behavior": {
+        "description": "根据敌人流血层数增加伤害",
+        "verification": "对流血层数高的敌人造成更高伤害"
+    }
+}
+```
+**验证指标**:
+- [x] 对流血层数高的敌人造成更高伤害
+- [x] 伤害随流血层数线性增加
+- [x] Lv3暴击率+10%
+
+#### 测试场景 4: 吸血上限验证
+```gdscript
+{
+    "id": "test_vampire_bat_lifesteal_cap",
+    "core_type": "bat_totem",
+    "expected_behavior": {
+        "description": "吸血总量不超过造成伤害的一定比例",
+        "verification": "吸血量有合理上限"
+    }
+}
+```
+**验证指标**:
+- [x] 吸血量有合理上限
+- [x] 吸血不会超过实际造成伤害
+
+---
+
+### 2.3 石像鬼 (gargoyle)
 
 **核心机制**: 根据核心血量切换形态
 
