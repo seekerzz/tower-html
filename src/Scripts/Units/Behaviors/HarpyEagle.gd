@@ -53,6 +53,9 @@ func _calculate_damage(target: Node2D) -> float:
 		GameManager.spawn_floating_text(target.global_position, "CRIT!", Color.RED)
 		GameManager.projectile_crit.emit(unit, target, dmg)
 
+		if _current_claw == 2 and unit.level >= 3:
+			GameManager.totem_echo_triggered.emit(unit, dmg)
+
 	if _current_claw == 2 and third_claw_bleed and is_instance_valid(target):
 		_apply_bleed(target)
 		if unit.level >= 3:
