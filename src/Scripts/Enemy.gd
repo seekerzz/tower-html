@@ -685,10 +685,6 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 		die(source_unit)
 
 func _on_death():
-	if faction == "player" and has_meta("charm_source"):
-		SoulManager.add_souls(1, "charm_kill")
-		GameManager.spawn_floating_text(global_position, "+1 Soul", Color.MAGENTA)
-
 	SoulManager.add_souls_from_enemy_death({
 		"type": type_key,
 		"wave": GameManager.wave

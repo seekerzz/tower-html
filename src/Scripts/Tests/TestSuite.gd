@@ -410,6 +410,46 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "lion", "x": 0, "y": 1}]
 			}
+		"test_fox_lv1_charm":
+			return {
+				"id": "test_fox_lv1_charm",
+				"core_type": "wolf_totem",
+				"duration": 30.0,
+				"units": [
+					{"id": "fox", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 10}
+				],
+				"expected_behavior": "被攻击敌人有20%概率获得1层魂魄为你作战3秒"
+			}
+		"test_fox_lv2_sacrifice":
+			return {
+				"id": "test_fox_lv2_sacrifice",
+				"core_type": "wolf_totem",
+				"duration": 35.0,
+				"units": [
+					{"id": "fox", "x": 0, "y": 1, "level": 2},
+					{"id": "squirrel", "x": 1, "y": 0}
+				],
+				"enemies": [
+					{"type": "weak_enemy", "count": 5, "hp": 30}
+				],
+				"expected_behavior": "魅惑敌人被核心击杀时获得1层血魂"
+			}
+		"test_fox_lv3_charm":
+			return {
+				"id": "test_fox_lv3_charm",
+				"core_type": "wolf_totem",
+				"duration": 30.0,
+				"units": [
+					{"id": "fox", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5}
+				],
+				"expected_behavior": "可同时魅惑2个敌人"
+			}
 		# ========== 眼镜蛇图腾流派单位测试 (7个单位) ==========
 		"test_viper_totem_spider":
 			return {

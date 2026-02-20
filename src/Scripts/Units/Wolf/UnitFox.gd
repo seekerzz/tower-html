@@ -1,15 +1,13 @@
 class_name UnitFox
 extends Unit
 
-@export var charm_chance: float = 0.15
+@export var charm_chance: float = 0.2
 var charmed_enemies: Array[Enemy] = []
 var max_charms: int = 1
 
 func _ready():
     super._ready()
     max_charms = 1
-    if level >= 2:
-        charm_chance = 0.25
     if level >= 3:
         max_charms = 2
 
@@ -44,3 +42,6 @@ func _charm_enemy(enemy: Enemy):
 func _on_charmed_enemy_died(enemy: Enemy):
     if enemy in charmed_enemies:
         charmed_enemies.erase(enemy)
+        if level >= 2:
+            SoulManager.add_souls(1)
+            GameManager.spawn_floating_text(global_position, "+1 Soul", Color.RED)
