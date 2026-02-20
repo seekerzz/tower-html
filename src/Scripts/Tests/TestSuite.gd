@@ -583,6 +583,33 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "storm_eagle", "x": 0, "y": 1}]
 			}
+		"test_eagle_lv1_eye":
+			return {
+				"id": "test_eagle_lv1_eye",
+				"core_type": "eagle_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "eagle", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "hp": 50, "count": 2},
+					{"type": "high_hp_enemy", "hp": 200, "count": 1}
+				],
+				"expected_behavior": "射程极远，优先攻击HP最高的敌人"
+			}
+		"test_eagle_lv3_execute":
+			return {
+				"id": "test_eagle_lv3_execute",
+				"core_type": "eagle_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "eagle", "x": 0, "y": 1, "level": 3, "attack": 100}
+				],
+				"enemies": [
+					{"type": "full_hp_enemy", "hp": 100, "count": 3}
+				],
+				"expected_behavior": "对HP>80%敌人的第一次攻击造成250%伤害"
+			}
 		# ========== 流血和吸血系统测试 ==========
 		"test_bleed_lifesteal_system":
 			return {
