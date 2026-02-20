@@ -60,8 +60,16 @@ func on_combat_tick(delta: float) -> bool:
 				unit.play_attack_anim("ranged", aim_target.global_position)
 
 				var extra = bullet_data.duplicate()
-				extra["mimic_damage"] = bullet_data.get("damage", 10.0)
+				var base_dmg = bullet_data.get("damage", 10.0)
+
+				# Lv2 Bonus: +50% Mimic Effect
+				if unit.level >= 2:
+					base_dmg *= 1.5
+
+				extra["mimic_damage"] = base_dmg
 				extra["proj_override"] = bullet_data.get("type", "pinecone")
+
+				print("[Parrot] Mimic Attack! Lvl: ", unit.level, " Dmg: ", base_dmg, " Type: ", extra["proj_override"])
 
 				GameManager.combat_manager.spawn_projectile(unit, unit.global_position, aim_target, extra)
 				unit.attack_performed.emit(aim_target)

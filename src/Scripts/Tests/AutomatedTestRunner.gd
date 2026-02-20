@@ -38,7 +38,16 @@ func _setup_test():
 					if not GameManager.grid_manager.active_territory_tiles.has(tile):
 						GameManager.grid_manager.active_territory_tiles.append(tile)
 
-			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
+			if GameManager.grid_manager.place_unit(u.id, u.x, u.y):
+				var lvl = u.get("level", 1)
+				if lvl > 1:
+					# key is already defined in the outer scope
+					var tile = GameManager.grid_manager.tiles[key]
+					if tile.unit:
+						print("[TestRunner] Setting unit ", u.id, " to level ", lvl)
+						tile.unit.level = lvl
+						tile.unit.reset_stats()
+						tile.unit.update_visuals()
 
 	# Setup actions
 	if config.has("setup_actions"):

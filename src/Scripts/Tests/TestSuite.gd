@@ -574,6 +574,57 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "peacock", "x": 0, "y": 1}]
 			}
+		"test_parrot_lv1_mimic":
+			return {
+				"id": "test_parrot_lv1_mimic",
+				"core_type": "eagle_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "parrot", "x": 0, "y": 1, "level": 1},
+					{"id": "woodpecker", "x": 1, "y": 0, "level": 1}
+				],
+				"setup_actions": [
+					{"type": "mimic", "source": "parrot", "target": "woodpecker"}
+				],
+				"enemies": [
+					{"type": "high_hp_enemy", "count": 1, "hp": 500}
+				],
+				"expected_behavior": "模仿相邻友军的攻击特效"
+			}
+		"test_parrot_lv2_enhanced":
+			return {
+				"id": "test_parrot_lv2_enhanced",
+				"core_type": "eagle_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "parrot", "x": 0, "y": 1, "level": 2},
+					{"id": "woodpecker", "x": 1, "y": 0, "level": 1}
+				],
+				"setup_actions": [
+					{"type": "mimic", "source": "parrot", "target": "woodpecker"}
+				],
+				"enemies": [
+					{"type": "high_hp_enemy", "count": 1, "hp": 500}
+				],
+				"expected_behavior": "模仿效果+50%"
+			}
+		"test_parrot_lv3_perfect":
+			return {
+				"id": "test_parrot_lv3_perfect",
+				"core_type": "eagle_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "parrot", "x": 0, "y": 1, "level": 3},
+					{"id": "woodpecker", "x": 1, "y": 0, "level": 3}
+				],
+				"setup_actions": [
+					{"type": "mimic", "source": "parrot", "target": "woodpecker"}
+				],
+				"enemies": [
+					{"type": "high_hp_enemy", "count": 1, "hp": 1000}
+				],
+				"expected_behavior": "可模仿Lv.3单位的特效"
+			}
 		"test_eagle_totem_storm_eagle":
 			return {
 				"id": "test_eagle_totem_storm_eagle",
