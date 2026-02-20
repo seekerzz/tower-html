@@ -40,6 +40,10 @@ func get_wave_type(n: int) -> String:
 	return types[int(idx) % types.size()]
 
 func start_wave_logic():
+	if GameManager.is_running_test and GameManager.current_test_scenario.has("enemies"):
+		print("[CombatManager] Skipping default wave spawn logic (Handled by TestRunner).")
+		return
+
 	var wave = GameManager.wave
 
 	if wave == 5:
