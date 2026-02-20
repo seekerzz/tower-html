@@ -19,6 +19,10 @@ func _ready():
 	if config.has("core_type"):
 		GameManager.core_type = config["core_type"]
 
+	if config.has("core_health"):
+		GameManager.core_health = config["core_health"]
+		GameManager.max_core_health = config["core_health"]
+
 	call_deferred("_setup_test")
 
 func _setup_test():
@@ -40,6 +44,46 @@ func _setup_test():
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
 
+			if u.has("level") and u.level > 1:
+				# key is already defined above in this scope
+				key = GameManager.grid_manager.get_tile_key(u.x, u.y)
+				if GameManager.grid_manager.tiles.has(key):
+					var tile = GameManager.grid_manager.tiles[key]
+					if tile.unit:
+						tile.unit.level = u.level
+						tile.unit.reset_stats()
+						print("[TestRunner] Set unit ", u.id, " level to ", u.level)
+
+	# Place enemies
+	if config.has("enemies"):
+		for e_config in config["enemies"]:
+			var count = e_config.get("count", 1)
+			var type = e_config.get("type", "slime")
+			var hp = e_config.get("hp", -1)
+			var positions = e_config.get("positions", [])
+
+			for i in range(count):
+				var pos = Vector2.ZERO
+				if i < positions.size():
+					var p = positions[i]
+					if GameManager.grid_manager:
+						pos = GameManager.grid_manager.get_world_pos_from_grid(Vector2i(p.x, p.y))
+					else:
+						pos = Vector2(p.x * 60, p.y * 60)
+				else:
+					pos = Vector2(300 + i * 20, 0)
+
+				var enemy_scene = load("res://src/Scenes/Game/Enemy.tscn")
+				var enemy = enemy_scene.instantiate()
+				enemy.setup(type, 1)
+				enemy.global_position = pos
+				if hp > 0:
+					enemy.max_hp = hp
+					enemy.hp = hp
+
+				get_tree().current_scene.add_child(enemy)
+				print("[TestRunner] Spawned enemy ", type, " at ", pos, " HP: ", hp)
+
 	# Setup actions
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:
@@ -51,6 +95,11 @@ func _setup_test():
 	GameManager.enemy_hit.connect(_on_enemy_hit)
 
 	GameManager.start_wave()
+
+	# Disable standard spawning if we are managing enemies manually
+	if GameManager.combat_manager:
+		GameManager.combat_manager.enemies_to_spawn = 0
+
 	# GameManager.wave_ended is only emitted after UI interaction, which we skip in headless.
 	# So we monitor is_wave_active in _process instead.
 
@@ -194,6 +243,40 @@ func _execute_scheduled_action(action: Dictionary):
 				printerr("[TestRunner] SummonManager not available")
 		"test_enemy_death":
 			_run_enemy_death_test()
+		"verify_damage":
+			_verify_damage_test()
+
+func _verify_damage_test():
+	print("[TestRunner] Verifying damage...")
+	var damaged = false
+
+	# Check live enemies state
+	var enemies = get_tree().get_nodes_in_group("enemies")
+	for e in enemies:
+		if e.hp < e.max_hp:
+			damaged = true
+			break
+
+	# Check current frame events
+	if not damaged:
+		for evt in _frame_events:
+			if evt.type == "hit":
+				damaged = true
+				break
+
+	# Check past logs
+	if not damaged:
+		for entry in logs:
+			for evt in entry.events:
+				if evt.type == "hit":
+					damaged = true
+					break
+			if damaged: break
+
+	if damaged:
+		print("[TestRunner] VERIFY DAMAGE: PASSED - Damage events found.")
+	else:
+		printerr("[TestRunner] VERIFY DAMAGE: FAILED - No damage detected.")
 
 func _run_enemy_death_test():
 	print("[TestRunner] ========== 开始敌人死亡重复调用测试 ==========")
