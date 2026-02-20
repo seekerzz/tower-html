@@ -39,6 +39,17 @@ func _setup_test():
 						GameManager.grid_manager.active_territory_tiles.append(tile)
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
+			if u.has("level") and u.level > 1:
+				# Reuse existing 'key' variable which is already set for this unit's position
+				if GameManager.grid_manager.tiles.has(key):
+					var tile = GameManager.grid_manager.tiles[key]
+					if tile.unit:
+						tile.unit.level = u.level
+						tile.unit.reset_stats()
+						tile.unit.update_visuals()
+
+		# Recalculate buffs after all units are placed and levels set
+		GameManager.grid_manager.recalculate_buffs()
 
 	# Setup actions
 	if config.has("setup_actions"):
@@ -289,7 +300,9 @@ func _log_status():
 					"grid_x": tile.x,
 					"grid_y": tile.y,
 					"level": u.level,
-					"damage_stat": u.damage # Base damage stat
+					"damage_stat": u.damage, # Base damage stat
+					"crit_rate": u.crit_rate,
+					"atk_speed": u.atk_speed
 				})
 
 	var enemies_info = []
