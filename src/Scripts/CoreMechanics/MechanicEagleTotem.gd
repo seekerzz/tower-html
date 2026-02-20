@@ -10,7 +10,11 @@ func _ready():
 		echo_mult = config.get("crit_echo_mult", 1.0)
 
 func on_projectile_crit(projectile, target):
-	if randf() < echo_chance:
+	var force = false
+	if "stats" in projectile and projectile.stats.get("force_echo", false):
+		force = true
+
+	if force or randf() < echo_chance:
 		if projectile.has_method("trigger_eagle_echo"):
 			projectile.trigger_eagle_echo(target, echo_mult)
 			if projectile.source_unit:

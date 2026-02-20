@@ -633,4 +633,32 @@ func get_test_config(case_id: String) -> Dictionary:
 				],
 				"description": "测试美杜莎石化Juice效果：动画冻结、碎裂图像、石块伤害"
 			}
+		"test_woodpecker_lv1_drill":
+			return {
+				"id": "test_woodpecker_lv1_drill",
+				"core_type": "eagle_totem",
+				"god_mode": true,
+				"duration": 25.0,
+				"units": [
+					{"id": "woodpecker", "x": 0, "y": 1, "level": 1, "attack": 10}
+				],
+				"enemies": [
+					{"type": "tank", "count": 1, "hp": 1000}
+				],
+				"expected_behavior": "攻击同一目标时每次伤害+10%(上限+100%)"
+			}
+		"test_woodpecker_lv3_crit":
+			return {
+				"id": "test_woodpecker_lv3_crit",
+				"core_type": "eagle_totem",
+				"god_mode": true,
+				"duration": 30.0,
+				"units": [
+					{"id": "woodpecker", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "tank", "count": 1, "hp": 2000}
+				],
+				"expected_behavior": "叠满后下3次攻击必定暴击并触发图腾回响"
+			}
 	return {}

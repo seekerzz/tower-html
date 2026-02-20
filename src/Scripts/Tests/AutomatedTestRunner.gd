@@ -26,6 +26,9 @@ func _setup_test():
 		printerr("[TestRunner] GridManager not ready!")
 		return
 
+	if config.get("god_mode", false):
+		GameManager.cheat_god_mode = true
+
 	# Place units
 	if config.has("units"):
 		for u in config["units"]:
@@ -38,7 +41,16 @@ func _setup_test():
 					if not GameManager.grid_manager.active_territory_tiles.has(tile):
 						GameManager.grid_manager.active_territory_tiles.append(tile)
 
-			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
+			var success = GameManager.grid_manager.place_unit(u.id, u.x, u.y)
+			if success:
+				var tile = GameManager.grid_manager.tiles[key]
+				if tile.unit:
+					if u.has("level") and u.level > 1:
+						tile.unit.level = u.level
+						tile.unit.reset_stats()
+						tile.unit.update_visuals()
+					if u.has("attack"):
+						tile.unit.damage = u.attack
 
 	# Setup actions
 	if config.has("setup_actions"):
@@ -51,8 +63,47 @@ func _setup_test():
 	GameManager.enemy_hit.connect(_on_enemy_hit)
 
 	GameManager.start_wave()
+
+	# If test config specifies enemies, suppress default wave spawning and spawn test enemies
+	if config.has("enemies"):
+		if GameManager.combat_manager:
+			GameManager.combat_manager.enemies_to_spawn = 0
+			# Wait a frame to ensure we override any internal logic if needed
+
+		for e in config["enemies"]:
+			_spawn_test_enemy(e)
+
 	# GameManager.wave_ended is only emitted after UI interaction, which we skip in headless.
 	# So we monitor is_wave_active in _process instead.
+
+func _spawn_test_enemy(data):
+	var type = data.get("type", "slime")
+	var count = data.get("count", 1)
+	var hp = data.get("hp", -1)
+
+	var pos = Vector2(300, 300)
+	if GameManager.grid_manager:
+		# Default spawn pos if not specified: (2, 1) - close to (0,1)
+		pos = GameManager.grid_manager.get_world_pos_from_grid(Vector2i(2, 1))
+
+	if data.has("x") and data.has("y"):
+		if GameManager.grid_manager:
+			pos = GameManager.grid_manager.get_world_pos_from_grid(Vector2i(data.x, data.y))
+		else:
+			pos = Vector2(data.x * 60, data.y * 60)
+
+	for i in range(count):
+		var enemy = load("res://src/Scenes/Game/Enemy.tscn").instantiate()
+		enemy.setup(type, 1) # Wave 1 stats
+		if hp > 0:
+			enemy.max_hp = hp
+			enemy.hp = hp
+		enemy.global_position = pos + Vector2(randf_range(-10, 10), randf_range(-10, 10))
+
+		if GameManager.combat_manager:
+			GameManager.combat_manager.add_child(enemy)
+			# Manually emit since we bypassed combat manager spawn logic
+			GameManager.enemy_spawned.emit(enemy)
 
 func _on_wave_started():
 	_wave_has_started = true
