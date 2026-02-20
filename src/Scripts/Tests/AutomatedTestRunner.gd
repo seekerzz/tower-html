@@ -22,6 +22,12 @@ func _ready():
 	call_deferred("_setup_test")
 
 func _setup_test():
+	# Boost Core HP to prevent premature death during stress tests
+	# Use permanent bonus because recalculate_max_health will reset max_core_health based on units
+	GameManager.permanent_health_bonus = 100000.0
+	GameManager.recalculate_max_health()
+	GameManager.heal_core(100000.0)
+
 	if !GameManager.grid_manager:
 		printerr("[TestRunner] GridManager not ready!")
 		return
@@ -38,7 +44,16 @@ func _setup_test():
 					if not GameManager.grid_manager.active_territory_tiles.has(tile):
 						GameManager.grid_manager.active_territory_tiles.append(tile)
 
-			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
+			if GameManager.grid_manager.place_unit(u.id, u.x, u.y):
+				# Handle level and other overrides that place_unit doesn't handle
+				if u.has("level") and u.level > 1:
+					# Reuse key from above
+					if GameManager.grid_manager.tiles.has(key):
+						var unit = GameManager.grid_manager.tiles[key].unit
+						if unit:
+							unit.level = u.level
+							unit.reset_stats()
+							print("[TestRunner] Set unit ", u.id, " to level ", u.level)
 
 	# Setup actions
 	if config.has("setup_actions"):
@@ -49,6 +64,10 @@ func _setup_test():
 	GameManager.wave_started.connect(_on_wave_started)
 	GameManager.enemy_spawned.connect(_on_enemy_spawned)
 	GameManager.enemy_hit.connect(_on_enemy_hit)
+	GameManager.ftext_spawn_requested.connect(_on_ftext_spawned)
+
+	if config.has("enemies"):
+		_spawn_test_enemies(config["enemies"])
 
 	GameManager.start_wave()
 	# GameManager.wave_ended is only emitted after UI interaction, which we skip in headless.
@@ -85,6 +104,59 @@ func _on_enemy_hit(enemy, source, amount):
 		"damage": amount,
 		"target_hp_after": enemy.hp
 	})
+
+func _on_ftext_spawned(pos, value, color, direction):
+	_frame_events.append({
+		"type": "floating_text",
+		"value": value,
+		"color": str(color)
+	})
+
+func _spawn_test_enemies(enemy_list: Array):
+	var center = Vector2.ZERO
+	if GameManager.grid_manager:
+		center = GameManager.grid_manager.global_position
+
+	var radius = 120.0 # Distance from center (Reduced to ensure in-range for ranged enemies)
+	var spawn_idx = 0
+
+	# Basic distribution
+	for entry in enemy_list:
+		var type = entry.get("type")
+		var count = entry.get("count", 1)
+		var real_type = type
+
+		# Mapping for test specific keywords
+		if type == "attacker_enemy":
+			real_type = "shooter"
+
+		for i in range(count):
+			var angle = spawn_idx * 0.5
+			var offset = Vector2(cos(angle), sin(angle)) * radius
+			var pos = center + offset
+
+			var enemy_scene = load("res://src/Scenes/Game/Enemy.tscn")
+			if !enemy_scene:
+				printerr("[TestRunner] Failed to load Enemy.tscn")
+				continue
+
+			var enemy = enemy_scene.instantiate()
+			enemy.global_position = pos
+			enemy.setup(real_type, 1)
+
+			# Override stats
+			if entry.has("attack_speed"):
+				# Duplicate data to avoid modifying shared constant
+				enemy.enemy_data = enemy.enemy_data.duplicate()
+				enemy.enemy_data["atkSpeed"] = entry["attack_speed"]
+
+				# Update behavior reference if initialized
+				if enemy.behavior:
+					enemy.behavior.data = enemy.enemy_data
+
+			get_tree().current_scene.add_child(enemy)
+			print("[TestRunner] Spawned ", real_type, " (", type, ") at ", pos)
+			spawn_idx += 1
 
 func _execute_setup_action(action: Dictionary):
 	match action.type:

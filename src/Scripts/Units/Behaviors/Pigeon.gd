@@ -11,6 +11,7 @@ var invuln_timer: float = 0.0
 
 func _init(target_unit: Node2D):
 	super._init(target_unit)
+	print("[Pigeon] Behavior initialized")
 
 func on_tick(delta: float):
 	if invuln_timer > 0:
