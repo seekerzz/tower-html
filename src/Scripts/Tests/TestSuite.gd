@@ -312,6 +312,44 @@ func get_test_config(case_id: String) -> Dictionary:
 				"units": [{"id": "blood_ancestor", "x": 0, "y": 1}]
 			}
 		# ========== 蝴蝶图腾流派单位测试 (6个单位) ==========
+		"test_eel_lv1_chain":
+			return {
+				"id": "test_eel_lv1_chain",
+				"core_type": "butterfly_totem",
+				"duration": 15.0,
+				"units": [
+					{"id": "eel", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5, "positions": [{"x": 2, "y": 0}, {"x": 3, "y": 0}, {"x": 4, "y": 0}]}
+				],
+				"expected_behavior": "闪电链最多弹射4次"
+			}
+		"test_eel_lv2_damage":
+			return {
+				"id": "test_eel_lv2_damage",
+				"core_type": "butterfly_totem",
+				"duration": 15.0,
+				"units": [
+					{"id": "eel", "x": 0, "y": 1, "level": 2}
+				],
+				"expected_behavior": "闪电伤害+50%"
+			}
+		"test_eel_lv3_mana":
+			return {
+				"id": "test_eel_lv3_mana",
+				"core_type": "butterfly_totem",
+				"duration": 20.0,
+				"initial_mp": 500,
+				"units": [
+					{"id": "eel", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5}
+				],
+				"expected_behavior": "每次弹射回复3法力"
+			}
+
 		"test_butterfly_totem_torch":
 			return {
 				"id": "test_butterfly_totem_torch",

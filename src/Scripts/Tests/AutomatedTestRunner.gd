@@ -45,6 +45,11 @@ func _setup_test():
 		for action in config["setup_actions"]:
 			_execute_setup_action(action)
 
+	# Spawn enemies from config
+	if config.has("enemies"):
+		for enemy_conf in config["enemies"]:
+			_spawn_test_enemies(enemy_conf)
+
 	GameManager.game_over.connect(_on_game_over)
 	GameManager.wave_started.connect(_on_wave_started)
 	GameManager.enemy_spawned.connect(_on_enemy_spawned)
@@ -93,6 +98,29 @@ func _execute_setup_action(action: Dictionary):
 				_spawn_random_trap(action.trap_id)
 		"apply_buff":
 			_apply_buff_to_unit(action.target_unit_id, action.buff_id)
+
+func _spawn_test_enemies(conf: Dictionary):
+	var count = conf.get("count", 1)
+	var type = conf.get("type", "slime")
+	if type == "basic_enemy": type = "slime"
+
+	var positions = conf.get("positions", [])
+
+	for i in range(count):
+		var pos = Vector2(500, 300) # Default
+		if i < positions.size():
+			var p = positions[i]
+			if GameManager.grid_manager:
+				pos = GameManager.grid_manager.get_world_pos_from_grid(Vector2i(p.x, p.y))
+			else:
+				pos = Vector2(p.x * 60, p.y * 60)
+		else:
+			# If no position specified, spawn at random location or default
+			pos += Vector2(randf_range(-50, 50), randf_range(-50, 50))
+
+		if GameManager.combat_manager:
+			GameManager.combat_manager._spawn_enemy_at_pos(pos, type)
+			print("[TestRunner] Spawned enemy ", type, " at ", pos)
 
 func _spawn_random_trap(trap_id: String):
 	# Map test IDs to game IDs
