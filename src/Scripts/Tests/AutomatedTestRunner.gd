@@ -93,6 +93,12 @@ func _execute_setup_action(action: Dictionary):
 				_spawn_random_trap(action.trap_id)
 		"apply_buff":
 			_apply_buff_to_unit(action.target_unit_id, action.buff_id)
+		"add_soul":
+			if SoulManager:
+				SoulManager.add_souls(action.count)
+				print("[TestRunner] Added ", action.count, " souls")
+			else:
+				printerr("[TestRunner] SoulManager not available for add_soul action")
 
 func _spawn_random_trap(trap_id: String):
 	# Map test IDs to game IDs
@@ -164,7 +170,25 @@ func _execute_scheduled_action(action: Dictionary):
 	match action.type:
 		"skill":
 			var source_id = action.source
-			var target_pos = Vector2i(action.target.x, action.target.y)
+			var target_pos = Vector2i.ZERO
+
+			if action.target is String:
+				# Find unit by ID to get its position
+				var target_unit_id = action.target
+				var found = false
+				var gm_find = GameManager.grid_manager
+				for key in gm_find.tiles:
+					var tile = gm_find.tiles[key]
+					if tile.unit and tile.unit.type_key == target_unit_id:
+						target_pos = Vector2i(tile.x, tile.y)
+						found = true
+						break
+				if not found:
+					printerr("[TestRunner] Target unit not found for skill: ", target_unit_id)
+					return
+			elif action.target is Dictionary:
+				target_pos = Vector2i(action.target.x, action.target.y)
+
 			var gm = GameManager.grid_manager
 			for key in gm.tiles:
 				var tile = gm.tiles[key]

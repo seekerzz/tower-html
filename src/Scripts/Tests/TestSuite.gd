@@ -410,6 +410,56 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "lion", "x": 0, "y": 1}]
 			}
+		"test_tiger_lv1_devour":
+			return {
+				"id": "test_tiger_lv1_devour",
+				"core_type": "wolf_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "tiger", "x": 0, "y": 1, "level": 1},
+					{"id": "squirrel", "x": 1, "y": 0}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3, "positions": [{"x": 2, "y": 2}]}
+				],
+				"scheduled_actions": [
+					{"time": 5.0, "type": "skill", "source": "tiger", "target": "squirrel"}
+				],
+				"expected_behavior": "吞噬相邻友方单位，立即释放流星雨，伤害+被吞噬单位攻击力25%"
+			}
+		"test_tiger_lv2_blood_rage":
+			return {
+				"id": "test_tiger_lv2_blood_rage",
+				"core_type": "wolf_totem",
+				"duration": 30.0,
+				"units": [
+					{"id": "tiger", "x": 0, "y": 1, "level": 2}
+				],
+				"setup_actions": [
+					{"type": "add_soul", "count": 8}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5}
+				],
+				"expected_behavior": "每层血魂使暴击率+3%，最多8层(+24%暴击率)"
+			}
+		"test_tiger_lv3_meteor":
+			return {
+				"id": "test_tiger_lv3_meteor",
+				"core_type": "wolf_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "tiger", "x": 0, "y": 1, "level": 3},
+					{"id": "wolf", "x": 1, "y": 0}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3}
+				],
+				"scheduled_actions": [
+					{"time": 5.0, "type": "skill", "source": "tiger", "target": "wolf"}
+				],
+				"expected_behavior": "流星雨流星数+2颗，吞噬狼图腾单位时额外+2颗(共+4颗)"
+			}
 		# ========== 眼镜蛇图腾流派单位测试 (7个单位) ==========
 		"test_viper_totem_spider":
 			return {
