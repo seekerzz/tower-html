@@ -8,6 +8,16 @@ var _frame_events: Array = []
 var _is_tearing_down: bool = false
 var _wave_has_started: bool = false
 
+var TEST_ENEMY_MAPPING = {
+	"basic_enemy": "slime",
+	"weak_enemy": "minion",
+	"high_hp_enemy": "golem",
+	"fast_enemy": "wolf",
+	"attacker_enemy": "shooter",
+	"poisoned_enemy": "poison",
+	"buffed_enemy": "tank"
+}
+
 func _ready():
 	config = GameManager.current_test_scenario
 
@@ -45,6 +55,8 @@ func _setup_test():
 		for action in config["setup_actions"]:
 			_execute_setup_action(action)
 
+	_spawn_test_enemies()
+
 	GameManager.game_over.connect(_on_game_over)
 	GameManager.wave_started.connect(_on_wave_started)
 	GameManager.enemy_spawned.connect(_on_enemy_spawned)
@@ -53,6 +65,66 @@ func _setup_test():
 	GameManager.start_wave()
 	# GameManager.wave_ended is only emitted after UI interaction, which we skip in headless.
 	# So we monitor is_wave_active in _process instead.
+
+func _spawn_test_enemies():
+	if config.has("enemies"):
+		var enemy_scene = load("res://src/Scenes/Game/Enemy.tscn")
+		if not enemy_scene:
+			printerr("[TestRunner] Failed to load Enemy.tscn")
+			return
+
+		for e_conf in config["enemies"]:
+			var count = e_conf.get("count", 1)
+			var type = e_conf.get("type", "slime")
+			var real_type = TEST_ENEMY_MAPPING.get(type, type)
+
+			var positions = e_conf.get("positions", [])
+
+			for i in range(count):
+				var enemy = enemy_scene.instantiate()
+				enemy.setup(real_type, GameManager.wave)
+
+				# Position logic
+				var pos = Vector2.ZERO
+				if i < positions.size():
+					var p = positions[i]
+					if GameManager.grid_manager:
+						pos = GameManager.grid_manager.get_world_pos_from_grid(Vector2i(p.x, p.y))
+					else:
+						pos = Vector2(p.x * 60, p.y * 60)
+				else:
+					# Default spawn points or random if not enough positions specified
+					if GameManager.grid_manager:
+						var spawn_points = GameManager.grid_manager.get_spawn_points()
+						if spawn_points.size() > 0:
+							pos = spawn_points.pick_random()
+							pos += Vector2(randf_range(-20, 20), randf_range(-20, 20))
+						else:
+							pos = Vector2(300, 0) # Fallback
+					else:
+						pos = Vector2(300, 0)
+
+				enemy.global_position = pos
+
+				# Overrides
+				if e_conf.has("hp"):
+					enemy.hp = e_conf.hp
+					enemy.max_hp = e_conf.hp
+
+				if e_conf.has("speed"):
+					enemy.speed = e_conf.speed
+					enemy.base_speed = e_conf.speed
+
+				if e_conf.has("debuffs"):
+					for d in e_conf.debuffs:
+						if d.type == "poison":
+							enemy.add_poison_stacks(d.get("stacks", 1))
+						elif d.type == "bleed":
+							enemy.add_bleed_stacks(d.get("stacks", 1))
+						# Add more as needed
+
+				get_tree().current_scene.add_child(enemy)
+				print("[TestRunner] Spawned test enemy: ", real_type, " at ", pos)
 
 func _on_wave_started():
 	_wave_has_started = true
