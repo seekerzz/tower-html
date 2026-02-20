@@ -249,6 +249,34 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "cow", "x": 0, "y": 1}]
 			}
+		"test_mushroom_healer_lv1_spores":
+			return {
+				"id": "test_mushroom_healer_lv1_spores",
+				"core_type": "cow_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "mushroom_healer", "x": 0, "y": 1, "level": 1},
+					{"id": "squirrel", "x": 1, "y": 0}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3}
+				],
+				"expected_behavior": "为周围友方添加孢子Buff，抵消1次伤害并使敌人叠加3层中毒"
+			}
+		"test_mushroom_healer_lv3_spore_damage":
+			return {
+				"id": "test_mushroom_healer_lv3_spore_damage",
+				"core_type": "cow_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "mushroom_healer", "x": 0, "y": 1, "level": 3},
+					{"id": "squirrel", "x": 1, "y": 0}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5}
+				],
+				"expected_behavior": "孢子耗尽时额外造成一次中毒伤害"
+			}
 		# ========== 蝙蝠图腾流派单位测试 (5个单位) ==========
 		"test_bat_totem_mosquito":
 			return {

@@ -8,7 +8,7 @@ var timer: float = 6.0
 func on_setup():
 	spore_stacks = 1
 	if unit.level >= 2:
-		spore_stacks = 2
+		spore_stacks = 3
 	timer = 6.0
 
 func on_tick(delta: float):
@@ -41,13 +41,13 @@ func _on_spore_blocked(ally: Node, damage: float, source: Node):
 	if spores <= 0: return
 
 	unit_spores[id] = spores - 1
-	ally.set_meta("spore_shield", spores - 1)
+	# ally.set_meta("spore_shield", spores - 1) # Handled in Unit.gd
 
 	# Poison attacker
 	if source and is_instance_valid(source) and source.is_in_group("enemies"):
 		if source.has_method("apply_status"):
 			var poison_script = load("res://src/Scripts/Effects/PoisonEffect.gd")
-			source.apply_status(poison_script, {"duration": 5.0, "stacks": 2, "damage": 5.0})
+			source.apply_status(poison_script, {"duration": 5.0, "stacks": 3, "damage": 5.0})
 
 	if unit.level >= 3 and (spores - 1) <= 0:
 		_apply_bonus_poison_damage(ally)

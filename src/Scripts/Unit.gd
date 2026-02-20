@@ -69,6 +69,7 @@ const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 signal unit_clicked(unit)
 signal attack_performed(target_node)
 signal merged(consumed_unit)
+signal damage_blocked(unit, amount, source)
 
 func _start_skill_cooldown(base_duration: float):
 	if GameManager.cheat_fast_cooldown and base_duration > 1.0:
@@ -152,6 +153,16 @@ func _ensure_visual_hierarchy():
 		highlight.position = -(target_size / 2)
 
 func take_damage(amount: float, source_enemy = null):
+	# Check spore shield
+	if has_meta("spore_shield"):
+		var shields = get_meta("spore_shield")
+		if shields > 0:
+			set_meta("spore_shield", shields - 1)
+			damage_blocked.emit(self, amount, source_enemy)
+			amount = 0
+			GameManager.spawn_floating_text(global_position, "Blocked!", Color.GRAY)
+			return
+
 	# 检查是否有guardian_shield buff，应用减伤
 	if "guardian_shield" in active_buffs:
 		var source = buff_sources.get("guardian_shield")
@@ -904,3 +915,25 @@ func _remove_temp_buff_effect(stat: String, amount: float):
 			atk_speed /= (1.0 + amount)
 		"crit_chance":
 			crit_rate -= amount
+
+func get_units_in_cell_range(center_unit: Node2D, range_radius: int) -> Array:
+	var list = []
+	if !GameManager.grid_manager: return list
+
+	var cx = center_unit.grid_pos.x
+	var cy = center_unit.grid_pos.y
+
+	for dx in range(-range_radius, range_radius + 1):
+		for dy in range(-range_radius, range_radius + 1):
+			var t_key = GameManager.grid_manager.get_tile_key(cx + dx, cy + dy)
+			if GameManager.grid_manager.tiles.has(t_key):
+				var tile = GameManager.grid_manager.tiles[t_key]
+				var u = tile.unit
+				if u == null and tile.occupied_by != Vector2i.ZERO:
+					var origin_key = GameManager.grid_manager.get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
+					if GameManager.grid_manager.tiles.has(origin_key):
+						u = GameManager.grid_manager.tiles[origin_key].unit
+
+				if u and is_instance_valid(u) and not (u in list):
+					list.append(u)
+	return list
