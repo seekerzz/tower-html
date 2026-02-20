@@ -40,6 +40,23 @@ func _setup_test():
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
 
+			if u.has("level") and u.level > 1:
+				key = GameManager.grid_manager.get_tile_key(u.x, u.y)
+				if GameManager.grid_manager.tiles.has(key):
+					var tile = GameManager.grid_manager.tiles[key]
+					if tile.unit:
+						tile.unit.level = u.level
+						tile.unit.reset_stats()
+						if tile.unit.behavior and tile.unit.behavior.has_method("on_setup"):
+							tile.unit.behavior.on_setup()
+
+	if config.has("max_core_health"):
+		GameManager.max_core_health = config["max_core_health"]
+
+	if config.has("core_health"):
+		GameManager.core_health = config["core_health"]
+		print("[TestRunner] Set core_health to ", GameManager.core_health)
+
 	# Setup actions
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:

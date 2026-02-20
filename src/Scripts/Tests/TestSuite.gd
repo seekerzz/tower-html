@@ -176,6 +176,42 @@ func get_test_config(case_id: String) -> Dictionary:
 				],
 				"description": "测试敌人死亡时不会重复调用die()函数，防止重复添加魂魄/金币"
 			}
+		"test_cow_lv1_heal":
+			return {
+				"id": "test_cow_lv1_heal",
+				"core_type": "cow_totem",
+				"duration": 20.0,
+				"core_health": 400,
+				"max_core_health": 500,
+				"units": [
+					{"id": "cow", "x": 0, "y": 1, "level": 1}
+				],
+				"expected_behavior": "每5秒回复1%核心HP"
+			}
+		"test_cow_lv2_heal":
+			return {
+				"id": "test_cow_lv2_heal",
+				"core_type": "cow_totem",
+				"duration": 20.0,
+				"core_health": 400,
+				"max_core_health": 500,
+				"units": [
+					{"id": "cow", "x": 0, "y": 1, "level": 2}
+				],
+				"expected_behavior": "每4秒回复1%核心HP"
+			}
+		"test_cow_lv3_heal_boost":
+			return {
+				"id": "test_cow_lv3_heal_boost",
+				"core_type": "cow_totem",
+				"duration": 25.0,
+				"core_health": 250,
+				"max_core_health": 500,
+				"units": [
+					{"id": "cow", "x": 0, "y": 1, "level": 3}
+				],
+				"expected_behavior": "根据核心已损失血量额外回复"
+			}
 		# ========== 牛图腾流派单位测试 (8个单位) ==========
 		"test_cow_totem_plant":
 			return {
