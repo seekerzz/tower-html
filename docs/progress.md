@@ -57,3 +57,7 @@
 
 ---
 *最后更新: 初始化*
+| TEST-EAGLE-gale_eagle | in_progress | 添加Lv1风刃连击测试 | 2026-02-20T14:30:00 |
+| TEST-EAGLE-gale_eagle | in_progress | 添加Lv2风刃数量和伤害提升测试 | 2026-02-20T14:40:00 |
+| TEST-EAGLE-gale_eagle | in_progress | 添加Lv3风刃暴击测试 | 2026-02-20T14:50:00 |
+| TEST-EAGLE-gale_eagle | completed | 所有测试通过 | 2026-02-20T15:00:00 |
