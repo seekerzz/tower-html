@@ -40,6 +40,10 @@ func get_wave_type(n: int) -> String:
 	return types[int(idx) % types.size()]
 
 func start_wave_logic():
+	if GameManager.is_running_test and GameManager.current_test_scenario.has("enemies"):
+		_spawn_test_wave(GameManager.current_test_scenario["enemies"])
+		return
+
 	var wave = GameManager.wave
 
 	if wave == 5:
@@ -116,6 +120,58 @@ class MeteorSource:
 
 	func is_in_group(_group):
 		return false
+
+func _spawn_test_wave(enemies_config: Array):
+	enemies_to_spawn = 0
+	for config in enemies_config:
+		enemies_to_spawn += config.get("count", 1)
+
+	for config in enemies_config:
+		var type = config.get("type", "slime")
+		var count = config.get("count", 1)
+		var path = config.get("path", [])
+		var hp_override = config.get("hp", -1)
+		var debuffs = config.get("debuffs", [])
+
+		# Map test types to game types if needed
+		var game_type = type
+		if type == "basic_enemy" or type == "poisoned_enemy":
+			game_type = "slime"
+
+		var spawn_pos = Vector2.ZERO
+		if path.size() > 0:
+			var grid_pos = Vector2i(path[0].x, path[0].y)
+			if GameManager.grid_manager:
+				spawn_pos = GameManager.grid_manager.get_world_pos_from_grid(grid_pos)
+
+		for i in range(count):
+			var enemy = ENEMY_SCENE.instantiate()
+			enemy.setup(game_type, GameManager.wave)
+
+			if spawn_pos != Vector2.ZERO:
+				enemy.global_position = spawn_pos
+			else:
+				# Fallback if no path
+				if GameManager.grid_manager:
+					var points = GameManager.grid_manager.get_spawn_points()
+					if points.size() > 0:
+						enemy.global_position = points[0]
+
+			if hp_override > 0:
+				enemy.hp = hp_override
+				enemy.max_hp = hp_override
+
+			add_child(enemy)
+
+			for debuff in debuffs:
+				if debuff.type == "poison":
+					enemy.add_poison_stacks(debuff.stacks)
+				# Add other debuffs if needed
+
+			enemies_to_spawn -= 1
+			await get_tree().create_timer(0.1).timeout
+
+	start_win_check_loop()
 
 func spawn_boss_wave():
 	# Hardcoded Wave 5 Event
