@@ -7,6 +7,7 @@ var scheduled_actions_executed: Array = []
 var _frame_events: Array = []
 var _is_tearing_down: bool = false
 var _wave_has_started: bool = false
+var test_enemies: Array = []
 
 func _ready():
 	config = GameManager.current_test_scenario
@@ -39,6 +40,10 @@ func _setup_test():
 						GameManager.grid_manager.active_territory_tiles.append(tile)
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
+
+	# Spawn custom enemies if configured
+	if config.has("enemies"):
+		_spawn_test_enemies(config["enemies"])
 
 	# Setup actions
 	if config.has("setup_actions"):
@@ -160,6 +165,51 @@ func _process(delta):
 	if elapsed_time > 300.0:
 		_teardown("Timeout Safety")
 
+func _spawn_test_enemies(enemy_config_list: Array):
+	var enemy_scene = load("res://src/Scenes/Game/Enemy.tscn")
+	var spawn_points = []
+	if GameManager.grid_manager:
+		spawn_points = GameManager.grid_manager.get_spawn_points()
+
+	if spawn_points.is_empty():
+		spawn_points = [Vector2(300, 0)]
+
+	var spawn_idx = 0
+	for entry in enemy_config_list:
+		var type = entry.get("type", "slime")
+		var count = entry.get("count", 1)
+		var hp_override = entry.get("hp", -1)
+
+		# Alias mapping for test convenience
+		if type == "high_hp_enemy": type = "golem"
+		if not Constants.ENEMY_VARIANTS.has(type):
+			printerr("[TestRunner] Unknown enemy type: ", type, " defaulting to slime")
+			type = "slime"
+
+		for i in range(count):
+			var enemy = enemy_scene.instantiate()
+			enemy.setup(type, 1)
+
+			if hp_override > 0:
+				enemy.max_hp = hp_override
+				enemy.hp = hp_override
+
+			var pos = spawn_points[spawn_idx % spawn_points.size()]
+			if entry.has("position"):
+				var p = entry["position"]
+				# Convert grid to world if it looks like grid coords (small numbers), or use as world
+				if abs(p.x) < 20 and abs(p.y) < 20:
+					pos = Vector2(p.x * 60, p.y * 60)
+				else:
+					pos = Vector2(p.x, p.y)
+
+			pos += Vector2(i * 40, (i % 2) * 20) # Simple spread
+			enemy.global_position = pos
+
+			GameManager.combat_manager.add_child(enemy)
+			test_enemies.append(enemy)
+			print("[TestRunner] Spawned test enemy: ", type, " HP:", enemy.hp, " ID:", enemy.get_instance_id())
+
 func _execute_scheduled_action(action: Dictionary):
 	match action.type:
 		"skill":
@@ -194,6 +244,23 @@ func _execute_scheduled_action(action: Dictionary):
 				printerr("[TestRunner] SummonManager not available")
 		"test_enemy_death":
 			_run_enemy_death_test()
+		"damage_enemy":
+			var idx = action.get("enemy_index", 0)
+			if idx < test_enemies.size() and is_instance_valid(test_enemies[idx]):
+				var enemy = test_enemies[idx]
+				var amount = action.get("amount", 0)
+				# Use a source that won't trigger other effects if possible, or null
+				enemy.take_damage(amount, null, "test_damage")
+				print("[TestRunner] Applied %d damage to enemy idx %d (HP: %d/%d)" % [amount, idx, enemy.hp, enemy.max_hp])
+			else:
+				printerr("[TestRunner] damage_enemy: Enemy index %d invalid or dead" % idx)
+		"record_damage":
+			var idx = action.get("enemy_index", 0)
+			if idx < test_enemies.size() and is_instance_valid(test_enemies[idx]):
+				var enemy = test_enemies[idx]
+				print("[TestRunner] STATUS CHECK Enemy %d: HP=%d/%d" % [idx, enemy.hp, enemy.max_hp])
+			else:
+				print("[TestRunner] STATUS CHECK Enemy %d: Invalid or Dead" % idx)
 
 func _run_enemy_death_test():
 	print("[TestRunner] ========== 开始敌人死亡重复调用测试 ==========")

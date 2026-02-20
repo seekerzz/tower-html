@@ -11,10 +11,10 @@
 | 牛图腾 (cow_totem) | 9 | 0 | 0% |
 | 蝙蝠图腾 (bat_totem) | 5 | 0 | 0% |
 | 蝴蝶图腾 (butterfly_totem) | 6 | 0 | 0% |
-| 狼图腾 (wolf_totem) | 7 | 0 | 0% |
+| 狼图腾 (wolf_totem) | 7 | 1 | 14% |
 | 眼镜蛇图腾 (viper_totem) | 8 | 0 | 0% |
 | 鹰图腾 (eagle_totem) | 12 | 0 | 0% |
-| **总计** | **47** | **0** | **0%** |
+| **总计** | **47** | **1** | **2%** |
 
 ---
 
@@ -1787,7 +1787,53 @@
 
 ---
 
-### 4.4 狐狸 (fox)
+### 4.4 鬣狗 (hyena)
+
+**核心机制**: 助攻叠攻击 - 残血收割
+
+#### 测试场景 1: Lv1 残血收割验证
+```gdscript
+{
+    "id": "test_hyena_lv1_execute",
+    "core_type": "wolf_totem",
+    "duration": 20.0,
+    "units": [
+        {"id": "hyena", "x": 0, "y": 1, "level": 1}
+    ],
+    "enemies": [
+        {"type": "high_hp_enemy", "count": 2, "hp": 200, "position": {"x": 0, "y": 2}}
+    ],
+    "scheduled_actions": [
+        {"time": 2.0, "type": "damage_enemy", "enemy_index": 0, "amount": 150},
+        {"time": 2.0, "type": "damage_enemy", "enemy_index": 1, "amount": 100},
+        {"time": 5.0, "type": "record_damage", "enemy_index": 0},
+        {"time": 5.0, "type": "record_damage", "enemy_index": 1}
+    ],
+    "expected_behavior": {
+        "description": "攻击HP<30%敌人时额外附加1次20%伤害",
+        "verification": "敌人HP<30%时触发残血收割"
+    }
+}
+```
+**验证指标**:
+- [x] 敌人HP<30%时触发残血收割
+- [x] 额外附加1次20%伤害
+- [x] 敌人HP>=30%时不触发额外伤害
+
+#### 测试场景 2: Lv2 残血收割提升验证
+**验证指标**:
+- [x] 敌人HP<30%时触发残血收割
+- [x] 额外附加1次50%伤害（比Lv1更高）
+
+#### 测试场景 3: Lv3 双重残血收割验证
+**验证指标**:
+- [x] 敌人HP<30%时触发残血收割
+- [x] 额外附加2次50%伤害（共2次额外攻击）
+- [x] 总伤害显著高于Lv2
+
+---
+
+### 4.5 狐狸 (fox)
 
 **核心机制**: 魅惑敌人
 
@@ -1844,7 +1890,7 @@
 
 ---
 
-### 4.5 羊灵 (sheep_spirit)
+### 4.6 羊灵 (sheep_spirit)
 
 **核心机制**: 敌人阵亡时克隆
 
@@ -1882,7 +1928,7 @@
 
 ---
 
-### 4.6 狮子 (lion)
+### 4.7 狮子 (lion)
 
 **核心机制**: 圆形冲击波
 
