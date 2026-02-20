@@ -633,4 +633,53 @@ func get_test_config(case_id: String) -> Dictionary:
 				],
 				"description": "测试美杜莎石化Juice效果：动画冻结、碎裂图像、石块伤害"
 			}
+		# ========== 猫头鹰自动化测试 ==========
+		"test_owl_lv1_insight":
+			return {
+				"id": "test_owl_lv1_insight",
+				"core_type": "eagle_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "owl", "x": 0, "y": 1, "level": 1},
+					{"id": "squirrel", "x": 1, "y": 0}  # 相邻友军
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5}
+				],
+				"expected_behavior": {
+					"description": "增加相邻友军12%暴击率",
+					"verification": "松鼠暴击率增加12%"
+				}
+			}
+		"test_owl_lv2_insight":
+			return {
+				"id": "test_owl_lv2_insight",
+				"core_type": "eagle_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "owl", "x": 0, "y": 1, "level": 2},
+					{"id": "squirrel", "x": 0, "y": 3} # 距离2格
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5}
+				],
+				"expected_behavior": "增加范围2格内的友军20%暴击率"
+			}
+		"test_owl_lv3_echo":
+			return {
+				"id": "test_owl_lv3_echo",
+				"core_type": "eagle_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "owl", "x": 0, "y": 1, "level": 3},
+					{"id": "squirrel", "x": 1, "y": 0}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5}
+				],
+				"expected_behavior": {
+					"description": "相邻友军触发图腾回响时攻速+15%持续3秒",
+					"verification": "松鼠触发回响时，攻速提升15%持续3秒"
+				}
+			}
 	return {}
