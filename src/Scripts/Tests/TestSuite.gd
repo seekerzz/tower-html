@@ -195,6 +195,68 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "iron_turtle", "x": 0, "y": 1}]
 			}
+		"test_iron_turtle_lv1_reduction":
+			return {
+				"id": "test_iron_turtle_lv1_reduction",
+				"core_type": "cow_totem",
+				"core_health": 500,
+				"duration": 15.0,
+				"units": [
+					{"id": "iron_turtle", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "attack_damage": 30, "count": 3, "distance": 150.0}
+				],
+				"setup_actions": [
+					{
+						"type": "taunt",
+						"target_unit_id": "iron_turtle",
+						"radius": 1000.0,
+						"duration": 100.0
+					}
+				],
+				"scheduled_actions": [
+					{
+						"time": 10.0,
+						"type": "verify_core_health_min",
+						"value": 900.0
+					}
+				],
+				"expected_behavior": "敌人攻击30点伤害，核心实际损失10点（减伤20点）"
+			}
+		"test_iron_turtle_lv3_absolute_defense":
+			return {
+				"id": "test_iron_turtle_lv3_absolute_defense",
+				"core_type": "cow_totem",
+				"duration": 15.0,
+				"core_health": 500,
+				"units": [
+					{"id": "iron_turtle", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "weak_enemy", "attack_damage": 10, "count": 5, "distance": 150.0}
+				],
+				"setup_actions": [
+					{
+						"type": "taunt",
+						"target_unit_id": "iron_turtle",
+						"radius": 1000.0,
+						"duration": 100.0
+					},
+					{
+						"type": "damage_core",
+						"amount": 500.0
+					}
+				],
+				"scheduled_actions": [
+					{
+						"time": 10.0,
+						"type": "verify_core_health_min",
+						"value": 1351.0
+					}
+				],
+				"expected_behavior": "当伤害被减为0时，回复1%核心HP"
+			}
 		"test_cow_totem_hedgehog":
 			return {
 				"id": "test_cow_totem_hedgehog",

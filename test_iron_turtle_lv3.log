@@ -1,0 +1,65 @@
+Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
+
+Game data loaded successfully.
+[Test] Launching: test_iron_turtle_lv3_absolute_defense
+WARNING: res://src/Scenes/Game/MainGame.tscn:3 - ext_resource, invalid UID: uid://yevi5jhibo13 - using text path instead: res://src/Scripts/MainGame.gd
+     at: load (scene/resources/resource_format_text.cpp:444)
+     GDScript backtrace (most recent call first):
+         [0] _on_core_selected (res://src/Scripts/UI/CoreSelection.gd:57)
+         [1] _launch_test_mode (res://src/Scripts/UI/CoreSelection.gd:35)
+WARNING: res://src/Scenes/UI/MainGUI.tscn:8 - ext_resource, invalid UID: uid://inventorypanel - using text path instead: res://src/Scenes/UI/InventoryPanel.tscn
+     at: load (scene/resources/resource_format_text.cpp:444)
+     GDScript backtrace (most recent call first):
+         [0] _on_core_selected (res://src/Scripts/UI/CoreSelection.gd:57)
+         [1] _launch_test_mode (res://src/Scripts/UI/CoreSelection.gd:35)
+WARNING: res://src/Scenes/UI/MainGUI.tscn:9 - ext_resource, invalid UID: uid://passiveskillbar - using text path instead: res://src/Scenes/UI/PassiveSkillBar.tscn
+     at: load (scene/resources/resource_format_text.cpp:444)
+     GDScript backtrace (most recent call first):
+         [0] _on_core_selected (res://src/Scripts/UI/CoreSelection.gd:57)
+         [1] _launch_test_mode (res://src/Scripts/UI/CoreSelection.gd:35)
+ERROR: Resource file not found: res://assets/images/UI/bg_battle.png (expected type: Texture2D)
+   at: _load (core/io/resource_loader.cpp:351)
+   GDScript backtrace (most recent call first):
+       [0] _on_core_selected (res://src/Scripts/UI/CoreSelection.gd:57)
+       [1] _launch_test_mode (res://src/Scripts/UI/CoreSelection.gd:35)
+ERROR: res://src/Scenes/Game/MainGame.tscn:17 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/images/UI/bg_battle.png.
+   at: _printerr (scene/resources/resource_format_text.cpp:40)
+   GDScript backtrace (most recent call first):
+       [0] _on_core_selected (res://src/Scripts/UI/CoreSelection.gd:57)
+       [1] _launch_test_mode (res://src/Scripts/UI/CoreSelection.gd:35)
+Total Spawn Tiles: 20
+Generating tree border (Refactored)...
+[InventoryPanel] UI Ready initialized.
+[InventoryPanel] Creating dynamic ScrollContainer.
+[InventoryPanel] Connected to inventory_manager signal.
+[InventoryPanel] update_inventory called with data: [<null>, <null>, <null>, <null>, <null>, <null>, <null>, <null>]
+[TestRunner] Starting test: test_iron_turtle_lv3_absolute_defense
+[TestRunner] Injected test enemy type: weak_enemy
+WARNING: Adding 'Label' as child to 'VisualHolder' will make owner 'Unit' inconsistent. Consider unsetting the owner beforehand.
+     at: add_child (scene/main/node.cpp:1696)
+     GDScript backtrace (most recent call first):
+         [0] _ensure_visual_hierarchy (res://src/Scripts/Unit.gd:136)
+         [1] setup (res://src/Scripts/Unit.gd:91)
+         [2] place_unit (res://src/Scripts/GridManager.gd:796)
+         [3] _setup_test (res://src/Scripts/Tests/AutomatedTestRunner.gd:47)
+WARNING: Adding 'StarLabel' as child to 'VisualHolder' will make owner 'Unit' inconsistent. Consider unsetting the owner beforehand.
+     at: add_child (scene/main/node.cpp:1696)
+     GDScript backtrace (most recent call first):
+         [0] _ensure_visual_hierarchy (res://src/Scripts/Unit.gd:136)
+         [1] setup (res://src/Scripts/Unit.gd:91)
+         [2] place_unit (res://src/Scripts/GridManager.gd:796)
+         [3] _setup_test (res://src/Scripts/Tests/AutomatedTestRunner.gd:47)
+[TestRunner] Applied taunt to iron_turtle radius: 1000.0
+[TestRunner] Spawning test enemies...
+[TestRunner] Spawned weak_enemy at (898.6014, 542.9096)
+[TestRunner] Spawned weak_enemy at (399.6295, 188.1053)
+[TestRunner] Spawned weak_enemy at (774.9155, 53.41392)
+[TestRunner] Spawned weak_enemy at (452.3647, 70.85415)
+[TestRunner] Spawned weak_enemy at (743.1553, 48.77079)
+[CowTotem] Timeout. Hits: 0 Damage: 0.0
+[CowTotem] Timeout. Hits: 0 Damage: 0.0
+[TestRunner] ✗ Core Health Verification FAILED. Expected: 525.0 Actual: 1100.0
+[TestRunner] Finishing test. Reason: Verification Failed
+[TestRunner] Logs saved to user://test_logs/test_iron_turtle_lv3_absolute_defense.json
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+     at: cleanup (core/object/object.cpp:2514)

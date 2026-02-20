@@ -19,9 +19,15 @@ func _ready():
 	if config.has("core_type"):
 		GameManager.core_type = config["core_type"]
 
+	if config.has("core_health"):
+		GameManager.core_health = config["core_health"]
+		GameManager.max_core_health = config.get("max_core_health", config["core_health"])
+
 	call_deferred("_setup_test")
 
 func _setup_test():
+	_inject_test_enemies()
+
 	if !GameManager.grid_manager:
 		printerr("[TestRunner] GridManager not ready!")
 		return
@@ -38,7 +44,17 @@ func _setup_test():
 					if not GameManager.grid_manager.active_territory_tiles.has(tile):
 						GameManager.grid_manager.active_territory_tiles.append(tile)
 
-			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
+			if GameManager.grid_manager.place_unit(u.id, u.x, u.y) and u.has("level"):
+				# key is already defined above
+				if GameManager.grid_manager.tiles.has(key):
+					var tile = GameManager.grid_manager.tiles[key]
+					if tile.unit:
+						tile.unit.level = u.level
+						tile.unit.reset_stats()
+
+		# Recalculate max health after all units placed and levels set
+		GameManager.recalculate_max_health()
+		print("[TestRunner] Max Core Health after setup: ", GameManager.max_core_health, " Current: ", GameManager.core_health)
 
 	# Setup actions
 	if config.has("setup_actions"):
@@ -56,6 +72,7 @@ func _setup_test():
 
 func _on_wave_started():
 	_wave_has_started = true
+	_spawn_test_enemies()
 
 func _on_enemy_spawned(enemy):
 	var pos = enemy.global_position
@@ -93,6 +110,11 @@ func _execute_setup_action(action: Dictionary):
 				_spawn_random_trap(action.trap_id)
 		"apply_buff":
 			_apply_buff_to_unit(action.target_unit_id, action.buff_id)
+		"taunt":
+			_apply_taunt_to_unit(action.target_unit_id, action.get("radius", 300.0), action.get("duration", 5.0))
+		"damage_core":
+			GameManager.damage_core(action.amount)
+			print("[TestRunner] Damaged core by ", action.amount)
 
 func _spawn_random_trap(trap_id: String):
 	# Map test IDs to game IDs
@@ -127,6 +149,19 @@ func _apply_buff_to_unit(unit_id: String, buff_id: String):
 			break
 	if !found:
 		printerr("[TestRunner] Unit not found for buff: ", unit_id)
+
+func _apply_taunt_to_unit(unit_id: String, radius: float, duration: float):
+	var gm = GameManager.grid_manager
+	var found = false
+	for key in gm.tiles:
+		var tile = gm.tiles[key]
+		if tile.unit and tile.unit.type_key == unit_id:
+			AggroManager.apply_taunt(tile.unit, radius, duration)
+			print("[TestRunner] Applied taunt to ", unit_id, " radius: ", radius)
+			found = true
+			break
+	if !found:
+		printerr("[TestRunner] Unit not found for taunt: ", unit_id)
 
 func _process(delta):
 	if _is_tearing_down: return
@@ -194,6 +229,85 @@ func _execute_scheduled_action(action: Dictionary):
 				printerr("[TestRunner] SummonManager not available")
 		"test_enemy_death":
 			_run_enemy_death_test()
+		"verify_core_health":
+			var expected = action.value
+			if abs(GameManager.core_health - expected) < 0.1:
+				print("[TestRunner] ✓ Core Health Verified: ", GameManager.core_health)
+			else:
+				printerr("[TestRunner] ✗ Core Health Verification FAILED. Expected: ", expected, " Actual: ", GameManager.core_health)
+				_teardown("Verification Failed")
+		"verify_core_health_min":
+			var min_val = action.value
+			if GameManager.core_health >= min_val:
+				print("[TestRunner] ✓ Core Health Min Verified: ", GameManager.core_health, " >= ", min_val)
+			else:
+				printerr("[TestRunner] ✗ Core Health Min Verification FAILED. Expected >= ", min_val, " Actual: ", GameManager.core_health)
+				_teardown("Verification Failed")
+
+func _inject_test_enemies():
+	if not config.has("enemies"): return
+
+	for enemy_conf in config["enemies"]:
+		var type = enemy_conf.get("type", "basic_enemy")
+
+		# If not in Constants, create a variant based on 'slime'
+		if not Constants.ENEMY_VARIANTS.has(type):
+			if Constants.ENEMY_VARIANTS.has("slime"):
+				var base = Constants.ENEMY_VARIANTS["slime"].duplicate(true)
+				base["name"] = type
+				base["icon"] = "👾"
+				if enemy_conf.has("attack_damage"):
+					base["dmg"] = enemy_conf["attack_damage"]
+				if enemy_conf.has("hp"):
+					base["hpMod"] = enemy_conf["hp"] / 100.0 # Approx if base is 100
+
+				Constants.ENEMY_VARIANTS[type] = base
+				print("[TestRunner] Injected test enemy type: ", type)
+			else:
+				printerr("[TestRunner] Cannot inject enemy, 'slime' base not found!")
+
+func _spawn_test_enemies():
+	if not config.has("enemies"): return
+
+	print("[TestRunner] Spawning test enemies...")
+	var enemy_scene = load("res://src/Scenes/Game/Enemy.tscn")
+
+	for enemy_conf in config["enemies"]:
+		var type = enemy_conf.get("type", "basic_enemy")
+		var count = enemy_conf.get("count", 1)
+		var damage = enemy_conf.get("attack_damage", -1)
+
+		for i in range(count):
+			var enemy = enemy_scene.instantiate()
+			enemy.setup(type, GameManager.wave)
+
+			# Position
+			var pos = Vector2(0, 300) # Default
+			if enemy_conf.has("spawn_pos"):
+				pos = Vector2(enemy_conf.spawn_pos.x, enemy_conf.spawn_pos.y)
+			elif enemy_conf.has("distance"):
+				# Spawn at distance from center (0,0 is top left usually? No, (0,0) is origin)
+				# Grid is centered at GameManager.grid_manager.global_position usually.
+				var center = Vector2(640, 360) # Fallback center
+				if GameManager.grid_manager:
+					center = GameManager.grid_manager.global_position
+
+				var angle = randf() * TAU
+				var dir = Vector2.RIGHT.rotated(angle)
+				pos = center + dir * enemy_conf.distance
+			elif GameManager.grid_manager:
+				# Spawn at bottom or random valid spawn
+				var points = GameManager.grid_manager.get_spawn_points()
+				if points.size() > 0:
+					pos = points.pick_random()
+
+			# Offset to avoid stacking
+			pos += Vector2(randf_range(-20, 20), randf_range(-20, 20))
+
+			enemy.global_position = pos
+
+			get_tree().current_scene.add_child(enemy)
+			print("[TestRunner] Spawned ", type, " at ", pos)
 
 func _run_enemy_death_test():
 	print("[TestRunner] ========== 开始敌人死亡重复调用测试 ==========")
