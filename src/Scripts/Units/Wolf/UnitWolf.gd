@@ -11,7 +11,10 @@ func _ready():
 
     # If first time placed (not loaded from save), show selection UI
     if not has_selected_devour:
-        call_deferred("_show_devour_ui")
+        if GameManager.is_running_test:
+            _auto_devour()
+        else:
+            call_deferred("_show_devour_ui")
 
 func _show_devour_ui():
     var ui_scene = load("res://src/Scenes/UI/WolfDevourUI.tscn")
