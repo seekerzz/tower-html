@@ -177,6 +177,52 @@ func get_test_config(case_id: String) -> Dictionary:
 				"description": "测试敌人死亡时不会重复调用die()函数，防止重复添加魂魄/金币"
 			}
 		# ========== 牛图腾流派单位测试 (8个单位) ==========
+		"test_rock_armor_cow_lv1_shield":
+			return {
+				"id": "test_rock_armor_cow_lv1_shield",
+				"core_type": "cow_totem",
+				"duration": 20.0,
+				"prevent_enemy_spawns": true,
+				"units": [
+					{"id": "rock_armor_cow", "x": 0, "y": 1, "level": 1}
+				],
+				"scheduled_actions": [
+					# Wait 6s for shield (5s requirement)
+					{"time": 6.0, "type": "verify_shield", "expected_shield_percent": 0.1}
+				]
+			}
+		"test_rock_armor_cow_lv2_shield":
+			return {
+				"id": "test_rock_armor_cow_lv2_shield",
+				"core_type": "cow_totem",
+				"duration": 20.0,
+				"prevent_enemy_spawns": true,
+				"units": [
+					{"id": "rock_armor_cow", "x": 0, "y": 1, "level": 2}
+				],
+				"scheduled_actions": [
+					# Wait 5s for shield (4s requirement)
+					{"time": 5.0, "type": "verify_shield", "expected_shield_percent": 0.15}
+				]
+			}
+		"test_rock_armor_cow_lv3_overflow":
+			return {
+				"id": "test_rock_armor_cow_lv3_overflow",
+				"core_type": "cow_totem",
+				"duration": 20.0,
+				"prevent_enemy_spawns": true,
+				"core_health": 500,
+				"max_core_health": 500,
+				"units": [
+					{"id": "rock_armor_cow", "x": 0, "y": 1, "level": 3}
+				],
+				"scheduled_actions": [
+					# Heal at 1.0s to avoid conflict with out-of-combat shield (4s)
+					{"time": 1.0, "type": "heal_core", "amount": 500},
+					# 500 overflow -> 50 shield. MaxHP 1125. 50/1125 = 0.0444...
+					{"time": 2.0, "type": "verify_shield", "expected_shield_percent": 0.044}
+				]
+			}
 		"test_cow_totem_plant":
 			return {
 				"id": "test_cow_totem_plant",
