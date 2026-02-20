@@ -370,6 +370,19 @@ func get_test_config(case_id: String) -> Dictionary:
 				"units": [{"id": "dragon", "x": 0, "y": 1}]
 			}
 		# ========== 狼图腾流派单位测试 (3个单位) ==========
+		"test_wolf_devour_system":
+			return {
+				"id": "test_wolf_devour_system",
+				"core_type": "wolf_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 15.0,
+				"units": [
+					{"id": "wolf", "x": 0, "y": 0},
+					{"id": "tiger", "x": 0, "y": 1}
+				],
+				"description": "测试狼的吞噬继承系统"
+			}
 		"test_wolf_totem_tiger":
 			return {
 				"id": "test_wolf_totem_tiger",
