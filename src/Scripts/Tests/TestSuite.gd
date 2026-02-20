@@ -410,6 +410,45 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "lion", "x": 0, "y": 1}]
 			}
+		"test_sheep_spirit_lv1_clone":
+			return {
+				"id": "test_sheep_spirit_lv1_clone",
+				"core_type": "wolf_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "sheep_spirit", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "weak_enemy", "count": 3, "hp": 50, "positions": [{"x": 1, "y": 1}, {"x": 2, "y": 0}]}
+				],
+				"expected_behavior": "附近敌人阵亡时复制1个40%属性的克隆体为你作战"
+			}
+		"test_sheep_spirit_lv2_clone":
+			return {
+				"id": "test_sheep_spirit_lv2_clone",
+				"core_type": "wolf_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "sheep_spirit", "x": 0, "y": 1, "level": 2}
+				],
+				"enemies": [
+					{"type": "weak_enemy", "count": 3, "hp": 50}
+				],
+				"expected_behavior": "附近敌人阵亡时复制1个60%属性的克隆体为你作战"
+			}
+		"test_sheep_spirit_lv3_clone":
+			return {
+				"id": "test_sheep_spirit_lv3_clone",
+				"core_type": "wolf_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "sheep_spirit", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "weak_enemy", "count": 2, "hp": 50}
+				],
+				"expected_behavior": "附近敌人阵亡时复制2个60%属性的克隆体为你作战"
+			}
 		# ========== 眼镜蛇图腾流派单位测试 (7个单位) ==========
 		"test_viper_totem_spider":
 			return {
