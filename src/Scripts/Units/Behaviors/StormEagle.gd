@@ -51,12 +51,27 @@ func _trigger_lightning_storm():
 	var enemies = unit.get_tree().get_nodes_in_group("enemies")
 	if enemies.is_empty(): return
 
-	# 对每个敌人降下雷击
-	for enemy in enemies:
-		if not is_instance_valid(enemy): continue
+	# 筛选有效敌人
+	var valid_enemies = []
+	for e in enemies:
+		if is_instance_valid(e): valid_enemies.append(e)
+
+	# 根据等级确定最大目标数
+	var max_targets = 3 # Lv1/Lv2
+	if unit.level >= 3:
+		max_targets = 5 # Lv3 范围扩大/更多目标
+
+	# 随机打乱以实现随机目标
+	valid_enemies.shuffle()
+
+	# 对选中敌人降下雷击
+	var count = 0
+	for enemy in valid_enemies:
+		if count >= max_targets: break
 
 		# 创建闪电效果
 		_spawn_lightning_on_enemy(enemy)
+		count += 1
 
 	# 显示雷暴特效文字
 	GameManager.spawn_floating_text(unit.global_position, "THUNDER STORM!", Color.CYAN)

@@ -583,6 +583,66 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "storm_eagle", "x": 0, "y": 1}]
 			}
+		"test_storm_eagle_lv1_storm":
+			return {
+				"id": "test_storm_eagle_lv1_storm",
+				"core_type": "eagle_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "storm_eagle", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5}
+				],
+				"setup_actions": [
+					{
+						"type": "apply_buff",
+						"buff_id": "crit",
+						"target_unit_id": "storm_eagle"
+					}
+				],
+				"expected_behavior": "召唤雷电攻击随机敌人"
+			}
+		"test_storm_eagle_lv2_damage":
+			return {
+				"id": "test_storm_eagle_lv2_damage",
+				"core_type": "eagle_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "storm_eagle", "x": 0, "y": 1, "level": 2}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5}
+				],
+				"setup_actions": [
+					{
+						"type": "apply_buff",
+						"buff_id": "crit",
+						"target_unit_id": "storm_eagle"
+					}
+				],
+				"expected_behavior": "雷电伤害提升"
+			}
+		"test_storm_eagle_lv3_range":
+			return {
+				"id": "test_storm_eagle_lv3_range",
+				"core_type": "eagle_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "storm_eagle", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 8}
+				],
+				"setup_actions": [
+					{
+						"type": "apply_buff",
+						"buff_id": "crit",
+						"target_unit_id": "storm_eagle"
+					}
+				],
+				"expected_behavior": "雷暴范围扩大，可命中更多敌人"
+			}
 		# ========== 流血和吸血系统测试 ==========
 		"test_bleed_lifesteal_system":
 			return {
