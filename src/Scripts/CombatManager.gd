@@ -40,6 +40,10 @@ func get_wave_type(n: int) -> String:
 	return types[int(idx) % types.size()]
 
 func start_wave_logic():
+	# Test Override: If test scenario defines custom enemies, skip default wave logic
+	if GameManager.is_running_test and GameManager.current_test_scenario.has("enemies"):
+		return
+
 	var wave = GameManager.wave
 
 	if wave == 5:
@@ -272,14 +276,19 @@ func get_enemies_in_range(pos: Vector2, range_val: float) -> Array:
 				found.append(enemy)
 	return found
 
-func perform_lightning_attack(source_unit, start_pos, target, chain_left, hit_list = null):
+func perform_lightning_attack(source_unit, start_pos, target, chain_left, hit_list = null, damage_ratio = 1.0):
 	if hit_list == null: hit_list = []
 	if !is_instance_valid(target): return
 
 	# Apply damage
-	var dmg = source_unit.calculate_damage_against(target)
+	var dmg = source_unit.calculate_damage_against(target) * damage_ratio
 	target.take_damage(dmg, source_unit, "lightning")
 	hit_list.append(target)
+
+	# Trigger on_lightning_hit callback
+	if source_unit.has_method("on_lightning_hit"):
+		# Pass target and bounce index (0 for first hit, 1 for first bounce, etc.)
+		source_unit.on_lightning_hit(target, hit_list.size() - 1)
 
 	# Visual
 	var arc = LIGHTNING_SCENE.instantiate()
@@ -293,7 +302,7 @@ func perform_lightning_attack(source_unit, start_pos, target, chain_left, hit_li
 			var next_start_pos = target.global_position
 			await get_tree().create_timer(0.15).timeout
 			if is_instance_valid(source_unit):
-				perform_lightning_attack(source_unit, next_start_pos, next_target, chain_left - 1, hit_list)
+				perform_lightning_attack(source_unit, next_start_pos, next_target, chain_left - 1, hit_list, damage_ratio * 0.8)
 
 func find_nearest_enemy_excluding(pos: Vector2, range_val: float, exclude_list: Array):
 	var nearest = null

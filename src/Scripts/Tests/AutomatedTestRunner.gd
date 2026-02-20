@@ -40,6 +40,15 @@ func _setup_test():
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
 
+			if u.has("level"):
+				var tile_key = GameManager.grid_manager.get_tile_key(u.x, u.y)
+				if GameManager.grid_manager.tiles.has(tile_key):
+					var tile = GameManager.grid_manager.tiles[tile_key]
+					if tile.unit:
+						tile.unit.level = u.level
+						tile.unit.reset_stats()
+						tile.unit.update_visuals()
+
 	# Setup actions
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:
@@ -49,19 +58,60 @@ func _setup_test():
 	GameManager.wave_started.connect(_on_wave_started)
 	GameManager.enemy_spawned.connect(_on_enemy_spawned)
 	GameManager.enemy_hit.connect(_on_enemy_hit)
+	GameManager.resource_changed.connect(_on_resource_changed)
 
 	GameManager.start_wave()
+
+	if config.has("enemies"):
+		_spawn_custom_enemies()
+
 	# GameManager.wave_ended is only emitted after UI interaction, which we skip in headless.
 	# So we monitor is_wave_active in _process instead.
 
+func _spawn_custom_enemies():
+	for e in config["enemies"]:
+		var type_key = e.get("type", "slime")
+		if type_key == "basic_enemy": type_key = "slime"
+
+		var positions = []
+		if e.has("positions"):
+			for p in e["positions"]:
+				var world_pos = Vector2.ZERO
+				if GameManager.grid_manager:
+					var px = p.get("x", 0)
+					var py = p.get("y", 0)
+					world_pos = GameManager.grid_manager.get_world_pos_from_grid(Vector2i(px, py))
+				else:
+					# Use p["x"] and p["y"] for dictionary access
+					var px = p.get("x", 0)
+					var py = p.get("y", 0)
+					world_pos = Vector2(px * 60, py * 60)
+				positions.append(world_pos)
+
+		var count = e.get("count", 1)
+
+		if positions.size() > 0:
+			for i in range(count):
+				var pos = positions[i % positions.size()]
+				GameManager.combat_manager._spawn_enemy_at_pos(pos, type_key)
+		else:
+			# Spawn in a line if no positions specified
+			for i in range(count):
+				var pos = Vector2(400, 200 + i*50)
+				GameManager.combat_manager._spawn_enemy_at_pos(pos, type_key)
+
 func _on_wave_started():
 	_wave_has_started = true
+
+func _on_resource_changed():
+	print("[TestRunner] RESOURCE: Gold=", GameManager.gold, " Mana=", GameManager.mana)
 
 func _on_enemy_spawned(enemy):
 	var pos = enemy.global_position
 	if "enemy_data" in enemy:
 		pos = enemy.global_position # Redundant but safe
 
+	print("[TestRunner] SPAWN: Type=", enemy.type_key, " Pos=", pos)
 	_frame_events.append({
 		"type": "spawn",
 		"enemy_id": enemy.get_instance_id(),
@@ -78,6 +128,7 @@ func _on_enemy_hit(enemy, source, amount):
 		if "type_key" in source:
 			source_id = source.type_key
 
+	print("[TestRunner] HIT: Target=", enemy.get_instance_id(), " Source=", source_id, " Damage=", amount, " HP_After=", enemy.hp)
 	_frame_events.append({
 		"type": "hit",
 		"target_id": enemy.get_instance_id(),

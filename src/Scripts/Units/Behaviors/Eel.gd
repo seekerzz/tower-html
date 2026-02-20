@@ -21,3 +21,8 @@ func on_combat_tick(delta: float) -> bool:
 		unit.attack_performed.emit(target)
 
 	return true
+
+func on_lightning_hit(target, bounce_index):
+	# Level 3: Mana restoration on bounce
+	if unit.level >= 3 and bounce_index > 0:
+		GameManager.add_resource("mana", 3)
