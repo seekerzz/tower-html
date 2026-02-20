@@ -45,6 +45,10 @@ func _setup_test():
 		for action in config["setup_actions"]:
 			_execute_setup_action(action)
 
+	# Spawn Enemies (Test Scenario)
+	if config.has("enemies"):
+		call_deferred("_spawn_test_enemies", config["enemies"])
+
 	GameManager.game_over.connect(_on_game_over)
 	GameManager.wave_started.connect(_on_wave_started)
 	GameManager.enemy_spawned.connect(_on_enemy_spawned)
@@ -127,6 +131,55 @@ func _apply_buff_to_unit(unit_id: String, buff_id: String):
 			break
 	if !found:
 		printerr("[TestRunner] Unit not found for buff: ", unit_id)
+
+func _spawn_test_enemies(enemies_config: Array):
+	if !GameManager.grid_manager: return
+
+	var spawn_points = GameManager.grid_manager.get_spawn_points()
+	if spawn_points.is_empty():
+		spawn_points.append(Vector2(-300, 0)) # Fallback
+
+	var enemy_scene = load("res://src/Scenes/Game/Enemy.tscn")
+
+	for entry in enemies_config:
+		var type = entry.get("type", "slime")
+		var count = entry.get("count", 1)
+
+		# Map test types to real types
+		var real_type = type
+		if type == "attacker_enemy": real_type = "shooter" # Default to shooter for generic attacker
+
+		for i in range(count):
+			var spawn_pos = spawn_points.pick_random() + Vector2(randf_range(-20, 20), randf_range(-20, 20))
+
+			var enemy = enemy_scene.instantiate()
+			enemy.setup(real_type, GameManager.wave)
+			enemy.global_position = spawn_pos
+
+			# Apply overrides
+			var overrides = {}
+			if entry.has("attack_speed"): overrides["atkSpeed"] = entry["attack_speed"]
+
+			if not overrides.is_empty():
+				# Duplicate data to avoid modifying global constants
+				var new_data = enemy.enemy_data.duplicate()
+				for k in overrides:
+					new_data[k] = overrides[k]
+
+				enemy.enemy_data = new_data
+
+				# Re-init behavior to pick up new stats (especially atkSpeed)
+				if enemy.behavior:
+					enemy.behavior.queue_free()
+				enemy._init_behavior()
+
+			# Handle absolute HP override if present (not via enemy_data)
+			if entry.has("hp"):
+				enemy.hp = entry["hp"]
+				enemy.max_hp = entry["hp"]
+
+			get_tree().current_scene.add_child(enemy)
+			print("[TestRunner] Spawned test enemy: ", real_type, " at ", spawn_pos)
 
 func _process(delta):
 	if _is_tearing_down: return
