@@ -311,6 +311,95 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "blood_ancestor", "x": 0, "y": 1}]
 			}
+		"test_blood_ancestor_lv1_domain":
+			return {
+				"id": "test_blood_ancestor_lv1_domain",
+				"core_type": "bat_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "blood_ancestor", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "hp": 50, "count": 3}
+				],
+				"scheduled_actions": [
+					{"time": 2.0, "type": "record_damage", "unit_id": "blood_ancestor", "label": "no_injured"},
+					{"time": 5.0, "type": "damage_enemies", "amount": 30},
+					{"time": 8.0, "type": "record_damage", "unit_id": "blood_ancestor", "label": "with_injured"}
+				],
+				"expected_behavior": "场上每有1个受伤敌人，自身攻击+10%(上限30%)"
+			}
+		"test_blood_ancestor_lv2_domain":
+			return {
+				"id": "test_blood_ancestor_lv2_domain",
+				"core_type": "bat_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "blood_ancestor", "x": 0, "y": 1, "level": 2}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "hp": 100, "count": 5}
+				],
+				"scheduled_actions": [
+					{"time": 5.0, "type": "damage_enemies", "amount": 50},
+					{"time": 8.0, "type": "record_damage", "unit_id": "blood_ancestor", "label": "max_bonus"}
+				],
+				"expected_behavior": "场上每有1个受伤敌人，自身攻击+15%"
+			}
+		"test_blood_ancestor_lv3_lifesteal":
+			return {
+				"id": "test_blood_ancestor_lv3_lifesteal",
+				"core_type": "bat_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "blood_ancestor", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "hp": 100, "count": 3}
+				],
+				"scheduled_actions": [
+					{"time": 5.0, "type": "damage_enemies", "amount": 50},
+					{"time": 8.0, "type": "record_lifesteal", "source_unit_id": "blood_ancestor", "label": "with_lifesteal_bonus"}
+				],
+				"expected_behavior": "场上每有1个受伤敌人，自身攻击+20%且吸血+20%"
+			}
+		"test_blood_ancestor_realtime_update":
+			return {
+				"id": "test_blood_ancestor_realtime_update",
+				"core_type": "bat_totem",
+				"duration": 30.0,
+				"units": [
+					{"id": "blood_ancestor", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "hp": 100, "count": 3}
+				],
+				"scheduled_actions": [
+					{"time": 2.0, "type": "record_damage", "unit_id": "blood_ancestor", "label": "initial"},
+					{"time": 5.0, "type": "damage_enemies", "amount": 50},
+					{"time": 8.0, "type": "record_damage", "unit_id": "blood_ancestor", "label": "enemies_injured"},
+					{"time": 12.0, "type": "kill_enemies", "count": 2},
+					{"time": 15.0, "type": "record_damage", "unit_id": "blood_ancestor", "label": "enemies_killed"}
+				],
+				"expected_behavior": "加成随受伤敌人数量实时变化"
+			}
+		"test_blood_ancestor_max_bonus":
+			return {
+				"id": "test_blood_ancestor_max_bonus",
+				"core_type": "bat_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "blood_ancestor", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "hp": 200, "count": 10}
+				],
+				"scheduled_actions": [
+					{"time": 5.0, "type": "damage_enemies", "amount": 100},
+					{"time": 8.0, "type": "record_damage", "unit_id": "blood_ancestor", "label": "max_bonus_check"}
+				],
+				"expected_behavior": "即使有更多受伤敌人，加成也有上限"
+			}
 		# ========== 蝴蝶图腾流派单位测试 (6个单位) ==========
 		"test_butterfly_totem_torch":
 			return {
