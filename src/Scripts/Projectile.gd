@@ -163,7 +163,7 @@ func _parse_effects_to_payload():
 			"script": load("res://src/Scripts/Effects/SlowEffect.gd"),
 			"params": {
 				"duration": effects["slow"], # Duration
-				"slow_factor": 0.5 # Hardcoded for now as legacy didn't specify factor
+				"slow_factor": effects.get("slow_factor", 0.5)
 			}
 		})
 

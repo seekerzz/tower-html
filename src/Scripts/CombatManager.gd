@@ -383,6 +383,11 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 		effects["poison"] = 5.0 # Accumulates
 	elif unit_trait == "slow":
 		effects["slow"] = 2.0 # Duration
+		var level = source_unit.level if "level" in source_unit else 1
+		if level == 1:
+			effects["slow_factor"] = 0.6 # 40% slow -> 60% speed
+		else:
+			effects["slow_factor"] = 0.4 # 60% slow -> 40% speed
 	elif unit_trait == "freeze":
 		effects["freeze"] = 2.0 # Duration
 
