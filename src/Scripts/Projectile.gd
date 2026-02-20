@@ -363,6 +363,12 @@ func _handle_hit(target_node):
 		if target_node.has_method("take_damage"):
 			target_node.take_damage(damage, source_unit, final_damage_type, self, kb_force)
 
+		# Peacock Dispel Logic
+		if source_unit and source_unit.has_method("has_temporary_buff"):
+			if source_unit.has_temporary_buff("peacock_inspire"):
+				if target_node.has_method("dispel_buffs"):
+					target_node.dispel_buffs()
+
 		# Apply Status Effects via Payload (New System)
 		apply_payload(target_node)
 

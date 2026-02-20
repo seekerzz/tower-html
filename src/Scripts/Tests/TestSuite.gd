@@ -574,6 +574,31 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "peacock", "x": 0, "y": 1}]
 			}
+		"test_peacock_lv1_display":
+			return {
+				"id": "test_peacock_lv1_display",
+				"core_type": "eagle_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "peacock", "x": 0, "y": 1, "level": 1},
+					{"id": "squirrel", "x": 1, "y": 0}
+				],
+				"expected_behavior": "每5秒展开尾屏，范围内友军攻速+10%"
+			}
+		"test_peacock_lv3_inspire":
+			return {
+				"id": "test_peacock_lv3_inspire",
+				"core_type": "eagle_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "peacock", "x": 0, "y": 1, "level": 3},
+					{"id": "squirrel", "x": 1, "y": 0}
+				],
+				"enemies": [
+					{"type": "buffed_enemy", "buffs": [{"type": "armor", "stacks": 3}], "count": 3}
+				],
+				"expected_behavior": "范围内友军攻击附带驱散效果"
+			}
 		"test_eagle_totem_storm_eagle":
 			return {
 				"id": "test_eagle_totem_storm_eagle",

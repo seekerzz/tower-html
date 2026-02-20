@@ -875,6 +875,12 @@ func add_stat_bonus(stat: String, amount: float):
 		"crit_chance":
 			crit_rate += amount
 
+func has_temporary_buff(stat: String) -> bool:
+	for buff in temporary_buffs:
+		if buff.stat == stat:
+			return true
+	return false
+
 func add_temporary_buff(stat: String, amount: float, duration: float):
 	temporary_buffs.append({
 		"stat": stat,

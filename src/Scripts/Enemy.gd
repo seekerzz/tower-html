@@ -472,6 +472,12 @@ func apply_physics_stagger(duration: float):
 
 	apply_stun(duration)
 
+func dispel_buffs():
+	for child in get_children():
+		if child is StatusEffect and child.type_key == "armor":
+			child.queue_free()
+			GameManager.spawn_floating_text(global_position, "Dispeled!", Color.WHITE)
+
 func apply_status(effect_script: Script, params: Dictionary):
 	if not effect_script: return
 
