@@ -5,6 +5,8 @@ const UnitBehavior = preload("res://src/Scripts/Units/UnitBehavior.gd")
 const AssetLoader = preload("res://src/Scripts/Utils/AssetLoader.gd")
 
 var is_summoned: bool = false
+var source_unit: Node2D:
+	get: return self
 var type_key: String
 var level: int = 1
 var stats_multiplier: float = 1.0
@@ -216,6 +218,10 @@ func reset_stats():
 func capture_bullet(bullet_snapshot: Dictionary):
 	if behavior.has_method("capture_bullet"):
 		behavior.capture_bullet(bullet_snapshot)
+
+func trigger_eagle_echo(target: Node2D, multiplier: float):
+	if behavior.has_method("trigger_eagle_echo"):
+		behavior.trigger_eagle_echo(target, multiplier)
 
 func calculate_damage_against(target_node: Node2D) -> float:
 	var final_damage = damage

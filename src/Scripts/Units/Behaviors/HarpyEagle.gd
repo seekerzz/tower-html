@@ -51,6 +51,10 @@ func _calculate_damage(target: Node2D) -> float:
 	if randf() < effective_crit_rate:
 		dmg *= unit.crit_dmg
 		GameManager.spawn_floating_text(target.global_position, "CRIT!", Color.RED)
+
+		if GameManager.current_mechanic and GameManager.current_mechanic.has_method("on_projectile_crit"):
+			GameManager.current_mechanic.on_projectile_crit(unit, target)
+
 		GameManager.projectile_crit.emit(unit, target, dmg)
 
 	if _current_claw == 2 and third_claw_bleed and is_instance_valid(target):
@@ -202,3 +206,11 @@ func _finish_combo():
 		unit.visual_holder.rotation = 0
 		unit.visual_holder.scale = Vector2.ONE
 		_current_y_scale_sign = 1.0
+
+func trigger_eagle_echo(target: Node2D, multiplier: float):
+	if not is_instance_valid(target): return
+
+	var dmg = unit.damage * damage_per_claw * multiplier
+
+	if target.has_method("take_damage"):
+		target.take_damage(dmg, unit, "eagle_crit")
