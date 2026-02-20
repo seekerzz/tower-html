@@ -60,7 +60,10 @@ func on_combat_tick(delta: float) -> bool:
 				unit.play_attack_anim("ranged", aim_target.global_position)
 
 				var extra = bullet_data.duplicate()
-				extra["mimic_damage"] = bullet_data.get("damage", 10.0)
+				var mimic_damage = bullet_data.get("damage", 10.0)
+				if unit.level >= 2:
+					mimic_damage *= 1.5
+				extra["mimic_damage"] = mimic_damage
 				extra["proj_override"] = bullet_data.get("type", "pinecone")
 
 				GameManager.combat_manager.spawn_projectile(unit, unit.global_position, aim_target, extra)

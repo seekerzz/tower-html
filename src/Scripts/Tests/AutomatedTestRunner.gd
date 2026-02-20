@@ -93,6 +93,53 @@ func _execute_setup_action(action: Dictionary):
 				_spawn_random_trap(action.trap_id)
 		"apply_buff":
 			_apply_buff_to_unit(action.target_unit_id, action.buff_id)
+		"mimic":
+			_execute_mimic_action(action)
+
+func _execute_mimic_action(action: Dictionary):
+	var source_id = action.source
+	var target_id = action.target
+	var gm = GameManager.grid_manager
+
+	var source_unit = null
+	var target_unit = null
+
+	# Find units
+	for key in gm.tiles:
+		var tile = gm.tiles[key]
+		if tile.unit:
+			if tile.unit.type_key == source_id:
+				source_unit = tile.unit
+			elif tile.unit.type_key == target_id:
+				target_unit = tile.unit
+
+	if source_unit and target_unit:
+		print("[TestRunner] Executing mimic setup: ", source_id, " mimics ", target_id)
+
+		# Create a dummy bullet snapshot based on target unit stats
+		var snapshot = {
+			"damage": target_unit.damage,
+			"type": target_unit.unit_data.get("proj", "melee"),
+			"speed": target_unit.unit_data.get("projectile_speed", 400.0),
+			"pierce": target_unit.unit_data.get("pierce", 0),
+			"bounce": target_unit.bounce_count,
+			"split": target_unit.split_count,
+			"chain": target_unit.unit_data.get("chain", 0),
+			"damageType": target_unit.unit_data.get("damageType", "physical"),
+			"effects": {}
+		}
+
+		# Fill the parrot's ammo queue
+		if source_unit.behavior.has_method("capture_bullet"):
+			# Fill to max_ammo
+			var max_ammo = source_unit.behavior.max_ammo
+			for i in range(max_ammo):
+				source_unit.behavior.capture_bullet(snapshot)
+			print("[TestRunner] Parrot ammo filled with mimicked bullets")
+		else:
+			printerr("[TestRunner] Source unit does not support capture_bullet")
+	else:
+		printerr("[TestRunner] Failed to find source or target for mimic action")
 
 func _spawn_random_trap(trap_id: String):
 	# Map test IDs to game IDs
