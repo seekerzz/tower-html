@@ -42,6 +42,10 @@ func get_wave_type(n: int) -> String:
 func start_wave_logic():
 	var wave = GameManager.wave
 
+	if GameManager.is_running_test and GameManager.current_test_scenario.has("enemies"):
+		_start_test_wave_logic(GameManager.current_test_scenario["enemies"])
+		return
+
 	if wave == 5:
 		spawn_boss_wave()
 		return
@@ -152,6 +156,56 @@ func spawn_boss_wave():
 	await get_tree().create_timer(1.0).timeout
 	_spawn_enemy_at_pos(right_point, boss2)
 	enemies_to_spawn -= 1
+
+	start_win_check_loop()
+
+func _start_test_wave_logic(enemies_config: Array):
+	enemies_to_spawn = 0
+	for entry in enemies_config:
+		enemies_to_spawn += entry.get("count", 1)
+
+	total_enemies_for_wave = enemies_to_spawn
+
+	var spawn_points = []
+	if GameManager.grid_manager:
+		spawn_points = GameManager.grid_manager.get_spawn_points()
+	if spawn_points.is_empty():
+		spawn_points.append(Vector2.ZERO)
+
+	for entry in enemies_config:
+		var type = entry.get("type", "slime")
+		var count = entry.get("count", 1)
+		var custom_speed = entry.get("speed")
+		var custom_hp = entry.get("hp")
+
+		# Validate type, fallback to slime if unknown
+		var real_type = type
+		if not Constants.ENEMY_VARIANTS.has(type):
+			real_type = "slime"
+
+		for i in range(count):
+			if !GameManager.is_wave_active: break
+
+			var pos = spawn_points.pick_random() + Vector2(randf_range(-20, 20), randf_range(-20, 20))
+
+			var enemy = ENEMY_SCENE.instantiate()
+			enemy.setup(real_type, GameManager.wave)
+			enemy.global_position = pos
+
+			# Apply overrides
+			if custom_speed != null:
+				enemy.speed = custom_speed
+				enemy.base_speed = custom_speed
+			if custom_hp != null:
+				enemy.max_hp = custom_hp
+				enemy.hp = custom_hp
+
+			add_child(enemy)
+
+			# Decrement global counter
+			enemies_to_spawn -= 1
+
+			await get_tree().create_timer(0.2).timeout
 
 	start_win_check_loop()
 
@@ -383,6 +437,11 @@ func _spawn_single_projectile(source_unit, pos, target, extra_stats):
 		effects["poison"] = 5.0 # Accumulates
 	elif unit_trait == "slow":
 		effects["slow"] = 2.0 # Duration
+		var level = source_unit.level if "level" in source_unit else 1
+		if level == 1:
+			effects["slow_factor"] = 0.6
+		else:
+			effects["slow_factor"] = 0.4
 	elif unit_trait == "freeze":
 		effects["freeze"] = 2.0 # Duration
 
