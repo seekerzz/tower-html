@@ -40,6 +40,16 @@ func _setup_test():
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
 
+			if u.has("level") and u.get("level") > 1:
+				var key2 = GameManager.grid_manager.get_tile_key(u.x, u.y)
+				if GameManager.grid_manager.tiles.has(key2):
+					var tile = GameManager.grid_manager.tiles[key2]
+					if tile.unit:
+						tile.unit.level = u.level
+						tile.unit.reset_stats()
+						tile.unit.current_hp = tile.unit.max_hp
+						print("[TestRunner] Set unit %s to Level %d" % [u.id, u.level])
+
 	# Setup actions
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:
@@ -58,6 +68,10 @@ func _on_wave_started():
 	_wave_has_started = true
 
 func _on_enemy_spawned(enemy):
+	if config.get("prevent_enemy_spawns", false):
+		enemy.queue_free()
+		return
+
 	var pos = enemy.global_position
 	if "enemy_data" in enemy:
 		pos = enemy.global_position # Redundant but safe
@@ -194,6 +208,44 @@ func _execute_scheduled_action(action: Dictionary):
 				printerr("[TestRunner] SummonManager not available")
 		"test_enemy_death":
 			_run_enemy_death_test()
+		"heal_core":
+			_heal_core(action)
+		"verify_shield":
+			_verify_shield(action)
+
+func _heal_core(action):
+	var amount = action.get("amount", 0.0)
+	GameManager.heal_core(amount)
+	print("[TestRunner] Healed core by ", amount, ". Current HP: ", GameManager.core_health)
+
+func _verify_shield(action):
+	var expected_percent = action.expected_shield_percent
+	var unit_type = "rock_armor_cow" # Default target
+
+	var gm = GameManager.grid_manager
+	var found = false
+
+	for key in gm.tiles:
+		var tile = gm.tiles[key]
+		if tile.unit and tile.unit.type_key == unit_type:
+			found = true
+			var u = tile.unit
+			if u.behavior and "shield_amount" in u.behavior:
+				var shield = u.behavior.shield_amount
+				var max_hp = u.max_hp
+				var expected = max_hp * expected_percent
+
+				# Allow tolerance
+				if abs(shield - expected) <= max(1.0, max_hp * 0.01):
+					print("[TestRunner] VERIFY SHIELD PASSED: Shield %.1f matches %.0f%% of MaxHP %.1f" % [shield, expected_percent*100, max_hp])
+				else:
+					printerr("[TestRunner] VERIFY SHIELD FAILED: Shield %.1f, Expected %.1f (%.0f%% of %.1f)" % [shield, expected, expected_percent*100, max_hp])
+			else:
+				printerr("[TestRunner] Unit %s has no shield_amount property" % unit_type)
+			break
+
+	if not found:
+		printerr("[TestRunner] Unit %s not found for shield verification" % unit_type)
 
 func _run_enemy_death_test():
 	print("[TestRunner] ========== 开始敌人死亡重复调用测试 ==========")

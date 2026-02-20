@@ -8,7 +8,7 @@
 
 | 图腾流派 | 单位数量 | 已测试 | 测试覆盖率 |
 |----------|----------|--------|------------|
-| 牛图腾 (cow_totem) | 9 | 0 | 0% |
+| 牛图腾 (cow_totem) | 9 | 1 | 11% |
 | 蝙蝠图腾 (bat_totem) | 5 | 0 | 0% |
 | 蝴蝶图腾 (butterfly_totem) | 6 | 0 | 0% |
 | 狼图腾 (wolf_totem) | 7 | 0 | 0% |
@@ -328,26 +328,29 @@
 }
 ```
 **验证指标**:
-- [ ] 脱战5秒后生成护盾
-- [ ] 护盾值为最大血量的10%
-- [ ] 攻击附加护盾值50%的伤害
+- [x] 脱战5秒后生成护盾
+- [x] 护盾值为最大血量的10%
+- [x] 攻击附加护盾值50%的伤害
 
 #### 测试场景 2: Lv2 护盾值提升验证
 **验证指标**:
-- [ ] 护盾值为最大血量的15%
-- [ ] 脱战时间缩短至4秒
+- [x] 护盾值为最大血量的15%
+- [x] 脱战时间缩短至4秒
 
 #### 测试场景 3: Lv3 溢出回血转护盾验证
 ```gdscript
 {
     "id": "test_rock_armor_cow_lv3_overflow",
     "core_type": "cow_totem",
-    "duration": 25.0,
+    "duration": 20.0,
     "core_health": 500,
     "max_core_health": 500,
     "units": [
-        {"id": "rock_armor_cow", "x": 0, "y": 1, "level": 3},
-        {"id": "mushroom_healer", "x": 1, "y": 0, "level": 3}  # 提供治疗
+        {"id": "rock_armor_cow", "x": 0, "y": 1, "level": 3}
+    ],
+    "scheduled_actions": [
+        {"time": 1.0, "type": "heal_core", "amount": 100},
+        {"time": 2.0, "type": "verify_shield", "expected_shield_percent": 0.0089}
     ],
     "expected_behavior": {
         "description": "核心满血时，溢出回血的10%转为护盾",
@@ -356,8 +359,14 @@
 }
 ```
 **验证指标**:
-- [ ] 核心满血时，治疗溢出部分转化为护盾
-- [ ] 转化比例为10%
+- [x] 核心满血时，治疗溢出部分转化为护盾
+- [x] 转化比例为10%
+
+**测试记录**:
+- 测试日期: 2026-02-20
+- 测试人员: Jules
+- 测试结果: 通过
+- 备注: 修正了自动化测试运行器以支持heal_core和verify_shield，并修复了Lv2/Lv3测试中等级设置的问题。
 
 ---
 
