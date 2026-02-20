@@ -1,7 +1,7 @@
 Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
 
 Game data loaded successfully.
-[Test] Launching: test_wolf_lv1_devour
+[Test] Launching: test_wolf_lv2_dual_inherit
 WARNING: res://src/Scenes/Game/MainGame.tscn:3 - ext_resource, invalid UID: uid://yevi5jhibo13 - using text path instead: res://src/Scripts/MainGame.gd
      at: load (scene/resources/resource_format_text.cpp:444)
      GDScript backtrace (most recent call first):
@@ -33,7 +33,7 @@ Generating tree border (Refactored)...
 [InventoryPanel] Creating dynamic ScrollContainer.
 [InventoryPanel] Connected to inventory_manager signal.
 [InventoryPanel] update_inventory called with data: [<null>, <null>, <null>, <null>, <null>, <null>, <null>, <null>]
-[TestRunner] Starting test: test_wolf_lv1_devour
+[TestRunner] Starting test: test_wolf_lv2_dual_inherit
 [TestRunner] Placing units...
 [TestRunner] Placing unit: wolf
 WARNING: Adding 'Label' as child to 'VisualHolder' will make owner 'Unit' inconsistent. Consider unsetting the owner beforehand.
@@ -50,6 +50,33 @@ WARNING: Adding 'StarLabel' as child to 'VisualHolder' will make owner 'Unit' in
          [1] setup (res://src/Scripts/Unit.gd:91)
          [2] place_unit (res://src/Scripts/GridManager.gd:796)
          [3] _setup_test (res://src/Scripts/Tests/AutomatedTestRunner.gd:49)
+[TestRunner] Placing unit: wolf2
+WARNING: Adding 'Label' as child to 'VisualHolder' will make owner 'Unit' inconsistent. Consider unsetting the owner beforehand.
+     at: add_child (scene/main/node.cpp:1696)
+     GDScript backtrace (most recent call first):
+         [0] _ensure_visual_hierarchy (res://src/Scripts/Unit.gd:136)
+         [1] setup (res://src/Scripts/Unit.gd:91)
+         [2] place_unit (res://src/Scripts/GridManager.gd:796)
+         [3] _setup_test (res://src/Scripts/Tests/AutomatedTestRunner.gd:49)
+WARNING: Adding 'StarLabel' as child to 'VisualHolder' will make owner 'Unit' inconsistent. Consider unsetting the owner beforehand.
+     at: add_child (scene/main/node.cpp:1696)
+     GDScript backtrace (most recent call first):
+         [0] _ensure_visual_hierarchy (res://src/Scripts/Unit.gd:136)
+         [1] setup (res://src/Scripts/Unit.gd:91)
+         [2] place_unit (res://src/Scripts/GridManager.gd:796)
+         [3] _setup_test (res://src/Scripts/Tests/AutomatedTestRunner.gd:49)
+WARNING: Adding 'Label' as child to 'VisualHolder' will make owner 'Unit' inconsistent. Consider unsetting the owner beforehand.
+     at: add_child (scene/main/node.cpp:1696)
+     GDScript backtrace (most recent call first):
+         [0] _ensure_visual_hierarchy (res://src/Scripts/Unit.gd:136)
+         [1] setup (res://src/Scripts/Unit.gd:91)
+         [2] _setup_test (res://src/Scripts/Tests/AutomatedTestRunner.gd:60)
+WARNING: Adding 'StarLabel' as child to 'VisualHolder' will make owner 'Unit' inconsistent. Consider unsetting the owner beforehand.
+     at: add_child (scene/main/node.cpp:1696)
+     GDScript backtrace (most recent call first):
+         [0] _ensure_visual_hierarchy (res://src/Scripts/Unit.gd:136)
+         [1] setup (res://src/Scripts/Unit.gd:91)
+         [2] _setup_test (res://src/Scripts/Tests/AutomatedTestRunner.gd:60)
 [TestRunner] Placing unit: squirrel
 WARNING: Adding 'Label' as child to 'VisualHolder' will make owner 'Unit' inconsistent. Consider unsetting the owner beforehand.
      at: add_child (scene/main/node.cpp:1696)
@@ -68,6 +95,8 @@ WARNING: Adding 'StarLabel' as child to 'VisualHolder' will make owner 'Unit' in
 [TestRunner] Units placed. Executing setup actions...
 [TestRunner] Executing action: devour
 [TestRunner] Action Devour: wolf -> squirrel
+[TestRunner] Executing action: merge
+[TestRunner] Action Merge: wolf -> wolf2
 [TestRunner] Setup actions done. Connecting signals...
 [TestRunner] Wave started. Waiting 1s...
 Process 0
@@ -101,7 +130,12 @@ Process 9
 [TestRunner] Time: 18
 [TestRunner] Time: 19
 [TestRunner] Time: 20
+[TestRunner] Time: 21
+[TestRunner] Time: 22
+[TestRunner] Time: 23
+[TestRunner] Time: 24
+[TestRunner] Time: 25
 [TestRunner] Finishing test. Reason: Duration Reached
-[TestRunner] Logs saved to user://test_logs/test_wolf_lv1_devour.json
+[TestRunner] Logs saved to user://test_logs/test_wolf_lv2_dual_inherit.json
 WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
      at: cleanup (core/object/object.cpp:2514)

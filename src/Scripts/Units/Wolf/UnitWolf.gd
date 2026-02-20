@@ -26,6 +26,7 @@ func _show_devour_ui():
         _auto_devour()
 
 func _on_devour_ui_closed():
+    if not is_inside_tree(): return
     has_selected_devour = true
     # If no target selected (consumed_data empty), auto select nearest
     if consumed_data.is_empty():
@@ -72,8 +73,9 @@ func _perform_devour(target: Unit):
         target.queue_free()
 
     # Visuals
-    GameManager.spawn_floating_text(global_position, "Devoured %s!" % u_name, Color.RED)
-    _play_devour_effect()
+    if is_inside_tree():
+        GameManager.spawn_floating_text(global_position, "Devoured %s!" % u_name, Color.RED)
+        _play_devour_effect()
 
 func _inherit_mechanics(target: Unit):
     consumed_mechanics.clear()
@@ -94,7 +96,8 @@ func _play_devour_effect():
     if effect_scene:
         var effect = effect_scene.instantiate()
         effect.global_position = global_position
-        get_tree().current_scene.add_child(effect)
+        if get_tree() and get_tree().current_scene:
+            get_tree().current_scene.add_child(effect)
 
 func _get_nearest_unit() -> Unit:
     if !GameManager.grid_manager: return null
@@ -114,6 +117,14 @@ func _get_nearest_unit() -> Unit:
 
 func can_upgrade() -> bool:
     return level < 2  # 最高2级
+
+func can_merge_with(other_unit) -> bool:
+    if not super.can_merge_with(other_unit): return false
+    # Wolf specific limit: cannot go above level 2
+    # Since merging increases level by 1, if current level is 1, it becomes 2. OK.
+    # If current level is 2, it becomes 3. NOT OK.
+    if level >= 2: return false
+    return true
 
 var base_damage = 0.0
 
