@@ -633,4 +633,44 @@ func get_test_config(case_id: String) -> Dictionary:
 				],
 				"description": "测试美杜莎石化Juice效果：动画冻结、碎裂图像、石块伤害"
 			}
+		# ========== 鸽子 (Pigeon) 测试 ==========
+		"test_pigeon_lv1_dodge":
+			return {
+				"id": "test_pigeon_lv1_dodge",
+				"core_type": "eagle_totem",
+				"duration": 30.0,
+				"units": [
+					{"id": "pigeon", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "attacker_enemy", "count": 10, "attack_speed": 2.0}
+				],
+				"description": "敌人攻击有12%概率Miss"
+			}
+		"test_pigeon_lv2_dodge_invuln":
+			return {
+				"id": "test_pigeon_lv2_dodge_invuln",
+				"core_type": "eagle_totem",
+				"duration": 30.0,
+				"units": [
+					{"id": "pigeon", "x": 0, "y": 1, "level": 2}
+				],
+				"enemies": [
+					{"type": "attacker_enemy", "count": 10, "attack_speed": 3.0}
+				],
+				"description": "闪避概率20%，闪避后0.3秒内无敌"
+			}
+		"test_pigeon_lv3_counter":
+			return {
+				"id": "test_pigeon_lv3_counter",
+				"core_type": "eagle_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "pigeon", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "attacker_enemy", "count": 5}
+				],
+				"description": "闪避时反击，反击可暴击并触发图腾回响"
+			}
 	return {}
