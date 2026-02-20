@@ -2087,10 +2087,10 @@
                     "damage": 75,
                     "hp": 270,
                     "cost": 140,
-                    "desc": "风刃连击: 每次攻击发射3道风刃，每道70%伤害",
+                    "desc": "风刃连击: 每次攻击发射3道风刃，每道80%伤害",
                     "mechanics": {
                         "wind_blade_count": 3,
-                        "damage_per_blade": 0.7
+                        "damage_per_blade": 0.8
                     }
                 },
                 "3": {

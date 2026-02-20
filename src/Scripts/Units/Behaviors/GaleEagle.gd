@@ -94,7 +94,7 @@ func _fire_wind_blades(target_pos: Vector2):
 func on_projectile_hit(target: Node2D, damage: float, projectile: Node2D):
 	if unit.level >= 3:
 		if randf() < 0.20:
-			_spawn_extra_wind_blade(target.global_position)
+			call_deferred("_spawn_extra_wind_blade", target.global_position)
 
 func _spawn_extra_wind_blade(pos: Vector2):
 	if not GameManager.combat_manager: return

@@ -40,6 +40,26 @@ func _setup_test():
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
 
+			# Apply stats overrides
+			key = GameManager.grid_manager.get_tile_key(u.x, u.y)
+			if GameManager.grid_manager.tiles.has(key):
+				var tile = GameManager.grid_manager.tiles[key]
+				if tile.unit:
+					var unit = tile.unit
+					if u.has("level"):
+						unit.level = u.level
+						if unit.behavior and unit.behavior.has_method("on_stats_updated"):
+							unit.behavior.on_stats_updated()
+					if u.has("attack"):
+						unit.damage = u.attack
+					if u.has("hp"):
+						unit.hp = u.hp
+						unit.max_hp = u.hp
+				else:
+					printerr("[TestRunner] No unit found at tile ", key, " after placement!")
+			else:
+				printerr("[TestRunner] Tile key not found: ", key)
+
 	# Setup actions
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:
