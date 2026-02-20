@@ -40,6 +40,15 @@ func _setup_test():
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
 
+			if u.has("level") and u.level > 1:
+				# key is already defined in the loop scope
+				if GameManager.grid_manager.tiles.has(key):
+					var tile = GameManager.grid_manager.tiles[key]
+					if tile.unit:
+						tile.unit.level = u.level
+						tile.unit.reset_stats()
+						print("[TestRunner] Set unit ", u.id, " level to ", u.level)
+
 	# Setup actions
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:
@@ -49,6 +58,8 @@ func _setup_test():
 	GameManager.wave_started.connect(_on_wave_started)
 	GameManager.enemy_spawned.connect(_on_enemy_spawned)
 	GameManager.enemy_hit.connect(_on_enemy_hit)
+	GameManager.projectile_crit.connect(_on_projectile_crit)
+	GameManager.totem_echo_triggered.connect(_on_totem_echo_triggered)
 
 	GameManager.start_wave()
 	# GameManager.wave_ended is only emitted after UI interaction, which we skip in headless.
@@ -85,6 +96,37 @@ func _on_enemy_hit(enemy, source, amount):
 		"damage": amount,
 		"target_hp_after": enemy.hp
 	})
+
+func _on_projectile_crit(source_unit, target, damage):
+	var source_id = "unknown"
+	if source_unit:
+		if source_unit is Node:
+			source_id = source_unit.name
+		if "type_key" in source_unit:
+			source_id = source_unit.type_key
+
+	_frame_events.append({
+		"type": "crit",
+		"source": source_id,
+		"damage": damage,
+		"target_id": target.get_instance_id() if target else -1
+	})
+	print("[TestRunner] CRIT! Source: ", source_id, " Damage: ", damage)
+
+func _on_totem_echo_triggered(source_unit, damage):
+	var source_id = "unknown"
+	if source_unit:
+		if source_unit is Node:
+			source_id = source_unit.name
+		if "type_key" in source_unit:
+			source_id = source_unit.type_key
+
+	_frame_events.append({
+		"type": "totem_echo",
+		"source": source_id,
+		"damage": damage
+	})
+	print("[TestRunner] TOTEM ECHO! Source: ", source_id, " Damage: ", damage)
 
 func _execute_setup_action(action: Dictionary):
 	match action.type:
