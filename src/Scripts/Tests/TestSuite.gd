@@ -633,4 +633,47 @@ func get_test_config(case_id: String) -> Dictionary:
 				],
 				"description": "测试美杜莎石化Juice效果：动画冻结、碎裂图像、石块伤害"
 			}
+		"test_dragon_lv1_blackhole":
+			return {
+				"id": "test_dragon_lv1_blackhole",
+				"core_type": "butterfly_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "dragon", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "slime", "count": 5, "positions": [{"x": 2, "y": 2}, {"x": 3, "y": 2}, {"x": 2, "y": 3}]}
+				],
+				"scheduled_actions": [
+					{"time": 5.0, "type": "skill", "source": "dragon", "target": {"x": 2, "y": 2}}
+				],
+				"expected_behavior": "黑洞控制持续4秒，吸入敌人"
+			}
+		"test_dragon_lv2_range":
+			return {
+				"id": "test_dragon_lv2_range",
+				"core_type": "butterfly_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "dragon", "x": 0, "y": 1, "level": 2}
+				],
+				"expected_behavior": "黑洞范围+20%，持续时间提升至6秒"
+			}
+		"test_dragon_lv3_meteor":
+			return {
+				"id": "test_dragon_lv3_meteor",
+				"core_type": "butterfly_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "dragon", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "slime", "count": 5, "hp": 100}
+				],
+				"scheduled_actions": [
+					{"time": 5.0, "type": "skill", "source": "dragon", "target": {"x": 2, "y": 2}},
+					{"time": 11.0, "type": "verify_damage"}
+				],
+				"expected_behavior": "黑洞结束时根据吸入敌人数量造成伤害"
+			}
 	return {}
