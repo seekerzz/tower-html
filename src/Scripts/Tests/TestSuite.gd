@@ -583,6 +583,52 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "storm_eagle", "x": 0, "y": 1}]
 			}
+		"test_magpie_lv1_steal":
+			return {
+				"id": "test_magpie_lv1_steal",
+				"core_type": "eagle_totem",
+				"duration": 30.0,
+				"core_health": 100000,
+				"max_core_health": 100000,
+				"units": [
+					{"id": "magpie", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 10, "attack": 20}
+				],
+				"expected_behavior": "攻击有15%概率偷取敌人属性"
+			}
+		"test_magpie_lv2_upgrade":
+			return {
+				"id": "test_magpie_lv2_upgrade",
+				"core_type": "eagle_totem",
+				"duration": 30.0,
+				"core_health": 100000,
+				"max_core_health": 100000,
+				"units": [
+					{"id": "magpie", "x": 0, "y": 1, "level": 2}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 10, "attack": 20}
+				],
+				"expected_behavior": "Lv2偷取概率25%且效果提升50%"
+			}
+		"test_magpie_lv3_reward":
+			return {
+				"id": "test_magpie_lv3_reward",
+				"core_type": "eagle_totem",
+				"duration": 30.0,
+				"core_health": 100000,
+				"max_core_health": 100000,
+				"initial_gold": 100,
+				"units": [
+					{"id": "magpie", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 10}
+				],
+				"expected_behavior": "偷取成功时随机给核心回复10HP或10金币"
+			}
 		# ========== 流血和吸血系统测试 ==========
 		"test_bleed_lifesteal_system":
 			return {

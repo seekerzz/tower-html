@@ -41,6 +41,12 @@ func _setup_test():
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
 
 	# Setup actions
+	# Apply Core Health overrides from config
+	if config.has("max_core_health"):
+		GameManager.max_core_health = config["max_core_health"]
+	if config.has("core_health"):
+		GameManager.core_health = config["core_health"]
+
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:
 			_execute_setup_action(action)
