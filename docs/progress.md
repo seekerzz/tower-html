@@ -23,6 +23,7 @@
 | P2-03 | completed | 狼的吞噬继承系统 PR#453 | 2026-02-20 |
 | P2-04 | completed | 石化石块系统完整实现 PR#454 | 2026-02-20 |
 | P2-05 | completed | Test framework expansion PR#458 | 2026-02-20 |
+| TEST-VIPER-snowman | completed | 添加雪人Lv1-Lv3自动化测试 | 2026-02-20 |
 | P0-01 | completed | Implemented SoulManager, MechanicWolfTotem, UI and Hooks. | 2024-05-23T12:00:00 |
 | P0-02 | completed | AggroManager, TauntBehavior, YakGuardian PR#441 | 2026-02-19T07:32 |
 | P0-03 | completed | SummonedUnit, SummonManager, SummonSystem PR#442 | 2026-02-19T07:40 |

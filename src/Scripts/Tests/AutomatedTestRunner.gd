@@ -194,6 +194,17 @@ func _execute_scheduled_action(action: Dictionary):
 				printerr("[TestRunner] SummonManager not available")
 		"test_enemy_death":
 			_run_enemy_death_test()
+		"place_trap":
+			var trap_id = action.trap_id
+			# Map test ID to game ID if needed
+			if trap_id == "freeze_trap": trap_id = "snowball_trap"
+
+			var pos_dict = action.position
+			var grid_pos = Vector2i(pos_dict.x, pos_dict.y)
+
+			if GameManager.grid_manager:
+				GameManager.grid_manager.spawn_trap_custom(grid_pos, trap_id)
+				print("[TestRunner] Placed trap ", trap_id, " at ", grid_pos)
 
 func _run_enemy_death_test():
 	print("[TestRunner] ========== 开始敌人死亡重复调用测试 ==========")

@@ -633,4 +633,50 @@ func get_test_config(case_id: String) -> Dictionary:
 				],
 				"description": "测试美杜莎石化Juice效果：动画冻结、碎裂图像、石块伤害"
 			}
+		# ========== 雪人测试 ==========
+		"test_snowman_lv1_freeze":
+			return {
+				"id": "test_snowman_lv1_freeze",
+				"core_type": "viper_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "snowman", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "path": [{"x": 2, "y": 0}], "count": 3}
+				],
+				"scheduled_actions": [
+					{"time": 2.0, "type": "place_trap", "trap_id": "freeze_trap", "position": {"x": 2, "y": 0}}
+				],
+				"expected_behavior": "制造冰冻陷阱，延迟1.5秒后触发冰冻，范围内敌人被冻结2秒"
+			}
+		"test_snowman_lv2_freeze":
+			return {
+				"id": "test_snowman_lv2_freeze",
+				"core_type": "viper_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "snowman", "x": 0, "y": 1, "level": 2}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "path": [{"x": 2, "y": 0}], "count": 3}
+				],
+				"scheduled_actions": [
+					{"time": 2.0, "type": "place_trap", "trap_id": "freeze_trap", "position": {"x": 2, "y": 0}}
+				],
+				"expected_behavior": "冻结时间提升至3秒"
+			}
+		"test_snowman_lv3_ice_poison":
+			return {
+				"id": "test_snowman_lv3_ice_poison",
+				"core_type": "viper_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "snowman", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "poisoned_enemy", "hp": 100, "debuffs": [{"type": "poison", "stacks": 5}], "count": 3}
+				],
+				"expected_behavior": "冰冻结束时敌人受到Debuff层数伤害，冻结结束时敌人受到5层中毒的伤害"
+			}
 	return {}
