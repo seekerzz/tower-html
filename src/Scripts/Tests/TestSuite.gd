@@ -633,4 +633,43 @@ func get_test_config(case_id: String) -> Dictionary:
 				],
 				"description": "测试美杜莎石化Juice效果：动画冻结、碎裂图像、石块伤害"
 			}
+		"test_medusa_lv1_petrify":
+			return {
+				"id": "test_medusa_lv1_petrify",
+				"core_type": "viper_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "medusa", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3}
+				],
+				"expected_behavior": "每5秒石化最近敌人1秒，石化时敌人变为石块"
+			}
+		"test_medusa_lv2_petrify":
+			return {
+				"id": "test_medusa_lv2_petrify",
+				"core_type": "viper_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "medusa", "x": 0, "y": 1, "level": 2}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3}
+				],
+				"expected_behavior": "石化持续时间增加"
+			}
+		"test_medusa_lv3_damage":
+			return {
+				"id": "test_medusa_lv3_damage",
+				"core_type": "viper_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "medusa", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "high_hp_enemy", "count": 1, "hp": 500}
+				],
+				"expected_behavior": "石块额外造成敌人MaxHP的伤害，石化结束时石块对敌人造成500点伤害"
+			}
 	return {}
