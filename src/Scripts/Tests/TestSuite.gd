@@ -410,6 +410,46 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "lion", "x": 0, "y": 1}]
 			}
+		"test_lion_lv1_shockwave":
+			return {
+				"id": "test_lion_lv1_shockwave",
+				"core_type": "wolf_totem",
+				"duration": 15.0,
+				"units": [
+					{"id": "lion", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5, "positions": [{"x": 2, "y": 1}, {"x": -1, "y": 1}, {"x": 0, "y": 2}]}
+				],
+				"expected_behavior": "攻击变为圆形冲击波，对范围内所有敌人造成伤害"
+			}
+		"test_lion_lv2_mana":
+			return {
+				"id": "test_lion_lv2_mana",
+				"core_type": "wolf_totem",
+				"duration": 20.0,
+				"initial_mp": 500,
+				"units": [
+					{"id": "lion", "x": 0, "y": 1, "level": 2}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5, "positions": [{"x": 2, "y": 0}, {"x": 2, "y": 1}, {"x": 2, "y": 2}]}
+				],
+				"expected_behavior": "冲击波命中敌人时，所有友方恢复5点法力；命中3个以上额外恢复10点"
+			}
+		"test_lion_lv3_fear":
+			return {
+				"id": "test_lion_lv3_fear",
+				"core_type": "wolf_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "lion", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3}
+				],
+				"expected_behavior": "冲击波附加1秒恐惧效果，敌人朝随机方向逃跑"
+			}
 		# ========== 眼镜蛇图腾流派单位测试 (7个单位) ==========
 		"test_viper_totem_spider":
 			return {
