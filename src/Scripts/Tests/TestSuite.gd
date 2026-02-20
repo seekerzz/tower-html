@@ -633,4 +633,29 @@ func get_test_config(case_id: String) -> Dictionary:
 				],
 				"description": "测试美杜莎石化Juice效果：动画冻结、碎裂图像、石块伤害"
 			}
+		"test_peacock_lv1_display":
+			return {
+				"id": "test_peacock_lv1_display",
+				"core_type": "eagle_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "peacock", "x": 0, "y": 1, "level": 1},
+					{"id": "squirrel", "x": 1, "y": 0}
+				],
+				"expected_behavior": "每5秒展开尾屏，范围内友军攻速+10%"
+			}
+		"test_peacock_lv3_inspire":
+			return {
+				"id": "test_peacock_lv3_inspire",
+				"core_type": "eagle_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "peacock", "x": 0, "y": 1, "level": 3},
+					{"id": "squirrel", "x": 1, "y": 0}
+				],
+				"enemies": [
+					{"type": "buffed_enemy", "buffs": [{"type": "armor", "stacks": 3}], "count": 3}
+				],
+				"expected_behavior": "范围内友军攻击附带驱散效果"
+			}
 	return {}
