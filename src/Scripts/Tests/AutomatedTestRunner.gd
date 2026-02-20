@@ -40,19 +40,94 @@ func _setup_test():
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
 
+			# Apply unit overrides
+			if GameManager.grid_manager:
+				# Reuse key if needed, or get it again without var
+				var tile_key = GameManager.grid_manager.get_tile_key(u.x, u.y)
+				if GameManager.grid_manager.tiles.has(tile_key):
+					var tile = GameManager.grid_manager.tiles[tile_key]
+					if tile.unit:
+						if u.has("level"):
+							tile.unit.level = u.level
+							tile.unit.reset_stats()
+
+						if u.has("max_hp"):
+							tile.unit.max_hp = u.max_hp
+
+						if u.has("hp"):
+							tile.unit.current_hp = u.hp
+						elif u.has("max_hp"):
+							tile.unit.current_hp = u.max_hp
+
 	# Setup actions
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:
 			_execute_setup_action(action)
+
+	# Spawn Custom Enemies if configured
+	if config.has("enemies"):
+		_spawn_custom_enemies(config["enemies"])
 
 	GameManager.game_over.connect(_on_game_over)
 	GameManager.wave_started.connect(_on_wave_started)
 	GameManager.enemy_spawned.connect(_on_enemy_spawned)
 	GameManager.enemy_hit.connect(_on_enemy_hit)
 
-	GameManager.start_wave()
+	if config.has("start_wave_index"):
+		GameManager.start_wave()
 	# GameManager.wave_ended is only emitted after UI interaction, which we skip in headless.
 	# So we monitor is_wave_active in _process instead.
+
+func _spawn_custom_enemies(enemies_config: Array):
+	print("[TestRunner] Spawning custom enemies...")
+	var enemy_scene = load("res://src/Scenes/Game/Enemy.tscn")
+	if not enemy_scene:
+		printerr("[TestRunner] Failed to load Enemy.tscn")
+		return
+
+	var spawned_count = 0
+	for entry in enemies_config:
+		var type = entry.get("type", "basic_enemy")
+		var count = entry.get("count", 1)
+		var hp = entry.get("hp", -1)
+		var debuffs = entry.get("debuffs", [])
+
+		for i in range(count):
+			var enemy = enemy_scene.instantiate()
+
+			# Determine spawn position
+			var pos = Vector2(randf_range(-100, 100), randf_range(-100, 100)) # Default near center
+			if entry.has("positions") and entry["positions"].size() > i:
+				var p = entry["positions"][i]
+				pos = Vector2(p.x * 60, p.y * 60) # Grid to world approx
+				if GameManager.grid_manager:
+					pos = GameManager.grid_manager.get_world_pos_from_grid(Vector2i(p.x, p.y))
+
+			enemy.global_position = pos
+
+			# Setup
+			# Map "basic_enemy" to game types if needed, or assume exact match
+			# For test_vampire_bat, types like "basic_enemy" might need mapping to "slime" etc. if "basic_enemy" isn't a valid key.
+			# Let's assume "slime" is the basic enemy if not specified.
+			var real_type = type
+			if type == "basic_enemy": real_type = "slime"
+
+			enemy.setup(real_type, 1)
+
+			if hp > 0:
+				enemy.hp = hp
+				enemy.max_hp = hp
+
+			get_tree().current_scene.add_child(enemy)
+
+			# Apply debuffs after adding to tree (so ready is called if needed)
+			for d in debuffs:
+				if enemy.has_method("apply_debuff"):
+					enemy.apply_debuff(d.type, d.stacks)
+
+			spawned_count += 1
+
+	print("[TestRunner] Spawned ", spawned_count, " custom enemies.")
 
 func _on_wave_started():
 	_wave_has_started = true
@@ -172,6 +247,57 @@ func _execute_scheduled_action(action: Dictionary):
 					tile.unit.execute_skill_at(target_pos)
 					print("[TestRunner] Executed skill for ", source_id, " at ", target_pos)
 					break
+		"damage_unit":
+			var unit_id = action.unit_id
+			var amount = action.amount
+			var gm = GameManager.grid_manager
+			for key in gm.tiles:
+				var tile = gm.tiles[key]
+				if tile.unit and tile.unit.type_key == unit_id:
+					tile.unit.take_damage(amount)
+					print("[TestRunner] Damaged unit ", unit_id, " by ", amount, ". New HP: ", tile.unit.current_hp)
+					break
+		"record_lifesteal":
+			var source_id = action.get("source_unit_id", action.get("unit_id")) # Handle both keys if needed
+			var label = action.get("label", "lifesteal")
+			var gm = GameManager.grid_manager
+			for key in gm.tiles:
+				var tile = gm.tiles[key]
+				if tile.unit and tile.unit.type_key == source_id:
+					var val = 0.0
+					if tile.unit.behavior and tile.unit.behavior.has_method("get_current_lifesteal"):
+						val = tile.unit.behavior.get_current_lifesteal()
+					print("[TestRunner] RECORD: ", label, " = ", val)
+					_frame_events.append({"type": "record", "label": label, "value": val, "category": "lifesteal"})
+					break
+		"record_damage":
+			var unit_id = action.get("unit_id")
+			var label = action.get("label", "damage")
+			# Find last hit event from this unit
+			var last_hit = null
+			for i in range(logs.size() - 1, -1, -1):
+				var frame_log = logs[i]
+				if frame_log.has("events"):
+					for e in frame_log["events"]:
+						if e.type == "hit" and e.source == unit_id:
+							last_hit = e
+							break
+				if last_hit: break
+
+			# Also check current frame events
+			for e in _frame_events:
+				if e.type == "hit" and e.source == unit_id:
+					last_hit = e # Prefer most recent
+
+			var val = 0.0
+			if last_hit:
+				val = last_hit.damage
+				print("[TestRunner] RECORD: ", label, " = ", val, " (from hit event)")
+			else:
+				print("[TestRunner] RECORD: ", label, " = NOT_FOUND")
+
+			_frame_events.append({"type": "record", "label": label, "value": val, "category": "damage"})
+
 		"summon_test":
 			var summon_type = action.summon_type
 			var pos_dict = action.position

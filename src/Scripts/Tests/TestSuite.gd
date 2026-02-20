@@ -311,6 +311,78 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "blood_ancestor", "x": 0, "y": 1}]
 			}
+		# TEST-BAT-vampire_bat 吸血蝠自动化测试
+		"test_vampire_bat_lv1_lifesteal":
+			return {
+				"id": "test_vampire_bat_lv1_lifesteal",
+				"core_type": "bat_totem",
+				"duration": 10.0,
+				"units": [
+					{"id": "vampire_bat", "x": 0, "y": 1, "level": 1, "hp": 200, "max_hp": 200}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5, "hp": 100}
+				],
+				"scheduled_actions": [
+					{"time": 2.0, "type": "record_lifesteal", "source_unit_id": "vampire_bat", "label": "full_hp"},
+					{"time": 5.0, "type": "damage_unit", "unit_id": "vampire_bat", "amount": 150},
+					{"time": 8.0, "type": "record_lifesteal", "source_unit_id": "vampire_bat", "label": "low_hp"}
+				],
+				"expected_behavior": "生命值越低吸血越高，最低生命时+50%吸血"
+			}
+		"test_vampire_bat_lv2_lifesteal":
+			return {
+				"id": "test_vampire_bat_lv2_lifesteal",
+				"core_type": "bat_totem",
+				"duration": 10.0,
+				"units": [
+					{"id": "vampire_bat", "x": 0, "y": 1, "level": 2, "hp": 300, "max_hp": 300}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5, "hp": 100}
+				],
+				"scheduled_actions": [
+					{"time": 2.0, "type": "record_lifesteal", "source_unit_id": "vampire_bat", "label": "full_hp"}
+				],
+				"expected_behavior": "基础吸血+20%，生命值越低吸血越高"
+			}
+		"test_vampire_bat_lv3_bleed_damage":
+			return {
+				"id": "test_vampire_bat_lv3_bleed_damage",
+				"core_type": "bat_totem",
+				"start_wave_index": 1,
+				"initial_gold": 10000, # High gold just in case
+				"core_health": 10000, # Prevent Game Over
+				"duration": 25.0,
+				"units": [
+					{"id": "vampire_bat", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3, "hp": 150, "debuffs": [{"type": "bleed", "stacks": 1}], "positions": [{"x": 0, "y": 0}, {"x": 1, "y": 1}, {"x": -1, "y": 1}]},
+					{"type": "basic_enemy", "count": 2, "hp": 150, "debuffs": [{"type": "bleed", "stacks": 5}], "positions": [{"x": 0, "y": 2}, {"x": 1, "y": 0}]}
+				],
+				"scheduled_actions": [
+					{"time": 2.0, "type": "record_damage", "unit_id": "vampire_bat", "label": "bleed_1"},
+					{"time": 5.0, "type": "record_damage", "unit_id": "vampire_bat", "label": "bleed_5"}
+				],
+				"expected_behavior": "根据敌人流血层数增加伤害，每层流血增加一定比例伤害"
+			}
+		"test_vampire_bat_lifesteal_cap":
+			return {
+				"id": "test_vampire_bat_lifesteal_cap",
+				"core_type": "bat_totem",
+				"duration": 10.0,
+				"units": [
+					{"id": "vampire_bat", "x": 0, "y": 1, "level": 3, "hp": 10, "max_hp": 450}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5, "hp": 100, "positions": [{"x": 0, "y": 0}, {"x": 1, "y": 0}]}
+				],
+				"scheduled_actions": [
+					{"time": 2.0, "type": "record_lifesteal", "unit_id": "vampire_bat", "label": "capped_lifesteal"}
+				],
+				"expected_behavior": "吸血总量不超过造成伤害的一定比例"
+			}
 		# ========== 蝴蝶图腾流派单位测试 (6个单位) ==========
 		"test_butterfly_totem_torch":
 			return {
