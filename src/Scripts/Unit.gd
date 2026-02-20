@@ -69,6 +69,7 @@ const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 signal unit_clicked(unit)
 signal attack_performed(target_node)
 signal merged(consumed_unit)
+signal damage_taken(amount, source)
 
 func _start_skill_cooldown(base_duration: float):
 	if GameManager.cheat_fast_cooldown and base_duration > 1.0:
@@ -162,6 +163,7 @@ func take_damage(amount: float, source_enemy = null):
 	amount = behavior.on_damage_taken(amount, source_enemy)
 
 	current_hp = max(0, current_hp - amount)
+	damage_taken.emit(amount, source_enemy)
 	GameManager.damage_core(amount)
 
 	if visual_holder:
@@ -743,6 +745,15 @@ func _draw():
 
 		var rect = Rect2(-size / 2, size)
 		draw_rect(rect, Color.WHITE, false, 4.0)
+
+func get_all_player_units() -> Array:
+	var units = []
+	if GameManager.grid_manager:
+		for key in GameManager.grid_manager.tiles:
+			var tile = GameManager.grid_manager.tiles[key]
+			if tile.unit and is_instance_valid(tile.unit) and not (tile.unit in units):
+				units.append(tile.unit)
+	return units
 
 func _get_neighbor_units() -> Array:
 	var list = []

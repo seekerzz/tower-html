@@ -2007,6 +2007,45 @@
             "type_key": "yak_guardian",
             "faction": "cow_totem"
         },
+        "ascetic": {
+            "name": "苦修者",
+            "icon": "🙏",
+            "size": [
+                1,
+                1
+            ],
+            "range": 0,
+            "atkSpeed": 1.0,
+            "manaCost": 0,
+            "attackType": "none",
+            "crit_rate": 0.0,
+            "crit_dmg": 1.5,
+            "levels": {
+                "1": {
+                    "damage": 0,
+                    "hp": 400,
+                    "cost": 50,
+                    "desc": "伤害转化: 连接1个友军，受击回蓝12%",
+                    "mechanics": {}
+                },
+                "2": {
+                    "damage": 0,
+                    "hp": 600,
+                    "cost": 100,
+                    "desc": "伤害转化: 连接1个友军，受击回蓝18%",
+                    "mechanics": {}
+                },
+                "3": {
+                    "damage": 0,
+                    "hp": 900,
+                    "cost": 200,
+                    "desc": "伤害转化: 连接2个友军，受击回蓝18%",
+                    "mechanics": {}
+                }
+            },
+            "type_key": "ascetic",
+            "faction": "cow_totem"
+        },
         "storm_eagle": {
             "name": "风暴鹰",
             "icon": "⚡",
