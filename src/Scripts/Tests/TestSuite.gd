@@ -204,6 +204,33 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "hedgehog", "x": 0, "y": 1}]
 			}
+		"test_hedgehog_lv1_reflect":
+			return {
+				"id": "test_hedgehog_lv1_reflect",
+				"core_type": "cow_totem",
+				"duration": 30.0,
+				"units": [
+					{"id": "hedgehog", "x": 0, "y": 1, "level": 1, "taunt": true}
+				],
+				"enemies": [
+					{"type": "attacker_enemy", "attack_damage": 20, "count": 5}
+				],
+				"expected_behavior": "30%概率反弹伤害，反弹伤害等于敌人造成的伤害"
+			}
+		"test_hedgehog_lv3_spikes":
+			return {
+				"id": "test_hedgehog_lv3_spikes",
+				"core_type": "cow_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "hedgehog", "x": 0, "y": 1, "level": 3, "taunt": true}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 10, "positions": [{"x": 1, "y": 1}, {"x": -1, "y": 2}, {"x": -1, "y": 0}]},
+					{"type": "attacker_enemy", "count": 5}
+				],
+				"expected_behavior": "反伤时向周围发射3枚尖刺"
+			}
 		"test_cow_totem_yak_guardian":
 			return {
 				"id": "test_cow_totem_yak_guardian",

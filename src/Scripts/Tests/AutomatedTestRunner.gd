@@ -40,10 +40,38 @@ func _setup_test():
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
 
+			# Apply level if specified
+			if u.has("level") and u.level > 1:
+				print("[TestRunner] Applying level ", u.level, " to ", u.id)
+				var level_key = GameManager.grid_manager.get_tile_key(u.x, u.y)
+				if GameManager.grid_manager.tiles.has(level_key):
+					var tile = GameManager.grid_manager.tiles[level_key]
+					if tile.unit:
+						tile.unit.level = u.level
+						tile.unit.reset_stats()
+						if tile.unit.behavior:
+							tile.unit.behavior.on_setup()
+						print("[TestRunner] Set unit ", u.id, " to level ", u.level)
+
+			# Apply taunt if specified (for testing on_damage_taken)
+			if u.has("taunt") and u.taunt:
+				var taunt_key = GameManager.grid_manager.get_tile_key(u.x, u.y)
+				if GameManager.grid_manager.tiles.has(taunt_key):
+					var tile = GameManager.grid_manager.tiles[taunt_key]
+					if tile.unit:
+						# Force taunt via AggroManager
+						if AggroManager:
+							AggroManager.apply_taunt(tile.unit, 500.0, -1)
+							print("[TestRunner] Applied forced taunt to ", u.id)
+
 	# Setup actions
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:
 			_execute_setup_action(action)
+
+	# Spawn Enemies (Custom Test Logic)
+	if config.has("enemies"):
+		_setup_test_enemies(config["enemies"])
 
 	GameManager.game_over.connect(_on_game_over)
 	GameManager.wave_started.connect(_on_wave_started)
@@ -53,6 +81,58 @@ func _setup_test():
 	GameManager.start_wave()
 	# GameManager.wave_ended is only emitted after UI interaction, which we skip in headless.
 	# So we monitor is_wave_active in _process instead.
+
+func _setup_test_enemies(enemies_config: Array):
+	if !GameManager.combat_manager:
+		printerr("[TestRunner] CombatManager not ready!")
+		return
+
+	print("[TestRunner] Spawning test enemies from config...")
+
+	for conf in enemies_config:
+		var type = conf.get("type", "slime")
+		var real_type = type
+		# Map test types to game types
+		if type == "attacker_enemy": real_type = "wolf" # Use Wolf as attacker
+		if type == "basic_enemy": real_type = "slime"
+
+		var count = conf.get("count", 1)
+		var positions = conf.get("positions", [])
+		var damage = conf.get("attack_damage")
+
+		for i in range(count):
+			var pos = Vector2.ZERO
+			if positions.size() > 0:
+				var p = positions[i % positions.size()]
+				if GameManager.grid_manager:
+					pos = GameManager.grid_manager.get_world_pos_from_grid(Vector2i(p.x, p.y))
+				else:
+					pos = Vector2(p.x * 60, p.y * 60)
+			else:
+				# Random position near center if not specified
+				pos = Vector2(randf_range(-100, 100), randf_range(-100, 100)) + Vector2(640, 360)
+				if GameManager.grid_manager:
+					var sp = GameManager.grid_manager.get_spawn_points()
+					if sp.size() > 0: pos = sp.pick_random()
+
+			_spawn_single_test_enemy(real_type, pos, damage)
+
+func _spawn_single_test_enemy(type_key, pos, damage_override):
+	var enemy_scene = load("res://src/Scenes/Game/Enemy.tscn")
+	var enemy = enemy_scene.instantiate()
+	enemy.setup(type_key, 1) # Force wave 1 stats
+	enemy.global_position = pos
+
+	if damage_override != null:
+		# Override damage in enemy_data
+		enemy.enemy_data = enemy.enemy_data.duplicate()
+		enemy.enemy_data.dmg = damage_override
+		# Re-init behavior with new data
+		if enemy.behavior:
+			enemy.behavior.init(enemy, enemy.enemy_data)
+
+	GameManager.combat_manager.add_child(enemy)
+	print("[TestRunner] Spawned custom enemy: ", type_key, " at ", pos, " Dmg: ", damage_override)
 
 func _on_wave_started():
 	_wave_has_started = true
