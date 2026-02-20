@@ -93,6 +93,17 @@ func _execute_setup_action(action: Dictionary):
 				_spawn_random_trap(action.trap_id)
 		"apply_buff":
 			_apply_buff_to_unit(action.target_unit_id, action.buff_id)
+		"set_unit_level":
+			var gm = GameManager.grid_manager
+			var key = gm.get_tile_key(action.x, action.y)
+			if gm.tiles.has(key):
+				var tile = gm.tiles[key]
+				if tile.unit:
+					tile.unit.level = action.level
+					tile.unit.reset_stats()
+					print("[TestRunner] Set unit at (%d,%d) to level %d" % [action.x, action.y, action.level])
+					# We should recalculate buffs for the whole grid to propagate level-dependent buffs
+					gm.recalculate_buffs()
 
 func _spawn_random_trap(trap_id: String):
 	# Map test IDs to game IDs
@@ -194,6 +205,16 @@ func _execute_scheduled_action(action: Dictionary):
 				printerr("[TestRunner] SummonManager not available")
 		"test_enemy_death":
 			_run_enemy_death_test()
+		"trigger_signal":
+			if action.signal_name == "totem_echo_triggered":
+				var source_id = action.source_id
+				var gm = GameManager.grid_manager
+				for key in gm.tiles:
+					var tile = gm.tiles[key]
+					if tile.unit and tile.unit.type_key == source_id:
+						GameManager.totem_echo_triggered.emit(tile.unit, 10.0)
+						print("[TestRunner] Manually triggered totem_echo for ", source_id)
+						break
 
 func _run_enemy_death_test():
 	print("[TestRunner] ========== 开始敌人死亡重复调用测试 ==========")
@@ -289,7 +310,9 @@ func _log_status():
 					"grid_x": tile.x,
 					"grid_y": tile.y,
 					"level": u.level,
-					"damage_stat": u.damage # Base damage stat
+					"damage_stat": u.damage, # Base damage stat
+					"crit_rate": u.crit_rate,
+					"atk_speed": u.atk_speed
 				})
 
 	var enemies_info = []

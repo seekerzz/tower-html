@@ -633,4 +633,70 @@ func get_test_config(case_id: String) -> Dictionary:
 				],
 				"description": "测试美杜莎石化Juice效果：动画冻结、碎裂图像、石块伤害"
 			}
+		"test_owl_lv1_insight":
+			return {
+				"id": "test_owl_lv1_insight",
+				"core_type": "eagle_totem",
+				"duration": 5.0,
+				"units": [
+					{"id": "owl", "x": 0, "y": 1, "level": 1},
+					{"id": "squirrel", "x": 1, "y": 0}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 1}
+				],
+				"expected_behavior": "增加相邻友军12%暴击率"
+			}
+		"test_owl_lv2_insight":
+			return {
+				"id": "test_owl_lv2_insight",
+				"core_type": "eagle_totem",
+				"duration": 5.0,
+				"units": [
+					{"id": "owl", "x": 0, "y": 1},
+					{"id": "squirrel", "x": 0, "y": 3}
+				],
+				"setup_actions": [
+					{
+						"type": "set_unit_level",
+						"x": 0,
+						"y": 1,
+						"level": 2
+					}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 1}
+				],
+				"expected_behavior": "增加范围2格内的友军20%暴击率"
+			}
+		"test_owl_lv3_echo":
+			return {
+				"id": "test_owl_lv3_echo",
+				"core_type": "eagle_totem",
+				"duration": 5.0,
+				"units": [
+					{"id": "owl", "x": 0, "y": 1},
+					{"id": "squirrel", "x": 1, "y": 0}
+				],
+				"setup_actions": [
+					{
+						"type": "set_unit_level",
+						"x": 0,
+						"y": 1,
+						"level": 3
+					}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 1}
+				],
+				"scheduled_actions": [
+					{
+						"time": 1.0,
+						"type": "trigger_signal",
+						"signal_name": "totem_echo_triggered",
+						"source_id": "squirrel"
+					}
+				],
+				"expected_behavior": "相邻友军触发图腾回响时攻速+15%持续3秒"
+			}
 	return {}
