@@ -57,3 +57,11 @@
 
 ---
 *最后更新: 初始化*
+
+## 测试任务进度
+
+| 任务ID | 状态 | 描述 | 更新时间 |
+|--------|------|------|----------|
+| TEST-EAGLE-kestrel | in_progress | 添加Lv1俯冲眩晕测试 | 2026-02-20T14:30:00 |
+| TEST-EAGLE-kestrel | in_progress | 添加Lv3音爆测试 | 2026-02-20T14:45:00 |
+| TEST-EAGLE-kestrel | completed | 所有测试通过 | 2026-02-20T15:00:00 |
