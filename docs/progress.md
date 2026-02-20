@@ -8,7 +8,7 @@
 |------|--------|--------|--------|--------|
 | P0 - 基础系统 | 4 | 4 | 0 | 0 |
 | P1 - 单位实现 | 6 | 6 | 0 | 0 |
-| P2 - 系统优化 | 1 | 1 | 0 | 0 |
+| P2 - 系统优化 | 4 | 4 | 0 | 0 |
 
 ## 详细进度
 
@@ -16,9 +16,10 @@
 
 | 任务ID | 状态 | 描述 | 更新时间 |
 |--------|------|------|----------|
-| P2-02 | completed | 魅惑系统完整实现 PR#XXX | 2026-02-20T12:00:00 |
 | P2-01 | completed | 商店图腾阵营刷新机制 PR#451 | 2026-02-19 |
-| P2-04 | completed | 石化石块系统完整实现 PR#XXX | 2026-02-20T12:00:00 |
+| P2-02 | completed | 魅惑系统完整实现 PR#455 | 2026-02-20 |
+| P2-03 | completed | 狼的吞噬继承系统 PR#453 | 2026-02-20 |
+| P2-04 | completed | 石化石块系统完整实现 PR#454 | 2026-02-20 |
 | P0-01 | completed | Implemented SoulManager, MechanicWolfTotem, UI and Hooks. | 2024-05-23T12:00:00 |
 | P0-02 | completed | AggroManager, TauntBehavior, YakGuardian PR#441 | 2026-02-19T07:32 |
 | P0-03 | completed | SummonedUnit, SummonManager, SummonSystem PR#442 | 2026-02-19T07:40 |
