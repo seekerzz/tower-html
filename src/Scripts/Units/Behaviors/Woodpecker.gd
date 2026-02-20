@@ -6,7 +6,8 @@ extends "res://src/Scripts/Units/UnitBehavior.gd"
 
 var drill_target: WeakRef = null
 var drill_stacks: int = 0
-var max_drill_stacks: int = 8
+var max_drill_stacks: int = 10
+var echo_stacks: int = 0
 
 func _init(target_unit: Node2D):
 	super._init(target_unit)
@@ -45,16 +46,23 @@ func on_combat_tick(delta: float) -> bool:
 	return true
 
 func _perform_attack(target):
-	var bonus = 1.0 + (drill_stacks * 0.08)
+	var stack_bonus = 0.10
+	if unit.level >= 2:
+		stack_bonus = 0.15
+
+	var bonus = 1.0 + (drill_stacks * stack_bonus)
 	var final_damage = unit.damage * bonus
 
 	if unit.level >= 3 and drill_stacks >= max_drill_stacks:
 		_enter_drill_master_mode()
 
 	var stats = { "damage": final_damage }
-	if unit.guaranteed_crit_stacks > 0:
-		stats["is_critical"] = true
-		unit.guaranteed_crit_stacks -= 1
+
+	# Guaranteed crit is handled by CombatManager via unit.guaranteed_crit_stacks
+
+	if echo_stacks > 0:
+		stats["force_echo"] = true
+		echo_stacks -= 1
 
 	GameManager.combat_manager.spawn_projectile(unit, unit.global_position, target, stats)
 
@@ -63,22 +71,10 @@ func _perform_attack(target):
 		unit.play_attack_anim("ranged", target.global_position)
 
 func _enter_drill_master_mode():
-	# prevent multiple triggers if already fast?
-	# Actually stacks stay at max, so it triggers every shot at max stack.
-	# But atk_speed modification stacks? Yes.
-	# We should only trigger if not already in mode?
-	# Or the snippet implies it triggers ONCE when reaching max?
-	# "if level >= 3 and drill_stacks >= max_drill_stacks"
-	# It says "enter mode".
-	# If I keep shooting at max stacks, it triggers every time.
-	# That would exponentially decrease atk_speed (0.75 * 0.75...).
-	# So I should check if mode is active.
-	# But I don't have a state variable easily.
-	# I can check `unit.guaranteed_crit_stacks`.
-
-	if unit.guaranteed_crit_stacks > 0: return
+	if unit.guaranteed_crit_stacks > 0 or echo_stacks > 0: return
 
 	unit.add_crit_stacks(3)
+	echo_stacks = 3
 	unit.atk_speed *= 0.75
 	GameManager.spawn_floating_text(unit.global_position, "DRILL MODE!", Color.ORANGE)
 

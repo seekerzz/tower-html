@@ -40,6 +40,10 @@ func get_wave_type(n: int) -> String:
 	return types[int(idx) % types.size()]
 
 func start_wave_logic():
+	# If running a test scenario with custom enemies, skip default wave logic
+	if GameManager.is_running_test and GameManager.current_test_scenario.has("enemies"):
+		return
+
 	var wave = GameManager.wave
 
 	if wave == 5:
