@@ -153,6 +153,23 @@ func _init_behavior():
 	add_child(behavior)
 	behavior.init(self, enemy_data)
 
+func apply_charm(source_unit, duration: float = 3.0):
+	if behavior:
+		if behavior.has_method("cancel_attack"):
+			behavior.cancel_attack()
+		behavior.queue_free()
+
+	var charmed_behavior = load("res://src/Scripts/Enemies/Behaviors/CharmedEnemyBehavior.gd").new()
+	charmed_behavior.charm_duration = duration
+	charmed_behavior.charm_source = source_unit
+	add_child(charmed_behavior)
+	behavior = charmed_behavior
+	behavior.init(self, enemy_data)
+
+	set_meta("charm_source", source_unit)
+	faction = "player"
+	modulate = Color(1.0, 0.5, 1.0)
+
 func _ensure_visual_controller():
 	if not visual_controller:
 		visual_controller = load("res://src/Scripts/Components/VisualController.gd").new()
@@ -668,6 +685,10 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 		die(source_unit)
 
 func _on_death():
+	if faction == "player" and has_meta("charm_source"):
+		SoulManager.add_souls(1, "charm_kill")
+		GameManager.spawn_floating_text(global_position, "+1 Soul", Color.MAGENTA)
+
 	SoulManager.add_souls_from_enemy_death({
 		"type": type_key,
 		"wave": GameManager.wave

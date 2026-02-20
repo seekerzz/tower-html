@@ -16,6 +16,7 @@
 
 | 任务ID | 状态 | 描述 | 更新时间 |
 |--------|------|------|----------|
+| P2-02 | completed | 魅惑系统完整实现 PR#XXX | 2026-02-20T12:00:00 |
 | P2-01 | completed | 商店图腾阵营刷新机制 PR#451 | 2026-02-19 |
 | P0-01 | completed | Implemented SoulManager, MechanicWolfTotem, UI and Hooks. | 2024-05-23T12:00:00 |
 | P0-02 | completed | AggroManager, TauntBehavior, YakGuardian PR#441 | 2026-02-19T07:32 |
