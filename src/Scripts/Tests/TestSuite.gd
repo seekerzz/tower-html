@@ -474,6 +474,45 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "lure_snake", "x": 0, "y": 1}]
 			}
+		"test_rat_lv1_plague":
+			return {
+				"id": "test_rat_lv1_plague",
+				"core_type": "viper_totem",
+				"duration": 10.0,
+				"units": [
+					{"id": "rat", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "low_hp_enemy", "hp": 30, "count": 3}
+				],
+				"expected_behavior": "命中敌人在4秒内死亡时传递2层毒给周围敌人，被老鼠攻击的敌人在4秒内死亡时，周围敌人获得2层中毒"
+			}
+		"test_rat_lv2_plague":
+			return {
+				"id": "test_rat_lv2_plague",
+				"core_type": "viper_totem",
+				"duration": 10.0,
+				"units": [
+					{"id": "rat", "x": 0, "y": 1, "level": 2}
+				],
+				"enemies": [
+					{"type": "low_hp_enemy", "hp": 30, "count": 3}
+				],
+				"expected_behavior": "传播层数或范围提升，传递4层中毒给周围敌人"
+			}
+		"test_rat_lv3_multi_debuff":
+			return {
+				"id": "test_rat_lv3_multi_debuff",
+				"core_type": "viper_totem",
+				"duration": 10.0,
+				"units": [
+					{"id": "rat", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "low_hp_enemy", "hp": 100, "debuffs": [{"type": "poison", "stacks": 3}, {"type": "burn", "stacks": 2}], "count": 3}
+				],
+				"expected_behavior": "传递时额外增加其他Debuff，传播时不仅传递中毒，还传递其他Debuff"
+			}
 		# ========== 鹰图腾流派单位测试 (12个单位) ==========
 		"test_eagle_totem_harpy_eagle":
 			return {

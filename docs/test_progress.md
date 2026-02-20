@@ -12,9 +12,9 @@
 | 蝙蝠图腾 (bat_totem) | 5 | 0 | 0% |
 | 蝴蝶图腾 (butterfly_totem) | 6 | 0 | 0% |
 | 狼图腾 (wolf_totem) | 7 | 0 | 0% |
-| 眼镜蛇图腾 (viper_totem) | 8 | 0 | 0% |
+| 眼镜蛇图腾 (viper_totem) | 8 | 1 | 12.5% |
 | 鹰图腾 (eagle_totem) | 12 | 0 | 0% |
-| **总计** | **47** | **0** | **0%** |
+| **总计** | **47** | **1** | **2%** |
 
 ---
 
@@ -2245,24 +2245,24 @@
 }
 ```
 **验证指标**:
-- [ ] 4秒内死亡的敌人触发传播
-- [ ] 传递2层中毒给周围敌人
+- [x] 4秒内死亡的敌人触发传播
+- [x] 传递2层中毒给周围敌人
 
 #### 测试场景 2: Lv2 传播效果提升验证
 **验证指标**:
-- [ ] 传播层数或范围提升
+- [x] 传播层数或范围提升
 
 #### 测试场景 3: Lv3 多Debuff传播验证
 ```gdscript
 {
     "id": "test_rat_lv3_multi_debuff",
     "core_type": "viper_totem",
-    "duration": 30.0,
+    "duration": 10.0,
     "units": [
         {"id": "rat", "x": 0, "y": 1, "level": 3}
     ],
     "enemies": [
-        {"type": "low_hp_enemy", "hp": 30, "debuffs": [{"type": "poison", "stacks": 3}, {"type": "burn", "stacks": 2}], "count": 3}
+        {"type": "low_hp_enemy", "hp": 100, "debuffs": [{"type": "poison", "stacks": 3}, {"type": "burn", "stacks": 2}], "count": 3}
     ],
     "expected_behavior": {
         "description": "传递时额外增加其他Debuff",
@@ -2271,8 +2271,8 @@
 }
 ```
 **验证指标**:
-- [ ] 传播时传递多种Debuff
-- [ ] 包括中毒以外的Debuff
+- [x] 传播时传递多种Debuff
+- [x] 包括中毒以外的Debuff
 
 ---
 

@@ -38,7 +38,14 @@ func _setup_test():
 					if not GameManager.grid_manager.active_territory_tiles.has(tile):
 						GameManager.grid_manager.active_territory_tiles.append(tile)
 
-			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
+			if GameManager.grid_manager.place_unit(u.id, u.x, u.y):
+				if u.has("level") and u.level > 1:
+					var key = GameManager.grid_manager.get_tile_key(u.x, u.y)
+					var tile = GameManager.grid_manager.tiles[key]
+					if tile.unit:
+						tile.unit.level = u.level
+						tile.unit.reset_stats()
+						print("[TestRunner] Set unit ", u.id, " to level ", u.level)
 
 	# Setup actions
 	if config.has("setup_actions"):
@@ -51,8 +58,75 @@ func _setup_test():
 	GameManager.enemy_hit.connect(_on_enemy_hit)
 
 	GameManager.start_wave()
+
+	if config.has("enemies"):
+		# Override standard wave spawning
+		if GameManager.combat_manager:
+			GameManager.combat_manager.enemies_to_spawn = 0
+		_spawn_test_enemies(config["enemies"])
+
 	# GameManager.wave_ended is only emitted after UI interaction, which we skip in headless.
 	# So we monitor is_wave_active in _process instead.
+
+func _spawn_test_enemies(enemy_list: Array):
+	var combat_mgr = GameManager.combat_manager
+	if not combat_mgr: return
+
+	for data in enemy_list:
+		var type = data.get("type", "slime")
+		# Handle mapping for test convenience
+		if type == "low_hp_enemy": type = "slime"
+
+		var count = data.get("count", 1)
+		var hp_override = data.get("hp", -1)
+		var debuffs = data.get("debuffs", [])
+
+		var spawn_positions = []
+		if data.has("positions"):
+			spawn_positions = data.positions
+		else:
+			# Default spawn points
+			if GameManager.grid_manager:
+				var pts = GameManager.grid_manager.get_spawn_points()
+				if pts.size() > 0:
+					for i in range(count):
+						spawn_positions.append(pts.pick_random())
+
+			if spawn_positions.is_empty():
+				spawn_positions.append(Vector2(-300, 0)) # Fallback
+
+		for i in range(count):
+			var pos = spawn_positions[i % spawn_positions.size()]
+			# Add random jitter
+			if data.has("positions") == false:
+				pos += Vector2(randf_range(-20, 20), randf_range(-20, 20))
+			else:
+				# Convert grid pos if needed? No, assumed pixel if manual, or grid if dict
+				var p = spawn_positions[i % spawn_positions.size()]
+				if typeof(p) == TYPE_DICTIONARY:
+					if GameManager.grid_manager:
+						pos = GameManager.grid_manager.get_world_pos_from_grid(Vector2i(p.x, p.y))
+					else:
+						pos = Vector2(p.x * 60, p.y * 60)
+
+			var enemy = load("res://src/Scenes/Game/Enemy.tscn").instantiate()
+			enemy.setup(type, 1)
+			enemy.global_position = pos
+
+			if hp_override > 0:
+				enemy.hp = hp_override
+				enemy.max_hp = hp_override
+
+			combat_mgr.call_deferred("add_child", enemy)
+
+			# Apply debuffs after a frame to ensure ready
+			if debuffs.size() > 0:
+				_apply_test_debuffs.call_deferred(enemy, debuffs)
+
+func _apply_test_debuffs(enemy, debuffs):
+	if is_instance_valid(enemy):
+		for db in debuffs:
+			enemy.apply_debuff(db.type, db.get("stacks", 1))
 
 func _on_wave_started():
 	_wave_has_started = true
