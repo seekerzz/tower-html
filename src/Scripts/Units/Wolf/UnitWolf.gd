@@ -14,6 +14,10 @@ func _ready():
         call_deferred("_show_devour_ui")
 
 func _show_devour_ui():
+    if GameManager.current_test_scenario and not GameManager.current_test_scenario.is_empty():
+        _auto_devour()
+        return
+
     var ui_scene = load("res://src/Scenes/UI/WolfDevourUI.tscn")
     if ui_scene:
         var ui = ui_scene.instantiate()
