@@ -40,6 +40,14 @@ func _setup_test():
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
 
+			if u.has("level") and u.level > 1:
+				# key is already calculated above
+				if GameManager.grid_manager.tiles.has(key):
+					var tile = GameManager.grid_manager.tiles[key]
+					if tile.unit:
+						tile.unit.level = u.level
+						tile.unit.reset_stats()
+
 	# Setup actions
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:
@@ -194,6 +202,44 @@ func _execute_scheduled_action(action: Dictionary):
 				printerr("[TestRunner] SummonManager not available")
 		"test_enemy_death":
 			_run_enemy_death_test()
+		"verify_ascetic_mp_gain":
+			_run_ascetic_verification(action)
+
+func _run_ascetic_verification(action: Dictionary):
+	print("[TestRunner] ========== 苦修者MP转换验证 ==========")
+	var target_pos_grid = Vector2i(action.target_pos.x, action.target_pos.y)
+	var damage_amount = action.damage
+	var expected_ratio = action.expected_ratio
+
+	var gm = GameManager.grid_manager
+	var key = gm.get_tile_key(target_pos_grid.x, target_pos_grid.y)
+
+	if not gm.tiles.has(key) or not gm.tiles[key].unit:
+		printerr("[TestRunner] ✗ 未找到目标单位在 ", target_pos_grid)
+		return
+
+	var target_unit = gm.tiles[key].unit
+	var start_mp = GameManager.mana
+
+	print("[TestRunner] 目标单位: ", target_unit.type_key, " 受到伤害: ", damage_amount)
+	print("[TestRunner] 初始MP: ", start_mp)
+
+	# Inflict damage
+	target_unit.take_damage(damage_amount)
+
+	var end_mp = GameManager.mana
+	var actual_gain = end_mp - start_mp
+	var expected_gain = damage_amount * expected_ratio
+
+	print("[TestRunner] 结束MP: ", end_mp)
+	print("[TestRunner] 实际增加: ", actual_gain, ", 预期增加: ", expected_gain)
+
+	# Allow small float error
+	if abs(actual_gain - expected_gain) < 0.1:
+		print("[TestRunner] ✓ MP转换正确 (误差范围内)")
+	else:
+		printerr("[TestRunner] ✗ MP转换错误! 预期: ", expected_gain, " 实际: ", actual_gain)
+		_teardown("Verification Failed")
 
 func _run_enemy_death_test():
 	print("[TestRunner] ========== 开始敌人死亡重复调用测试 ==========")

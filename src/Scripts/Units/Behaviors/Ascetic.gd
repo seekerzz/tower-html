@@ -12,6 +12,9 @@ func on_setup():
 func _auto_select_targets():
 	if not is_instance_valid(unit): return
 
+	# Recalculate max_buffed_count in case level changed
+	max_buffed_count = 1 if unit.level < 3 else 2
+
 	var all_units = unit.get_all_player_units()
 	# Filter self out
 	var valid_units = []

@@ -633,4 +633,76 @@ func get_test_config(case_id: String) -> Dictionary:
 				],
 				"description": "测试美杜莎石化Juice效果：动画冻结、碎裂图像、石块伤害"
 			}
+		# ========== 苦修者 (Ascetic) 自动化测试 ==========
+		"test_ascetic_lv1_convert":
+			return {
+				"id": "test_ascetic_lv1_convert",
+				"core_type": "cow_totem",
+				"duration": 5.0,
+				"initial_mp": 500,
+				"units": [
+					{"id": "ascetic", "x": 0, "y": 1, "level": 1},
+					{"id": "squirrel", "x": 1, "y": 0}
+				],
+				"scheduled_actions": [
+					{
+						"time": 1.0,
+						"type": "verify_ascetic_mp_gain",
+						"target_pos": {"x": 1, "y": 0},
+						"damage": 50.0,
+						"expected_ratio": 0.12
+					}
+				],
+				"expected_behavior": "被Buff单位受到伤害的12%转为MP"
+			}
+		"test_ascetic_lv2_convert":
+			return {
+				"id": "test_ascetic_lv2_convert",
+				"core_type": "cow_totem",
+				"duration": 5.0,
+				"initial_mp": 500,
+				"units": [
+					{"id": "ascetic", "x": 0, "y": 1, "level": 2},
+					{"id": "squirrel", "x": 1, "y": 0}
+				],
+				"scheduled_actions": [
+					{
+						"time": 1.0,
+						"type": "verify_ascetic_mp_gain",
+						"target_pos": {"x": 1, "y": 0},
+						"damage": 50.0,
+						"expected_ratio": 0.18
+					}
+				],
+				"expected_behavior": "被Buff单位受到伤害的18%转为MP"
+			}
+		"test_ascetic_lv3_dual":
+			return {
+				"id": "test_ascetic_lv3_dual",
+				"core_type": "cow_totem",
+				"duration": 5.0,
+				"initial_mp": 500,
+				"units": [
+					{"id": "ascetic", "x": 0, "y": 1, "level": 3},
+					{"id": "squirrel", "x": 1, "y": 0},
+					{"id": "plant", "x": -1, "y": 0}
+				],
+				"scheduled_actions": [
+					{
+						"time": 1.0,
+						"type": "verify_ascetic_mp_gain",
+						"target_pos": {"x": 1, "y": 0},
+						"damage": 50.0,
+						"expected_ratio": 0.18
+					},
+					{
+						"time": 2.0,
+						"type": "verify_ascetic_mp_gain",
+						"target_pos": {"x": -1, "y": 0},
+						"damage": 50.0,
+						"expected_ratio": 0.18
+					}
+				],
+				"expected_behavior": "可以选择两个单位施加Buff，受到伤害都转MP"
+			}
 	return {}
