@@ -217,6 +217,10 @@ func capture_bullet(bullet_snapshot: Dictionary):
 	if behavior.has_method("capture_bullet"):
 		behavior.capture_bullet(bullet_snapshot)
 
+func on_lightning_hit(target: Node2D, bounce_index: int):
+	if behavior and behavior.has_method("on_lightning_hit"):
+		behavior.on_lightning_hit(target, bounce_index)
+
 func calculate_damage_against(target_node: Node2D) -> float:
 	var final_damage = damage
 

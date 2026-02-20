@@ -277,8 +277,13 @@ func perform_lightning_attack(source_unit, start_pos, target, chain_left, hit_li
 	if !is_instance_valid(target): return
 
 	# Apply damage
-	var dmg = source_unit.calculate_damage_against(target)
+	var bounce_idx = hit_list.size()
+	var dmg = source_unit.calculate_damage_against(target) * pow(0.85, bounce_idx)
 	target.take_damage(dmg, source_unit, "lightning")
+
+	if is_instance_valid(source_unit) and source_unit.has_method("on_lightning_hit"):
+		source_unit.on_lightning_hit(target, bounce_idx)
+
 	hit_list.append(target)
 
 	# Visual

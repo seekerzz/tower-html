@@ -99,6 +99,8 @@ func set_test_scenario(scenario: Dictionary):
 	is_running_test = true
 	if scenario.has("initial_gold"):
 		gold = scenario["initial_gold"]
+	if scenario.has("initial_mp"):
+		mana = scenario["initial_mp"]
 
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS

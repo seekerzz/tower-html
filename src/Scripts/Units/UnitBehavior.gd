@@ -55,6 +55,10 @@ func get_trap_type() -> String:
 func on_kill(victim: Node2D):
 	pass
 
+# Called when a lightning chain attack hits a target (from perform_lightning_attack)
+func on_lightning_hit(target: Node2D, bounce_index: int):
+	pass
+
 # Called before unit is destroyed
 func on_cleanup():
 	pass
