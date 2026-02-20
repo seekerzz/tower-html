@@ -311,6 +311,45 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "blood_ancestor", "x": 0, "y": 1}]
 			}
+		"test_mosquito_lv1_lifesteal":
+			return {
+				"id": "test_mosquito_lv1_lifesteal",
+				"core_type": "bat_totem",
+				"duration": 15.0,
+				"units": [
+					{"id": "mosquito", "x": 0, "y": 1, "level": 1, "hp": 100}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5}
+				],
+				"expected_behavior": "造成30%攻击力伤害，回复该单位HP的10%"
+			}
+		"test_mosquito_lv2_lifesteal":
+			return {
+				"id": "test_mosquito_lv2_lifesteal",
+				"core_type": "bat_totem",
+				"duration": 15.0,
+				"units": [
+					{"id": "mosquito", "x": 0, "y": 1, "level": 2, "hp": 100}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5}
+				],
+				"expected_behavior": "伤害提升至50%攻击力，回血比例提升至30%"
+			}
+		"test_mosquito_lv3_dengue":
+			return {
+				"id": "test_mosquito_lv3_dengue",
+				"core_type": "bat_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "mosquito", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "debuffs": [{"type": "bleed", "stacks": 3}], "count": 3, "hp": 50}
+				],
+				"expected_behavior": "对流血敌人伤害+100%，击杀时爆炸造成范围伤害"
+			}
 		# ========== 蝴蝶图腾流派单位测试 (6个单位) ==========
 		"test_butterfly_totem_torch":
 			return {
