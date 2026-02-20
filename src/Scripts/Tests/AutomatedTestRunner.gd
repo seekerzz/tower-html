@@ -16,6 +16,9 @@ func _ready():
 	if config.has("start_wave_index"):
 		GameManager.wave = config["start_wave_index"]
 
+	if config.has("initial_mp"):
+		GameManager.mana = config["initial_mp"]
+
 	if config.has("core_type"):
 		GameManager.core_type = config["core_type"]
 
@@ -38,7 +41,20 @@ func _setup_test():
 					if not GameManager.grid_manager.active_territory_tiles.has(tile):
 						GameManager.grid_manager.active_territory_tiles.append(tile)
 
-			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
+			if GameManager.grid_manager.place_unit(u.id, u.x, u.y):
+				key = GameManager.grid_manager.get_tile_key(u.x, u.y)
+				var tile = GameManager.grid_manager.tiles.get(key)
+				if tile and tile.unit:
+					var unit = tile.unit
+					print("[TestRunner] Unit placed at ", key, ". Config: ", u)
+					if u.has("level"):
+						var new_level = int(u["level"])
+						print("[TestRunner] Updating level from ", unit.level, " to ", new_level)
+						unit.level = new_level
+						unit.reset_stats()
+						print("[TestRunner] Level is now ", unit.level)
+					if u.has("attack"):
+						unit.damage = float(u["attack"])
 
 	# Setup actions
 	if config.has("setup_actions"):

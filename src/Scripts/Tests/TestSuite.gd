@@ -312,6 +312,46 @@ func get_test_config(case_id: String) -> Dictionary:
 				"units": [{"id": "blood_ancestor", "x": 0, "y": 1}]
 			}
 		# ========== 蝴蝶图腾流派单位测试 (6个单位) ==========
+		"test_butterfly_lv1_mana":
+			return {
+				"id": "test_butterfly_lv1_mana",
+				"core_type": "butterfly_totem",
+				"duration": 15.0,
+				"initial_mp": 500,
+				"units": [
+					{"id": "butterfly", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3}
+				],
+				"expected_behavior": "消耗5%最大法力，附加消耗法力100%的伤害"
+			}
+		"test_butterfly_lv2_damage":
+			return {
+				"id": "test_butterfly_lv2_damage",
+				"core_type": "butterfly_totem",
+				"duration": 15.0,
+				"initial_mp": 500,
+				"units": [
+					{"id": "butterfly", "x": 0, "y": 1, "level": 2}
+				],
+				"expected_behavior": "附加伤害为消耗法力的150%"
+			}
+		"test_butterfly_lv3_kill_restore":
+			return {
+				"id": "test_butterfly_lv3_kill_restore",
+				"core_type": "butterfly_totem",
+				"duration": 20.0,
+				"initial_mp": 400,
+				"units": [
+					{"id": "butterfly", "x": 0, "y": 1, "level": 3, "attack": 100}
+				],
+				"enemies": [
+					{"type": "weak_enemy", "count": 5, "hp": 50}
+				],
+				"expected_behavior": "击杀敌人恢复10%最大法力"
+			}
+
 		"test_butterfly_totem_torch":
 			return {
 				"id": "test_butterfly_totem_torch",
