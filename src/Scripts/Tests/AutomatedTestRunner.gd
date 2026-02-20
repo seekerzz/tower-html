@@ -8,6 +8,9 @@ var _frame_events: Array = []
 var _is_tearing_down: bool = false
 var _wave_has_started: bool = false
 
+var crit_events: Array = []
+var totem_echo_count: int = 0
+
 func _ready():
 	config = GameManager.current_test_scenario
 
@@ -18,6 +21,9 @@ func _ready():
 
 	if config.has("core_type"):
 		GameManager.core_type = config["core_type"]
+
+	if config.has("god_mode") and config["god_mode"]:
+		GameManager.cheat_god_mode = true
 
 	call_deferred("_setup_test")
 
@@ -49,6 +55,8 @@ func _setup_test():
 	GameManager.wave_started.connect(_on_wave_started)
 	GameManager.enemy_spawned.connect(_on_enemy_spawned)
 	GameManager.enemy_hit.connect(_on_enemy_hit)
+	GameManager.projectile_crit.connect(_on_projectile_crit)
+	GameManager.totem_echo_triggered.connect(_on_totem_echo)
 
 	GameManager.start_wave()
 	# GameManager.wave_ended is only emitted after UI interaction, which we skip in headless.
@@ -84,6 +92,25 @@ func _on_enemy_hit(enemy, source, amount):
 		"source": source_id,
 		"damage": amount,
 		"target_hp_after": enemy.hp
+	})
+
+func _on_projectile_crit(source, target, damage):
+	crit_events.append({
+		"source": source,
+		"target": target,
+		"damage": damage,
+		"time": elapsed_time
+	})
+	_frame_events.append({
+		"type": "crit",
+		"damage": damage
+	})
+
+func _on_totem_echo(source, damage):
+	totem_echo_count += 1
+	_frame_events.append({
+		"type": "totem_echo",
+		"damage": damage
 	})
 
 func _execute_setup_action(action: Dictionary):
@@ -194,6 +221,37 @@ func _execute_scheduled_action(action: Dictionary):
 				printerr("[TestRunner] SummonManager not available")
 		"test_enemy_death":
 			_run_enemy_death_test()
+		"spawn_enemy":
+			_spawn_test_enemy(action)
+
+func _spawn_test_enemy(action: Dictionary):
+	var enemy_scene = load("res://src/Scenes/Game/Enemy.tscn")
+	if not enemy_scene:
+		printerr("[TestRunner] Failed to load Enemy scene")
+		return
+
+	var enemy = enemy_scene.instantiate()
+	var pos_dict = action.position
+
+	var pos = Vector2.ZERO
+	if GameManager.grid_manager:
+		pos = GameManager.grid_manager.get_world_pos_from_grid(Vector2i(pos_dict.x, pos_dict.y))
+	else:
+		pos = Vector2(pos_dict.x * 60, pos_dict.y * 60)
+
+	enemy.global_position = pos
+
+	var type = action.get("enemy_type", "basic_enemy")
+	enemy.setup(type, 1)
+
+	if action.has("stats"):
+		var stats = action.stats
+		if stats.has("hp"):
+			enemy.hp = stats.hp
+			enemy.max_hp = stats.hp
+
+	get_tree().current_scene.add_child(enemy)
+	print("[TestRunner] Spawned test enemy ", type, " at ", pos, " HP: ", enemy.hp)
 
 func _run_enemy_death_test():
 	print("[TestRunner] ========== 开始敌人死亡重复调用测试 ==========")
@@ -360,6 +418,8 @@ func _teardown(reason: String):
 
 	print("[TestRunner] Finishing test. Reason: ", reason)
 
+	_verify_test_conditions()
+
 	var user_dir = "user://test_logs/"
 	if !DirAccess.dir_exists_absolute(user_dir):
 		DirAccess.make_dir_absolute(user_dir)
@@ -374,3 +434,38 @@ func _teardown(reason: String):
 		printerr("[TestRunner] Failed to save logs to ", file_path)
 
 	get_tree().quit()
+
+func _verify_test_conditions():
+	if config.id == "test_harpy_eagle_lv1_triple":
+		var hit_count = 0
+		for entry in logs:
+			for evt in entry.events:
+				if evt.type == "hit" and evt.source == "harpy_eagle":
+					hit_count += 1
+
+		print("[TestRunner] Total hits by Harpy Eagle: ", hit_count)
+		if hit_count >= 3:
+			print("VERIFICATION PASSED: Harpy Eagle Lv1 attacked multiple times.")
+		else:
+			print("VERIFICATION FAILED: Harpy Eagle Lv1 attack count low.")
+
+	elif config.id == "test_harpy_eagle_lv3_crit":
+		var hit_count = 0
+		for entry in logs:
+			for evt in entry.events:
+				if evt.type == "hit" and evt.source == "harpy_eagle":
+					hit_count += 1
+
+		print("[TestRunner] Total hits by Harpy Eagle: ", hit_count)
+		print("[TestRunner] Total crits: ", crit_events.size())
+		print("[TestRunner] Total Totem Echoes: ", totem_echo_count)
+
+		if crit_events.size() > 0:
+			print("VERIFICATION PASSED: Harpy Eagle Lv3 triggered crits.")
+		else:
+			print("VERIFICATION FAILED: Harpy Eagle Lv3 did not trigger crits.")
+
+		if totem_echo_count > 0:
+			print("VERIFICATION PASSED: Totem Echo triggered ", totem_echo_count, " times.")
+		else:
+			print("VERIFICATION WARNING: Totem Echo did not trigger (might be bad luck if chance is 30%).")
