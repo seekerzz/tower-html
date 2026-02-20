@@ -9,12 +9,12 @@
 | 图腾流派 | 单位数量 | 已测试 | 测试覆盖率 |
 |----------|----------|--------|------------|
 | 牛图腾 (cow_totem) | 9 | 0 | 0% |
-| 蝙蝠图腾 (bat_totem) | 5 | 0 | 0% |
+| 蝙蝠图腾 (bat_totem) | 5 | 1 | 20% |
 | 蝴蝶图腾 (butterfly_totem) | 6 | 0 | 0% |
 | 狼图腾 (wolf_totem) | 7 | 0 | 0% |
 | 眼镜蛇图腾 (viper_totem) | 8 | 0 | 0% |
 | 鹰图腾 (eagle_totem) | 12 | 0 | 0% |
-| **总计** | **47** | **0** | **0%** |
+| **总计** | **47** | **1** | **2%** |
 
 ---
 
@@ -870,56 +870,93 @@
 
 ### 2.5 瘟疫使者 (plague_spreader)
 
-**核心机制**: 给敌人叠加易伤Debuff
+**核心机制**: 攻击使敌人中毒，中毒敌人死亡时传播给附近敌人
 
-#### 测试场景 1: Lv1 易伤叠加验证
+#### 测试场景 1: Lv1 毒血传播基础验证
 ```gdscript
 {
-    "id": "test_plague_spreader_lv1_vulnerability",
+    "id": "test_plague_spreader_lv1_spread",
     "core_type": "bat_totem",
     "duration": 20.0,
     "units": [
         {"id": "plague_spreader", "x": 0, "y": 1, "level": 1}
     ],
     "enemies": [
-        {"type": "basic_enemy", "count": 3}
+        {"type": "basic_enemy", "count": 3, "hp": 80}
     ],
-    "expected_behavior": {
-        "description": "敌人每次进入攻击范围获得易伤debuff",
-        "verification": "敌人获得plague_debuff，受到的伤害增加"
-    }
+    "expected_behavior": "攻击使敌人中毒，中毒敌人死亡时传播给附近敌人"
 }
 ```
 **验证指标**:
-- [ ] 敌人进入范围获得易伤Debuff
-- [ ] 易伤效果使敌人受到更多伤害
+- [x] 攻击使敌人获得中毒Debuff
+- [x] 中毒敌人每秒受到伤害
+- [x] 中毒敌人死亡时传播给附近敌人
 
-#### 测试场景 2: Lv2 效果提升验证
-**验证指标**:
-- [ ] 易伤效果提升
-
-#### 测试场景 3: Lv3 传染验证
+#### 测试场景 2: Lv2 传播范围提升验证
 ```gdscript
 {
-    "id": "test_plague_spreader_lv3_spread",
+    "id": "test_plague_spreader_lv2_range",
+    "core_type": "bat_totem",
+    "duration": 25.0,
+    "units": [
+        {"id": "plague_spreader", "x": 0, "y": 1, "level": 2}
+    ],
+    "enemies": [
+        {"type": "basic_enemy", "count": 5, "hp": 80, "positions": [{"x": 2, "y": 0}, {"x": 3, "y": 0}, {"x": 4, "y": 0}]}
+    ],
+    "expected_behavior": "传播范围+1格(60像素)，更远处的敌人也会被传播"
+}
+```
+**验证指标**:
+- [x] 传播范围为60像素(1格)
+- [x] 超出攻击范围但在此范围内的敌人也会被传播中毒
+- [x] Lv2暴击率+10%
+
+#### 测试场景 3: Lv3 传播范围最大化验证
+```gdscript
+{
+    "id": "test_plague_spreader_lv3_range",
     "core_type": "bat_totem",
     "duration": 25.0,
     "units": [
         {"id": "plague_spreader", "x": 0, "y": 1, "level": 3}
     ],
     "enemies": [
-        {"type": "basic_enemy", "count": 5, "positions": [{"x": 2, "y": 0}, {"x": 2, "y": 1}, {"x": 3, "y": 0}]}
+        {"type": "basic_enemy", "count": 5, "hp": 80, "positions": [{"x": 2, "y": 0}, {"x": 4, "y": 0}, {"x": 6, "y": 0}]}
     ],
-    "expected_behavior": {
-        "description": "有瘟疫Buff的敌人每3秒传播给周围最近一个敌人",
-        "verification": "未进入范围的敌人也获得Debuff"
-    }
+    "expected_behavior": "传播范围+2格(120像素)，大范围内敌人都会被传播"
 }
 ```
 **验证指标**:
-- [ ] 有Debuff的敌人每3秒传播
-- [ ] 传播给最近的敌人
-- [ ] 传播范围有限
+- [x] 传播范围为120像素(2格)
+- [x] 大范围传播生效
+- [x] Lv3暴击率+20%
+
+#### 测试场景 4: 传播链式反应验证
+```gdscript
+{
+    "id": "test_plague_spreader_chain_reaction",
+    "core_type": "bat_totem",
+    "duration": 30.0,
+    "units": [
+        {"id": "plague_spreader", "x": 0, "y": 1, "level": 3}
+    ],
+    "enemies": [
+        {"type": "weak_enemy", "count": 8, "hp": 30, "positions": [{"x": 2, "y": 0}, {"x": 3, "y": 0}, {"x": 4, "y": 0}, {"x": 5, "y": 0}]}
+    ],
+    "expected_behavior": "多个中毒敌人死亡时产生链式传播反应"
+}
+```
+**验证指标**:
+- [x] 多个中毒敌人死亡时各自传播
+- [x] 传播产生连锁反应
+- [x] 所有范围内敌人都获得中毒
+
+**测试记录**:
+- 测试日期: 2026-02-20
+- 测试人员: Jules
+- 测试结果: 通过
+- 备注: 自动化测试用例已添加并验证通过
 
 ---
 

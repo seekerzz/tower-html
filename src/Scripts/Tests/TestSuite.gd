@@ -277,6 +277,58 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "plague_spreader", "x": 0, "y": 1}]
 			}
+		"test_plague_spreader_lv1_spread":
+			return {
+				"id": "test_plague_spreader_lv1_spread",
+				"core_type": "bat_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "plague_spreader", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3, "hp": 80}
+				],
+				"expected_behavior": "攻击使敌人中毒，中毒敌人死亡时传播给附近敌人"
+			}
+		"test_plague_spreader_lv2_range":
+			return {
+				"id": "test_plague_spreader_lv2_range",
+				"core_type": "bat_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "plague_spreader", "x": 0, "y": 1, "level": 2}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5, "hp": 80, "positions": [{"x": 2, "y": 0}, {"x": 3, "y": 0}, {"x": 4, "y": 0}]}
+				],
+				"expected_behavior": "传播范围+1格(60像素)，更远处的敌人也会被传播"
+			}
+		"test_plague_spreader_lv3_range":
+			return {
+				"id": "test_plague_spreader_lv3_range",
+				"core_type": "bat_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "plague_spreader", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5, "hp": 80, "positions": [{"x": 2, "y": 0}, {"x": 4, "y": 0}, {"x": 6, "y": 0}]}
+				],
+				"expected_behavior": "传播范围+2格(120像素)，大范围内敌人都会被传播"
+			}
+		"test_plague_spreader_chain_reaction":
+			return {
+				"id": "test_plague_spreader_chain_reaction",
+				"core_type": "bat_totem",
+				"duration": 30.0,
+				"units": [
+					{"id": "plague_spreader", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "weak_enemy", "count": 8, "hp": 30, "positions": [{"x": 2, "y": 0}, {"x": 3, "y": 0}, {"x": 4, "y": 0}, {"x": 5, "y": 0}]}
+				],
+				"expected_behavior": "多个中毒敌人死亡时产生链式传播反应"
+			}
 		"test_bat_totem_blood_mage":
 			return {
 				"id": "test_bat_totem_blood_mage",
