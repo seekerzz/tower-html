@@ -20,6 +20,7 @@ signal enemy_spawned(enemy)
 signal enemy_died(enemy, killer_unit)
 signal debuff_applied(enemy, debuff_type, stacks)
 signal totem_echo_triggered(source_unit, damage)
+signal totem_attacked(totem_type)
 
 var is_running_test: bool = false
 var current_test_scenario: Dictionary = {}
@@ -313,6 +314,9 @@ func damage_core(amount: float):
 			spawn_floating_text(grid_manager.global_position if grid_manager else Vector2.ZERO, "UNDYING!", Color.PURPLE)
 			resource_changed.emit()
 			return
+
+	if amount > 0:
+		totem_attacked.emit(core_type)
 
 	core_health -= amount
 	resource_changed.emit()

@@ -40,6 +40,27 @@ func _setup_test():
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
 
+			# Apply unit properties
+			if config.has("units"):
+				var tile_key = GameManager.grid_manager.get_tile_key(u.x, u.y)
+				if GameManager.grid_manager.tiles.has(tile_key):
+					var unit = GameManager.grid_manager.tiles[tile_key].unit
+					if unit:
+						if u.has("level") and u.level > 1:
+							unit.level = u.level
+							unit.reset_stats()
+							# Re-run setup if needed for level-dependent logic
+							if unit.behavior:
+								unit.behavior.on_cleanup() # Cleanup old behavior
+								unit.behavior.on_setup() # Re-setup with new level
+
+						if u.has("initial_hp"):
+							unit.current_hp = u.initial_hp
+						if u.has("hp"):
+							unit.current_hp = u.hp
+
+						print("[TestRunner] Placed unit ", u.id, " at ", u.x, ",", u.y, " Level: ", unit.level)
+
 	# Setup actions
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:
@@ -194,6 +215,14 @@ func _execute_scheduled_action(action: Dictionary):
 				printerr("[TestRunner] SummonManager not available")
 		"test_enemy_death":
 			_run_enemy_death_test()
+		"damage_core":
+			if GameManager:
+				GameManager.damage_core(action.amount)
+				print("[TestRunner] Damaged core by ", action.amount)
+		"heal_core":
+			if GameManager:
+				GameManager.heal_core(action.amount)
+				print("[TestRunner] Healed core by ", action.amount)
 
 func _run_enemy_death_test():
 	print("[TestRunner] ========== 开始敌人死亡重复调用测试 ==========")
