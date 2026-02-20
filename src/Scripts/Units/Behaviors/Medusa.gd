@@ -1,8 +1,6 @@
 extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
 const PetrifiedStatus = preload("res://src/Scripts/Effects/PetrifiedStatus.gd")
-# Ensure these resources exist or are loaded dynamically to avoid cyclic dependencies if any (unlikely here)
-const StoneBlockScene = preload("res://src/Scenes/Obstacles/StoneBlock.tscn")
 const PetrifyEffectScene = preload("res://src/Scenes/Effects/PetrifyEffect.tscn")
 
 var _petrify_timer: float = 0.0
@@ -49,11 +47,11 @@ func _find_nearest_non_petrified_enemy() -> Node2D:
 	return nearest
 
 func _petrify_enemy(enemy: Node2D):
-	var duration = 1.0
+	var duration = 3.0
 	if unit.level >= 2:
-		duration = 1.5
+		duration = 5.0
 	if unit.level >= 3:
-		duration = 2.0
+		duration = 8.0
 
 	# Apply PetrifiedStatus
 	if enemy.has_method("apply_status"):
@@ -62,30 +60,6 @@ func _petrify_enemy(enemy: Node2D):
 	# Visual feedback
 	GameManager.spawn_floating_text(enemy.global_position, "石化!", Color.GRAY)
 	_play_petrify_effect(enemy.global_position)
-
-	# Connect death signal
-	if not enemy.died.is_connected(_on_petrified_enemy_died):
-		enemy.died.connect(_on_petrified_enemy_died.bind(enemy))
-
-func _on_petrified_enemy_died(enemy):
-	# Check if was petrified (using the meta set in Enemy.gd)
-	if enemy.has_meta("was_petrified"):
-		_spawn_stone_block(enemy.global_position, enemy)
-
-func _spawn_stone_block(pos: Vector2, source_enemy):
-	var stone = StoneBlockScene.instantiate()
-	stone.global_position = pos
-
-	stone.max_hp = 100 + (unit.level * 50)
-	stone.damage_to_enemies = 20 + (unit.level * 10)
-
-	if unit.level >= 3:
-		stone.damage_formula = "max_hp_percent"
-		stone.damage_percent = 0.1 # 10% MaxHP
-
-	unit.get_tree().current_scene.call_deferred("add_child", stone)
-
-	GameManager.spawn_floating_text(pos, "石块!", Color.DARK_GRAY)
 
 func _play_petrify_effect(pos: Vector2):
 	var effect = PetrifyEffectScene.instantiate()

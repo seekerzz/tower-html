@@ -699,9 +699,9 @@ func die(killer_unit = null):
 		return
 	is_dying = true
 
-	# 检查是否处于石化状态
-	if has_status("petrified"):
-		set_meta("was_petrified", true)
+	# Check for petrified state
+	if has_meta("is_petrified") and get_meta("is_petrified"):
+		_play_petrified_death_effect()
 
 	_on_death()
 
@@ -728,6 +728,12 @@ func die(killer_unit = null):
 
 	if !handled:
 		queue_free()
+
+func _play_petrified_death_effect():
+	var shatter = load("res://src/Scenes/Effects/PetrifiedShatterEffect.tscn").instantiate()
+	shatter.global_position = global_position
+	# Pass sprite texture if needed, but current effect uses generic polygons
+	get_tree().current_scene.add_child(shatter)
 
 func find_attack_target() -> Node2D:
 	# First check taunt units
