@@ -791,6 +791,8 @@ func place_unit(unit_key: String, x: int, y: int) -> bool:
 
 	# Instantiate unit first to check behavior capabilities
 	var unit = UNIT_SCENE.instantiate()
+	if unit_key == "wolf":
+		unit.set_script(load("res://src/Scripts/Units/Wolf/UnitWolf.gd"))
 	unit.setup(unit_key)
 
 	# Check overlapping unit for Attachment (e.g. Oxpecker)

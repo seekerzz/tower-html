@@ -110,3 +110,6 @@ func _on_units_merged(consumed_unit):
 			"level": consumed_unit.level,
 			"type": consumed_unit.type_key
 		})
+
+	if unit_ref is UnitWolf and consumed_unit is UnitWolf:
+		unit_ref.on_merged_with(consumed_unit)
