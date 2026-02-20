@@ -583,4 +583,17 @@ func get_test_config(case_id: String) -> Dictionary:
 					{"id": "blood_mage", "x": 1, "y": 1}
 				]
 			}
+		"test_charm_system":
+			return {
+				"id": "test_charm_system",
+				"core_type": "wolf_totem",
+				"initial_gold": 1000,
+				"start_wave_index": 1,
+				"duration": 25.0,
+				"units": [
+					{"id": "fox", "x": 0, "y": 0},
+					{"id": "yak_guardian", "x": 0, "y": 1}
+				],
+				"description": "测试狐狸魅惑系统（需要等待敌人攻击触发魅惑）"
+			}
 	return {}
