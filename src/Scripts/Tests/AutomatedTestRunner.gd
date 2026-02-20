@@ -40,10 +40,38 @@ func _setup_test():
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
 
+			# Apply Unit properties (level, hp)
+			key = GameManager.grid_manager.get_tile_key(u.x, u.y)
+			if GameManager.grid_manager.tiles.has(key):
+				var tile = GameManager.grid_manager.tiles[key]
+				if tile.unit:
+					var unit = tile.unit
+					var modified = false
+					if u.has("level") and u.level > 1:
+						unit.level = u.level
+						unit.reset_stats()
+						unit.current_hp = unit.max_hp
+						modified = true
+
+					if u.has("hp"):
+						unit.max_hp = u.hp
+						unit.current_hp = u.hp
+						modified = true
+
+					if modified:
+						print("[TestRunner] Modified unit ", u.id, " Level: ", unit.level, " HP: ", unit.current_hp)
+
 	# Setup actions
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:
 			_execute_setup_action(action)
+
+	# Spawn Test Enemies
+	if config.has("enemies"):
+		_spawn_test_enemies()
+		# Prevent normal wave spawning if we are providing enemies
+		if GameManager.combat_manager:
+			GameManager.combat_manager.enemies_to_spawn = 0
 
 	GameManager.game_over.connect(_on_game_over)
 	GameManager.wave_started.connect(_on_wave_started)
@@ -53,6 +81,64 @@ func _setup_test():
 	GameManager.start_wave()
 	# GameManager.wave_ended is only emitted after UI interaction, which we skip in headless.
 	# So we monitor is_wave_active in _process instead.
+
+func _spawn_test_enemies():
+	var enemies_config = config["enemies"]
+	var enemy_scene = load("res://src/Scenes/Game/Enemy.tscn")
+	if not enemy_scene:
+		printerr("[TestRunner] Failed to load Enemy scene")
+		return
+
+	print("[TestRunner] Spawning test enemies...")
+
+	for enemy_conf in enemies_config:
+		var count = enemy_conf.get("count", 1)
+		var type = enemy_conf.get("type", "basic_enemy")
+
+		# Map basic_enemy to slime if not found
+		if type == "basic_enemy":
+			type = "slime"
+
+		var hp_override = enemy_conf.get("hp", -1)
+		var debuffs = enemy_conf.get("debuffs", [])
+		var positions = enemy_conf.get("positions", [])
+
+		for i in range(count):
+			var enemy = enemy_scene.instantiate()
+
+			# Position logic
+			var pos = Vector2.ZERO
+			if i < positions.size():
+				# Use provided grid pos if available
+				var p = positions[i]
+				pos = GameManager.grid_manager.get_world_pos_from_grid(Vector2i(p.x, p.y))
+			else:
+				# Default position logic (e.g. (0, 3) with jitter)
+				# 3 tiles down from core (approx 180px)
+				var base_pos = Vector2(0, 3 * 60)
+				var jitter = Vector2(randf_range(-40, 40), randf_range(-40, 40))
+				if GameManager.grid_manager:
+					base_pos = GameManager.grid_manager.get_world_pos_from_grid(Vector2i(0, 3))
+				pos = base_pos + jitter
+
+			enemy.global_position = pos
+			enemy.setup(type, 1) # Wave 1 default
+
+			if hp_override > 0:
+				enemy.hp = hp_override
+				enemy.max_hp = hp_override
+
+			get_tree().current_scene.add_child(enemy)
+
+			# Apply debuffs
+			for debuff in debuffs:
+				var d_type = debuff.get("type")
+				var stacks = debuff.get("stacks", 1)
+				if d_type:
+					enemy.apply_debuff(d_type, stacks)
+					print("[TestRunner] Applied debuff ", d_type, " x", stacks, " to enemy")
+
+			print("[TestRunner] Spawned enemy ", type, " at ", pos)
 
 func _on_wave_started():
 	_wave_has_started = true
