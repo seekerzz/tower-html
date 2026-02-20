@@ -40,6 +40,18 @@ func _setup_test():
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
 
+			# Apply overrides (Level, Attack)
+			# key is already defined above in this loop
+			if GameManager.grid_manager.tiles.has(key):
+				var tile = GameManager.grid_manager.tiles[key]
+				if tile.unit:
+					if u.has("level"):
+						tile.unit.level = u.level
+						tile.unit.reset_stats()
+
+					if u.has("attack"):
+						tile.unit.damage = u.attack
+
 	# Setup actions
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:
@@ -56,6 +68,43 @@ func _setup_test():
 
 func _on_wave_started():
 	_wave_has_started = true
+
+	if config.has("enemies"):
+		_spawn_test_enemies(config["enemies"])
+
+func _spawn_test_enemies(enemies_config):
+	var combat_mgr = GameManager.combat_manager
+	if !combat_mgr: return
+
+	# Manually start the win check loop since we skipped standard wave logic
+	combat_mgr.start_win_check_loop()
+
+	for entry in enemies_config:
+		var type = entry.get("type", "slime")
+		var count = entry.get("count", 1)
+		var hp = entry.get("hp", -1)
+
+		# Map high_hp_enemy to slime if needed
+		if type == "high_hp_enemy":
+			type = "slime"
+
+		for i in range(count):
+			var enemy = combat_mgr.ENEMY_SCENE.instantiate()
+			# Setup with Wave 1 stats
+			enemy.setup(type, 1)
+
+			# Override HP if specified
+			if hp > 0:
+				enemy.hp = hp
+				enemy.max_hp = hp
+
+			# Position: Place within range of unit at (0,1) -> (0,60)
+			# Place at (150, 60) with slight spread
+			var pos = Vector2(150 + (i * 20), 60 + (randf() * 40 - 20))
+			enemy.global_position = pos
+
+			combat_mgr.add_child(enemy)
+			print("[TestRunner] Spawned test enemy: ", type, " HP: ", enemy.hp, " at ", pos)
 
 func _on_enemy_spawned(enemy):
 	var pos = enemy.global_position

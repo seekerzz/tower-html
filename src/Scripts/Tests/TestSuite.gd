@@ -556,6 +556,32 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "woodpecker", "x": 0, "y": 1}]
 			}
+		"test_woodpecker_lv1_drill":
+			return {
+				"id": "test_woodpecker_lv1_drill",
+				"core_type": "eagle_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "woodpecker", "x": 0, "y": 1, "level": 1, "attack": 10}
+				],
+				"enemies": [
+					{"type": "high_hp_enemy", "count": 1, "hp": 500}
+				],
+				"expected_behavior": "攻击同一目标时每次伤害+10%(上限+100%)"
+			}
+		"test_woodpecker_lv3_crit":
+			return {
+				"id": "test_woodpecker_lv3_crit",
+				"core_type": "eagle_totem",
+				"duration": 30.0,
+				"units": [
+					{"id": "woodpecker", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "high_hp_enemy", "count": 1, "hp": 1000}
+				],
+				"expected_behavior": "叠满后下3次攻击必定暴击并触发图腾回响"
+			}
 		"test_eagle_totem_parrot":
 			return {
 				"id": "test_eagle_totem_parrot",
