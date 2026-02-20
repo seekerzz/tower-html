@@ -47,13 +47,13 @@ func _find_nearest_non_petrified_enemy() -> Node2D:
 	return nearest
 
 func _petrify_enemy(enemy: Node2D):
-	var duration = 3.0
+	var duration = 1.0
 	if unit.level >= 2:
-		duration = 5.0
+		duration = 1.5
 	if unit.level >= 3:
-		duration = 8.0
+		duration = 2.0
 
-	# Apply PetrifiedStatus
+	# Apply PetrifiedStatus with source reference
 	if enemy.has_method("apply_status"):
 		enemy.apply_status(PetrifiedStatus, {"duration": duration, "source": unit})
 

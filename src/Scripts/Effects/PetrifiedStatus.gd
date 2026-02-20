@@ -20,11 +20,11 @@ func setup(target: Node, source: Object, params: Dictionary):
 		original_color = target.modulate
 		target.modulate = petrify_color
 		target.set_meta("is_petrified", true)
+		target.set_meta("petrify_source", source)  # 保存引用用于伤害计算
 
-		# Modify collision layer: Remove from Enemy (2), Add to Petrified (10)
-		if target is CollisionObject2D:
-			target.set_collision_layer_value(2, false)
-			target.set_collision_layer_value(10, true)
+		# 冻结动画
+		if target.get("visual_controller"):
+			target.visual_controller.set_idle_enabled(false)
 
 		# Stop movement by applying stun
 		if target.has_method("apply_stun"):
@@ -35,8 +35,8 @@ func _exit_tree():
 	if is_instance_valid(target) and (target is Node2D):
 		target.modulate = original_color
 		target.remove_meta("is_petrified")
+		target.remove_meta("petrify_source")
 
-		# Restore collision layer
-		if target is CollisionObject2D:
-			target.set_collision_layer_value(2, true)
-			target.set_collision_layer_value(10, false)
+		# 恢复动画
+		if target.get("visual_controller"):
+			target.visual_controller.set_idle_enabled(true)
