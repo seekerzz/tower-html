@@ -161,12 +161,24 @@ func attack_logic(delta, target: Node2D):
 
 	base_attack_timer -= delta
 	if base_attack_timer <= 0:
-		base_attack_timer = 1.0 / data.atkSpeed
+		var effective_aspd = data.atkSpeed
+		if "attack_speed_mult" in enemy:
+			effective_aspd *= enemy.attack_speed_mult
+
+		# Prevent divide by zero or negative
+		effective_aspd = max(0.1, effective_aspd)
+
+		base_attack_timer = 1.0 / effective_aspd
 
 		if enemy.blind_timer > 0:
 			enemy.attack_missed.emit(enemy)
 			GameManager.spawn_floating_text(enemy.global_position, "MISS", Color.GRAY)
 			return
+
+		var effective_dmg = data.dmg
+		if "damage_mult" in enemy:
+			effective_dmg *= enemy.damage_mult
+			effective_dmg = max(0, effective_dmg)
 
 		if data.get("attackType") == "ranged":
 			play_attack_animation(target_pos, func():
@@ -178,7 +190,7 @@ func attack_logic(delta, target: Node2D):
 					GameManager.combat_manager.spawn_projectile(enemy, enemy.global_position, null, {
 						"target_pos": core_pos,
 						"type": proj_type,
-						"damage": data.dmg,
+						"damage": effective_dmg,
 						"speed": data.get("projectileSpeed", 300.0),
 						"damageType": "physical"
 					})
@@ -188,11 +200,11 @@ func attack_logic(delta, target: Node2D):
 				if is_targeting_unit:
 					if target and is_instance_valid(target):
 						if target.has_method("take_damage"):
-							target.take_damage(data.dmg, enemy)
+							target.take_damage(effective_dmg, enemy)
 					# If target became invalid during animation, attack misses (do not hit core)
 				else:
 					# Default core attack
-					GameManager.damage_core(data.dmg)
+					GameManager.damage_core(effective_dmg)
 					if current_target_tile and not is_instance_valid(current_target_tile):
 						enemy.state = enemy.State.MOVE
 						current_target_tile = null

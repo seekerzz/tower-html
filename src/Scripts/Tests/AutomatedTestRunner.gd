@@ -38,7 +38,16 @@ func _setup_test():
 					if not GameManager.grid_manager.active_territory_tiles.has(tile):
 						GameManager.grid_manager.active_territory_tiles.append(tile)
 
-			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
+			if GameManager.grid_manager.place_unit(u.id, u.x, u.y):
+				key = GameManager.grid_manager.get_tile_key(u.x, u.y)
+				if GameManager.grid_manager.tiles.has(key):
+					var tile = GameManager.grid_manager.tiles[key]
+					var unit = tile.unit
+					if unit and u.has("level") and u.level > 1:
+						unit.level = u.level
+						unit.reset_stats()
+						unit.current_hp = unit.max_hp
+						unit.update_visuals()
 
 	# Setup actions
 	if config.has("setup_actions"):
@@ -289,7 +298,8 @@ func _log_status():
 					"grid_x": tile.x,
 					"grid_y": tile.y,
 					"level": u.level,
-					"damage_stat": u.damage # Base damage stat
+					"damage_stat": u.damage,
+					"atk_speed_stat": u.atk_speed
 				})
 
 	var enemies_info = []

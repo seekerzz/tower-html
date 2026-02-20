@@ -56,6 +56,10 @@ var rotation_sensitivity = 5.0
 var invincible_timer: float = 0.0
 var last_hit_direction: Vector2 = Vector2.ZERO
 
+# Stat Multipliers (for Steal effects)
+var damage_mult: float = 1.0
+var attack_speed_mult: float = 1.0
+
 var behavior: EnemyBehavior
 
 # Bleed System
