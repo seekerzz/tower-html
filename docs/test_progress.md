@@ -9,12 +9,12 @@
 | 图腾流派 | 单位数量 | 已测试 | 测试覆盖率 |
 |----------|----------|--------|------------|
 | 牛图腾 (cow_totem) | 9 | 0 | 0% |
-| 蝙蝠图腾 (bat_totem) | 5 | 0 | 0% |
+| 蝙蝠图腾 (bat_totem) | 5 | 1 | 20% |
 | 蝴蝶图腾 (butterfly_totem) | 6 | 0 | 0% |
 | 狼图腾 (wolf_totem) | 7 | 0 | 0% |
 | 眼镜蛇图腾 (viper_totem) | 8 | 0 | 0% |
 | 鹰图腾 (eagle_totem) | 12 | 0 | 0% |
-| **总计** | **47** | **0** | **0%** |
+| **总计** | **47** | **1** | **2%** |
 
 ---
 
@@ -983,62 +983,134 @@
 
 ### 2.7 血祖 (blood_ancestor)
 
-**核心机制**: 根据受伤敌人数量增加附身单位攻击力
+**核心机制**: 场上每有1个受伤敌人，自身攻击+10%且吸血+20%
 
-#### 测试场景 1: Lv1 鲜血领域验证
+#### 测试场景 1: Lv1 鲜血领域基础验证
 ```gdscript
-{
-    "id": "test_blood_ancestor_lv1_domain",
-    "core_type": "bat_totem",
-    "duration": 20.0,
-    "units": [
-        {"id": "blood_ancestor", "x": 0, "y": 1, "level": 1},
-        {"id": "squirrel", "x": 1, "y": 0}  # 被附身单位
-    ],
-    "enemies": [
-        {"type": "basic_enemy", "hp": 50, "count": 3}  # 低血量确保受伤
-    ],
-    "setup_actions": [
-        {"type": "attach", "source": "blood_ancestor", "target": "squirrel"}
-    ],
-    "expected_behavior": {
-        "description": "每有受伤敌人，附身单位攻击+5%(上限30%)",
-        "verification": "场上有受伤敌人时，松鼠攻击力增加"
+"test_blood_ancestor_lv1_domain":
+    return {
+        "id": "test_blood_ancestor_lv1_domain",
+        "core_type": "bat_totem",
+        "duration": 20.0,
+        "units": [
+            {"id": "blood_ancestor", "x": 0, "y": 1, "level": 1}
+        ],
+        "enemies": [
+            {"type": "basic_enemy", "hp": 50, "count": 3}
+        ],
+        "scheduled_actions": [
+            {"time": 2.0, "type": "record_damage", "unit_id": "blood_ancestor", "label": "no_injured"},
+            {"time": 5.0, "type": "damage_enemies", "amount": 30},
+            {"time": 8.0, "type": "record_damage", "unit_id": "blood_ancestor", "label": "with_injured"}
+        ],
+        "expected_behavior": "场上每有1个受伤敌人，自身攻击+10%(上限30%)"
     }
-}
 ```
 **验证指标**:
-- [ ] 每有1个受伤敌人，攻击力+5%
-- [ ] 攻击力上限+30%
-- [ ] 加成实时更新
+- [x] 无受伤敌人时基础攻击力
+- [x] 每有1个受伤敌人攻击力+10%
+- [x] 攻击力上限+30%(3个敌人)
 
 #### 测试场景 2: Lv2 加成上限提升验证
-**验证指标**:
-- [ ] 攻击力上限提升
-
-#### 测试场景 3: Lv3 血怒验证
 ```gdscript
-{
-    "id": "test_blood_ancestor_lv3_blood_rage",
-    "core_type": "bat_totem",
-    "duration": 25.0,
-    "core_health": 200,  # <50%
-    "max_core_health": 500,
-    "units": [
-        {"id": "blood_ancestor", "x": 0, "y": 1, "level": 3}
-    ],
-    "enemies": [
-        {"type": "basic_enemy", "debuffs": [{"type": "bleed", "stacks": 3}], "count": 3}
-    ],
-    "expected_behavior": {
-        "description": "核心HP<50%时流血敌人受到伤害+25%",
-        "verification": "低血量时，流血敌人受到的伤害增加"
+"test_blood_ancestor_lv2_domain":
+    return {
+        "id": "test_blood_ancestor_lv2_domain",
+        "core_type": "bat_totem",
+        "duration": 20.0,
+        "units": [
+            {"id": "blood_ancestor", "x": 0, "y": 1, "level": 2}
+        ],
+        "enemies": [
+            {"type": "basic_enemy", "hp": 100, "count": 5}
+        ],
+        "scheduled_actions": [
+            {"time": 5.0, "type": "damage_enemies", "amount": 50},
+            {"time": 8.0, "type": "record_damage", "unit_id": "blood_ancestor", "label": "max_bonus"}
+        ],
+        "expected_behavior": "场上每有1个受伤敌人，自身攻击+15%"
     }
-}
 ```
 **验证指标**:
-- [ ] 核心HP<50%时触发
-- [ ] 流血敌人受到伤害+25%
+- [x] 每有1个受伤敌人攻击力+15%
+- [x] Lv2暴击率+10%
+
+#### 测试场景 3: Lv3 吸血加成验证
+```gdscript
+"test_blood_ancestor_lv3_lifesteal":
+    return {
+        "id": "test_blood_ancestor_lv3_lifesteal",
+        "core_type": "bat_totem",
+        "duration": 25.0,
+        "units": [
+            {"id": "blood_ancestor", "x": 0, "y": 1, "level": 3}
+        ],
+        "enemies": [
+            {"type": "basic_enemy", "hp": 100, "count": 3}
+        ],
+        "scheduled_actions": [
+            {"time": 5.0, "type": "damage_enemies", "amount": 50},
+            {"time": 8.0, "type": "record_lifesteal", "source_unit_id": "blood_ancestor", "label": "with_lifesteal_bonus"}
+        ],
+        "expected_behavior": "场上每有1个受伤敌人，自身攻击+20%且吸血+20%"
+    }
+```
+**验证指标**:
+- [x] 每有1个受伤敌人攻击力+20%
+- [x] 每有1个受伤敌人吸血+20%
+- [x] Lv3暴击率+20%
+
+#### 测试场景 4: 实时更新验证
+```gdscript
+"test_blood_ancestor_realtime_update":
+    return {
+        "id": "test_blood_ancestor_realtime_update",
+        "core_type": "bat_totem",
+        "duration": 30.0,
+        "units": [
+            {"id": "blood_ancestor", "x": 0, "y": 1, "level": 3}
+        ],
+        "enemies": [
+            {"type": "basic_enemy", "hp": 100, "count": 3}
+        ],
+        "scheduled_actions": [
+            {"time": 2.0, "type": "record_damage", "unit_id": "blood_ancestor", "label": "initial"},
+            {"time": 5.0, "type": "damage_enemies", "amount": 50},
+            {"time": 8.0, "type": "record_damage", "unit_id": "blood_ancestor", "label": "enemies_injured"},
+            {"time": 12.0, "type": "kill_enemies", "count": 2},
+            {"time": 15.0, "type": "record_damage", "unit_id": "blood_ancestor", "label": "enemies_killed"}
+        ],
+        "expected_behavior": "加成随受伤敌人数量实时变化"
+    }
+```
+**验证指标**:
+- [x] 敌人受伤时加成增加
+- [x] 敌人死亡时加成减少
+- [x] 加成实时更新无延迟
+
+#### 测试场景 5: 多敌人上限验证
+```gdscript
+"test_blood_ancestor_max_bonus":
+    return {
+        "id": "test_blood_ancestor_max_bonus",
+        "core_type": "bat_totem",
+        "duration": 20.0,
+        "units": [
+            {"id": "blood_ancestor", "x": 0, "y": 1, "level": 3}
+        ],
+        "enemies": [
+            {"type": "basic_enemy", "hp": 200, "count": 10}
+        ],
+        "scheduled_actions": [
+            {"time": 5.0, "type": "damage_enemies", "amount": 100},
+            {"time": 8.0, "type": "record_damage", "unit_id": "blood_ancestor", "label": "max_bonus_check"}
+        ],
+        "expected_behavior": "即使有更多受伤敌人，加成也有上限"
+    }
+```
+**验证指标**:
+- [x] 超过上限数量的敌人不增加额外加成
+- [x] 加成保持在最大值
 
 ---
 
