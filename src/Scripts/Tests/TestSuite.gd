@@ -118,6 +118,32 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "kestrel", "x": 0, "y": 1}]
 			}
+		"test_kestrel_lv1_dive":
+			return {
+				"id": "test_kestrel_lv1_dive",
+				"core_type": "eagle_totem",
+				"duration": 30.0,
+				"units": [
+					{"id": "kestrel", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 10}
+				],
+				"expected_behavior": "攻击有20%概率造成1秒眩晕"
+			}
+		"test_kestrel_lv3_sonic":
+			return {
+				"id": "test_kestrel_lv3_sonic",
+				"core_type": "eagle_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "kestrel", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3, "positions": [{"x": 2, "y": 0}, {"x": 2, "y": 1}]}
+				],
+				"expected_behavior": "眩晕触发时造成小范围震荡伤害"
+			}
 		"test_eagle_owl":
 			return {
 				"id": "test_eagle_owl",
