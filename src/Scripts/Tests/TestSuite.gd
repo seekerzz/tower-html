@@ -447,6 +447,59 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "viper", "x": 0, "y": 1}]
 			}
+		"test_viper_lv1_poison":
+			return {
+				"id": "test_viper_lv1_poison",
+				"core_type": "viper_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "viper", "x": 0, "y": 1, "level": 1},
+					{"id": "squirrel", "x": 1, "y": 0}
+				],
+				"setup_actions": [
+					{"type": "apply_buff", "buff_id": "poison", "target_unit_id": "squirrel"}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3}
+				],
+				"expected_behavior": "赋予中毒Buff，攻击附加2层中毒，松鼠攻击使敌人叠加2层中毒"
+			}
+		"test_viper_lv2_poison":
+			return {
+				"id": "test_viper_lv2_poison",
+				"core_type": "viper_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "viper", "x": 0, "y": 1, "level": 2},
+					{"id": "squirrel", "x": 1, "y": 0}
+				],
+				"setup_actions": [
+					{"type": "apply_buff", "buff_id": "poison", "target_unit_id": "squirrel"}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3}
+				],
+				"expected_behavior": "攻击附加3层中毒"
+			}
+		"test_viper_lv3_poison":
+			return {
+				"id": "test_viper_lv3_poison",
+				"core_type": "viper_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "viper", "x": 0, "y": 1, "level": 3},
+					{"id": "squirrel", "x": 1, "y": 0},
+					{"id": "wolf", "x": -1, "y": 0}
+				],
+				"setup_actions": [
+					{"type": "apply_buff", "buff_id": "poison", "target_unit_id": "squirrel"},
+					{"type": "apply_buff", "buff_id": "poison", "target_unit_id": "wolf"}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3}
+				],
+				"expected_behavior": "可赋予2个单位中毒Buff"
+			}
 		"test_viper_totem_arrow_frog":
 			return {
 				"id": "test_viper_totem_arrow_frog",
