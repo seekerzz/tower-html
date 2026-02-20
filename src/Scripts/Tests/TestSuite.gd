@@ -465,14 +465,51 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "medusa", "x": 0, "y": 1}]
 			}
-		"test_viper_totem_lure_snake":
+		"test_lure_snake_lv1_trap":
 			return {
-				"id": "test_viper_totem_lure_snake",
+				"id": "test_lure_snake_lv1_trap",
 				"core_type": "viper_totem",
-				"initial_gold": 1000,
-				"start_wave_index": 1,
-				"duration": 15.0,
-				"units": [{"id": "lure_snake", "x": 0, "y": 1}]
+				"duration": 25.0,
+				"units": [
+					{"id": "lure_snake", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "path": [{"x": 2, "y": 0}, {"x": 2, "y": 1}], "count": 3}
+				],
+				"setup_actions": [
+					{"type": "place_trap", "trap_id": "poison_trap", "position": {"x": 2, "y": 0}}
+				],
+				"expected_behavior": "放置毒陷阱，敌人触发后受到伤害并中毒，敌人经过陷阱时受到伤害和中毒"
+			}
+		"test_lure_snake_lv2_trap":
+			return {
+				"id": "test_lure_snake_lv2_trap",
+				"core_type": "viper_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "lure_snake", "x": 0, "y": 1, "level": 2}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "path": [{"x": 2, "y": 0}, {"x": 2, "y": 1}], "count": 3}
+				],
+				"setup_actions": [
+					{"type": "place_trap", "trap_id": "poison_trap", "position": {"x": 2, "y": 0}},
+					{"type": "place_trap", "trap_id": "poison_trap", "position": {"x": 2, "y": 1}}
+				],
+				"expected_behavior": "可放置2个毒陷阱"
+			}
+		"test_lure_snake_lv3_damage":
+			return {
+				"id": "test_lure_snake_lv3_damage",
+				"core_type": "viper_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "lure_snake", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3}
+				],
+				"expected_behavior": "敌人获得Debuff：每0.5秒受到额外伤害，中毒敌人每0.5秒受到额外伤害"
 			}
 		# ========== 鹰图腾流派单位测试 (12个单位) ==========
 		"test_eagle_totem_harpy_eagle":

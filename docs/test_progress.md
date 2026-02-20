@@ -12,7 +12,7 @@
 | 蝙蝠图腾 (bat_totem) | 5 | 0 | 0% |
 | 蝴蝶图腾 (butterfly_totem) | 6 | 0 | 0% |
 | 狼图腾 (wolf_totem) | 7 | 0 | 0% |
-| 眼镜蛇图腾 (viper_totem) | 8 | 0 | 0% |
+| 眼镜蛇图腾 (viper_totem) | 8 | 1 | 12.5% |
 | 鹰图腾 (eagle_totem) | 12 | 0 | 0% |
 | **总计** | **47** | **0** | **0%** |
 
@@ -2164,18 +2164,18 @@
 
 ---
 
-### 5.5 蟾蜍 (toad)
+### 5.5 诱捕蛇 (lure_snake/toad)
 
 **核心机制**: 放置毒陷阱
 
 #### 测试场景 1: Lv1 毒陷阱验证
 ```gdscript
 {
-    "id": "test_toad_lv1_trap",
+    "id": "test_lure_snake_lv1_trap",
     "core_type": "viper_totem",
     "duration": 25.0,
     "units": [
-        {"id": "toad", "x": 0, "y": 1, "level": 1}
+        {"id": "lure_snake", "x": 0, "y": 1, "level": 1}
     ],
     "enemies": [
         {"type": "basic_enemy", "path": [{"x": 2, "y": 0}, {"x": 2, "y": 1}], "count": 3}
@@ -2190,22 +2190,40 @@
 }
 ```
 **验证指标**:
-- [ ] 可放置1个毒陷阱
-- [ ] 陷阱触发时敌人受到伤害
-- [ ] 陷阱触发时敌人获得中毒
+- [x] 可放置1个毒陷阱
+- [x] 陷阱触发时敌人受到伤害
+- [x] 陷阱触发时敌人获得中毒
 
 #### 测试场景 2: Lv2 陷阱数量提升验证
+```gdscript
+{
+    "id": "test_lure_snake_lv2_trap",
+    "core_type": "viper_totem",
+    "duration": 25.0,
+    "units": [
+        {"id": "lure_snake", "x": 0, "y": 1, "level": 2}
+    ],
+    "enemies": [
+        {"type": "basic_enemy", "path": [{"x": 2, "y": 0}, {"x": 2, "y": 1}], "count": 3}
+    ],
+    "setup_actions": [
+        {"type": "place_trap", "trap_id": "poison_trap", "position": {"x": 2, "y": 0}},
+        {"type": "place_trap", "trap_id": "poison_trap", "position": {"x": 2, "y": 1}}
+    ],
+    "expected_behavior": "可放置2个毒陷阱"
+}
+```
 **验证指标**:
-- [ ] 可放置2个毒陷阱
+- [x] 可放置2个毒陷阱
 
 #### 测试场景 3: Lv3 额外伤害验证
 ```gdscript
 {
-    "id": "test_toad_lv3_damage",
+    "id": "test_lure_snake_lv3_damage",
     "core_type": "viper_totem",
     "duration": 25.0,
     "units": [
-        {"id": "toad", "x": 0, "y": 1, "level": 3}
+        {"id": "lure_snake", "x": 0, "y": 1, "level": 3}
     ],
     "enemies": [
         {"type": "basic_enemy", "count": 3}
@@ -2217,8 +2235,14 @@
 }
 ```
 **验证指标**:
-- [ ] 中毒敌人每0.5秒受到额外伤害
-- [ ] 额外伤害数值正确
+- [x] 中毒敌人每0.5秒受到额外伤害
+- [x] 额外伤害数值正确
+
+**测试记录**:
+- 测试日期: 2026-02-20
+- 测试人员: Jules
+- 测试结果: 通过
+- 备注: LureSnake unit logic updated to match Toad behavior (Poison Traps) as per task requirements. Tests passed.
 
 ---
 
