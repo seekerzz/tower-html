@@ -633,4 +633,44 @@ func get_test_config(case_id: String) -> Dictionary:
 				],
 				"description": "测试美杜莎石化Juice效果：动画冻结、碎裂图像、石块伤害"
 			}
+		"test_vulture_lv1_reaper":
+			return {
+				"id": "test_vulture_lv1_reaper",
+				"core_type": "eagle_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "vulture", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "hp": 100, "count": 2},
+					{"type": "low_hp_enemy", "hp": 30, "count": 1}
+				],
+				"expected_behavior": "优先攻击HP最低的敌人"
+			}
+		"test_vulture_lv2_growth":
+			return {
+				"id": "test_vulture_lv2_growth",
+				"core_type": "eagle_totem",
+				"duration": 30.0,
+				"units": [
+					{"id": "vulture", "x": 0, "y": 1, "level": 2}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "hp": 50, "count": 5}
+				],
+				"expected_behavior": "对低HP敌人伤害+30%，击杀后永久攻击力+1"
+			}
+		"test_vulture_lv3_feast":
+			return {
+				"id": "test_vulture_lv3_feast",
+				"core_type": "eagle_totem",
+				"duration": 30.0,
+				"units": [
+					{"id": "vulture", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "hp": 50, "count": 10}
+				],
+				"expected_behavior": "击杀敌人后永久增加自身攻击力，可无限叠加"
+			}
 	return {}
