@@ -1,5 +1,6 @@
 extends Node
 
+var type_key: String = "vulnerable"
 var duration: float = 0.0
 var stacks: int = 0
 var target: Node2D

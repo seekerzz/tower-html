@@ -1,62 +1,84 @@
 extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
-# 牛魔像 - 震荡反击机制
-# 每受到15/12/10次攻击触发全屏震荡，晕眩1/1/1.5秒
+# 牛魔像 - 怒火中烧 & 充能震荡
+# Lv1: 每次受击攻击力+3%，上限30%(10层)
+# Lv2: 攻击力上限提升至50%(约17层)
+# Lv3: 受击时20%概率给敌人叠加瘟疫易伤Debuff (Shockwave)
 
-var hit_counter: int = 0
-var hits_threshold: int = 15
-var stun_duration: float = 1.0
+var rage_stacks: int = 0
+var max_rage_stacks: int = 10
+var rage_damage_bonus: float = 0.03
+var shockwave_chance: float = 0.0
+var base_damage: float = 0.0
 
 func on_setup():
-	# 从单位数据中获取等级相关的机制参数
+	# Ensure unit can attack for Rage mechanic verification
+	if unit.unit_data.get("damage", 0) == 0:
+		unit.unit_data["attackType"] = "melee"
+		unit.unit_data["range"] = 120
+		unit.unit_data["atkSpeed"] = 1.0
+
+		unit.reset_stats()
+
+	_update_mechanics()
+
+func on_stats_updated():
+	if unit:
+		if unit.damage == 0:
+			unit.damage = 50.0
+		base_damage = unit.damage
+		rage_stacks = 0
 	_update_mechanics()
 
 func _update_mechanics():
 	var level = unit.level if unit else 1
-	var unit_data = unit.unit_data if unit else {}
-	var level_data = unit_data.get("levels", {}).get(str(level), {})
-	var mechanics = level_data.get("mechanics", {})
 
-	# 根据等级设置受击阈值和晕眩时长
-	hits_threshold = mechanics.get("hits_threshold", 15)
-	stun_duration = mechanics.get("stun_duration", 1.0)
+	if level >= 2:
+		max_rage_stacks = 17 # 约50%
+	else:
+		max_rage_stacks = 10
+
+	if level >= 3:
+		shockwave_chance = 0.2
+	else:
+		shockwave_chance = 0.0
 
 func on_damage_taken(amount: float, source: Node2D) -> float:
-	# 增加受击计数
-	hit_counter += 1
+	# 增加怒火层数
+	if rage_stacks < max_rage_stacks:
+		rage_stacks += 1
+		_update_damage()
 
-	# 检查是否达到阈值
-	if hit_counter >= hits_threshold:
+	# Lv3 充能震荡
+	if shockwave_chance > 0 and randf() < shockwave_chance:
 		_trigger_shockwave()
-		hit_counter = 0  # 重置计数器
 
 	return amount
 
+func _update_damage():
+	if unit:
+		var bonus = 1.0 + (rage_stacks * rage_damage_bonus)
+		unit.damage = base_damage * bonus
+
 func _trigger_shockwave():
-	# 触发全屏晕眩效果
+	# 触发全屏瘟疫易伤 (Vulnerable)
 	var enemies = unit.get_tree().get_nodes_in_group("enemies")
 
-	var stunned_count = 0
 	for enemy in enemies:
-		if is_instance_valid(enemy) and enemy.has_method("apply_stun"):
-			enemy.apply_stun(stun_duration)
-			stunned_count += 1
+		if is_instance_valid(enemy) and enemy.has_method("add_debuff"):
+			enemy.add_debuff("vulnerable", 1, 5.0)
 
-	# 显示视觉反馈
-	GameManager.spawn_floating_text(unit.global_position, "震荡反击!", Color.GOLD)
+	GameManager.spawn_floating_text(unit.global_position, "Shockwave!", Color.PURPLE)
 
-	# 触发屏幕震动效果（如果可用）
 	if GameManager.has_method("trigger_impact"):
-		GameManager.trigger_impact(Vector2.ZERO, 1.0)
+		GameManager.trigger_impact(Vector2.ZERO, 0.5)
 
-func on_stats_updated():
-	# 当单位升级或属性更新时，重新读取机制参数
-	_update_mechanics()
-
-# 获取当前受击计数（用于UI显示）
+# 兼容旧接口 / Alias for compatibility and UI
 func get_hit_counter() -> int:
-	return hit_counter
+	return rage_stacks
 
-# 获取触发阈值（用于UI显示）
 func get_hits_threshold() -> int:
-	return hits_threshold
+	return max_rage_stacks
+
+func get_rage_stacks() -> int:
+	return rage_stacks
