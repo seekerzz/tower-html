@@ -438,6 +438,52 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "scorpion", "x": 0, "y": 1}]
 			}
+		# ========== 蝎子测试 ==========
+		"test_scorpion_lv1_spike":
+			return {
+				"id": "test_scorpion_lv1_spike",
+				"core_type": "viper_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "scorpion", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "path": [{"x": 2, "y": 0}], "count": 3}
+				],
+				"setup_actions": [
+					{"type": "place_trap", "trap_id": "spike_trap", "position": {"x": 2, "y": 0}}
+				],
+				"expected_behavior": "尖刺陷阱：敌人经过时受到伤害"
+			}
+		"test_scorpion_lv2_spike":
+			return {
+				"id": "test_scorpion_lv2_spike",
+				"core_type": "viper_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "scorpion", "x": 0, "y": 1, "level": 2}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "path": [{"x": 2, "y": 0}], "count": 3}
+				],
+				"setup_actions": [
+					{"type": "place_trap", "trap_id": "spike_trap", "position": {"x": 2, "y": 0}}
+				],
+				"expected_behavior": "陷阱伤害提升"
+			}
+		"test_scorpion_lv3_bleed":
+			return {
+				"id": "test_scorpion_lv3_bleed",
+				"core_type": "viper_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "scorpion", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "path": [{"x": 2, "y": 0}], "count": 3}
+				],
+				"expected_behavior": "经过时叠加一层流血Debuff，敌人经过陷阱时获得1层流血"
+			}
 		"test_viper_totem_viper":
 			return {
 				"id": "test_viper_totem_viper",
