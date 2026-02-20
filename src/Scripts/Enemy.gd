@@ -730,9 +730,21 @@ func die(killer_unit = null):
 		queue_free()
 
 func _play_petrified_death_effect():
+	# Calculate damage percent
+	var damage_percent = 0.1  # Default LV1/LV2
+	var petrify_source = get_meta("petrify_source", null)
+	if petrify_source and is_instance_valid(petrify_source) and petrify_source.get("level"):
+		if petrify_source.level >= 3:
+			damage_percent = 0.2  # LV3: 20%
+
 	var shatter = load("res://src/Scenes/Effects/PetrifiedShatterEffect.tscn").instantiate()
 	shatter.global_position = global_position
-	# Pass sprite texture if needed, but current effect uses generic polygons
+	shatter.launch_direction = last_hit_direction
+	shatter.damage_percent = damage_percent
+	shatter.source_max_hp = max_hp
+	shatter.enemy_texture = AssetLoader.get_enemy_icon(type_key)
+	shatter.enemy_color = enemy_data.color
+
 	get_tree().current_scene.add_child(shatter)
 
 func find_attack_target() -> Node2D:

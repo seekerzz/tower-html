@@ -1,76 +1,142 @@
 extends Node2D
 
-var debris_pieces: Array = []
+var launch_direction: Vector2 = Vector2.RIGHT
+var damage_percent: float = 0.1
+var source_max_hp: float = 100
+var enemy_texture: Texture2D = null
+var enemy_color: Color = Color.GRAY
+
+const BASE_SPEED: float = 300.0
+const SPEED_VARIATION: float = 150.0
+const LIFETIME: float = 3.0
+const FRAGMENT_COUNT_MIN: int = 3
+const FRAGMENT_COUNT_MAX: int = 6
+const SPREAD_ANGLE: float = 30.0  # 度
+
+var fragments: Array = []
+var hit_enemies: Dictionary = {}
 
 func _ready():
-	_create_shatter()
+	if launch_direction == Vector2.ZERO:
+		launch_direction = Vector2.RIGHT
+	_create_fragments()
 
-func _create_shatter():
-	var count = randi_range(3, 6) # 3-6 fragments
+	# 延迟后开始淡出
+	var timer = get_tree().create_timer(LIFETIME)
+	timer.timeout.connect(_fade_out)
+
+func _create_fragments():
+	var count = randi_range(FRAGMENT_COUNT_MIN, FRAGMENT_COUNT_MAX)
+
+	# 预定义几种碎块形状（相对坐标，-0.5到0.5范围）
+	var shape_templates = [
+		[Vector2(-0.5, -0.5), Vector2(0.5, -0.5), Vector2(0, 0.5)],  # 三角形
+		[Vector2(-0.5, -0.5), Vector2(0.3, -0.5), Vector2(0.5, 0.5), Vector2(-0.3, 0.5)],  # 四边形1
+		[Vector2(-0.3, -0.5), Vector2(0.5, -0.3), Vector2(0.3, 0.5), Vector2(-0.5, 0.3)],  # 四边形2
+		[Vector2(0, -0.5), Vector2(0.5, -0.2), Vector2(0.3, 0.5), Vector2(-0.3, 0.5), Vector2(-0.5, -0.2)],  # 五边形
+	]
+
+	var texture_size = enemy_texture.get_size() if enemy_texture else Vector2(40, 40)
+	var fragment_scale = 30.0  # 基础碎块大小
 
 	for i in range(count):
-		var debris = _create_debris()
-		add_child(debris)
-		debris_pieces.append(debris)
+		var shape_points = shape_templates[i % shape_templates.size()]
+		var fragment = _create_single_fragment(i, count, shape_points, texture_size, fragment_scale)
+		add_child(fragment)
+		fragments.append(fragment)
 
-	# 2.5s delay before fade out
-	var tween = create_tween()
-	tween.tween_interval(2.5)
-	tween.tween_callback(_fade_out)
+func _create_single_fragment(index: int, total: int, shape_points: Array, tex_size: Vector2, scale: float) -> RigidBody2D:
+	var fragment = RigidBody2D.new()
+	fragment.collision_layer = 0  # 不与其他碎块碰撞
+	fragment.collision_mask = 2   # 只检测敌人层
 
-func _create_debris() -> RigidBody2D:
-	var debris = RigidBody2D.new()
+	# 创建碰撞形状
+	var scaled_points = PackedVector2Array()
+	for p in shape_points:
+		scaled_points.append(p * scale)
 
-	# Random size
-	var size = randf_range(10.0, 30.0)
+	var collision_shape = CollisionPolygon2D.new()
+	collision_shape.polygon = scaled_points
+	fragment.add_child(collision_shape)
 
-	# Collision Shape
-	var shape = RectangleShape2D.new()
-	shape.size = Vector2(size, size)
-	var collision = CollisionShape2D.new()
-	collision.shape = shape
-	debris.add_child(collision)
-
-	# Visual
+	# 创建视觉 - 使用Polygon2D显示纹理的一部分
 	var visual = Polygon2D.new()
-	visual.polygon = PackedVector2Array([
-		Vector2(-size/2, -size/2),
-		Vector2(size/2, -size/2),
-		Vector2(size/2, size/2),
-		Vector2(-size/2, size/2)
-	])
-	visual.color = Color.DARK_GRAY
-	debris.add_child(visual)
+	visual.polygon = scaled_points
+	visual.color = Color.GRAY  # 石化色调
 
-	# Random mass
-	var m = randf_range(1.0, 3.0)
-	debris.mass = m
+	if enemy_texture:
+		visual.texture = enemy_texture
+		visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
-	# Gravity Scale (1.0 default)
-	debris.gravity_scale = 1.0
+		# 计算UV坐标，将图像分割显示
+		var cols = ceil(sqrt(float(total)))
+		var rows = ceil(float(total) / cols)
+		var col = index % int(cols)
+		var row = index / int(cols)
 
-	# Collision Layer/Mask
-	# Layer 20 = 1 << 19
-	debris.collision_layer = 1 << 19
-	# Mask 1 (Walls) | 20 (Others)
-	debris.collision_mask = 1 | (1 << 19)
+		var u_size = 1.0 / cols
+		var v_size = 1.0 / rows
 
-	# Random Velocity
-	# Speed inversely proportional to mass
-	var speed = randf_range(200.0, 400.0) / m
-	var direction = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)).normalized()
-	if direction == Vector2.ZERO: direction = Vector2.UP
+		var uvs = PackedVector2Array()
+		for p in shape_points:
+			var u = (col + p.x + 0.5) / cols
+			var v = (row + p.y + 0.5) / rows
+			uvs.append(Vector2(u, v))
+		visual.uv = uvs
 
-	debris.linear_velocity = direction * speed
-	debris.angular_velocity = randf_range(-5.0, 5.0)
+	fragment.add_child(visual)
 
-	return debris
+	# 设置物理属性
+	fragment.mass = randf_range(0.5, 2.0)
+	fragment.gravity_scale = 0.5
+
+	# 计算飞散速度
+	var spread_rad = deg_to_rad(SPREAD_ANGLE)
+	var angle_offset = randf_range(-spread_rad, spread_rad)
+	var fly_direction = launch_direction.rotated(angle_offset).normalized()
+
+	var speed = (BASE_SPEED + randf_range(-SPEED_VARIATION, SPEED_VARIATION)) / fragment.mass
+	fragment.linear_velocity = fly_direction * speed
+	fragment.angular_velocity = randf_range(-10.0, 10.0)
+
+	# 连接碰撞信号
+	fragment.body_entered.connect(_on_fragment_hit_enemy.bind(fragment))
+
+	# Enable contact monitoring for body_entered to work
+	fragment.contact_monitor = true
+	fragment.max_contacts_reported = 1
+
+	return fragment
+
+func _on_fragment_hit_enemy(enemy: Node, _fragment: RigidBody2D):
+	if not enemy.is_in_group("enemies"):
+		return
+	if not enemy.has_method("take_damage"):
+		return
+
+	if not (enemy is Node2D):
+		return
+
+	var enemy_id = enemy.get_instance_id()
+	if hit_enemies.has(enemy_id):
+		return
+
+	hit_enemies[enemy_id] = true
+
+	var damage = source_max_hp * damage_percent
+	enemy.take_damage(damage, null, "physical", self, 0)
+
+	GameManager.spawn_floating_text(
+		enemy.global_position,
+		"石块冲击!",
+		Color.GRAY
+	)
 
 func _fade_out():
 	var tween = create_tween()
 	tween.set_parallel(true)
-	for debris in debris_pieces:
-		if is_instance_valid(debris):
-			tween.tween_property(debris, "modulate:a", 0.0, 0.5)
-
-	tween.chain().tween_callback(queue_free)
+	for fragment in fragments:
+		if is_instance_valid(fragment):
+			tween.tween_property(fragment, "modulate:a", 0.0, 0.5)
+	await tween.finished
+	queue_free()
