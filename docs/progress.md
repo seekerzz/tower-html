@@ -38,6 +38,7 @@
 | P1-D | completed | 蝴蝶图腾单位群: Phoenix, IceMoth, Firefly, Sprite PR#447 | 2026-02-19 |
 | P1-E | completed | 鹰图腾单位群: Kestrel, Owl, Magpie, Pigeon PR#443 | 2026-02-19 |
 | P1-F | completed | 牛图腾单位群: Ascetic, Plant, IronTurtle, Hedgehog, YakGuardian, RockArmorCow, Oxpecker, MushroomHealer, Cow PR#448 | 2026-02-19 |
+| TEST-EAGLE-storm_eagle | completed | 风暴鹰自动化测试用例 | 2026-02-20 |
 
 ## 状态说明
 

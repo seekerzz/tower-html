@@ -633,4 +633,46 @@ func get_test_config(case_id: String) -> Dictionary:
 				],
 				"description": "测试美杜莎石化Juice效果：动画冻结、碎裂图像、石块伤害"
 			}
+		"test_storm_eagle_lv1_storm":
+			return {
+				"id": "test_storm_eagle_lv1_storm",
+				"core_type": "eagle_totem",
+				"start_wave_index": 1,
+				"duration": 20.0,
+				"units": [
+					{"id": "storm_eagle", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5}
+				],
+				"expected_behavior": "召唤雷电攻击随机敌人"
+			}
+		"test_storm_eagle_lv2_damage":
+			return {
+				"id": "test_storm_eagle_lv2_damage",
+				"core_type": "eagle_totem",
+				"start_wave_index": 1,
+				"duration": 20.0,
+				"units": [
+					{"id": "storm_eagle", "x": 0, "y": 1, "level": 2}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5}
+				],
+				"expected_behavior": "雷电伤害提升"
+			}
+		"test_storm_eagle_lv3_range":
+			return {
+				"id": "test_storm_eagle_lv3_range",
+				"core_type": "eagle_totem",
+				"start_wave_index": 1,
+				"duration": 20.0,
+				"units": [
+					{"id": "storm_eagle", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 8}
+				],
+				"expected_behavior": "雷暴范围扩大，可命中更多敌人"
+			}
 	return {}
