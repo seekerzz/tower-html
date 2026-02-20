@@ -866,12 +866,8 @@ func add_stat_bonus(stat: String, amount: float):
 	match stat:
 		"attack_speed":
 			atk_speed *= (1.0 + amount)
-		"defense":
-			# No defense stat on unit currently?
-			pass
-		"move_speed":
-			# Units don't move.
-			pass
+		"damage":
+			damage *= (1.0 + amount)
 		"crit_chance":
 			crit_rate += amount
 

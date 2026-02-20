@@ -161,7 +161,7 @@ func attack_logic(delta, target: Node2D):
 
 	base_attack_timer -= delta
 	if base_attack_timer <= 0:
-		base_attack_timer = 1.0 / data.atkSpeed
+		base_attack_timer = 1.0 / (data.atkSpeed * enemy.attack_speed_mult)
 
 		if enemy.blind_timer > 0:
 			enemy.attack_missed.emit(enemy)
@@ -178,7 +178,7 @@ func attack_logic(delta, target: Node2D):
 					GameManager.combat_manager.spawn_projectile(enemy, enemy.global_position, null, {
 						"target_pos": core_pos,
 						"type": proj_type,
-						"damage": data.dmg,
+						"damage": data.dmg * enemy.damage_mult,
 						"speed": data.get("projectileSpeed", 300.0),
 						"damageType": "physical"
 					})
@@ -188,11 +188,11 @@ func attack_logic(delta, target: Node2D):
 				if is_targeting_unit:
 					if target and is_instance_valid(target):
 						if target.has_method("take_damage"):
-							target.take_damage(data.dmg, enemy)
+							target.take_damage(data.dmg * enemy.damage_mult, enemy)
 					# If target became invalid during animation, attack misses (do not hit core)
 				else:
 					# Default core attack
-					GameManager.damage_core(data.dmg)
+					GameManager.damage_core(data.dmg * enemy.damage_mult)
 					if current_target_tile and not is_instance_valid(current_target_tile):
 						enemy.state = enemy.State.MOVE
 						current_target_tile = null
