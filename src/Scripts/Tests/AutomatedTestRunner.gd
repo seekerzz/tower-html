@@ -45,6 +45,10 @@ func _setup_test():
 		for action in config["setup_actions"]:
 			_execute_setup_action(action)
 
+	# Spawn test enemies
+	if config.has("enemies"):
+		_spawn_test_enemies(config["enemies"])
+
 	GameManager.game_over.connect(_on_game_over)
 	GameManager.wave_started.connect(_on_wave_started)
 	GameManager.enemy_spawned.connect(_on_enemy_spawned)
@@ -159,6 +163,58 @@ func _process(delta):
 	# Fallback safety if wave logic fails or infinite loop
 	if elapsed_time > 300.0:
 		_teardown("Timeout Safety")
+
+func _spawn_test_enemies(enemies_config: Array):
+	var enemy_scene = load("res://src/Scenes/Game/Enemy.tscn")
+	if not enemy_scene:
+		printerr("[TestRunner] Failed to load Enemy.tscn")
+		return
+
+	var spawn_points = []
+	if GameManager.grid_manager:
+		spawn_points = GameManager.grid_manager.get_spawn_points()
+
+	if spawn_points.is_empty():
+		spawn_points.append(Vector2(0, 300)) # Fallback
+
+	for entry in enemies_config:
+		var type_key = entry.get("type", "slime")
+		if type_key == "attacker_enemy": type_key = "shooter" # Mapping
+
+		var count = entry.get("count", 1)
+
+		for i in range(count):
+			var enemy = enemy_scene.instantiate()
+			var pos = spawn_points.pick_random()
+			# Add random offset
+			pos += Vector2(randf_range(-50, 50), randf_range(-50, 50))
+
+			enemy.setup(type_key, GameManager.wave)
+			enemy.global_position = pos
+
+			# Apply overrides
+			var modified = false
+			var new_data = enemy.enemy_data.duplicate()
+
+			if entry.has("attack_speed"):
+				new_data["atkSpeed"] = entry["attack_speed"]
+				modified = true
+
+			if entry.has("hp"):
+				enemy.hp = entry["hp"]
+				enemy.max_hp = entry["hp"]
+
+			if modified:
+				enemy.enemy_data = new_data
+				if enemy.behavior:
+					enemy.behavior.queue_free()
+				enemy._init_behavior()
+
+			# Add to CombatManager if possible, otherwise current scene
+			if GameManager.combat_manager:
+				GameManager.combat_manager.add_child(enemy)
+			else:
+				get_tree().current_scene.add_child(enemy)
 
 func _execute_scheduled_action(action: Dictionary):
 	match action.type:
