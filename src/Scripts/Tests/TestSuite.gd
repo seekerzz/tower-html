@@ -311,6 +311,74 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "blood_ancestor", "x": 0, "y": 1}]
 			}
+		"test_blood_mage_lv1_pool":
+			return {
+				"id": "test_blood_mage_lv1_pool",
+				"core_type": "bat_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "blood_mage", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3, "positions": [{"x": 2, "y": 2}, {"x": 2, "y": 3}]}
+				],
+				"scheduled_actions": [
+					{"time": 5.0, "type": "skill", "source": "blood_mage", "target": {"x": 2, "y": 2}}
+				],
+				"expected_behavior": "召唤1x1血池区域，区域内敌人每秒受到dot伤害"
+			}
+		"test_blood_mage_lv2_pool":
+			return {
+				"id": "test_blood_mage_lv2_pool",
+				"core_type": "bat_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "blood_mage", "x": 0, "y": 1, "level": 2}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5, "positions": [{"x": 2, "y": 2}, {"x": 3, "y": 2}, {"x": 2, "y": 3}, {"x": 3, "y": 3}]}
+				],
+				"scheduled_actions": [
+					{"time": 5.0, "type": "skill", "source": "blood_mage", "target": {"x": 2, "y": 2}}
+				],
+				"expected_behavior": "召唤2x2血池区域，更大范围内敌人受到伤害"
+			}
+		"test_blood_mage_lv3_pool":
+			return {
+				"id": "test_blood_mage_lv3_pool",
+				"core_type": "bat_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "blood_mage", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5, "positions": [{"x": 2, "y": 2}, {"x": 4, "y": 2}, {"x": 2, "y": 4}]}
+				],
+				"scheduled_actions": [
+					{"time": 5.0, "type": "skill", "source": "blood_mage", "target": {"x": 2, "y": 2}}
+				],
+				"expected_behavior": "召唤3x3血池区域，效果+50%"
+			}
+		"test_blood_mage_heal":
+			return {
+				"id": "test_blood_mage_heal",
+				"core_type": "bat_totem",
+				"duration": 25.0,
+				"core_health": 300,
+				"max_core_health": 500,
+				"units": [
+					{"id": "blood_mage", "x": 0, "y": 1, "level": 3},
+					{"id": "squirrel", "x": 2, "y": 2, "hp": 50, "max_hp": 100}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3, "positions": [{"x": 2, "y": 2}]}
+				],
+				"scheduled_actions": [
+					{"time": 5.0, "type": "skill", "source": "blood_mage", "target": {"x": 2, "y": 2}},
+					{"time": 10.0, "type": "verify_hp", "unit_id": "squirrel", "expected_hp_percent": 0.8}
+				],
+				"expected_behavior": "血池内友方单位回血，核心也会回血"
+			}
 		# ========== 蝴蝶图腾流派单位测试 (6个单位) ==========
 		"test_butterfly_totem_torch":
 			return {
