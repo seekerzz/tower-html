@@ -633,4 +633,43 @@ func get_test_config(case_id: String) -> Dictionary:
 				],
 				"description": "测试美杜莎石化Juice效果：动画冻结、碎裂图像、石块伤害"
 			}
+		"test_fairy_dragon_lv1_teleport":
+			return {
+				"id": "test_fairy_dragon_lv1_teleport",
+				"core_type": "butterfly_totem",
+				"duration": 30.0,
+				"units": [
+					{"id": "fairy_dragon", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 10}
+				],
+				"expected_behavior": "25%概率将敌人传送至3格外"
+			}
+		"test_fairy_dragon_lv2_probability":
+			return {
+				"id": "test_fairy_dragon_lv2_probability",
+				"core_type": "butterfly_totem",
+				"duration": 30.0,
+				"units": [
+					{"id": "fairy_dragon", "x": 0, "y": 1, "level": 2}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 10}
+				],
+				"expected_behavior": "传送概率提升至40%"
+			}
+		"test_fairy_dragon_lv3_collapse":
+			return {
+				"id": "test_fairy_dragon_lv3_collapse",
+				"core_type": "butterfly_totem",
+				"duration": 25.0,
+				"units": [
+					{"id": "fairy_dragon", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5}
+				],
+				"expected_behavior": "被传送敌人叠加两层瘟疫debuff"
+			}
 	return {}
