@@ -1,0 +1,47 @@
+Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
+
+Game data loaded successfully.
+[Test] Launching: test_woodpecker_lv3_crit
+WARNING: res://src/Scenes/Game/MainGame.tscn:3 - ext_resource, invalid UID: uid://yevi5jhibo13 - using text path instead: res://src/Scripts/MainGame.gd
+     at: load (scene/resources/resource_format_text.cpp:444)
+     GDScript backtrace (most recent call first):
+         [0] _on_core_selected (res://src/Scripts/UI/CoreSelection.gd:57)
+         [1] _launch_test_mode (res://src/Scripts/UI/CoreSelection.gd:35)
+WARNING: res://src/Scenes/UI/MainGUI.tscn:8 - ext_resource, invalid UID: uid://inventorypanel - using text path instead: res://src/Scenes/UI/InventoryPanel.tscn
+     at: load (scene/resources/resource_format_text.cpp:444)
+     GDScript backtrace (most recent call first):
+         [0] _on_core_selected (res://src/Scripts/UI/CoreSelection.gd:57)
+         [1] _launch_test_mode (res://src/Scripts/UI/CoreSelection.gd:35)
+WARNING: res://src/Scenes/UI/MainGUI.tscn:9 - ext_resource, invalid UID: uid://passiveskillbar - using text path instead: res://src/Scenes/UI/PassiveSkillBar.tscn
+     at: load (scene/resources/resource_format_text.cpp:444)
+     GDScript backtrace (most recent call first):
+         [0] _on_core_selected (res://src/Scripts/UI/CoreSelection.gd:57)
+         [1] _launch_test_mode (res://src/Scripts/UI/CoreSelection.gd:35)
+ERROR: Resource file not found: res://assets/images/UI/bg_battle.png (expected type: Texture2D)
+   at: _load (core/io/resource_loader.cpp:351)
+   GDScript backtrace (most recent call first):
+       [0] _on_core_selected (res://src/Scripts/UI/CoreSelection.gd:57)
+       [1] _launch_test_mode (res://src/Scripts/UI/CoreSelection.gd:35)
+ERROR: res://src/Scenes/Game/MainGame.tscn:17 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/images/UI/bg_battle.png.
+   at: _printerr (scene/resources/resource_format_text.cpp:40)
+   GDScript backtrace (most recent call first):
+       [0] _on_core_selected (res://src/Scripts/UI/CoreSelection.gd:57)
+       [1] _launch_test_mode (res://src/Scripts/UI/CoreSelection.gd:35)
+Total Spawn Tiles: 20
+Generating tree border (Refactored)...
+[InventoryPanel] UI Ready initialized.
+[InventoryPanel] Creating dynamic ScrollContainer.
+[InventoryPanel] Connected to inventory_manager signal.
+[InventoryPanel] update_inventory called with data: [<null>, <null>, <null>, <null>, <null>, <null>, <null>, <null>]
+SCRIPT ERROR: Parse Error: There is already a variable named "key" declared in this scope.
+          at: GDScript::reload (res://src/Scripts/Tests/AutomatedTestRunner.gd:44)
+          GDScript backtrace (most recent call first):
+              [0] _attach_test_runner (res://src/Scripts/MainGame.gd:62)
+ERROR: Failed to load script "res://src/Scripts/Tests/AutomatedTestRunner.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript.cpp:3041)
+   GDScript backtrace (most recent call first):
+       [0] _attach_test_runner (res://src/Scripts/MainGame.gd:62)
+SCRIPT ERROR: Invalid call. Nonexistent function 'new' in base 'GDScript'.
+          at: _attach_test_runner (res://src/Scripts/MainGame.gd:64)
+          GDScript backtrace (most recent call first):
+              [0] _attach_test_runner (res://src/Scripts/MainGame.gd:64)
