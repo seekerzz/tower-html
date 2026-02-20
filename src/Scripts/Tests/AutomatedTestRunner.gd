@@ -40,6 +40,13 @@ func _setup_test():
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
 
+			if u.has("level") and u.level > 1:
+				if GameManager.grid_manager.tiles.has(key):
+					var tile = GameManager.grid_manager.tiles[key]
+					if tile.unit:
+						tile.unit.level = u.level
+						tile.unit.reset_stats()
+
 	# Setup actions
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:
@@ -301,7 +308,10 @@ func _log_status():
 				"hp": enemy.hp,
 				"max_hp": enemy.max_hp,
 				"pos_x": enemy.global_position.x,
-				"pos_y": enemy.global_position.y
+				"pos_y": enemy.global_position.y,
+				"stun_timer": enemy.stun_timer,
+				"freeze_timer": enemy.freeze_timer,
+				"state": enemy.state
 			})
 
 	var entry = {
@@ -360,7 +370,7 @@ func _teardown(reason: String):
 
 	print("[TestRunner] Finishing test. Reason: ", reason)
 
-	var user_dir = "user://test_logs/"
+	var user_dir = "res://test_logs/"
 	if !DirAccess.dir_exists_absolute(user_dir):
 		DirAccess.make_dir_absolute(user_dir)
 
