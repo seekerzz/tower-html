@@ -2526,13 +2526,13 @@
 }
 ```
 **验证指标**:
-- [ ] 相邻友军暴击率+12%
-- [ ] 仅影响相邻单位
+- [x] 相邻友军暴击率+12%
+- [x] 仅影响相邻单位
 
 #### 测试场景 2: Lv2 效果和范围提升验证
 **验证指标**:
-- [ ] 暴击率加成20%
-- [ ] 影响范围2格
+- [x] 暴击率加成20%
+- [x] 影响范围2格
 
 #### 测试场景 3: Lv3 回响洞察验证
 ```gdscript
@@ -2541,11 +2541,17 @@
     "core_type": "eagle_totem",
     "duration": 25.0,
     "units": [
-        {"id": "owl", "x": 0, "y": 1, "level": 3},
+        {"id": "owl", "x": 0, "y": 1},
         {"id": "squirrel", "x": 1, "y": 0}
+    ],
+    "setup_actions": [
+        {"type": "set_unit_level", "x": 0, "y": 1, "level": 3}
     ],
     "enemies": [
         {"type": "basic_enemy", "count": 5}
+    ],
+    "scheduled_actions": [
+        {"time": 1.0, "type": "trigger_signal", "signal_name": "totem_echo_triggered", "source_id": "squirrel"}
     ],
     "expected_behavior": {
         "description": "相邻友军触发图腾回响时攻速+15%持续3秒",
@@ -2554,8 +2560,14 @@
 }
 ```
 **验证指标**:
-- [ ] 触发回响时攻速+15%
-- [ ] 持续3秒
+- [x] 触发回响时攻速+15%
+- [x] 持续3秒
+
+**测试记录**:
+- 测试日期: 2026-02-20
+- 测试人员: Jules
+- 测试结果: 通过
+- 备注: 使用AutomatedTestRunner增强版验证了日志数据
 
 ---
 
