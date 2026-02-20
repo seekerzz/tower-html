@@ -40,6 +40,10 @@ func get_wave_type(n: int) -> String:
 	return types[int(idx) % types.size()]
 
 func start_wave_logic():
+	if GameManager.current_test_scenario.has("enemies"):
+		_spawn_test_enemies()
+		return
+
 	var wave = GameManager.wave
 
 	if wave == 5:
@@ -116,6 +120,92 @@ class MeteorSource:
 
 	func is_in_group(_group):
 		return false
+
+func _spawn_test_enemies():
+	var config = GameManager.current_test_scenario
+	var enemies_list = config["enemies"]
+	total_enemies_for_wave = 0
+	for e in enemies_list:
+		total_enemies_for_wave += int(e.get("count", 1))
+	enemies_to_spawn = total_enemies_for_wave
+
+	var points = []
+	if GameManager.grid_manager:
+		points = GameManager.grid_manager.get_spawn_points()
+	if points.size() == 0:
+		points.append(Vector2.ZERO)
+
+	for entry in enemies_list:
+		var type_key = entry.get("type", "slime")
+		var count = int(entry.get("count", 1))
+		var buffs = entry.get("buffs", [])
+
+		# Fallback for test keys if not in Constants
+		if not Constants.ENEMY_VARIANTS.has(type_key):
+			if type_key == "buffed_enemy": type_key = "tank"
+			elif type_key == "basic_enemy": type_key = "slime"
+			elif type_key == "weak_enemy": type_key = "slime" # Assume slime is weak base
+			elif type_key == "high_hp_enemy": type_key = "tank"
+			elif type_key == "full_hp_enemy": type_key = "tank" # Tank has HP
+			elif type_key == "low_hp_enemy": type_key = "slime"
+			elif type_key == "fast_enemy": type_key = "wolf"
+			elif type_key == "attacker_enemy": type_key = "shooter" # Assuming shooter attacks
+			elif type_key == "poisoned_enemy": type_key = "slime" # Will get poison later
+			else: type_key = "slime"
+
+		for i in range(count):
+			if !GameManager.is_wave_active: break
+			var spawn_point = points.pick_random()
+			var pos = spawn_point + Vector2(randf_range(-20, 20), randf_range(-20, 20))
+
+			if entry.has("positions") and i < entry["positions"].size():
+				var p = entry["positions"][i]
+				# Test positions are usually grid coordinates relative to core or absolute?
+				# The test description uses {x: 2, y: 0}. Let's assume grid coordinates.
+				if GameManager.grid_manager:
+					pos = GameManager.grid_manager.get_world_pos_from_grid(Vector2i(p.x, p.y))
+				else:
+					pos = Vector2(p.x * 60, p.y * 60)
+
+			var enemy = ENEMY_SCENE.instantiate()
+			enemy.setup(type_key, GameManager.wave)
+			enemy.global_position = pos
+
+			# Apply overrides if present
+			if entry.has("hp"):
+				enemy.hp = entry.hp
+				enemy.max_hp = entry.hp
+			if entry.has("speed"):
+				enemy.speed = entry.speed
+			if entry.has("attack_damage"):
+				# Enemy.gd currently doesn't hold damage variable exposed directly for basic attacks
+				# unless behavior uses it. Assuming behavior reads from enemy_data.
+				# We might need to inject it.
+				enemy.set_meta("test_damage", entry.attack_damage)
+			if entry.has("attack_speed"):
+				enemy.set_meta("test_attack_speed", entry.attack_speed)
+
+			add_child(enemy)
+
+			# Apply buffs
+			for buff in buffs:
+				if buff.type == "armor":
+					enemy.apply_status(load("res://src/Scripts/Effects/ArmorEffect.gd"), {"stacks": buff.get("stacks", 1)})
+
+			# Apply debuffs
+			if entry.has("debuffs"):
+				for debuff in entry["debuffs"]:
+					if debuff.type == "poison":
+						enemy.add_poison_stacks(debuff.get("stacks", 1))
+					elif debuff.type == "bleed":
+						enemy.add_bleed_stacks(debuff.get("stacks", 1))
+					elif debuff.type == "burn":
+						enemy.apply_debuff("burn", debuff.get("stacks", 1))
+
+			enemies_to_spawn -= 1
+			await get_tree().create_timer(0.1).timeout
+
+	start_win_check_loop()
 
 func spawn_boss_wave():
 	# Hardcoded Wave 5 Event

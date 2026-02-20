@@ -1,107 +1,62 @@
 extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
-var attack_counter: int = 0
-var feather_refs: Array = []
+var display_timer: float = 0.0
+var display_interval: float = 5.0
 
-func on_cleanup():
-	for q in feather_refs:
-		if is_instance_valid(q):
-			q.queue_free()
-	feather_refs.clear()
+func on_setup():
+	display_timer = display_interval
 
 func on_combat_tick(delta: float) -> bool:
-	if unit.cooldown > 0:
-		unit.cooldown -= delta
-		return true
+	display_timer -= delta
+	if display_timer <= 0:
+		_trigger_display()
+		display_timer = display_interval
 
-	var target = GameManager.combat_manager.find_nearest_enemy(unit.global_position, unit.range_val)
-	if !target: return true
+	# Return false to allow normal attacks if configured in unit data
+	return false
 
-	if attack_counter >= 3:
-		unit.cooldown = unit.atk_speed * GameManager.get_stat_modifier("attack_interval")
-		attack_counter = 0
+func _trigger_display():
+	if not unit: return
 
-		if unit.visual_holder:
-			var tween = unit.create_tween()
-			tween.tween_property(unit.visual_holder, "scale", Vector2(1.3, 1.3), 0.1)
-			tween.tween_property(unit.visual_holder, "scale", Vector2(1.0, 1.0), 0.1)
+	# Visual
+	if unit.visual_holder:
+		var tween = unit.create_tween()
+		tween.tween_property(unit.visual_holder, "scale", Vector2(1.3, 1.3), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.tween_property(unit.visual_holder, "scale", Vector2(1.0, 1.0), 0.2)
 
-		for q in feather_refs:
-			if is_instance_valid(q) and q.has_method("recall"):
-				q.recall()
-		feather_refs.clear()
+	GameManager.spawn_floating_text(unit.global_position, "Display!", Color.GOLD)
 
-	elif target:
-		# Use unit's helper to play animation, but handle spawn logic here
-		_do_bow_attack(target)
+	# Logic
+	var allies = _get_allies_in_range()
+	var atk_bonus = 0.10
+	if unit.level >= 2:
+		atk_bonus = 0.20
 
-	return true
+	for ally in allies:
+		if ally.has_method("add_temporary_buff"):
+			# Duration matches interval (sustained effect)
+			ally.add_temporary_buff("attack_speed", atk_bonus, display_interval)
 
-func _do_bow_attack(target):
-	var target_last_pos = target.global_position
-	if unit.attack_cost_mana > 0: GameManager.consume_resource("mana", unit.attack_cost_mana)
+			if unit.level >= 3:
+				ally.add_temporary_buff("peacock_inspire", 1.0, display_interval)
 
-	var anim_duration = clamp(unit.atk_speed * 0.8, 0.1, 0.6)
-	unit.cooldown = unit.atk_speed * GameManager.get_stat_modifier("attack_interval")
+			ally.play_buff_receive_anim()
 
-	unit.play_attack_anim("bow", target_last_pos, anim_duration)
+func _get_allies_in_range() -> Array:
+	var list = []
+	if not GameManager.grid_manager: return list
 
-	var pull_time = anim_duration * 0.6
-	await unit.get_tree().create_timer(pull_time).timeout
+	var my_pos = unit.global_position
+	var r = unit.range_val
 
-	if !is_instance_valid(unit): return
+	var checked_units = []
+	for key in GameManager.grid_manager.tiles:
+		var tile = GameManager.grid_manager.tiles[key]
+		var u = tile.unit
+		if u and is_instance_valid(u) and not (u in checked_units):
+			checked_units.append(u)
+			# Include self or not? "Friendly units" usually implies all.
+			if u.global_position.distance_to(my_pos) <= r:
+				list.append(u)
 
-	_spawn_feathers(target_last_pos, target)
-
-func _spawn_feathers(saved_target_pos: Vector2, target):
-	if !GameManager.combat_manager: return
-
-	var extra_shots = 0
-	var multi_chance = 0.0
-
-	if unit.unit_data.has("levels") and unit.unit_data["levels"].has(str(unit.level)):
-		var mech = unit.unit_data["levels"][str(unit.level)].get("mechanics", {})
-		multi_chance = mech.get("multi_shot_chance", 0.0)
-
-	if multi_chance > 0.0 and randf() < multi_chance:
-		extra_shots += 1
-
-	var use_target = null
-	var base_angle = 0.0
-
-	if is_instance_valid(target):
-		use_target = target
-		base_angle = (target.global_position - unit.global_position).angle()
-	else:
-		use_target = null # Explicitly null if freed
-		base_angle = (saved_target_pos - unit.global_position).angle()
-
-	# Fire Primary Feather
-	var proj_args = {}
-	if !use_target:
-		proj_args["angle"] = base_angle
-		proj_args["target_pos"] = saved_target_pos
-
-	var proj = GameManager.combat_manager.spawn_projectile(unit, unit.global_position, use_target, proj_args)
-	if proj and is_instance_valid(proj):
-		feather_refs.append(proj)
-
-	# Fire Extra Shots
-	if extra_shots > 0:
-		var spread_angle = 0.2
-		var angles = [base_angle - spread_angle, base_angle + spread_angle]
-
-		for i in range(extra_shots):
-			var angle_mod = angles[i % 2]
-			var dist = unit.global_position.distance_to(saved_target_pos)
-			var extra_target_pos = unit.global_position + Vector2.RIGHT.rotated(angle_mod) * dist
-
-			var extra_args = {"angle": angle_mod}
-			if !use_target:
-				extra_args["target_pos"] = extra_target_pos
-
-			var extra_proj = GameManager.combat_manager.spawn_projectile(unit, unit.global_position, use_target, extra_args)
-			if extra_proj and is_instance_valid(extra_proj):
-				feather_refs.append(extra_proj)
-
-	attack_counter += 1
+	return list
