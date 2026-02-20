@@ -40,6 +40,10 @@ func get_wave_type(n: int) -> String:
 	return types[int(idx) % types.size()]
 
 func start_wave_logic():
+	if GameManager.is_running_test and GameManager.current_test_scenario.has("enemies"):
+		_spawn_test_enemies(GameManager.current_test_scenario["enemies"])
+		return
+
 	var wave = GameManager.wave
 
 	if wave == 5:
@@ -210,6 +214,52 @@ func _run_batch_sequence(batches_left: int, enemies_per_batch: int):
 	# Game over/Win check should be in _process or signal based.
 	# Existing _process had: if enemies_to_spawn <= 0 and active_enemies == 0: end_wave
 	# We should keep that check but maybe optimized.
+	start_win_check_loop()
+
+func _spawn_test_enemies(config_list: Array):
+	enemies_to_spawn = 0
+	for entry in config_list:
+		enemies_to_spawn += entry.get("count", 1)
+
+	total_enemies_for_wave = enemies_to_spawn
+
+	for entry in config_list:
+		var type = entry.get("type", "slime")
+		var count = entry.get("count", 1)
+		var hp_override = entry.get("hp", -1)
+		var debuffs = entry.get("debuffs", [])
+
+		# Map test types to real types if needed
+		if type == "low_hp_enemy": type = "slime"
+		if type == "basic_enemy": type = "slime"
+
+		for i in range(count):
+			var spawn_points = []
+			if GameManager.grid_manager:
+				spawn_points = GameManager.grid_manager.get_spawn_points()
+			if spawn_points.is_empty(): spawn_points = [Vector2.ZERO]
+			var pos = spawn_points.pick_random() + Vector2(randf_range(-20, 20), randf_range(-20, 20))
+
+			var enemy = ENEMY_SCENE.instantiate()
+			enemy.setup(type, 1)
+			enemy.global_position = pos
+
+			if hp_override > 0:
+				enemy.hp = hp_override
+				enemy.max_hp = hp_override
+
+			add_child(enemy)
+
+			# Apply debuffs
+			for d in debuffs:
+				if d.type == "poison":
+					enemy.add_poison_stacks(d.stacks)
+				elif d.type == "burn":
+					enemy.apply_status(load("res://src/Scripts/Effects/BurnEffect.gd"), {"duration": 5.0, "damage": 10.0, "stacks": d.stacks})
+
+			enemies_to_spawn -= 1
+			await get_tree().create_timer(0.1).timeout
+
 	start_win_check_loop()
 
 func start_win_check_loop():
