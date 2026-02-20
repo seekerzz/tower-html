@@ -91,6 +91,13 @@ func _execute_setup_action(action: Dictionary):
 		"spawn_trap":
 			if action.strategy == "random_valid":
 				_spawn_random_trap(action.trap_id)
+		"place_trap":
+			var pos = Vector2i(action.position.x, action.position.y)
+			var real_trap_id = action.trap_id
+			if action.trap_id == "poison_trap": real_trap_id = "poison"
+			if GameManager.grid_manager:
+				GameManager.grid_manager.spawn_trap_custom(pos, real_trap_id)
+				print("[TestRunner] Placed trap ", real_trap_id, " at ", pos)
 		"apply_buff":
 			_apply_buff_to_unit(action.target_unit_id, action.buff_id)
 
