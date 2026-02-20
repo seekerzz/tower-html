@@ -369,6 +369,52 @@ func get_test_config(case_id: String) -> Dictionary:
 				"duration": 15.0,
 				"units": [{"id": "dragon", "x": 0, "y": 1}]
 			}
+		"test_phoenix_lv1_rain":
+			return {
+				"id": "test_phoenix_lv1_rain",
+				"core_type": "butterfly_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "phoenix", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5, "positions": [{"x": 2, "y": 2}, {"x": 2, "y": 3}, {"x": 3, "y": 2}]}
+				],
+				"scheduled_actions": [
+					{"time": 5.0, "type": "skill", "source": "phoenix", "target": {"x": 2, "y": 2}}
+				],
+				"expected_behavior": "火雨AOE持续3秒"
+			}
+		"test_phoenix_lv2_damage":
+			return {
+				"id": "test_phoenix_lv2_damage",
+				"core_type": "butterfly_totem",
+				"duration": 20.0,
+				"units": [
+					{"id": "phoenix", "x": 0, "y": 1, "level": 2}
+				],
+				"scheduled_actions": [
+					{"time": 5.0, "type": "skill", "source": "phoenix", "target": {"x": 2, "y": 2}}
+				],
+				"expected_behavior": "火雨伤害+50%"
+			}
+		"test_phoenix_lv3_orb":
+			return {
+				"id": "test_phoenix_lv3_orb",
+				"core_type": "butterfly_totem",
+				"duration": 25.0,
+				"initial_mp": 500,
+				"units": [
+					{"id": "phoenix", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 3}
+				],
+				"scheduled_actions": [
+					{"time": 5.0, "type": "skill", "source": "phoenix", "target": {"x": 2, "y": 2}}
+				],
+				"expected_behavior": "燃烧敌人时回复法力，获得临时法球"
+			}
 		# ========== 狼图腾流派单位测试 (3个单位) ==========
 		"test_wolf_devour_system":
 			return {

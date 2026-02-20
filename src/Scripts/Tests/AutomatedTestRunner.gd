@@ -19,6 +19,9 @@ func _ready():
 	if config.has("core_type"):
 		GameManager.core_type = config["core_type"]
 
+	if config.has("initial_mp"):
+		GameManager.mana = config["initial_mp"]
+
 	call_deferred("_setup_test")
 
 func _setup_test():
@@ -39,6 +42,15 @@ func _setup_test():
 						GameManager.grid_manager.active_territory_tiles.append(tile)
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
+
+			# Set unit level if specified
+			if u.has("level"):
+				if GameManager.grid_manager.tiles.has(key):
+					var tile = GameManager.grid_manager.tiles[key]
+					if tile.unit:
+						tile.unit.level = u.level
+						tile.unit.reset_stats()
+						print("[TestRunner] Set unit ", u.id, " to level ", u.level)
 
 	# Setup actions
 	if config.has("setup_actions"):

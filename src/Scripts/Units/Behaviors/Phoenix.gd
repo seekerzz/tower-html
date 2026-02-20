@@ -16,6 +16,8 @@ func _cast_fire_rain(center_pos: Vector2):
 	var hit_enemies = 0
 	var rain_duration = 3.0
 	var damage_per_tick = unit.damage * 0.3
+	if unit.level >= 2:
+		damage_per_tick *= 1.5
 	var skill_range = unit.unit_data.get("skillRadius", 150.0)
 
 	var timer = Timer.new()
