@@ -16,6 +16,9 @@
 
 | 任务ID | 状态 | 描述 | 更新时间 |
 |--------|------|------|----------|
+| TEST-BUTTERFLY-dragon | completed | 所有测试通过 | 2026-02-20T15:00:00 |
+| TEST-BUTTERFLY-dragon | in_progress | 添加Lv2范围持续时间测试 | 2026-02-20T14:45:00 |
+| TEST-BUTTERFLY-dragon | in_progress | 添加Lv1黑洞测试 | 2026-02-20T14:30:00 |
 | P2-04c | completed | Medusa petrify Juice Front PR#457 | 2026-02-20 |
 | P2-04b | completed | Medusa petrify redesign PR#456 | 2026-02-20 |
 | P2-01 | completed | 商店图腾阵营刷新机制 PR#451 | 2026-02-19 |
