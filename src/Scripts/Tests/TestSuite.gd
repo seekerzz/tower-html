@@ -633,4 +633,89 @@ func get_test_config(case_id: String) -> Dictionary:
 				],
 				"description": "测试美杜莎石化Juice效果：动画冻结、碎裂图像、石块伤害"
 			}
+		"test_verify_damage_heal_core":
+			return {
+				"id": "test_verify_damage_heal_core",
+				"core_type": "wolf_totem",
+				"core_health": 500,
+				"max_core_health": 500,
+				"duration": 10.0,
+				"units": [],
+				"enemies": [],
+				"scheduled_actions": [
+					{"time": 1.0, "type": "heal_core", "amount": 0},
+					{"time": 2.0, "type": "damage_core", "amount": 100},
+					{"time": 4.0, "type": "heal_core", "amount": 50},
+					{"time": 6.0, "type": "damage_core", "amount": 200}
+				]
+			}
+		"test_verify_add_soul":
+			return {
+				"id": "test_verify_add_soul",
+				"core_type": "wolf_totem",
+				"duration": 8.0,
+				"initial_souls": 0,
+				"units": [],
+				"enemies": [],
+				"scheduled_actions": [
+					{"time": 2.0, "type": "add_soul", "amount": 5},
+					{"time": 4.0, "type": "add_soul", "amount": 10}
+				]
+			}
+		"test_verify_debuffed_enemy":
+			return {
+				"id": "test_verify_debuffed_enemy",
+				"core_type": "bat_totem",
+				"duration": 12.0,
+				"units": [{"id": "mosquito", "x": 0, "y": 1}],
+				"enemies": [
+					{"type": "poisoned_enemy", "hp": 100, "debuffs": [{"type": "bleed", "stacks": 3}], "count": 2}
+				],
+				"description": "验证敌人生成时带有debuff，蚊子攻击流血敌人应该触发吸血"
+			}
+		"test_verify_damage_recording":
+			return {
+				"id": "test_verify_damage_recording",
+				"core_type": "cow_totem",
+				"duration": 15.0,
+				"units": [{"id": "cow_golem", "x": 0, "y": 1}],
+				"enemies": [
+					{"type": "attacker_enemy", "attack_damage": 10, "count": 1}
+				],
+				"scheduled_actions": [
+					{"time": 3.0, "type": "record_damage", "unit_id": "cow_golem", "label": "before_rage"},
+					{"time": 8.0, "type": "record_damage", "unit_id": "cow_golem", "label": "after_rage"}
+				],
+				"description": "牛魔像受击后攻击力应该增加，通过damage记录验证"
+			}
+		"test_verify_all_actions_execute":
+			return {
+				"id": "test_verify_all_actions_execute",
+				"core_type": "wolf_totem",
+				"duration": 25.0,
+				"core_health": 500,
+				"max_core_health": 500,
+				"initial_gold": 1000,
+				"initial_mp": 500,
+				"units": [
+					{"id": "dog", "x": 0, "y": 1},
+					{"id": "squirrel", "x": 1, "y": 0}
+				],
+				"enemies": [
+					{"type": "weak_enemy", "hp": 50, "count": 2}
+				],
+				"setup_actions": [
+					{"type": "apply_buff", "buff_id": "test_buff", "target_unit_id": "squirrel"},
+					{"type": "spawn_trap", "trap_id": "poison_trap", "strategy": "random_valid"}
+				],
+				"scheduled_actions": [
+					{"time": 1.0, "type": "damage_core", "amount": 50},
+					{"time": 2.0, "type": "heal_core", "amount": 30},
+					{"time": 3.0, "type": "add_soul", "amount": 5},
+					{"time": 4.0, "type": "record_damage", "unit_id": "dog", "label": "test"},
+					{"time": 5.0, "type": "record_attack_speed", "unit_id": "dog", "label": "test"},
+					{"time": 6.0, "type": "verify_hp", "unit_id": "dog", "expected_hp_percent": 1.0},
+					{"time": 7.0, "type": "end_wave"}
+				]
+			}
 	return {}
