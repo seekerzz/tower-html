@@ -3,6 +3,11 @@ extends "res://src/Scripts/Units/Behaviors/FlyingMeleeBehavior.gd"
 var first_strike_bonus: bool = true
 var _last_target: WeakRef = null
 
+func on_stats_updated():
+	# Lv2: Range +20%
+	if unit.level >= 2:
+		unit.range_val *= 1.2
+
 func _get_target() -> Node2D:
 	# Prioritize Highest HP
 	var enemies = unit.get_tree().get_nodes_in_group("enemies")
@@ -39,9 +44,9 @@ func _calculate_damage(target: Node2D) -> float:
 	if unit.level >= 2 and hp_percent > 0.5:
 		dmg *= 1.3
 
-	# Lv3: 200% on First Strike vs >80% HP
+	# Lv3: 250% on First Strike vs >80% HP
 	if unit.level >= 3 and first_strike_bonus and hp_percent > 0.8:
-		dmg *= 2.0
+		dmg *= 2.5
 		first_strike_bonus = false
 		GameManager.spawn_floating_text(target.global_position, "FIRST STRIKE!", Color.RED)
 
