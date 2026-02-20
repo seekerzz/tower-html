@@ -40,6 +40,18 @@ func _setup_test():
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
 
+			# Apply test overrides (Level, Attack, etc.)
+			var t_key = GameManager.grid_manager.get_tile_key(u.x, u.y)
+			if GameManager.grid_manager.tiles.has(t_key):
+				var tile = GameManager.grid_manager.tiles[t_key]
+				if tile.unit:
+					if u.has("level") and u.level > 1:
+						tile.unit.level = u.level
+						tile.unit.reset_stats() # Apply stats for new level
+
+					if u.has("attack"):
+						tile.unit.damage = u.attack
+
 	# Setup actions
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:

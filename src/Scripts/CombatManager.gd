@@ -40,6 +40,10 @@ func get_wave_type(n: int) -> String:
 	return types[int(idx) % types.size()]
 
 func start_wave_logic():
+	if GameManager.is_running_test and GameManager.current_test_scenario.has("enemies"):
+		_spawn_test_enemies()
+		return
+
 	var wave = GameManager.wave
 
 	if wave == 5:
@@ -210,6 +214,44 @@ func _run_batch_sequence(batches_left: int, enemies_per_batch: int):
 	# Game over/Win check should be in _process or signal based.
 	# Existing _process had: if enemies_to_spawn <= 0 and active_enemies == 0: end_wave
 	# We should keep that check but maybe optimized.
+	start_win_check_loop()
+
+func _spawn_test_enemies():
+	var config = GameManager.current_test_scenario
+	var enemies_config = config.enemies
+
+	var spawn_x_base = 300.0
+	var spawn_y_base = 0.0
+	var offset_step = 40.0
+	var current_offset = 0.0
+
+	for entry in enemies_config:
+		var count = entry.get("count", 1)
+		var type = entry.get("type", "slime")
+		var hp_override = entry.get("hp", -1)
+
+		# Map test types to real types
+		var real_type = type
+		if type == "basic_enemy" or type == "high_hp_enemy" or type == "full_hp_enemy":
+			real_type = "slime"
+
+		for i in range(count):
+			var pos = Vector2(spawn_x_base + (i * 20), spawn_y_base + current_offset)
+			current_offset += offset_step
+			if current_offset > 120:
+				current_offset = -120
+				spawn_x_base += 40
+
+			var enemy = ENEMY_SCENE.instantiate()
+			enemy.setup(real_type, 1) # Wave 1 base
+			enemy.global_position = pos
+
+			if hp_override > 0:
+				enemy.max_hp = hp_override
+				enemy.hp = hp_override
+
+			add_child(enemy)
+
 	start_win_check_loop()
 
 func start_win_check_loop():
