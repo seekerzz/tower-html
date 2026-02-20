@@ -633,4 +633,45 @@ func get_test_config(case_id: String) -> Dictionary:
 				],
 				"description": "测试美杜莎石化Juice效果：动画冻结、碎裂图像、石块伤害"
 			}
+		# ========== 电鳗 (eel) 测试 ==========
+		"test_eel_lv1_chain":
+			return {
+				"id": "test_eel_lv1_chain",
+				"core_type": "butterfly_totem",
+				"duration": 15.0,
+				"units": [
+					{"id": "eel", "x": 0, "y": 1, "level": 1}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5, "positions": [{"x": 2, "y": 0}, {"x": 3, "y": 0}, {"x": 4, "y": 0}]}
+				],
+				"expected_behavior": "闪电链最多弹射4次"
+			}
+
+		"test_eel_lv2_damage":
+			return {
+				"id": "test_eel_lv2_damage",
+				"core_type": "butterfly_totem",
+				"duration": 15.0,
+				"units": [
+					{"id": "eel", "x": 0, "y": 1, "level": 2}
+				],
+				"expected_behavior": "闪电伤害+50%"
+			}
+
+		"test_eel_lv3_mana":
+			return {
+				"id": "test_eel_lv3_mana",
+				"core_type": "butterfly_totem",
+				"duration": 20.0,
+				"initial_gold": 1000,
+				"initial_mp": 500,
+				"units": [
+					{"id": "eel", "x": 0, "y": 1, "level": 3}
+				],
+				"enemies": [
+					{"type": "basic_enemy", "count": 5}
+				],
+				"expected_behavior": "每次弹射回复3法力"
+			}
 	return {}
