@@ -27,6 +27,7 @@
 | P0-02 | completed | AggroManager, TauntBehavior, YakGuardian PR#441 | 2026-02-19T07:32 |
 | P0-03 | completed | SummonedUnit, SummonManager, SummonSystem PR#442 | 2026-02-19T07:40 |
 | P0-04 | completed | Bleed stacks, LifestealManager, BatTotem PR#440 | 2026-02-19T07:28 |
+| TEST-VIPER-arrow_frog | completed | 添加箭毒蛙Lv1/Lv2/Lv3测试与逻辑实现 | 2026-02-20T14:45:00 |
 
 ### P1 - 图腾单位实现
 
