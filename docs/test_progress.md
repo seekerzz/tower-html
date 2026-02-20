@@ -9,7 +9,7 @@
 | 图腾流派 | 单位数量 | 已测试 | 测试覆盖率 |
 |----------|----------|--------|------------|
 | 牛图腾 (cow_totem) | 9 | 0 | 0% |
-| 蝙蝠图腾 (bat_totem) | 5 | 0 | 0% |
+| 蝙蝠图腾 (bat_totem) | 5 | 1 | 20% |
 | 蝴蝶图腾 (butterfly_totem) | 6 | 0 | 0% |
 | 狼图腾 (wolf_totem) | 7 | 0 | 0% |
 | 眼镜蛇图腾 (viper_totem) | 8 | 0 | 0% |
@@ -754,7 +754,7 @@
 
 ### 2.3 血法师 (blood_mage)
 
-**核心机制**: 召唤血池区域造成DOT伤害
+**核心机制**: 召唤血池区域，敌人受伤友方回血
 
 #### 测试场景 1: Lv1 血池召唤验证
 ```gdscript
@@ -772,44 +772,94 @@
         {"time": 5.0, "type": "skill", "source": "blood_mage", "target": {"x": 2, "y": 2}}
     ],
     "expected_behavior": {
-        "description": "召唤血池区域，区域内敌人每秒受到dot伤害",
-        "verification": "血池内的敌人持续受到伤害"
+        "description": "召唤1x1血池区域，区域内敌人每秒受到dot伤害"
     }
 }
 ```
 **验证指标**:
-- [ ] 技能召唤血池区域
-- [ ] 区域内敌人每秒受到伤害
-- [ ] 血池持续一定时间
+- [x] 技能召唤1x1血池区域
+- [x] 区域内敌人每秒受到伤害
+- [x] 血池持续一定时间
+- [x] 技能CD 15秒生效
 
-#### 测试场景 2: Lv2 伤害提升验证
-**验证指标**:
-- [ ] 血池伤害提升
-
-#### 测试场景 3: Lv3 流血叠加验证
+#### 测试场景 2: Lv2 血池范围提升验证
 ```gdscript
 {
-    "id": "test_blood_mage_lv3_bleed",
+    "id": "test_blood_mage_lv2_pool",
+    "core_type": "bat_totem",
+    "duration": 25.0,
+    "units": [
+        {"id": "blood_mage", "x": 0, "y": 1, "level": 2}
+    ],
+    "enemies": [
+        {"type": "basic_enemy", "count": 5, "positions": [{"x": 2, "y": 2}, {"x": 3, "y": 2}, {"x": 2, "y": 3}, {"x": 3, "y": 3}]}
+    ],
+    "scheduled_actions": [
+        {"time": 5.0, "type": "skill", "source": "blood_mage", "target": {"x": 2, "y": 2}}
+    ],
+    "expected_behavior": {
+        "description": "召唤2x2血池区域，更大范围内敌人受到伤害"
+    }
+}
+```
+**验证指标**:
+- [x] 血池范围为2x2
+- [x] 更大范围内敌人都受到伤害
+- [x] Lv2暴击率+10%
+
+#### 测试场景 3: Lv3 血池效果增强验证
+```gdscript
+{
+    "id": "test_blood_mage_lv3_pool",
     "core_type": "bat_totem",
     "duration": 25.0,
     "units": [
         {"id": "blood_mage", "x": 0, "y": 1, "level": 3}
     ],
     "enemies": [
-        {"type": "basic_enemy", "count": 2}
+        {"type": "basic_enemy", "count": 5, "positions": [{"x": 2, "y": 2}, {"x": 4, "y": 2}, {"x": 2, "y": 4}]}
     ],
     "scheduled_actions": [
         {"time": 5.0, "type": "skill", "source": "blood_mage", "target": {"x": 2, "y": 2}}
     ],
     "expected_behavior": {
-        "description": "血池内敌人流血层数+1/秒",
-        "verification": "敌人在血池内每秒叠加1层流血"
+        "description": "召唤3x3血池区域，效果+50%"
     }
 }
 ```
 **验证指标**:
-- [ ] 血池内敌人每秒叠加1层流血
-- [ ] 流血层数可叠加
+- [x] 血池范围为3x3
+- [x] 伤害效果+50%
+- [x] Lv3暴击率+20%
+
+#### 测试场景 4: 友方回血验证
+```gdscript
+{
+    "id": "test_blood_mage_heal",
+    "core_type": "bat_totem",
+    "duration": 25.0,
+    "core_health": 300,
+    "max_core_health": 500,
+    "units": [
+        {"id": "blood_mage", "x": 0, "y": 1, "level": 3},
+        {"id": "squirrel", "x": 2, "y": 2, "hp": 50, "max_hp": 100}
+    ],
+    "enemies": [
+        {"type": "basic_enemy", "count": 3, "positions": [{"x": 2, "y": 2}]}
+    ],
+    "scheduled_actions": [
+        {"time": 5.0, "type": "skill", "source": "blood_mage", "target": {"x": 2, "y": 2}},
+        {"time": 10.0, "type": "verify_hp", "unit_id": "squirrel", "expected_hp_percent": 0.8}
+    ],
+    "expected_behavior": {
+        "description": "血池内友方单位回血，核心也会回血"
+    }
+}
+```
+**验证指标**:
+- [x] 血池内友方单位回血
+- [x] 核心血量增加
+- [x] 回血效率随等级提升
 
 ---
 

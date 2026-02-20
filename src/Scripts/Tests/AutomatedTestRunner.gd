@@ -40,6 +40,22 @@ func _setup_test():
 
 			GameManager.grid_manager.place_unit(u.id, u.x, u.y)
 
+			# Apply unit overrides (level, hp, etc) if specified
+			# key is already defined above in the loop
+			if GameManager.grid_manager.tiles.has(key):
+				var tile = GameManager.grid_manager.tiles[key]
+				if tile.unit:
+					if u.has("level"):
+						tile.unit.level = u.level
+						# Force update stats if needed, though usually level up handles it.
+						# For simple property setting we might need to be careful.
+						# Assuming unit has logic to update stats on level set or we might need to call something.
+						# But for now just setting property.
+					if u.has("hp"):
+						tile.unit.current_hp = u.hp
+					if u.has("max_hp"):
+						tile.unit.max_hp = u.max_hp
+
 	# Setup actions
 	if config.has("setup_actions"):
 		for action in config["setup_actions"]:
@@ -194,6 +210,36 @@ func _execute_scheduled_action(action: Dictionary):
 				printerr("[TestRunner] SummonManager not available")
 		"test_enemy_death":
 			_run_enemy_death_test()
+		"verify_hp":
+			_verify_unit_hp(action)
+
+func _verify_unit_hp(action: Dictionary):
+	var unit_id = action.unit_id
+	var expected_percent = action.expected_hp_percent
+	var tolerance = action.get("tolerance", 0.05)
+
+	var found_unit = null
+	var gm = GameManager.grid_manager
+
+	# Find unit by ID
+	for key in gm.tiles:
+		var tile = gm.tiles[key]
+		if tile.unit and tile.unit.type_key == unit_id:
+			found_unit = tile.unit
+			break
+
+	if not found_unit:
+		printerr("[TestRunner] verify_hp FAILED: Unit not found: ", unit_id)
+		return
+
+	var current_hp = found_unit.current_hp
+	var max_hp = found_unit.max_hp
+	var current_percent = float(current_hp) / float(max_hp)
+
+	if abs(current_percent - expected_percent) <= tolerance:
+		print("[TestRunner] verify_hp PASSED for ", unit_id, ": ", current_percent, " (Expected: ", expected_percent, ")")
+	else:
+		printerr("[TestRunner] verify_hp FAILED for ", unit_id, ": Current ", current_percent, " != Expected ", expected_percent)
 
 func _run_enemy_death_test():
 	print("[TestRunner] ========== 开始敌人死亡重复调用测试 ==========")

@@ -80,6 +80,18 @@ func _start_pool_processing(pool_data: Dictionary):
 			GameManager.heal_core(heal_amount)
 			GameManager.spawn_floating_text(pool_data.center, "+%d HP" % int(heal_amount), Color.GREEN)
 
+		# Heal friendly units in range
+		if GameManager.grid_manager:
+			for key in GameManager.grid_manager.tiles:
+				var tile = GameManager.grid_manager.tiles[key]
+				var u = tile.unit
+				if u and is_instance_valid(u):
+					var dist = pool_data.center.distance_to(u.global_position)
+					if dist <= pool_data.radius:
+						var heal_val = unit.damage * 0.05 * pool_data.efficiency
+						if u.has_method("heal"):
+							u.heal(heal_val)
+
 	if is_instance_valid(node):
 		node.queue_free()
 
