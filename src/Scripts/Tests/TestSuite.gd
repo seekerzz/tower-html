@@ -633,4 +633,36 @@ func get_test_config(case_id: String) -> Dictionary:
 				],
 				"description": "测试美杜莎石化Juice效果：动画冻结、碎裂图像、石块伤害"
 			}
+		"test_plant_lv1_growth":
+			return {
+				"id": "test_plant_lv1_growth",
+				"core_type": "cow_totem",
+				"duration": 60.0,
+				"start_wave_index": 1,
+				"units": [
+					{"id": "plant", "x": 0, "y": 1, "level": 1, "initial_hp": 100}
+				],
+				"scheduled_actions": [
+					{"time": 5.0, "type": "end_wave"},
+					{"time": 10.0, "type": "verify_hp", "target": "plant", "expected_hp_percent": 1.05}
+				],
+				"expected_behavior": "每波结束后自身Max HP+5%"
+			}
+
+		"test_plant_lv3_world_tree":
+			return {
+				"id": "test_plant_lv3_world_tree",
+				"core_type": "cow_totem",
+				"duration": 30.0,
+				"units": [
+					{"id": "plant", "x": 0, "y": 1, "level": 3},
+					{"id": "squirrel", "x": 1, "y": 0, "initial_hp": 100},
+					{"id": "bee", "x": 0, "y": 2, "initial_hp": 80}
+				],
+				"scheduled_actions": [
+					{"time": 5.0, "type": "end_wave"},
+					{"time": 10.0, "type": "verify_hp", "target": "squirrel", "expected_hp_percent": 1.05}
+				],
+				"expected_behavior": "周围一圈单位Max HP加成5%"
+			}
 	return {}

@@ -257,6 +257,50 @@ func apply_buff(buff_type: String, source_unit: Node2D = null):
 			# 牦牛守护的减伤buff，效果在take_damage中处理
 			pass
 
+func add_buff(buff_type: String, value: float, source: Node2D = null):
+	if buff_type == "max_hp_percent":
+		max_hp *= (1.0 + value)
+		if current_hp > 0:
+			current_hp *= (1.0 + value)
+
+		# Update global core health if relevant
+		GameManager.recalculate_max_health()
+
+		# Visual feedback
+		GameManager.spawn_floating_text(global_position, "HP UP!", Color.GREEN)
+
+	if source:
+		buff_sources[buff_type] = source
+
+func get_units_in_cell_range(_source_unit, r: int) -> Array:
+	var list = []
+	if !GameManager.grid_manager: return list
+
+	var cx = grid_pos.x
+	var cy = grid_pos.y
+	var w = unit_data.size.x
+	var h = unit_data.size.y
+
+	for dx in range(-r, w + r):
+		for dy in range(-r, h + r):
+			if dx >= 0 and dx < w and dy >= 0 and dy < h: continue
+
+			var tx = cx + dx
+			var ty = cy + dy
+			var key = GameManager.grid_manager.get_tile_key(tx, ty)
+
+			if GameManager.grid_manager.tiles.has(key):
+				var tile = GameManager.grid_manager.tiles[key]
+				var u = tile.unit
+				if u == null and tile.occupied_by != Vector2i.ZERO:
+					var origin_key = GameManager.grid_manager.get_tile_key(tile.occupied_by.x, tile.occupied_by.y)
+					if GameManager.grid_manager.tiles.has(origin_key):
+						u = GameManager.grid_manager.tiles[origin_key].unit
+
+				if u and is_instance_valid(u) and u != self and not (u in list):
+					list.append(u)
+	return list
+
 func set_highlight(active: bool, color: Color = Color.WHITE):
 	_is_skill_highlight_active = active
 	_highlight_color = color
