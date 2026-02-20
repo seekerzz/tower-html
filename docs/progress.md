@@ -28,6 +28,12 @@
 | P0-03 | completed | SummonedUnit, SummonManager, SummonSystem PR#442 | 2026-02-19T07:40 |
 | P0-04 | completed | Bleed stacks, LifestealManager, BatTotem PR#440 | 2026-02-19T07:28 |
 
+### 测试任务
+
+| 任务ID | 状态 | 描述 | 更新时间 |
+|--------|------|------|----------|
+| TEST-COW-mushroom_healer | completed | 菌菇治愈者自动化测试 | 2026-02-20T15:00:00 |
+
 ### P1 - 图腾单位实现
 
 | 任务ID | 状态 | 描述 | 更新时间 |
