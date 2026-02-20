@@ -16,7 +16,7 @@
 
 | 任务ID | 状态 | 描述 | 更新时间 |
 |--------|------|------|----------|
-| P2-04b | in_progress | Medusa petrify redesign, Session: 12716421326506906761 | 2026-02-20 14:20 |
+| P2-04b | completed | Medusa petrify redesign PR#456 | 2026-02-20 |
 | P2-01 | completed | 商店图腾阵营刷新机制 PR#451 | 2026-02-19 |
 | P2-02 | completed | 魅惑系统完整实现 PR#455 | 2026-02-20 |
 | P2-03 | completed | 狼的吞噬继承系统 PR#453 | 2026-02-20 |
