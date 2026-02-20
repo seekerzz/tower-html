@@ -32,6 +32,7 @@
 
 | 任务ID | 状态 | 描述 | 更新时间 |
 |--------|------|------|----------|
+| TEST-WOLF-DOG | completed | 添加恶霸犬自动化测试 (Dog Unit Tests) | 2026-02-20 |
 | P1-A | completed | 狼图腾单位群: Tiger, Dog, Wolf, Hyena, Fox, SheepSpirit, Lion PR#446 | 2026-02-19 |
 | P1-B | completed | 眼镜蛇图腾单位群: Rat, Toad, MedusaLv3 PR#445 | 2026-02-19 |
 | P1-C | completed | 蝙蝠图腾单位群: Gargoyle, LifeChain, BloodChalice, BloodRitualist PR#449 | 2026-02-19 |
