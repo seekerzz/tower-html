@@ -1,11 +1,11 @@
 extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
-var reflect_chance: float = 0.25
+var reflect_chance: float = 0.30
 
 func on_setup():
-	reflect_chance = 0.25
+	reflect_chance = 0.30
 	if unit.level >= 2:
-		reflect_chance = 0.40
+		reflect_chance = 0.50
 
 func on_damage_taken(amount: float, source: Node) -> float:
 	# Reflect logic
