@@ -194,6 +194,20 @@ func _execute_scheduled_action(action: Dictionary):
 				printerr("[TestRunner] SummonManager not available")
 		"test_enemy_death":
 			_run_enemy_death_test()
+		"deal_damage":
+			_deal_damage_to_unit(action.target_id, action.amount)
+
+func _deal_damage_to_unit(unit_id: String, amount: float):
+	var gm = GameManager.grid_manager
+	if !gm: return
+
+	for key in gm.tiles:
+		var tile = gm.tiles[key]
+		if tile.unit and tile.unit.type_key == unit_id:
+			print("[TestRunner] Dealing ", amount, " damage to ", unit_id)
+			# Simulate damage from a dummy source (null) or GameManager
+			tile.unit.take_damage(amount, null)
+			break
 
 func _run_enemy_death_test():
 	print("[TestRunner] ========== 开始敌人死亡重复调用测试 ==========")
@@ -289,19 +303,27 @@ func _log_status():
 					"grid_x": tile.x,
 					"grid_y": tile.y,
 					"level": u.level,
-					"damage_stat": u.damage # Base damage stat
+					"damage_stat": u.damage, # Base damage stat
+					"active_buffs": u.active_buffs.duplicate()
 				})
 
 	var enemies_info = []
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		if is_instance_valid(enemy):
+			var taunt_target_id = null
+			if AggroManager:
+				var target = AggroManager.get_target_for_enemy(enemy)
+				if target and is_instance_valid(target):
+					taunt_target_id = target.type_key
+
 			enemies_info.append({
 				"instance_id": enemy.get_instance_id(),
 				"type": enemy.type_key,
 				"hp": enemy.hp,
 				"max_hp": enemy.max_hp,
 				"pos_x": enemy.global_position.x,
-				"pos_y": enemy.global_position.y
+				"pos_y": enemy.global_position.y,
+				"taunt_target": taunt_target_id
 			})
 
 	var entry = {

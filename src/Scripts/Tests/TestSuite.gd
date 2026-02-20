@@ -211,7 +211,18 @@ func get_test_config(case_id: String) -> Dictionary:
 				"initial_gold": 1000,
 				"start_wave_index": 1,
 				"duration": 15.0,
-				"units": [{"id": "yak_guardian", "x": 0, "y": 1}]
+				"units": [
+					{"id": "squirrel", "x": 0, "y": -1},  # 诱饵单位
+					{"id": "yak_guardian", "x": 0, "y": 1, "level": 1}
+				],
+				"scheduled_actions": [
+					{
+						"time": 7.0,
+						"type": "deal_damage",
+						"target_id": "squirrel",
+						"amount": 100.0
+					}
+				]
 			}
 		"test_cow_totem_cow_golem":
 			return {
