@@ -904,3 +904,31 @@ func _remove_temp_buff_effect(stat: String, amount: float):
 			atk_speed /= (1.0 + amount)
 		"crit_chance":
 			crit_rate -= amount
+
+# 获取指定范围内的友方单位
+# center_unit: 中心单位（通常是self）
+# cell_range: 格子范围（曼哈顿距离）
+# returns: 范围内友方单位数组（不包含自己）
+func get_units_in_cell_range(center_unit: Node2D, cell_range: int) -> Array:
+	var result = []
+	if not GameManager.grid_manager:
+		return result
+
+	var center_x = 0
+	var center_y = 0
+
+	if "grid_pos" in center_unit:
+		center_x = center_unit.grid_pos.x
+		center_y = center_unit.grid_pos.y
+	else:
+		return result
+
+	for key in GameManager.grid_manager.tiles:
+		var tile = GameManager.grid_manager.tiles[key]
+		if tile.unit and is_instance_valid(tile.unit) and tile.unit != self:
+			# 计算曼哈顿距离
+			var dist = abs(tile.x - center_x) + abs(tile.y - center_y)
+			if dist <= cell_range:
+				result.append(tile.unit)
+
+	return result
