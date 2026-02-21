@@ -6,7 +6,6 @@ extends "res://src/Scripts/Unit.gd"
 @export var summon_source: Unit = null
 
 var lifetime_timer: Timer
-var current_hp: float = 0.0
 
 signal summon_expired(summon: SummonedUnit)
 signal summon_killed(summon: SummonedUnit)
