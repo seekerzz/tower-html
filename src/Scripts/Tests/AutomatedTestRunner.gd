@@ -8,6 +8,11 @@ var _frame_events: Array = []
 var _is_tearing_down: bool = false
 var _wave_has_started: bool = false
 
+# 数值验证系统
+var _validation_results: Array = []
+var _baselines: Dictionary = {}  # 存储初始值
+var _validation_failures: int = 0
+
 func _ready():
 	config = GameManager.current_test_scenario
 
@@ -18,6 +23,15 @@ func _ready():
 
 	if config.has("core_type"):
 		GameManager.core_type = config["core_type"]
+
+	# 应用测试配置的核心血量设置
+	if config.has("max_core_health"):
+		GameManager.max_core_health = config["max_core_health"]
+		print("[TestRunner] Set max_core_health: ", config["max_core_health"])
+
+	if config.has("core_health"):
+		GameManager.core_health = config["core_health"]
+		print("[TestRunner] Set core_health: ", config["core_health"])
 
 	call_deferred("_setup_test")
 
@@ -70,6 +84,9 @@ func _on_enemy_spawned(enemy):
 		"pos_y": pos.y
 	})
 
+	# Apply debuffs from test configuration
+	_apply_debuffs_to_enemy(enemy)
+
 func _on_enemy_hit(enemy, source, amount):
 	var source_id = "unknown"
 	if source:
@@ -85,6 +102,33 @@ func _on_enemy_hit(enemy, source, amount):
 		"damage": amount,
 		"target_hp_after": enemy.hp
 	})
+
+func _apply_debuffs_to_enemy(enemy):
+	"""Apply debuffs specified in test config to spawned enemy."""
+	if not config.has("enemies"):
+		return
+
+	var enemy_type = enemy.type_key if "type_key" in enemy else ""
+
+	for enemy_config in config["enemies"]:
+		if enemy_config.get("type", "") == enemy_type:
+			if enemy_config.has("debuffs"):
+				for debuff in enemy_config["debuffs"]:
+					var debuff_type = debuff.get("type", "")
+					var stacks = debuff.get("stacks", 1)
+
+					match debuff_type:
+						"bleed":
+							if enemy.has_method("add_bleed_stacks"):
+								enemy.add_bleed_stacks(stacks, null)
+								print("[TestRunner] Applied ", stacks, " bleed stacks to ", enemy_type)
+						"poison":
+							if enemy.has_method("add_poison_stacks"):
+								enemy.add_poison_stacks(stacks, null)
+								print("[TestRunner] Applied ", stacks, " poison stacks to ", enemy_type)
+						_:
+							print("[TestRunner] Unknown debuff type: ", debuff_type)
+			break
 
 func _execute_setup_action(action: Dictionary):
 	match action.type:
@@ -144,6 +188,9 @@ func _process(delta):
 	# Logging (Every Frame)
 	_log_status()
 
+	# Execute Validations
+	_execute_validations()
+
 	# Shop Validation
 	if config.has("validate_shop_faction"):
 		_validate_shop_faction(config["validate_shop_faction"])
@@ -159,6 +206,99 @@ func _process(delta):
 	# Fallback safety if wave logic fails or infinite loop
 	if elapsed_time > 300.0:
 		_teardown("Timeout Safety")
+
+func _execute_validations():
+	"""执行配置的数值验证"""
+	if not config.has("validations"):
+		return
+
+	for validation in config.validations:
+		var check_time = validation.get("time", 0.0)
+		if abs(elapsed_time - check_time) > 0.05:  # 允许0.05秒误差
+			continue
+
+		var type = validation.get("type", "")
+		var passed = false
+		var message = ""
+
+		match type:
+			"core_health_changed":
+				var baseline = _baselines.get("core_health", GameManager.core_health)
+				var current = GameManager.core_health
+				var expected_change = validation.get("expected_change", 0.0)
+				var tolerance = validation.get("tolerance", 1.0)
+				var actual_change = current - baseline
+
+				if abs(actual_change - expected_change) <= tolerance:
+					passed = true
+					message = "核心血量变化验证通过: %s -> %s (变化: %s, 期望: %s)" % [baseline, current, actual_change, expected_change]
+				else:
+					passed = false
+					message = "核心血量变化验证失败: %s -> %s (变化: %s, 期望: %s)" % [baseline, current, actual_change, expected_change]
+
+			"core_health_increased":
+				var baseline = _baselines.get("core_health", GameManager.core_health)
+				var current = GameManager.core_health
+				var min_increase = validation.get("min_increase", 1.0)
+
+				if current > baseline + min_increase:
+					passed = true
+					message = "核心血量增加验证通过: %s -> %s (增加: %s)" % [baseline, current, current - baseline]
+				else:
+					passed = false
+					message = "核心血量增加验证失败: %s -> %s (期望至少增加 %s)" % [baseline, current, min_increase]
+
+			"enemy_hp_decreased":
+				var enemy_type = validation.get("enemy_type", "")
+				var min_damage = validation.get("min_damage", 1.0)
+				var total_damage = 0.0
+
+				# 从日志中计算伤害
+				for entry in logs:
+					for event in entry.get("events", []):
+						if event.get("type") == "hit":
+							total_damage += event.get("damage", 0.0)
+
+				if total_damage >= min_damage:
+					passed = true
+					message = "敌人受伤验证通过: 总伤害 %s (期望至少 %s)" % [total_damage, min_damage]
+				else:
+					passed = false
+					message = "敌人受伤验证失败: 总伤害 %s (期望至少 %s)" % [total_damage, min_damage]
+
+			"event_occurred":
+				var event_type = validation.get("event_type", "")
+				var count = 0
+
+				for entry in logs:
+					for event in entry.get("events", []):
+						if event.get("type") == event_type:
+							count += 1
+
+				var min_count = validation.get("min_count", 1)
+				if count >= min_count:
+					passed = true
+					message = "事件验证通过: %s 发生 %s 次 (期望至少 %s)" % [event_type, count, min_count]
+				else:
+					passed = false
+					message = "事件验证失败: %s 发生 %s 次 (期望至少 %s)" % [event_type, count, min_count]
+
+			_:
+				message = "未知验证类型: %s" % type
+
+		# 记录结果
+		_validation_results.append({
+			"time": elapsed_time,
+			"type": type,
+			"passed": passed,
+			"message": message
+		})
+
+		if passed:
+			print("[TestRunner] [PASS] ", message)
+		else:
+			printerr("[TestRunner] [FAIL] ", message)
+			_validation_failures += 1
 
 func _execute_scheduled_action(action: Dictionary):
 	match action.type:
@@ -194,6 +334,36 @@ func _execute_scheduled_action(action: Dictionary):
 				printerr("[TestRunner] SummonManager not available")
 		"test_enemy_death":
 			_run_enemy_death_test()
+		"record_baseline":
+			# 记录当前数值作为基准
+			var metrics = action.get("metrics", ["core_health"])
+			for metric in metrics:
+				match metric:
+					"core_health":
+						_baselines["core_health"] = GameManager.core_health
+						print("[TestRunner] Recorded baseline core_health: ", GameManager.core_health)
+					"mana":
+						_baselines["mana"] = GameManager.mana
+						print("[TestRunner] Recorded baseline mana: ", GameManager.mana)
+					"gold":
+						_baselines["gold"] = GameManager.gold
+						print("[TestRunner] Recorded baseline gold: ", GameManager.gold)
+					_:
+						print("[TestRunner] Unknown metric for baseline: ", metric)
+		"verify_change":
+			# 立即执行一次验证
+			var validation = {
+				"time": elapsed_time,
+				"type": action.get("validation_type", "core_health_changed"),
+				"expected_change": action.get("expected_change", 0.0),
+				"tolerance": action.get("tolerance", 1.0),
+				"min_increase": action.get("min_increase", 1.0),
+				"event_type": action.get("event_type", ""),
+				"min_count": action.get("min_count", 1)
+			}
+			config.validations = [validation]
+			_execute_validations()
+			config.erase("validations")
 
 func _run_enemy_death_test():
 	print("[TestRunner] ========== 开始敌人死亡重复调用测试 ==========")
@@ -355,19 +525,56 @@ func _validate_shop_faction(faction: String):
 			config.erase("validate_shop_faction")
 
 func _teardown(reason: String):
-	if _is_tearing_down: return
+	if _is_tearing_down:
+		return
 	_is_tearing_down = true
 
 	print("[TestRunner] Finishing test. Reason: ", reason)
 
+	# 输出验证结果汇总
+	print("\n[TestRunner] ========== 验证结果汇总 ==========")
+	if _validation_results.is_empty():
+		print("[TestRunner] 无验证项")
+	else:
+		var passed_count = 0
+		var failed_count = 0
+		for result in _validation_results:
+			if result.passed:
+				passed_count += 1
+				print("[TestRunner] [PASS] ", result.message)
+			else:
+				failed_count += 1
+				printerr("[TestRunner] [FAIL] ", result.message)
+
+		print("\n[TestRunner] 验证统计: 通过 %d, 失败 %d, 总计 %d" % [passed_count, failed_count, _validation_results.size()])
+
+		if failed_count > 0:
+			printerr("[TestRunner] ========== 测试未通过 (有验证失败) ==========")
+		else:
+			print("[TestRunner] ========== 所有验证通过 ==========")
+
+	# 保存日志
 	var user_dir = "user://test_logs/"
 	if !DirAccess.dir_exists_absolute(user_dir):
 		DirAccess.make_dir_absolute(user_dir)
 
+	# 保存详细日志
 	var file_path = user_dir + config.id + ".json"
 	var file = FileAccess.open(file_path, FileAccess.WRITE)
 	if file:
-		file.store_string(JSON.stringify(logs, "\t"))
+		# 添加验证结果到日志
+		var output_data = {
+			"logs": logs,
+			"validations": _validation_results,
+			"summary": {
+				"test_id": config.get("id", "unknown"),
+				"duration": elapsed_time,
+				"validation_passed": _validation_failures == 0,
+				"validation_failures": _validation_failures,
+				"validation_count": _validation_results.size()
+			}
+		}
+		file.store_string(JSON.stringify(output_data, "\t"))
 		file.close()
 		print("[TestRunner] Logs saved to ", file_path)
 	else:

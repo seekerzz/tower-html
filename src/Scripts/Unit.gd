@@ -69,6 +69,7 @@ const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 signal unit_clicked(unit)
 signal attack_performed(target_node)
 signal merged(consumed_unit)
+signal damage_blocked(damage: float, source: Node)
 
 func _start_skill_cooldown(base_duration: float):
 	if GameManager.cheat_fast_cooldown and base_duration > 1.0:
@@ -152,6 +153,8 @@ func _ensure_visual_hierarchy():
 		highlight.position = -(target_size / 2)
 
 func take_damage(amount: float, source_enemy = null):
+	var original_amount = amount
+
 	# 检查是否有guardian_shield buff，应用减伤
 	if "guardian_shield" in active_buffs:
 		var source = buff_sources.get("guardian_shield")
@@ -160,6 +163,11 @@ func take_damage(amount: float, source_enemy = null):
 			amount = amount * (1.0 - reduction)
 
 	amount = behavior.on_damage_taken(amount, source_enemy)
+
+	# 计算被阻挡的伤害（来自spore shield等机制）
+	var blocked_amount = original_amount - amount
+	if blocked_amount > 0:
+		damage_blocked.emit(blocked_amount, source_enemy)
 
 	current_hp = max(0, current_hp - amount)
 	GameManager.damage_core(amount)
