@@ -84,6 +84,7 @@
 | P2-02 | completed | 魅惑系统完整实现 PR#455 | 2026-02-20 |
 | P2-03 | completed | 狼的吞噬继承系统 PR#453 | 2026-02-20 |
 | P2-04 | completed | 石化石块系统完整实现 PR#454 | 2026-02-20 |
+| FIX-03 | completed | 修复 Vulture 方法调用错误 | 2026-02-21 |
 | P2-05 | completed | Test framework expansion PR#458 | 2026-02-20 |
 | P0-01 | completed | Implemented SoulManager, MechanicWolfTotem, UI and Hooks. | 2024-05-23T12:00:00 |
 | P0-02 | completed | AggroManager, TauntBehavior, YakGuardian PR#441 | 2026-02-19T07:32 |
