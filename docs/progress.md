@@ -101,6 +101,12 @@
 | P1-E | completed | 鹰图腾单位群: Kestrel, Owl, Magpie, Pigeon PR#443 | 2026-02-19 |
 | P1-F | completed | 牛图腾单位群: Ascetic, Plant, IronTurtle, Hedgehog, YakGuardian, RockArmorCow, Oxpecker, MushroomHealer, Cow PR#448 | 2026-02-19 |
 
+### Bug Fixes
+
+| 任务ID | 状态 | 描述 | 更新时间 |
+|--------|------|------|----------|
+| FIX-02 | completed | 添加 get_units_in_cell_range 方法 | 2026-02-21 |
+
 ## 状态说明
 
 - `pending` - 等待开始
