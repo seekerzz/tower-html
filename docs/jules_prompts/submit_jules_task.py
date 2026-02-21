@@ -86,6 +86,11 @@ def submit_task(task_id: str, prompt_file: str, title: str = None):
     print("=" * 60)
 
     try:
+        print(f"[DEBUG] API_URL: {API_URL}")
+        print(f"[DEBUG] Headers: {headers}")
+        print(f"[DEBUG] Body keys: {body.keys()}")
+        print(f"[DEBUG] Body title: {body.get('title')}")
+        print(f"[DEBUG] Body prompt length: {len(body.get('prompt', ''))}")
         resp = requests.post(
             API_URL,
             json=body,
@@ -107,6 +112,9 @@ def submit_task(task_id: str, prompt_file: str, title: str = None):
 
     except Exception as e:
         print(f"[ERROR] {e}")
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"[ERROR] Response status: {e.response.status_code}")
+            print(f"[ERROR] Response body: {e.response.text}")
         sys.exit(1)
 
 
