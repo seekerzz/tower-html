@@ -13,6 +13,11 @@ var _validation_results: Array = []
 var _baselines: Dictionary = {}  # 存储初始值
 var _validation_failures: int = 0
 
+# 资源追踪
+var _last_gold: int = 0
+var _last_mana: float = 0.0
+var _last_core_health: float = 0.0
+
 func _ready():
 	config = GameManager.current_test_scenario
 
@@ -63,6 +68,13 @@ func _setup_test():
 	GameManager.wave_started.connect(_on_wave_started)
 	GameManager.enemy_spawned.connect(_on_enemy_spawned)
 	GameManager.enemy_hit.connect(_on_enemy_hit)
+	GameManager.enemy_died.connect(_on_enemy_died)
+	GameManager.resource_changed.connect(_on_resource_changed)
+
+	# 初始化资源追踪
+	_last_gold = GameManager.gold
+	_last_mana = GameManager.mana
+	_last_core_health = GameManager.core_health
 
 	GameManager.start_wave()
 	# GameManager.wave_ended is only emitted after UI interaction, which we skip in headless.
@@ -102,6 +114,57 @@ func _on_enemy_hit(enemy, source, amount):
 		"damage": amount,
 		"target_hp_after": enemy.hp
 	})
+
+func _on_enemy_died(enemy, killer_unit):
+	var killer_id = "unknown"
+	if killer_unit and "type_key" in killer_unit:
+		killer_id = killer_unit.type_key
+
+	_frame_events.append({
+		"type": "enemy_died",
+		"enemy_id": enemy.get_instance_id() if is_instance_valid(enemy) else 0,
+		"enemy_type": enemy.type_key if is_instance_valid(enemy) else "unknown",
+		"killer": killer_id
+	})
+
+func _on_resource_changed():
+	# 资源变化时记录（用于追踪金币/法力获取）
+	var current_gold = GameManager.gold
+	var current_mana = GameManager.mana
+	var current_core_health = GameManager.core_health
+
+	# 追踪金币变化
+	if current_gold != _last_gold:
+		var delta = current_gold - _last_gold
+		if delta > 0:
+			_frame_events.append({
+				"type": "gold_gained",
+				"amount": delta,
+				"total": current_gold
+			})
+		_last_gold = current_gold
+
+	# 追踪法力变化
+	if current_mana != _last_mana:
+		var delta = current_mana - _last_mana
+		if delta > 0:
+			_frame_events.append({
+				"type": "mana_gained",
+				"amount": delta,
+				"total": current_mana
+			})
+		_last_mana = current_mana
+
+	# 追踪核心受伤
+	if current_core_health < _last_core_health:
+		var damage = _last_core_health - current_core_health
+		_frame_events.append({
+			"type": "core_damaged",
+			"damage": damage,
+			"health_after": current_core_health,
+			"max_health": GameManager.max_core_health
+		})
+	_last_core_health = current_core_health
 
 func _apply_debuffs_to_enemy(enemy):
 	"""Apply debuffs specified in test config to spawned enemy."""
@@ -459,29 +522,96 @@ func _log_status():
 					"grid_x": tile.x,
 					"grid_y": tile.y,
 					"level": u.level,
-					"damage_stat": u.damage # Base damage stat
+					"damage_stat": u.damage,
+					"hp": u.current_hp,
+					"max_hp": u.max_hp,
+					"attack_speed": u.atk_speed,
+					"attack_range": u.range_val
 				})
 
 	var enemies_info = []
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		if is_instance_valid(enemy):
-			enemies_info.append({
+			var enemy_data = {
 				"instance_id": enemy.get_instance_id(),
 				"type": enemy.type_key,
 				"hp": enemy.hp,
 				"max_hp": enemy.max_hp,
 				"pos_x": enemy.global_position.x,
-				"pos_y": enemy.global_position.y
-			})
+				"pos_y": enemy.global_position.y,
+				"speed": enemy.speed if "speed" in enemy else 0,
+				"bleed_stacks": enemy.bleed_stacks if "bleed_stacks" in enemy else 0
+			}
+			# 添加路径信息（如果行为存在）
+			if enemy.behavior and "path_index" in enemy.behavior:
+				enemy_data["path_index"] = enemy.behavior.path_index
+			enemies_info.append(enemy_data)
+
+	# 获取地图信息
+	var map_info = {}
+	if gm and gm.tiles.size() > 0:
+		var min_x = 9999
+		var max_x = -9999
+		var min_y = 9999
+		var max_y = -9999
+		for key in gm.tiles:
+			var tile = gm.tiles[key]
+			min_x = min(min_x, tile.x)
+			max_x = max(max_x, tile.x)
+			min_y = min(min_y, tile.y)
+			max_y = max(max_y, tile.y)
+		map_info = {
+			"grid_width": max_x - min_x + 1,
+			"grid_height": max_y - min_y + 1,
+			"cell_size": Constants.TILE_SIZE
+		}
+
+	# 获取商店信息（如果在商店阶段）
+	var shop_info = {}
+	if not GameManager.is_wave_active:
+		var shop = get_tree().root.find_child("Shop", true, false)
+		if not shop and GameManager.main_game:
+			shop = GameManager.main_game.find_child("Shop", true, false)
+		if shop and "shop_items" in shop:
+			var shop_units = []
+			var items: Array = shop.shop_items
+			for i in range(items.size()):
+				var item_id = str(items[i])
+				var unit_data = Constants.UNIT_TYPES.get(item_id, {})
+				shop_units.append({
+					"id": item_id,
+					"name": unit_data.get("name", item_id),
+					"faction": unit_data.get("faction", "universal"),
+					"cost": unit_data.get("cost", 0),
+					"rarity": unit_data.get("rarity", "common")
+				})
+			shop_info = {
+				"available_units": shop_units,
+				"refresh_cost": 2
+			}
+
+	# 获取魂魄系统状态（狼图腾）
+	var soul_info = {}
+	if get_node_or_null("/root/SoulManager"):
+		soul_info = {
+			"current_souls": SoulManager.current_souls,
+			"max_souls": SoulManager.max_souls
+		}
 
 	var entry = {
 		"frame": Engine.get_process_frames(),
 		"time": elapsed_time,
+		"wave": GameManager.wave,
+		"is_wave_active": GameManager.is_wave_active,
 		"gold": GameManager.gold,
 		"mana": GameManager.mana,
 		"core_health": GameManager.core_health,
+		"max_core_health": GameManager.max_core_health,
 		"units": units_info,
 		"enemies": enemies_info,
+		"map_info": map_info,
+		"shop_info": shop_info,
+		"soul_info": soul_info,
 		"events": _frame_events.duplicate()
 	}
 	logs.append(entry)
