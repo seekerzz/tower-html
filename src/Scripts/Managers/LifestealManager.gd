@@ -23,12 +23,7 @@ func _on_damage_dealt(target, source, damage):
 
 	# Check if source is a Bat Totem unit
 	if not _is_bat_totem_unit(source):
-		# Debug: print why lifesteal didn't trigger
-		if source.get("type_key"):
-			print("[LifestealManager] Damage dealt by ", source.type_key, ", but not a bat totem unit")
 		return
-
-	print("[LifestealManager] Bat unit ", source.type_key if source.get("type_key") else "unknown", " hit enemy with ", target.bleed_stacks, " bleed stacks")
 
 	# Calculate lifesteal amount
 	var multiplier = GameManager.get_global_buff("lifesteal_multiplier", 1.0)
