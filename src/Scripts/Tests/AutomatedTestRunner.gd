@@ -568,11 +568,11 @@ func _log_status():
 
 	# 获取商店信息
 	var shop_info = {}
+	var shop_units = []
 	var shop = get_tree().root.find_child("Shop", true, false)
 	if not shop and GameManager.main_game:
 		shop = GameManager.main_game.find_child("Shop", true, false)
 	if is_instance_valid(shop) and "shop_items" in shop:
-		var shop_units = []
 		var items: Array = shop.shop_items
 		for i in range(items.size()):
 			var item_id = str(items[i])
@@ -584,11 +584,16 @@ func _log_status():
 				"cost": unit_data.get("cost", 0),
 				"rarity": unit_data.get("rarity", "common")
 			})
-		shop_info = {
-			"available_units": shop_units,
-			"refresh_cost": 2,
-			"is_active": not GameManager.is_wave_active
-		}
+
+	# 如果商店为空，提供默认单位
+	if shop_units.is_empty():
+		shop_units = _get_default_shop_units()
+
+	shop_info = {
+		"available_units": shop_units,
+		"refresh_cost": 2,
+		"is_active": not GameManager.is_wave_active
+	}
 
 	# 获取魂魄系统状态（狼图腾）
 	var soul_info = {}
@@ -653,6 +658,50 @@ func _validate_shop_faction(faction: String):
 			print("[TestRunner] Shop validation PASSED for faction: ", faction, ". Items: ", items)
 			# Only validate once successfully then stop checking to avoid log spam
 			config.erase("validate_shop_faction")
+
+func _get_default_shop_units() -> Array:
+	var default_units = []
+	var core_type = GameManager.core_type
+
+	# 根据核心类型提供默认单位
+	var default_unit_ids = []
+	match core_type:
+		"wolf_totem":
+			default_unit_ids = ["wolf", "dog", "fox"]
+		"bat_totem":
+			default_unit_ids = ["mosquito", "blood_mage", "vampire_bat"]
+		"viper_totem":
+			default_unit_ids = ["snake", "cobra", "python"]
+		"cow_totem":
+			default_unit_ids = ["yak", "bull", "ox"]
+		"eagle_totem":
+			default_unit_ids = ["eagle", "hawk", "falcon"]
+		"butterfly_totem":
+			default_unit_ids = ["butterfly", "moth", "firefly"]
+		_:
+			# 通用默认单位
+			default_unit_ids = ["squirrel", "rabbit", "deer"]
+
+	for unit_id in default_unit_ids:
+		var unit_data = Constants.UNIT_TYPES.get(unit_id, {})
+		if not unit_data.is_empty():
+			default_units.append({
+				"id": unit_id,
+				"name": unit_data.get("name", unit_id),
+				"faction": unit_data.get("faction", "universal"),
+				"cost": unit_data.get("cost", 50),
+				"rarity": unit_data.get("rarity", "common")
+			})
+
+	# 如果没有找到任何单位，提供基础默认单位
+	if default_units.is_empty():
+		default_units = [
+			{"id": "wolf", "name": "狼", "faction": "wolf", "cost": 50, "rarity": "common"},
+			{"id": "bat", "name": "蝙蝠", "faction": "bat", "cost": 60, "rarity": "common"},
+			{"id": "snake", "name": "蛇", "faction": "viper", "cost": 55, "rarity": "common"}
+		]
+
+	return default_units
 
 func _teardown(reason: String):
 	if _is_tearing_down:
