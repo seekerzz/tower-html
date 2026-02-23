@@ -20,6 +20,7 @@ signal enemy_spawned(enemy)
 signal enemy_died(enemy, killer_unit)
 signal debuff_applied(enemy, debuff_type, stacks)
 signal totem_echo_triggered(source_unit, damage)
+signal core_healed(amount, overheal)
 
 var is_running_test: bool = false
 var current_test_scenario: Dictionary = {}
@@ -286,7 +287,13 @@ func _on_upgrade_selected(upgrade_data):
 	_finish_wave_process()
 
 func heal_core(amount: float):
-	damage_core(-amount)
+	var old_hp = core_health
+	core_health = min(max_core_health, core_health + amount)
+	var actual_heal = core_health - old_hp
+	var overheal = amount - actual_heal
+
+	resource_changed.emit()
+	core_healed.emit(actual_heal, overheal)
 
 func damage_core(amount: float):
 	if current_mechanic:

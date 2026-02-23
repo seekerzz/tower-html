@@ -72,12 +72,12 @@ func _enter_claw_impact(t_impact, t_return, t_landing):
 		_combat_tween.tween_property(unit.visual_holder, "scale", target_scale, t_impact * 0.5)\
 			.set_trans(Tween.TRANS_BOUNCE)
 		_combat_tween.tween_property(unit.visual_holder, "scale", recovery_scale, t_impact * 0.5)
-		_combat_tween.tween_callback(func(): _enter_claw_return(t_return, t_landing))
+		_combat_tween.tween_callback(func(): _enter_return(t_return, t_landing))
 	else:
 		if _combat_tween: _combat_tween.kill()
 		_combat_tween = unit.create_tween()
 		_combat_tween.tween_interval(t_impact)
-		_combat_tween.tween_callback(func(): _enter_claw_return(t_return, t_landing))
+		_combat_tween.tween_callback(func(): _enter_return(t_return, t_landing))
 
 func _on_kill(enemy, damage):
 	if permanent_attack_bonus < 15:

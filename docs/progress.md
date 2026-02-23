@@ -25,6 +25,17 @@
 
 **备注**: TEST-BUTTERFLY-eel 任务提交失败，需重新提交
 
+### 回归测试发现的问题修复 (进行中)
+
+| 任务ID | 状态 | 描述 | 更新时间 |
+|--------|------|------|----------|
+| FIX-01 | completed | core_healed信号修复完成 | 2026-02-21 |
+| FIX-02 | completed | get_units_in_cell_range方法完成 | 2026-02-21 |
+| FIX-03 | completed | Vulture方法修复完成 | 2026-02-21 |
+| FIX-04 | completed | 召唤系统修复完成 | 2026-02-21 |
+
+**问题详情**: 见 `TEST_REGRESSION_REPORT.md`
+
 ## 详细进度
 
 ### P0 - 基础系统
@@ -105,7 +116,7 @@
 
 | 任务ID | 状态 | 描述 | 更新时间 |
 |--------|------|------|----------|
-| FIX-02 | completed | 添加 get_units_in_cell_range 方法 | 2026-02-21 |
+| FIX-01 | completed | 恢复 core_healed 信号 | 2026-02-21 |
 
 ## 状态说明
 
