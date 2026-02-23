@@ -23,7 +23,12 @@ func _on_damage_dealt(target, source, damage):
 
 	# Check if source is a Bat Totem unit
 	if not _is_bat_totem_unit(source):
+		# Debug: print why lifesteal didn't trigger
+		if source.get("type_key"):
+			print("[LifestealManager] Damage dealt by ", source.type_key, ", but not a bat totem unit")
 		return
+
+	print("[LifestealManager] Bat unit ", source.type_key if source.get("type_key") else "unknown", " hit enemy with ", target.bleed_stacks, " bleed stacks")
 
 	# Calculate lifesteal amount
 	var multiplier = GameManager.get_global_buff("lifesteal_multiplier", 1.0)
@@ -44,9 +49,20 @@ func _on_damage_dealt(target, source, damage):
 		print("[LifestealManager] Bleed stacks: ", target.bleed_stacks, ", Lifesteal: ", lifesteal_amount)
 
 func _is_bat_totem_unit(source: Node) -> bool:
-	# Check if source is a Unit and has type_key
+	# Check if source is a Unit and has type_key or faction
+	if not is_instance_valid(source):
+		return false
+
+	# Check by type_key (Bat Totem unit IDs)
 	if source.get("type_key"):
-		return source.type_key in ["mosquito", "blood_mage", "vampire_bat", "gargoyle", "life_chain", "blood_chalice", "blood_ritualist"]
+		var bat_unit_types = ["mosquito", "blood_mage", "vampire_bat", "plague_spreader", "blood_ancestor"]
+		if source.type_key in bat_unit_types:
+			return true
+
+	# Check by faction (alternative way to identify)
+	if source.get("unit_data") and source.unit_data.get("faction") == "bat_totem":
+		return true
+
 	return false
 
 func _show_lifesteal_effect(pos: Vector2, amount: float):
