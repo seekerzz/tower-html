@@ -1,8 +1,6 @@
 # 图腾纷争 - AI协作开发指南
 
-本文档是 tower-html 项目的 AI 协作开发入口，包含角色职责说明和项目背景知识。
-
-项目进展跟踪请参阅 [`docs/progress.md`](docs/progress.md)。
+本文档是 tower-html 项目的 AI 协作开发入口，包含项目背景和开发指南。
 
 ---
 
@@ -22,12 +20,9 @@
 
 ```
 ├── docs/                          # 项目文档（提交到GitHub）
-│   ├── roles/                     # AI角色人设
-│   ├── reviews/                   # 代码审查记录
-│   ├── diagrams/                  # 架构图和流程图
-│   ├── secrets/                   # 密钥配置（仅README）
 │   ├── GameDesign.md              # 游戏设计文档
-│   └── progress.md                # 任务进度跟踪
+│   ├── UnitDesign.xlsx            # 单位设计表
+│   └── secrets/                   # 密钥配置说明
 ├── src/                           # 游戏源代码
 │   ├── Scripts/                   # 游戏脚本
 │   │   ├── Managers/              # Manager类
@@ -66,7 +61,7 @@
 - 审核现有视觉实现是否符合风格
 - 优化UI交互体验
 
-**Prompt文件**: [`docs/roles/art_director.md`](docs/roles/art_director.md)
+**Prompt文件**: [`dev/docs/roles/art_director.md`](dev/docs/roles/art_director.md)
 
 ---
 
@@ -82,7 +77,7 @@
 - 评估数值平衡性
 - 发现设计与实现偏差时
 
-**Prompt文件**: [`docs/roles/game_designer.md`](docs/roles/game_designer.md)
+**Prompt文件**: [`dev/docs/roles/game_designer.md`](dev/docs/roles/game_designer.md)
 
 ---
 
@@ -99,7 +94,7 @@
 - 拆分复杂任务为AI可执行单元
 - 审核架构设计方案
 
-**Prompt文件**: [`docs/roles/system_architect.md`](docs/roles/system_architect.md)
+**Prompt文件**: [`dev/docs/roles/system_architect.md`](dev/docs/roles/system_architect.md)
 
 ---
 
@@ -133,7 +128,7 @@
 3. 追溯引入错误的提交
 4. 修复后重新运行全量回归测试
 
-**Prompt文件**: [`docs/roles/qa_engineer.md`](docs/roles/qa_engineer.md)
+**Prompt文件**: [`dev/docs/roles/qa_engineer.md`](dev/docs/roles/qa_engineer.md)
 
 ---
 
@@ -289,7 +284,13 @@ dev/
 │   ├── jules_prompts/             # Jules 任务 Prompt 文件
 │   │   ├── P0_*.md                # Phase 0 基础系统任务
 │   │   ├── P1_*.md                # Phase 1 单位实现任务
-│   │   └── P2_*.md                # Phase 2 系统优化任务
+│   │   ├── P2_*.md                # Phase 2 系统优化任务
+│   │   └── TEST_*.md              # 单元测试任务
+│   ├── roles/                     # AI 角色人设文档
+│   ├── reviews/                   # 代码审查记录
+│   ├── diagrams/                  # 架构图和流程图
+│   ├── progress.md                # 任务进度跟踪
+│   ├── test_progress.md           # 测试进度
 │   └── *.md                       # 测试报告
 ├── logs/                 # 测试日志和输出
 │   └── *.log / *.txt
@@ -409,7 +410,7 @@ done
 
 - [docs/GameDesign.md](docs/GameDesign.md) - 游戏设计文档
 - [docs/progress.md](docs/progress.md) - 任务进度跟踪与实现状态
-- [docs/roles/](docs/roles/) - AI角色人设文档
+- [dev/docs/roles/](dev/docs/roles/) - AI角色人设文档
 
 ---
 
