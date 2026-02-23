@@ -1,4 +1,0 @@
-SHADER ERROR: Uniform instances are not yet implemented for 'canvas_item' shaders.
-ERROR: Shader compilation failed.
-ERROR: Resource file not found: res://assets/images/UI/bg_battle.png (expected type: Texture2D)
-ERROR: res://src/Scenes/Game/MainGame.tscn:17 - Parse Error: [ext_resource] referenced non-existent resource at: res://assets/images/UI/bg_battle.png
