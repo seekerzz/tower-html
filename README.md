@@ -23,19 +23,22 @@
 ```
 ├── docs/                          # 项目文档（提交到GitHub）
 │   ├── roles/                     # AI角色人设
-│   │   ├── art_director.md        # 美术总监
-│   │   ├── game_designer.md       # 游戏策划
-│   │   ├── system_architect.md    # 系统架构师
-│   │   └── qa_engineer.md         # 测试工程师
 │   ├── reviews/                   # 代码审查记录
 │   ├── diagrams/                  # 架构图和流程图
+│   ├── secrets/                   # 密钥配置（仅README）
 │   ├── GameDesign.md              # 游戏设计文档
 │   └── progress.md                # 任务进度跟踪
 ├── src/                           # 游戏源代码
-│   ├── managers/                  # Manager类
-│   ├── units/                     # 单位类
-│   ├── behaviors/                 # Behavior类
-│   └── tests/                     # 测试代码
+│   ├── Scripts/                   # 游戏脚本
+│   │   ├── Managers/              # Manager类
+│   │   ├── Units/                 # 单位类
+│   │   ├── Components/            # 组件类
+│   │   ├── Skills/                # 技能类
+│   │   ├── Effects/               # 特效类
+│   │   └── Tests/                 # 测试代码
+│   ├── Autoload/                  # 自动加载单例
+│   ├── Scenes/                    # 场景文件
+│   └── Shaders/                   # 着色器
 ├── data/                          # 配置数据
 │   └── game_data.json             # 单位配置
 ├── assets/                        # 游戏资源
@@ -197,10 +200,10 @@ Behaviors/
 | `docs/GameDesign.md` | 游戏设计文档 |
 | `docs/progress.md` | 任务进度跟踪 |
 | `data/game_data.json` | 单位配置数据 |
-| `tests/` | 测试目录 |
-| `scripts/managers/` | Manager类目录 |
-| `scripts/units/` | 单位类目录 |
-| `scripts/behaviors/` | Behavior类目录 |
+| `src/Scripts/Managers/` | Manager类目录 |
+| `src/Scripts/Units/` | 单位类目录 |
+| `src/Scripts/Components/` | 组件类目录 |
+| `src/Scripts/Tests/` | 测试代码目录 |
 
 ### AI Coding Agent工作流程
 
@@ -247,8 +250,8 @@ Behaviors/
 
 ```bash
 cd docs/secrets
-cp .env.example .env
-# 编辑 .env 文件，填入从 https://jules.google.com/settings#api 获取的 API 密钥
+# 参考 README.md 创建 .env 文件
+# 填入从 https://jules.google.com/settings#api 获取的 API 密钥
 ```
 
 ### 2. 安装依赖
