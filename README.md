@@ -21,28 +21,28 @@
 ## 目录结构
 
 ```
-├── docs/
-│   ├── jules_prompts/             # Jules任务Prompt文件
-│   │   ├── run_jules_task.py      # 单任务提交脚本
-│   │   ├── run_jules_batch.py     # 批量任务提交脚本
-│   │   ├── check_jules_status.py  # 任务状态检查脚本
-│   │   ├── P0_*.md                # Phase 0 基础系统任务
-│   │   ├── P1_*.md                # Phase 1 单位实现任务
-│   │   └── P2_*.md                # Phase 2 系统优化任务
+├── docs/                          # 项目文档（提交到GitHub）
 │   ├── roles/                     # AI角色人设
 │   │   ├── art_director.md        # 美术总监
 │   │   ├── game_designer.md       # 游戏策划
 │   │   ├── system_architect.md    # 系统架构师
 │   │   └── qa_engineer.md         # 测试工程师
+│   ├── reviews/                   # 代码审查记录
+│   ├── diagrams/                  # 架构图和流程图
 │   ├── GameDesign.md              # 游戏设计文档
 │   └── progress.md                # 任务进度跟踪
-├── scripts/                       # 游戏代码
+├── src/                           # 游戏源代码
 │   ├── managers/                  # Manager类
 │   ├── units/                     # 单位类
-│   └── behaviors/                 # Behavior类
-├── tests/                         # 测试代码
-└── data/                          # 配置数据
-    └── game_data.json             # 单位配置
+│   ├── behaviors/                 # Behavior类
+│   └── tests/                     # 测试代码
+├── data/                          # 配置数据
+│   └── game_data.json             # 单位配置
+├── assets/                        # 游戏资源
+└── dev/                           # 开发者工作区（不提交到GitHub）
+    ├── scripts/                   # 自动化脚本
+    ├── docs/                      # 开发过程文档
+    └── logs/                      # 测试日志
 ```
 
 ---
@@ -257,18 +257,66 @@ cp .env.example .env
 pip install requests python-dotenv
 ```
 
-### 3. 提交任务
+### 3. 运行测试
 
 ```bash
-# 单个任务
-python docs/jules_prompts/run_jules_task.py \
-    --prompt docs/jules_prompts/P0_01_wolf_totem_soul_system.md \
-    --task-id P0-01 \
-    --wait
+# 使用 Godot 运行测试（需要 Godot 引擎）
+godot --path . --headless -- --run-test=test_wolf_totem
 
-# 批量任务
-python docs/jules_prompts/run_jules_batch.py --phase P0
+# 或使用开发者脚本（见下方开发者工作区说明）
+cd dev
+python scripts/monitor_all_tests.py
 ```
+
+---
+
+## 开发者工作区
+
+`dev/` 目录包含开发过程中产生的辅助文件和工具，**不会提交到 GitHub**。开发者可以在本地使用这些资源进行调试、测试和任务管理。
+
+### 工作区结构
+
+```
+dev/
+├── scripts/              # 自动化脚本
+│   ├── monitor_all_tests.py       # 监控所有测试
+│   ├── run_all_tests.sh           # 批量运行测试
+│   └── submit_*.sh                # 任务提交脚本
+├── docs/                 # 开发文档
+│   ├── jules_prompts/             # Jules 任务 Prompt 文件
+│   │   ├── P0_*.md                # Phase 0 基础系统任务
+│   │   ├── P1_*.md                # Phase 1 单位实现任务
+│   │   └── P2_*.md                # Phase 2 系统优化任务
+│   └── *.md                       # 测试报告
+├── logs/                 # 测试日志和输出
+│   └── *.log / *.txt
+└── test_results/         # 测试结果
+    └── *.log
+```
+
+### 使用方法
+
+**运行测试：**
+```bash
+cd dev
+./scripts/run_all_tests.sh
+```
+
+**提交 Jules 任务（需要 API 密钥）：**
+```bash
+cd dev
+python scripts/submit_jules_task.py \
+    --prompt docs/jules_prompts/P0_01_wolf_totem_soul_system.md \
+    --task-id P0-01
+```
+
+**查看测试报告：**
+```bash
+# 报告文件位于 dev/docs/
+cat dev/docs/COW_TOTEM_TEST_REPORT.md
+```
+
+> **注意**：`dev/` 目录已被添加到 `.gitignore`，其中的文件仅在本地保留，不会推送到 GitHub。
 
 ---
 
