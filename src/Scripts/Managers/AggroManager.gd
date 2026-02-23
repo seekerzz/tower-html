@@ -11,6 +11,7 @@ func apply_taunt(unit: Node2D, radius: float, duration: float):
 
 	taunting_units[unit] = radius
 	taunt_started.emit(unit, radius)
+	print("[AggroManager] Taunt started: ", unit.name if "name" in unit else unit, " radius=", radius, " duration=", duration)
 
 	if duration > 0:
 		await get_tree().create_timer(duration).timeout
@@ -20,6 +21,7 @@ func remove_taunt(unit: Node2D):
 	if taunting_units.has(unit):
 		taunting_units.erase(unit)
 		taunt_ended.emit(unit)
+		print("[AggroManager] Taunt ended: ", unit.name if "name" in unit else unit)
 
 func get_target_for_enemy(enemy: Node2D) -> Node2D:
 	if taunting_units.is_empty():

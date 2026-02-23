@@ -41,6 +41,7 @@ func _on_damage_dealt(target, source, damage):
 
 		lifesteal_occurred.emit(source, lifesteal_amount)
 		_show_lifesteal_effect(target.global_position, lifesteal_amount)
+		print("[LifestealManager] Bleed stacks: ", target.bleed_stacks, ", Lifesteal: ", lifesteal_amount)
 
 func _is_bat_totem_unit(source: Node) -> bool:
 	# Check if source is a Unit and has type_key
