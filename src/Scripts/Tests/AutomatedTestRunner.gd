@@ -566,29 +566,29 @@ func _log_status():
 			"cell_size": Constants.TILE_SIZE
 		}
 
-	# 获取商店信息（如果在商店阶段）
+	# 获取商店信息
 	var shop_info = {}
-	if not GameManager.is_wave_active:
-		var shop = get_tree().root.find_child("Shop", true, false)
-		if not shop and GameManager.main_game:
-			shop = GameManager.main_game.find_child("Shop", true, false)
-		if shop and "shop_items" in shop:
-			var shop_units = []
-			var items: Array = shop.shop_items
-			for i in range(items.size()):
-				var item_id = str(items[i])
-				var unit_data = Constants.UNIT_TYPES.get(item_id, {})
-				shop_units.append({
-					"id": item_id,
-					"name": unit_data.get("name", item_id),
-					"faction": unit_data.get("faction", "universal"),
-					"cost": unit_data.get("cost", 0),
-					"rarity": unit_data.get("rarity", "common")
-				})
-			shop_info = {
-				"available_units": shop_units,
-				"refresh_cost": 2
-			}
+	var shop = get_tree().root.find_child("Shop", true, false)
+	if not shop and GameManager.main_game:
+		shop = GameManager.main_game.find_child("Shop", true, false)
+	if is_instance_valid(shop) and "shop_items" in shop:
+		var shop_units = []
+		var items: Array = shop.shop_items
+		for i in range(items.size()):
+			var item_id = str(items[i])
+			var unit_data = Constants.UNIT_TYPES.get(item_id, {})
+			shop_units.append({
+				"id": item_id,
+				"name": unit_data.get("name", item_id),
+				"faction": unit_data.get("faction", "universal"),
+				"cost": unit_data.get("cost", 0),
+				"rarity": unit_data.get("rarity", "common")
+			})
+		shop_info = {
+			"available_units": shop_units,
+			"refresh_cost": 2,
+			"is_active": not GameManager.is_wave_active
+		}
 
 	# 获取魂魄系统状态（狼图腾）
 	var soul_info = {}
