@@ -1,6 +1,7 @@
 extends Node
 
 signal resource_changed
+signal core_type_changed
 signal wave_started
 signal wave_ended
 signal wave_reset
@@ -14,27 +15,41 @@ signal ftext_spawn_requested(pos, value, color, direction)
 signal show_tooltip(data, stats, buffs, pos)
 signal hide_tooltip()
 signal projectile_crit(source_unit, target, damage)
+signal enemy_hit(enemy, source, amount)
+signal enemy_spawned(enemy)
+signal enemy_died(enemy, killer_unit)
+signal debuff_applied(enemy, debuff_type, stacks)
+signal totem_echo_triggered(source_unit, damage)
 
-var core_type: String = "cornucopia":
+var is_running_test: bool = false
+var current_test_scenario: Dictionary = {}
+
+var core_type: String = "":
 	set(value):
 		core_type = value
 		_initialize_mechanic()
+		core_type_changed.emit()
 
-var mana: float = 500.0
-var max_mana: float = 1000.0
-var gold: int = 150
+# ===== 资源系统 =====
+# 法力系统
+var mana: float = 500.0          # 当前法力
+var max_mana: float = 1000.0     # 最大法力
+var base_mana_rate: float = 10.0 # 每秒基础回蓝
+
+# 金币系统
+var gold: int = 150              # 初始金币
+
+# 波次状态
 var wave: int = 1
 var is_wave_active: bool = false
-var core_health: float = 1000.0
-var max_core_health: float = 1000.0
+
+# ===== 核心血量系统 =====
+# 基础核心血量（固定值）+ 单位血量加成
+# 初始没有单位时：core_health = max_core_health = BASE_CORE_HP(500)
+var core_health: float = 500.0
+var max_core_health: float = 500.0
+
 var damage_multiplier: float = 1.0
-
-var base_mana_rate: float = 10.0
-
-var materials: Dictionary = {
-	"mucus": 0, "poison": 0, "fang": 0,
-	"wood": 0, "snow": 0, "stone": 0
-}
 
 var tile_cost: int = 50
 
@@ -48,9 +63,22 @@ var ui_manager = null
 var main_game = null
 var reward_manager: Node = null
 var data_manager: Node = null
-
+var lifesteal_manager: Node = null
+var summon_manager: Node = null
 
 var permanent_health_bonus: float = 0.0
+
+# ===== 全局Buff系统 =====
+var _global_buffs: Dictionary = {}
+
+func apply_global_buff(buff_name: String, value: float):
+	_global_buffs[buff_name] = value
+
+func remove_global_buff(buff_name: String):
+	_global_buffs.erase(buff_name)
+
+func get_global_buff(buff_name: String, default_value: float = 1.0) -> float:
+	return _global_buffs.get(buff_name, default_value)
 
 # Relic Logic
 var indomitable_triggered: bool = false
@@ -65,6 +93,12 @@ var _hit_stop_end_time: int = 0
 
 # Core Mechanics Variables
 var current_mechanic: Node = null
+
+func set_test_scenario(scenario: Dictionary):
+	current_test_scenario = scenario
+	is_running_test = true
+	if scenario.has("initial_gold"):
+		gold = scenario["initial_gold"]
 
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -91,6 +125,11 @@ func _ready():
 			add_child(reward_manager)
 			reward_manager.sacrifice_state_changed.connect(_on_sacrifice_state_changed)
 
+	# Initialize LifestealManager
+	var LSManagerScript = load("res://src/Scripts/Managers/LifestealManager.gd")
+	lifesteal_manager = LSManagerScript.new()
+	add_child(lifesteal_manager)
+
 	_initialize_mechanic()
 
 func _initialize_mechanic():
@@ -100,9 +139,6 @@ func _initialize_mechanic():
 
 	var mech_script = null
 	match core_type:
-		"abundance": mech_script = load("res://src/Scripts/CoreMechanics/MechanicAbundance.gd")
-		"moon_well": mech_script = load("res://src/Scripts/CoreMechanics/MechanicMoonWell.gd")
-		"holy_sword": mech_script = load("res://src/Scripts/CoreMechanics/MechanicHolySword.gd")
 		"cow_totem": mech_script = load("res://src/Scripts/CoreMechanics/MechanicCowTotem.gd")
 		"bat_totem": mech_script = load("res://src/Scripts/CoreMechanics/MechanicBatTotem.gd")
 		"viper_totem": mech_script = load("res://src/Scripts/CoreMechanics/MechanicViperTotem.gd")
@@ -135,39 +171,7 @@ func _on_wave_started():
 		current_mechanic.on_wave_started()
 
 func use_item_effect(item_id: String, target_unit = null) -> bool:
-	match item_id:
-		"rice_ear":
-			mana = min(max_mana, mana + max_mana * 0.5)
-			resource_changed.emit()
-			spawn_floating_text(Vector2(0, 0), "Mana +50%", Color.CYAN)
-			return true
-		"moon_water":
-			var heal_amount = 0.0
-			if current_mechanic and current_mechanic.has_method("consume_pool"):
-				heal_amount = current_mechanic.consume_pool()
-
-			var missing_hp = max_core_health - core_health
-			var actual_heal = min(heal_amount, missing_hp)
-			var overflow = heal_amount - actual_heal
-
-			damage_core(-actual_heal) # Negative damage heals
-
-			if overflow > 0:
-				var mana_gain = overflow * 0.01
-				mana = min(max_mana, mana + mana_gain)
-				resource_changed.emit()
-				spawn_floating_text(Vector2(0, 0), "Heal +%d / Mana +%d" % [int(actual_heal), int(mana_gain)], Color.CYAN)
-			else:
-				spawn_floating_text(Vector2(0, 0), "Heal +%d" % int(actual_heal), Color.GREEN)
-			return true
-		"holy_sword":
-			if target_unit and is_instance_valid(target_unit) and target_unit.has_method("add_crit_stacks"):
-				target_unit.add_crit_stacks(3)
-				spawn_floating_text(target_unit.global_position, "Holy Power!", Color.GOLD)
-				return true
-			else:
-				print("No valid target for Holy Sword. Please drag to a unit.")
-				return false
+	# 物品系统已移除，保留函数结构用于后续扩展
 	return false
 
 func trigger_hit_stop(duration_sec: float, time_scale: float = 0.05):
@@ -260,9 +264,10 @@ func end_wave():
 
 func _finish_wave_process():
 	wave += 1
+	# 每波结束固定获得金币：20 + 波次×5
 	gold += 20 + (wave * 5)
 
-	# Restore resources
+	# 每波结束恢复法力至满值（血量不自动恢复）
 	mana = max_mana
 
 	wave_ended.emit()
@@ -279,6 +284,9 @@ func _on_upgrade_selected(upgrade_data):
 
 	resource_changed.emit()
 	_finish_wave_process()
+
+func heal_core(amount: float):
+	damage_core(-amount)
 
 func damage_core(amount: float):
 	if current_mechanic:
@@ -315,7 +323,7 @@ func damage_core(amount: float):
 		game_over.emit()
 
 func retry_wave():
-	# Restore core health
+	# 重试波次：完全恢复核心血量（包括基础血量+单位加成）
 	core_health = max_core_health
 
 	# Clear enemies
@@ -331,20 +339,19 @@ func retry_wave():
 	resource_changed.emit()
 
 func recalculate_max_health():
+	"""
+	核心血量计算机制：
+	max_core_health = BASE_CORE_HP(500) + 所有单位max_hp之和 + permanent_health_bonus
+
+	开局时没有单位：max_core_health = 500, core_health = 500
+	添加单位时：max_core_health增加该单位的hp，当前血量也同步增加
+	移除单位时：max_core_health减少该单位的hp，当前血量也同步减少
+	"""
 	if !grid_manager: return
 
 	var total_unit_hp = 0.0
 
-	# Iterate all tiles to find units
-	# grid_manager.tiles is Dictionary { key: Tile }
-	# We can also keep a list of units in GridManager to be faster, but for now iterating tiles is safe.
-	# Or better, GridManager should probably expose a way to get all units.
-	# But since we are modifying GameManager, and GridManager is a child, we can access it.
-	# However, GridManager.tiles is internal.
-
-	# Let's rely on iterating tiles for now, or check if GridManager has a list.
-	# Looking at GridManager.gd, it has `tiles`.
-
+	# 遍历所有格子统计单位血量
 	var processed_units = {}
 	for key in grid_manager.tiles:
 		var tile = grid_manager.tiles[key]
@@ -353,29 +360,18 @@ func recalculate_max_health():
 			processed_units[tile.unit] = true
 
 	var old_max = max_core_health
+	# 计算公式：基础血量 + 单位血量总和 + 永久加成
 	max_core_health = Constants.BASE_CORE_HP + total_unit_hp + permanent_health_bonus
-
-	# Note: Biomass Armor (+500 HP) is applied in RewardManager._apply_immediate_effects.
-	# If we add it here, we might need to ensure consistency.
-	# Reviewer requested removal of explicit check here to match spec strictness.
-	# if reward_manager and "biomass_armor" in reward_manager.acquired_artifacts:
-	# 	max_core_health += 500.0
 
 	if max_core_health != old_max:
 		var diff = max_core_health - old_max
-		# If max health increased, we heal the core by that amount (so current health % doesn't drop weirdly,
-		# or rather, adding a unit adds its health to the pool immediately).
-		# If max health decreased, we clamp current health.
-
-		# Prompt says: "if current health exceeds max, clamp; if not injured, adjust proportionally or by difference.
-		# To simplify, simply add the difference."
-
+		# 血量变化时，当前血量同步调整（保持血量比例或简单加减）
 		core_health += diff
 		if core_health > max_core_health:
 			core_health = max_core_health
 		if core_health <= 0:
-			core_health = 0 # Should not happen unless removing unit kills us?
-			# If removing a unit drops HP below 0, it means we die?
+			core_health = 0
+			# 如果移除单位导致血量归零，游戏结束
 			game_over.emit()
 
 		resource_changed.emit()
@@ -387,11 +383,6 @@ func _on_sacrifice_state_changed(is_active: bool):
 	else:
 		damage_multiplier /= 2.0
 	resource_changed.emit()
-
-func add_material(type: String, amount: int = 1):
-	if materials.has(type):
-		materials[type] += amount
-		# signal material changed if needed
 
 func spend_gold(amount: int) -> bool:
 	if gold >= amount:
@@ -407,9 +398,6 @@ func add_gold(amount: int):
 func activate_cheat():
 	gold += 1000
 	mana = max_mana
-
-	for key in materials:
-		materials[key] = 99
 
 	resource_changed.emit()
 func check_resource(type: String, amount: float) -> bool:

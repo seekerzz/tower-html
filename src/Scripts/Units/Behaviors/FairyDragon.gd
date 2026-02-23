@@ -1,4 +1,4 @@
-extends UnitBehavior
+extends "res://src/Scripts/Units/UnitBehavior.gd"
 
 func on_projectile_hit(target: Node2D, damage: float, projectile: Node2D):
 	if not target or not is_instance_valid(target):

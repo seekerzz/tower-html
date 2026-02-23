@@ -264,6 +264,14 @@ func find_nearest_enemy(pos: Vector2, range_val: float):
 
 	return nearest
 
+func get_enemies_in_range(pos: Vector2, range_val: float) -> Array:
+	var found = []
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if is_instance_valid(enemy):
+			if pos.distance_to(enemy.global_position) <= range_val:
+				found.append(enemy)
+	return found
+
 func perform_lightning_attack(source_unit, start_pos, target, chain_left, hit_list = null):
 	if hit_list == null: hit_list = []
 	if !is_instance_valid(target): return
@@ -450,11 +458,14 @@ func _process_burn_explosion_logic(pos: Vector2, damage: float, source: Node2D):
 					"stacks": 1
 				})
 
-func check_kill_bonuses(killer_unit):
+func check_kill_bonuses(killer_unit, victim = null):
 	if killer_unit and "active_buffs" in killer_unit:
 		if "wealth" in killer_unit.active_buffs:
 			GameManager.add_gold(1)
 			GameManager.spawn_floating_text(killer_unit.global_position, "+1 Gold", Color.YELLOW)
+
+	if killer_unit and killer_unit is Node and "behavior" in killer_unit and killer_unit.behavior and killer_unit.behavior.has_method("on_kill"):
+		killer_unit.behavior.on_kill(victim)
 
 
 func deal_global_damage(damage: float, type: String):

@@ -1,27 +1,27 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
-var production_timer: float = 0.0
-var skill_active_timer: float = 0.0
+var heal_interval: float = 6.0
+var heal_timer: float = 0.0
 
 func on_setup():
-	production_timer = 5.0
+	heal_interval = 6.0
+	if unit.level >= 2:
+		heal_interval = 5.0
+	heal_timer = heal_interval
 
 func on_tick(delta: float):
-	# Passive Aura
-	production_timer -= delta
-	if production_timer <= 0:
-		GameManager.damage_core(-50)
-		GameManager.spawn_floating_text(unit.global_position, "+50", Color.GREEN)
-		production_timer = 5.0
+	heal_timer -= delta
+	if heal_timer <= 0:
+		heal_timer = heal_interval
+		_heal_core()
 
-	# Active Skill
-	if skill_active_timer > 0:
-		skill_active_timer -= delta
-		GameManager.damage_core(-200 * delta)
+func _heal_core():
+	var base_heal = GameManager.max_core_health * 0.015
 
-		if skill_active_timer <= 0:
-			unit.set_highlight(false)
+	if unit.level >= 3:
+		var health_lost_percent = 1.0 - (GameManager.core_health / GameManager.max_core_health)
+		var bonus_multiplier = 1.0 + health_lost_percent
+		base_heal *= bonus_multiplier
 
-func on_skill_activated():
-	skill_active_timer = 5.0
-	unit.set_highlight(true, Color.GREEN)
+	GameManager.heal_core(base_heal)
+	unit.spawn_buff_effect("🥛")

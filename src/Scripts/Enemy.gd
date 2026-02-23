@@ -1,12 +1,16 @@
+class_name Enemy
 extends CharacterBody2D
 
-const UNIT_SCRIPT = preload("res://src/Scripts/Unit.gd")
+const EnemyBehavior = preload("res://src/Scripts/Enemies/Behaviors/EnemyBehavior.gd")
+const AssetLoader = preload("res://src/Scripts/Utils/AssetLoader.gd")
 
 signal died
+signal attack_missed(enemy)
 
 enum State { MOVE, ATTACK_BASE, STUNNED, SUPPORT }
 var state: State = State.MOVE
 
+var faction: String = "enemy"
 var type_key: String
 var hp: float
 var max_hp: float
@@ -18,6 +22,7 @@ var enemy_data: Dictionary
 # Preserving freeze/stun as timers for now (or could be effects too, but keeping scope focused)
 var freeze_timer: float = 0.0
 var stun_timer: float = 0.0
+var blind_timer: float = 0.0
 var _env_cooldowns = {} # Trap Instance ID -> Cooldown Timer
 
 var hit_flash_timer: float = 0.0
@@ -53,6 +58,16 @@ var last_hit_direction: Vector2 = Vector2.ZERO
 
 var behavior: EnemyBehavior
 
+# Bleed System
+var bleed_stacks: int = 0
+var max_bleed_stacks: int = 30
+var bleed_damage_per_stack: float = 3.0
+var _bleed_source_unit: Object = null
+var _bleed_display_timer: float = 0.0
+const BLEED_DISPLAY_INTERVAL: float = 0.3
+
+signal bleed_stack_changed(new_stacks: int)
+
 func _ready():
 	add_to_group("enemies")
 	collision_layer = 2
@@ -62,6 +77,7 @@ func _ready():
 	GameManager._set_ignore_mouse_recursive(self)
 
 	_ensure_visual_controller()
+	GameManager.enemy_spawned.emit(self)
 
 func setup(key: String, wave: int):
 	_ensure_visual_controller()
@@ -137,6 +153,23 @@ func _init_behavior():
 	add_child(behavior)
 	behavior.init(self, enemy_data)
 
+func apply_charm(source_unit, duration: float = 3.0):
+	if behavior:
+		if behavior.has_method("cancel_attack"):
+			behavior.cancel_attack()
+		behavior.queue_free()
+
+	var charmed_behavior = load("res://src/Scripts/Enemies/Behaviors/CharmedEnemyBehavior.gd").new()
+	charmed_behavior.charm_duration = duration
+	charmed_behavior.charm_source = source_unit
+	add_child(charmed_behavior)
+	behavior = charmed_behavior
+	behavior.init(self, enemy_data)
+
+	set_meta("charm_source", source_unit)
+	faction = "player"
+	modulate = Color(1.0, 0.5, 1.0)
+
 func _ensure_visual_controller():
 	if not visual_controller:
 		visual_controller = load("res://src/Scripts/Components/VisualController.gd").new()
@@ -209,6 +242,13 @@ func _draw():
 		draw_rect(Rect2(bar_pos, Vector2(bar_w, bar_h)), Color.RED)
 		draw_rect(Rect2(bar_pos, Vector2(bar_w * hp_pct, bar_h)), Color.GREEN)
 
+	# Bleed Indicator
+	if bleed_stacks > 0:
+		var bleed_pos = Vector2(0, -enemy_data.radius - 20)
+		var font = ThemeDB.fallback_font
+		var font_size = 12
+		draw_string(font, bleed_pos, str(bleed_stacks), HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.RED)
+
 func _physics_process(delta):
 	if !GameManager.is_wave_active: return
 
@@ -234,7 +274,11 @@ func _physics_process(delta):
 		else:
 			_update_facing_logic()
 
+	if blind_timer > 0:
+		blind_timer -= delta
+
 	_process_effects(delta)
+	_process_bleed_damage(delta)
 
 	if visual_controller:
 		visual_controller.update_speed(speed, temp_speed_mod)
@@ -351,6 +395,9 @@ func _process_effects(delta):
 	if has_node("Sprite2D"):
 		$Sprite2D.flip_h = is_facing_left
 
+	if bleed_stacks > 0:
+		modulate = Color(1.0, 0.5, 0.5) # Red tint for bleed
+
 	if hit_flash_timer > 0:
 		hit_flash_timer -= delta
 		if hit_flash_timer <= 0: queue_redraw()
@@ -447,6 +494,41 @@ func apply_status(effect_script: Script, params: Dictionary):
 		add_child(effect)
 		effect.setup(self, params.get("source", null), params)
 
+	# Emit debuff_applied signal
+	var stacks = params.get("stacks", 1)
+	if existing and existing.get("stacks"):
+		stacks = existing.stacks
+
+	var type_key = ""
+	if existing:
+		type_key = existing.type_key
+	else:
+		# Temporarily instantiate to check type or use passed params if available?
+		# Or rely on effect.setup having set type_key.
+		# If new effect was added, it is the last child or we can reference it.
+		# But we didn't keep reference in variable 'effect' in 'else' block available here easily without refactoring.
+		# Let's refactor slightly to keep reference.
+		pass
+
+	# Refactoring to capture effect type
+	var effect_ref = existing
+	if not effect_ref:
+		# Retrieve the newly added child (last child)
+		effect_ref = get_child(get_child_count() - 1)
+
+	if effect_ref and "type_key" in effect_ref:
+		type_key = effect_ref.type_key
+		if "stacks" in effect_ref:
+			stacks = effect_ref.stacks
+		GameManager.debuff_applied.emit(self, type_key, stacks)
+
+func add_poison_stacks(amount: int):
+	apply_status(load("res://src/Scripts/Effects/PoisonEffect.gd"), {
+		"duration": 5.0,
+		"damage": 10.0,
+		"stacks": amount,
+		"source": null # Or pass self/GameManager if needed
+	})
 
 func apply_stun(duration: float):
 	stun_timer = duration
@@ -455,6 +537,21 @@ func apply_stun(duration: float):
 func apply_freeze(duration: float):
 	freeze_timer = duration
 	GameManager.spawn_floating_text(global_position, "Frozen!", Color.CYAN)
+
+func apply_blind(duration: float):
+	blind_timer = duration
+	GameManager.spawn_floating_text(global_position, "Blind!", Color.GRAY)
+
+func apply_debuff(type: String, stacks: int = 1):
+	match type:
+		"poison":
+			apply_status(load("res://src/Scripts/Effects/PoisonEffect.gd"), {"duration": 5.0, "damage": 20.0, "stacks": stacks})
+		"burn":
+			apply_status(load("res://src/Scripts/Effects/BurnEffect.gd"), {"duration": 5.0, "damage": 20.0, "stacks": stacks})
+		"bleed":
+			add_bleed_stacks(stacks)
+		"slow":
+			apply_status(load("res://src/Scripts/Effects/SlowEffect.gd"), {"duration": 3.0, "slow_factor": 0.5})
 
 func is_trap(node):
 	if node.get("type") and Constants.BARRICADE_TYPES.has(node.type):
@@ -466,6 +563,68 @@ func heal(amount: float):
 	if hp <= 0: return
 	hp = min(hp + amount, max_hp)
 	queue_redraw()
+
+func add_bleed_stacks(stacks: int, source_unit = null):
+	var old_stacks = bleed_stacks
+	bleed_stacks = min(bleed_stacks + stacks, max_bleed_stacks)
+	if bleed_stacks != old_stacks:
+		bleed_stack_changed.emit(bleed_stacks)
+		queue_redraw()
+
+	# Track the bleed source for lifesteal
+	if source_unit and _bleed_source_unit == null:
+		_bleed_source_unit = source_unit
+
+func _process_bleed_damage(delta: float):
+	if bleed_stacks > 0:
+		var damage = bleed_stacks * bleed_damage_per_stack * delta
+
+		# Throttle floating text display
+		_bleed_display_timer -= delta
+		var should_show_text = _bleed_display_timer <= 0
+		if should_show_text:
+			_bleed_display_timer = BLEED_DISPLAY_INTERVAL
+
+		# Apply damage without floating text for small ticks, show text periodically
+		_take_bleed_damage(damage, _bleed_source_unit, should_show_text)
+
+func _take_bleed_damage(amount: float, source_unit = null, show_text: bool = true):
+	if invincible_timer > 0:
+		return
+
+	if behavior:
+		var handled = behavior.on_hit({
+			"amount": amount,
+			"source_unit": source_unit,
+			"damage_type": "bleed"
+		})
+		if handled: return
+
+	# Vulnerable Effect Check
+	for child in get_children():
+		if child.has_method("get_damage_multiplier"):
+			amount *= child.get_damage_multiplier()
+
+	hp -= amount
+
+	# Only show floating text periodically
+	if show_text:
+		hit_flash_timer = 0.1
+		queue_redraw()
+		var display_val = max(1, int(amount))
+		GameManager.spawn_floating_text(global_position, str(display_val), "bleed", Vector2.ZERO)
+
+	GameManager.enemy_hit.emit(self, source_unit, amount)
+
+	if source_unit:
+		GameManager.damage_dealt.emit(source_unit, amount)
+
+	if hp <= 0:
+		die(source_unit)
+
+func add_debuff(type: String, stacks: int, duration: float):
+	if type == "vulnerable":
+		apply_status(load("res://src/Scripts/Effects/VulnerableEffect.gd"), {"duration": duration, "stacks": stacks})
 
 func take_damage(amount: float, source_unit = null, damage_type: String = "physical", hit_source: Node2D = null, kb_force: float = 0.0):
 	if source_unit == GameManager:
@@ -483,6 +642,11 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 			"kb_force": kb_force
 		})
 		if handled: return
+
+	# Vulnerable Effect Check
+	for child in get_children():
+		if child.has_method("get_damage_multiplier"):
+			amount *= child.get_damage_multiplier()
 
 	hp -= amount
 	hit_flash_timer = 0.1
@@ -511,30 +675,42 @@ func take_damage(amount: float, source_unit = null, damage_type: String = "physi
 		knockback_velocity += hit_dir * applied_force
 	var display_val = max(1, int(amount))
 	GameManager.spawn_floating_text(global_position, str(display_val), damage_type, hit_dir)
+
+	GameManager.enemy_hit.emit(self, source_unit, amount)
+
 	if source_unit:
 		GameManager.damage_dealt.emit(source_unit, amount)
-
-		if source_unit.get_script() == UNIT_SCRIPT:
-			var bleed_stacks = 0
-			for c in get_children():
-				if c.get("type_key") == "bleed":
-					var stacks = c.get("stack_count")
-					if stacks != null:
-						bleed_stacks += stacks
-
-			if bleed_stacks > 0:
-				GameManager.damage_core(-bleed_stacks)
-				GameManager.spawn_floating_text(global_position, "+%d HP" % bleed_stacks, Color.GREEN)
 
 	if hp <= 0:
 		die(source_unit)
 
+func _on_death():
+	if faction == "player" and has_meta("charm_source"):
+		SoulManager.add_souls(1, "charm_kill")
+		GameManager.spawn_floating_text(global_position, "+1 Soul", Color.MAGENTA)
+
+	SoulManager.add_souls_from_enemy_death({
+		"type": type_key,
+		"wave": GameManager.wave
+	})
+
 func die(killer_unit = null):
+	if is_dying:
+		return
+	is_dying = true
+
+	# Check for petrified state
+	if has_meta("is_petrified") and get_meta("is_petrified"):
+		_play_petrified_death_effect()
+
+	_on_death()
+
 	# Kill Bonus Check
 	if GameManager.combat_manager and killer_unit:
-		GameManager.combat_manager.check_kill_bonuses(killer_unit)
+		GameManager.combat_manager.check_kill_bonuses(killer_unit, self)
 
 	emit_signal("died")
+	GameManager.enemy_died.emit(self, killer_unit)
 
 	GameManager.add_gold(1)
 	if GameManager.reward_manager and "scrap_recycling" in GameManager.reward_manager.acquired_artifacts:
@@ -552,3 +728,55 @@ func die(killer_unit = null):
 
 	if !handled:
 		queue_free()
+
+func _play_petrified_death_effect():
+	# Calculate damage percent
+	var damage_percent = 0.1  # Default LV1/LV2
+	var petrify_source = get_meta("petrify_source", null)
+	if petrify_source and is_instance_valid(petrify_source) and petrify_source.get("level"):
+		if petrify_source.level >= 3:
+			damage_percent = 0.2  # LV3: 20%
+
+	var shatter = load("res://src/Scenes/Effects/PetrifiedShatterEffect.tscn").instantiate()
+	shatter.global_position = global_position
+	shatter.launch_direction = last_hit_direction
+	shatter.damage_percent = damage_percent
+	shatter.source_max_hp = max_hp
+	shatter.enemy_texture = AssetLoader.get_enemy_icon(type_key)
+	shatter.enemy_color = enemy_data.color
+
+	get_tree().current_scene.add_child(shatter)
+
+func find_attack_target() -> Node2D:
+	# First check taunt units
+	# Assuming AggroManager is available as Autoload
+	var target = AggroManager.get_target_for_enemy(self)
+	if target:
+		_show_taunt_indicator(true)
+		return target
+
+	_show_taunt_indicator(false)
+	# Default attack core (return null implies default behavior in DefaultBehavior)
+	return null
+
+func _show_taunt_indicator(active: bool):
+	var indicator = get_node_or_null("TauntIndicator")
+	if active:
+		if !indicator:
+			indicator = Label.new()
+			indicator.name = "TauntIndicator"
+			indicator.text = "!"
+			indicator.modulate = Color.RED
+			indicator.add_theme_font_size_override("font_size", 24)
+			indicator.position = Vector2(-10, -50)
+			add_child(indicator)
+		indicator.show()
+	else:
+		if indicator:
+			indicator.hide()
+
+func has_status(type_key: String) -> bool:
+	for c in get_children():
+		if c is StatusEffect and c.type_key == type_key:
+			return true
+	return false

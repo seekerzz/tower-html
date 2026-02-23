@@ -1,5 +1,8 @@
 extends Control
 
+const StyleMaker = preload("res://src/Scripts/Utils/StyleMaker.gd")
+const AssetLoader = preload("res://src/Scripts/Utils/AssetLoader.gd")
+
 var container: VBoxContainer
 @onready var panel_container = $PanelContainer
 
@@ -149,7 +152,7 @@ func _create_card(unit, parent_row):
 	card.add_child(layout)
 
 	# Icon
-	var icon_tex = AssetLoader.get_unit_icon(unit.type_key)
+	var icon_tex = AssetLoader.get_unit_icon(unit.type_key) if AssetLoader else null
 	var icon_rect = TextureRect.new()
 	if icon_tex:
 		icon_rect.texture = icon_tex

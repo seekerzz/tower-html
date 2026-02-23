@@ -1,5 +1,10 @@
+class_name Unit
 extends Node2D
 
+const UnitBehavior = preload("res://src/Scripts/Units/UnitBehavior.gd")
+const AssetLoader = preload("res://src/Scripts/Utils/AssetLoader.gd")
+
+var is_summoned: bool = false
 var type_key: String
 var level: int = 1
 var stats_multiplier: float = 1.0
@@ -7,6 +12,7 @@ var cooldown: float = 0.0
 var skill_cooldown: float = 0.0
 var active_buffs: Array = []
 var buff_sources: Dictionary = {} # Key: buff_type, Value: source_unit (Node2D)
+var temporary_buffs: Array = [] # Array of {stat, amount, duration, source}
 var traits: Array = []
 var unit_data: Dictionary
 
@@ -23,6 +29,7 @@ var attack_cost_mana: float = 0.0
 var skill_mana_cost: float = 30.0
 
 var max_hp: float = 0.0
+var current_hp: float = 0.0
 
 # Visual Holder for animations and structure
 var visual_holder: Node2D = null
@@ -61,6 +68,7 @@ const DRAG_HANDLER_SCRIPT = preload("res://src/Scripts/UI/UnitDragHandler.gd")
 
 signal unit_clicked(unit)
 signal attack_performed(target_node)
+signal merged(consumed_unit)
 
 func _start_skill_cooldown(base_duration: float):
 	if GameManager.cheat_fast_cooldown and base_duration > 1.0:
@@ -87,6 +95,7 @@ func setup(key: String):
 	_load_behavior()
 
 	reset_stats()
+	current_hp = max_hp
 	behavior.on_setup()
 
 	update_visuals()
@@ -151,6 +160,8 @@ func take_damage(amount: float, source_enemy = null):
 			amount = amount * (1.0 - reduction)
 
 	amount = behavior.on_damage_taken(amount, source_enemy)
+
+	current_hp = max(0, current_hp - amount)
 	GameManager.damage_core(amount)
 
 	if visual_holder:
@@ -167,6 +178,13 @@ func reset_stats():
 
 	damage = stats.get("damage", unit_data.get("damage", 0))
 	max_hp = stats.get("hp", unit_data.get("hp", 0))
+	# Note: current_hp is NOT reset here to avoid full heal on level up,
+	# but usually max_hp changes, so maybe we should proportional update?
+	# For simplicity, we assume heal on level up (merge) or just clamp.
+	if current_hp > max_hp: current_hp = max_hp
+	# If max_hp increased, we don't necessarily heal, but we could.
+	# Standard behavior: Keep current_hp, unless we want to "heal on upgrade".
+	# Let's simple clamp.
 
 	range_val = unit_data.get("range", 0)
 	atk_speed = unit_data.get("atkSpeed", 1.0)
@@ -252,7 +270,12 @@ func execute_skill_at(grid_pos: Vector2i):
 	if skill_cooldown > 0: return
 	if not unit_data.has("skill"): return
 
-	if GameManager.consume_resource("mana", skill_mana_cost):
+	var final_cost = skill_mana_cost
+	var cost_reduction = GameManager.get_global_buff("skill_mana_cost_reduction", 0.0)
+	if cost_reduction > 0:
+		final_cost *= (1.0 - cost_reduction)
+
+	if GameManager.consume_resource("mana", final_cost):
 		is_no_mana = false
 		_start_skill_cooldown(unit_data.get("skillCd", 10.0))
 
@@ -283,7 +306,11 @@ func activate_skill():
 		# Behavior handles targeting initiation
 		return
 
-	if GameManager.consume_resource("mana", skill_mana_cost):
+	var final_cost = skill_mana_cost
+	if GameManager.skill_cost_reduction > 0:
+		final_cost *= (1.0 - GameManager.skill_cost_reduction)
+
+	if GameManager.consume_resource("mana", final_cost):
 		is_no_mana = false
 		_start_skill_cooldown(unit_data.get("skillCd", 10.0))
 
@@ -395,8 +422,11 @@ func _get_buff_icon(buff_type: String) -> String:
 
 func _process(delta):
 	if !GameManager.is_wave_active: return
+	if not behavior: return
 
 	behavior.on_tick(delta)
+
+	_update_temporary_buffs(delta)
 
 	if !behavior.on_combat_tick(delta):
 		_process_combat(delta)
@@ -631,8 +661,10 @@ func can_merge_with(other_unit) -> bool:
 	return true
 
 func merge_with(other_unit):
+	merged.emit(other_unit)
 	level += 1
 	reset_stats()
+	current_hp = max_hp # Full heal on level up
 
 	GameManager.spawn_floating_text(global_position, "Level Up!", Color.GOLD)
 	if visual_holder:
@@ -794,6 +826,10 @@ func remove_ghost():
 func return_to_start():
 	position = start_position
 
+func heal(amount: float):
+	current_hp = min(current_hp + amount, max_hp)
+	GameManager.spawn_floating_text(global_position, "+%d" % int(amount), Color.GREEN)
+
 func play_buff_receive_anim():
 	if visual_holder:
 		var tween = create_tween()
@@ -825,3 +861,74 @@ func spawn_buff_effect(icon_char: String):
 	tween.parallel().tween_property(effect_node, "modulate:a", 0.0, 0.6)
 
 	tween.finished.connect(effect_node.queue_free)
+
+func add_stat_bonus(stat: String, amount: float):
+	match stat:
+		"attack_speed":
+			atk_speed *= (1.0 + amount)
+		"defense":
+			# No defense stat on unit currently?
+			pass
+		"move_speed":
+			# Units don't move.
+			pass
+		"crit_chance":
+			crit_rate += amount
+
+func add_temporary_buff(stat: String, amount: float, duration: float):
+	temporary_buffs.append({
+		"stat": stat,
+		"amount": amount,
+		"duration": duration
+	})
+	_apply_temp_buff_effect(stat, amount)
+
+func _update_temporary_buffs(delta: float):
+	for i in range(temporary_buffs.size() - 1, -1, -1):
+		var buff = temporary_buffs[i]
+		buff["duration"] -= delta
+		if buff["duration"] <= 0:
+			_remove_temp_buff_effect(buff["stat"], buff["amount"])
+			temporary_buffs.remove_at(i)
+
+func _apply_temp_buff_effect(stat: String, amount: float):
+	match stat:
+		"attack_speed":
+			atk_speed *= (1.0 + amount)
+		"crit_chance":
+			crit_rate += amount
+
+func _remove_temp_buff_effect(stat: String, amount: float):
+	match stat:
+		"attack_speed":
+			atk_speed /= (1.0 + amount)
+		"crit_chance":
+			crit_rate -= amount
+
+# 获取指定范围内的友方单位
+# center_unit: 中心单位（通常是self）
+# cell_range: 格子范围（曼哈顿距离）
+# returns: 范围内友方单位数组（不包含自己）
+func get_units_in_cell_range(center_unit: Node2D, cell_range: int) -> Array:
+	var result = []
+	if not GameManager.grid_manager:
+		return result
+
+	var center_x = 0
+	var center_y = 0
+
+	if "grid_pos" in center_unit:
+		center_x = center_unit.grid_pos.x
+		center_y = center_unit.grid_pos.y
+	else:
+		return result
+
+	for key in GameManager.grid_manager.tiles:
+		var tile = GameManager.grid_manager.tiles[key]
+		if tile.unit and is_instance_valid(tile.unit) and tile.unit != self:
+			# 计算曼哈顿距离
+			var dist = abs(tile.x - center_x) + abs(tile.y - center_y)
+			if dist <= cell_range:
+				result.append(tile.unit)
+
+	return result

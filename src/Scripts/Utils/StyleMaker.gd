@@ -1,5 +1,4 @@
-class_name StyleMaker
-extends RefCounted
+extends Node
 
 static func get_flat_style(bg_color: Color, radius: int = UIConstants.CORNER_RADIUS.large, border: int = 0, border_color: Color = Color.WHITE) -> StyleBoxFlat:
 	var style = StyleBoxFlat.new()

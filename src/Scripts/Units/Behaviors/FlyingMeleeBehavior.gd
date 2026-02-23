@@ -1,5 +1,4 @@
-extends UnitBehavior
-class_name FlyingMeleeBehavior
+extends "res://src/Scripts/Units/UnitBehavior.gd"
 
 enum State {
 	IDLE,

@@ -12,6 +12,9 @@ func _ready():
 	if not area_entered.is_connected(_on_area_2d_area_entered):
 		area_entered.connect(_on_area_2d_area_entered)
 
+	# Add Layer 10 (Petrified Enemies) to collision mask
+	set_collision_mask_value(10, true)
+
 func _process(delta):
 	# Default simple movement: Move right based on rotation
 	position += Vector2.RIGHT.rotated(rotation) * speed * delta

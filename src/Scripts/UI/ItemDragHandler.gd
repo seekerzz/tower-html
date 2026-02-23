@@ -1,5 +1,7 @@
 extends Control
 
+const AssetLoader = preload("res://src/Scripts/Utils/AssetLoader.gd")
+
 var slot_index: int = -1
 var item_data: Dictionary = {}
 
@@ -10,7 +12,7 @@ func _get_drag_data(at_position):
 	# Create drag preview
 	var preview = TextureRect.new()
 	var item_id = item_data.get("item_id", "")
-	var icon = AssetLoader.get_item_icon(item_id)
+	var icon = AssetLoader.get_item_icon(item_id) if AssetLoader else null
 
 	if icon:
 		preview.texture = icon

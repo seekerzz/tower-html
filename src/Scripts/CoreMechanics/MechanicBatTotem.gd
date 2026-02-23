@@ -1,55 +1,26 @@
-extends "res://src/Scripts/CoreMechanics/CoreMechanic.gd"
+class_name MechanicBatTotem
+extends BaseTotemMechanic
 
-class BatTotemSource:
-	var damage: float = 20.0
-	var unit_data: Dictionary = {
-		"proj": "stinger",
-		"damageType": "physical"
-	}
-	var crit_rate: float = 0.0
-	var crit_dmg: float = 1.5
-
-	func calculate_damage_against(_target):
-		return damage
-
-	func is_in_group(_group):
-		return false
-
-var timer: Timer
+@export var attack_interval: float = 5.0
+@export var target_count: int = 3
+@export var bleed_stacks_per_hit: int = 1
 
 func _ready():
-	timer = Timer.new()
-	timer.wait_time = 5.0
+	var timer = Timer.new()
+	timer.wait_time = attack_interval
 	timer.autostart = true
-	timer.one_shot = false
-	timer.timeout.connect(_on_timer_timeout)
+	timer.timeout.connect(_on_totem_attack)
 	add_child(timer)
 
-func _on_timer_timeout():
+func _on_totem_attack():
 	if !GameManager.is_wave_active: return
-	if !GameManager.grid_manager: return
 
-	var core_pos = GameManager.grid_manager.global_position
-	var enemies = get_tree().get_nodes_in_group("enemies")
+	var targets = get_nearest_enemies(target_count)
+	for enemy in targets:
+		if is_instance_valid(enemy) and enemy.has_method("add_bleed_stacks"):
+			enemy.add_bleed_stacks(bleed_stacks_per_hit, self)
+			_play_bat_attack_effect(enemy)
 
-	if enemies.size() == 0:
-		return
-
-	# Sort by distance to core
-	enemies.sort_custom(func(a, b):
-		return a.global_position.distance_squared_to(core_pos) < b.global_position.distance_squared_to(core_pos)
-	)
-
-	var targets = enemies.slice(0, 3) # Get up to 3 nearest
-	var source = BatTotemSource.new()
-
-	for target in targets:
-		if is_instance_valid(target):
-			var stats = {
-				"effects": {
-					"bleed": 2.5
-				},
-				"damage": 20.0,
-				"proj_override": "stinger"
-			}
-			GameManager.combat_manager.spawn_projectile(source, core_pos, target, stats)
+func _play_bat_attack_effect(enemy):
+	# Visual effect for bleed application
+	GameManager.spawn_floating_text(enemy.global_position, "Bleed!", Color.RED, Vector2.UP)

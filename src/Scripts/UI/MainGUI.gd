@@ -1,5 +1,8 @@
 extends Control
 
+const AssetLoader = preload("res://src/Scripts/Utils/AssetLoader.gd")
+const UIConstants = preload("res://src/Scripts/Constants/UIConstants.gd")
+
 signal sacrifice_requested
 
 @onready var hp_bar = $TopLeftPanel/HPBar
@@ -32,6 +35,7 @@ var shop_node: Control = null
 
 # New Combat Gold Label
 var combat_gold_label: Label
+var soul_label: Label
 
 func _ready():
 	# Remove FoodBar if it exists
@@ -70,6 +74,11 @@ func _ready():
 
 	_setup_stats_panel()
 	_setup_combat_gold_label()
+	_setup_soul_label()
+
+	if SoulManager:
+		SoulManager.soul_count_changed.connect(_on_soul_count_changed)
+		_on_soul_count_changed(SoulManager.current_souls, 0)
 	
 	# 2. 布局核心修复：重新组织右侧栏内容，解决重叠
 	_setup_right_sidebar_layout()
@@ -178,6 +187,26 @@ func _setup_combat_gold_label():
 			combat_gold_label.anchors_preset = Control.PRESET_BOTTOM_LEFT
 			combat_gold_label.position.y = top_left_panel.size.y + 10
 
+func _setup_soul_label():
+	soul_label = Label.new()
+	soul_label.name = "SoulLabel"
+	soul_label.text = "🔮 0"
+	soul_label.add_theme_font_size_override("font_size", 18)
+	soul_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	soul_label.add_theme_constant_override("outline_size", 4)
+
+	if top_left_panel:
+		top_left_panel.add_child(soul_label)
+		if not top_left_panel is Container:
+			soul_label.layout_mode = 1
+			soul_label.anchors_preset = Control.PRESET_BOTTOM_LEFT
+			# Place below combat gold label (which is at size.y + 10)
+			soul_label.position.y = top_left_panel.size.y + 40
+
+func _on_soul_count_changed(count, _delta):
+	if soul_label:
+		soul_label.text = "🔮 %d" % count
+
 func _setup_stats_panel():
 	damage_stats_panel.set_anchors_preset(Control.PRESET_CENTER_LEFT)
 	damage_stats_panel.position.x = 0
@@ -193,6 +222,8 @@ func _update_hud_visibility():
 		damage_stats_panel.visible = !is_combat
 	if combat_gold_label:
 		combat_gold_label.visible = is_combat
+	if soul_label:
+		soul_label.visible = is_combat
 
 func _update_sidebar_position():
 	if sidebar_tween and sidebar_tween.is_valid():
@@ -306,7 +337,7 @@ func _on_damage_dealt(unit, amount):
 		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-		if "type_key" in unit:
+		if "type_key" in unit and AssetLoader:
 			var icon = AssetLoader.get_unit_icon(unit.type_key)
 			if icon: icon_rect.texture = icon
 

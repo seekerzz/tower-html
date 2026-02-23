@@ -4,6 +4,7 @@ var path: PackedVector2Array = []
 var nav_timer: float = 0.0
 var path_index: int = 0
 var current_target_tile: Node2D = null
+var current_taunt_target: Node2D = null
 var base_attack_timer: float = 0.0
 var anim_tween: Tween
 
@@ -13,6 +14,14 @@ const HEAVY_IMPACT_THRESHOLD = 50.0
 
 func physics_process(delta: float) -> bool:
 	if !GameManager.is_wave_active: return false
+
+	# Update taunt target
+	if enemy.get("faction") == "player":
+		current_taunt_target = _find_nearest_hostile()
+	elif enemy.has_method("find_attack_target"):
+		current_taunt_target = enemy.find_attack_target()
+	else:
+		current_taunt_target = null
 
 	# State Machine Logic
 	match enemy.state:
@@ -24,7 +33,7 @@ func physics_process(delta: float) -> bool:
 
 			var desired_velocity = calculate_move_velocity()
 
-			if _should_attack_base():
+			if _should_attack(current_taunt_target):
 				enemy.state = enemy.State.ATTACK_BASE
 				enemy.velocity = Vector2.ZERO
 			else:
@@ -34,17 +43,26 @@ func physics_process(delta: float) -> bool:
 					enemy.handle_collisions(delta)
 
 		enemy.State.ATTACK_BASE:
-			if _should_stop_attacking_base():
+			if _should_stop_attacking(current_taunt_target):
 				enemy.state = enemy.State.MOVE
 			else:
-				attack_base_logic(delta)
+				attack_logic(delta, current_taunt_target)
 				enemy.velocity = Vector2.ZERO
 
 	return true # We handled the movement logic
 
 func calculate_move_velocity() -> Vector2:
 	var target_pos = GameManager.grid_manager.global_position
-	if current_target_tile and is_instance_valid(current_target_tile):
+
+	if enemy.get("faction") == "player":
+		if current_taunt_target and is_instance_valid(current_taunt_target):
+			target_pos = current_taunt_target.global_position
+		else:
+			# Stay put if no target
+			return Vector2.ZERO
+	elif current_taunt_target and is_instance_valid(current_taunt_target):
+		target_pos = current_taunt_target.global_position
+	elif current_target_tile and is_instance_valid(current_target_tile):
 		target_pos = current_target_tile.global_position
 
 	if path.size() > path_index:
@@ -68,14 +86,19 @@ func update_path():
 	if !GameManager.grid_manager: return
 	var target_pos = Vector2.ZERO
 	current_target_tile = null
-	if GameManager.grid_manager.has_method("get_closest_unlocked_tile"):
-		current_target_tile = GameManager.grid_manager.get_closest_unlocked_tile(enemy.global_position)
-		if current_target_tile:
-			target_pos = current_target_tile.global_position
+
+	if current_taunt_target and is_instance_valid(current_taunt_target):
+		target_pos = current_taunt_target.global_position
+	else:
+		if GameManager.grid_manager.has_method("get_closest_unlocked_tile"):
+			current_target_tile = GameManager.grid_manager.get_closest_unlocked_tile(enemy.global_position)
+			if current_target_tile:
+				target_pos = current_target_tile.global_position
+			else:
+				target_pos = GameManager.grid_manager.global_position
 		else:
 			target_pos = GameManager.grid_manager.global_position
-	else:
-		target_pos = GameManager.grid_manager.global_position
+
 	path = GameManager.grid_manager.get_nav_path(enemy.global_position, target_pos)
 	if path.size() == 0:
 		path = []
@@ -84,52 +107,72 @@ func update_path():
 		if path.size() > 0 and enemy.global_position.distance_to(path[0]) < 10:
 			path_index = 1
 
-func _should_attack_base() -> bool:
+func _should_attack(target: Node2D) -> bool:
+	if enemy.get("faction") == "player" and (!target or !is_instance_valid(target)):
+		return false
+
 	var target_pos = GameManager.grid_manager.global_position
 
+	if target and is_instance_valid(target):
+		target_pos = target.global_position
+	elif current_target_tile and is_instance_valid(current_target_tile):
+		# Only use tile position if we don't have a direct target
+		if !target:
+			target_pos = current_target_tile.global_position
+
+	var dist = enemy.global_position.distance_to(target_pos)
+	var attack_range = data.radius + 10.0
+
 	if data.get("attackType") == "ranged":
-		var dist = enemy.global_position.distance_to(target_pos)
 		var range_val = data.get("range", 200.0)
 		if dist < range_val:
 			return true
 	else:
-		if current_target_tile and is_instance_valid(current_target_tile):
-			var d = enemy.global_position.distance_to(current_target_tile.global_position)
-			var attack_range = data.radius + 10.0
-			if d < attack_range:
-				return true
+		if dist < attack_range:
+			return true
 	return false
 
-func _should_stop_attacking_base() -> bool:
+func _should_stop_attacking(target: Node2D) -> bool:
 	var target_pos = GameManager.grid_manager.global_position
 
+	if target and is_instance_valid(target):
+		target_pos = target.global_position
+	elif current_target_tile and is_instance_valid(current_target_tile):
+		if !target:
+			target_pos = current_target_tile.global_position
+
+	var dist = enemy.global_position.distance_to(target_pos)
+	var attack_range = data.radius + 10.0
+
 	if data.get("attackType") == "ranged":
-		var dist = enemy.global_position.distance_to(target_pos)
 		var range_val = data.get("range", 200.0)
 		return dist > range_val * 1.1
 	else:
-		if current_target_tile and is_instance_valid(current_target_tile):
-			target_pos = current_target_tile.global_position
-
-		var dist = enemy.global_position.distance_to(target_pos)
-		var attack_range = data.radius + 10.0
-
 		return dist > attack_range * 1.5
 
-func attack_base_logic(delta):
+func attack_logic(delta, target: Node2D):
 	var target_pos = GameManager.grid_manager.global_position
-	if current_target_tile and is_instance_valid(current_target_tile):
+	var is_targeting_unit = (target != null)
+
+	if target and is_instance_valid(target):
+		target_pos = target.global_position
+	elif current_target_tile and is_instance_valid(current_target_tile):
 		target_pos = current_target_tile.global_position
 
 	base_attack_timer -= delta
 	if base_attack_timer <= 0:
 		base_attack_timer = 1.0 / data.atkSpeed
 
+		if enemy.blind_timer > 0:
+			enemy.attack_missed.emit(enemy)
+			GameManager.spawn_floating_text(enemy.global_position, "MISS", Color.GRAY)
+			return
+
 		if data.get("attackType") == "ranged":
 			play_attack_animation(target_pos, func():
 				if GameManager.combat_manager:
 					var proj_type = data.get("proj", "pinecone")
-					var core_pos = GameManager.grid_manager.global_position
+					var core_pos = target_pos # Attack the target pos
 
 					# var stats = { "damageType": "physical", "source": enemy }
 					GameManager.combat_manager.spawn_projectile(enemy, enemy.global_position, null, {
@@ -142,11 +185,18 @@ func attack_base_logic(delta):
 			)
 		else:
 			play_attack_animation(target_pos, func():
-				GameManager.damage_core(data.dmg)
-				if current_target_tile and not is_instance_valid(current_target_tile):
-					enemy.state = enemy.State.MOVE
-					current_target_tile = null
-					update_path()
+				if is_targeting_unit:
+					if target and is_instance_valid(target):
+						if target.has_method("take_damage"):
+							target.take_damage(data.dmg, enemy)
+					# If target became invalid during animation, attack misses (do not hit core)
+				else:
+					# Default core attack
+					GameManager.damage_core(data.dmg)
+					if current_target_tile and not is_instance_valid(current_target_tile):
+						enemy.state = enemy.State.MOVE
+						current_target_tile = null
+						update_path()
 			)
 
 func cancel_attack():
@@ -155,6 +205,19 @@ func cancel_attack():
 	if enemy.visual_controller:
 		enemy.visual_controller.kill_tween()
 		enemy.visual_controller.wobble_scale = Vector2.ONE
+
+func _find_nearest_hostile() -> Node2D:
+	var nearest = null
+	var min_dist = 9999.0
+	for other in get_tree().get_nodes_in_group("enemies"):
+		if other == enemy: continue
+		if other.get("faction") == "player": continue # Don't attack other charmed enemies
+
+		var dist = enemy.global_position.distance_to(other.global_position)
+		if dist < min_dist:
+			min_dist = dist
+			nearest = other
+	return nearest
 
 func play_attack_animation(target_pos: Vector2, hit_callback: Callable = Callable()):
 	if anim_tween and anim_tween.is_valid():

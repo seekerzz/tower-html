@@ -1,7 +1,8 @@
-extends DefaultBehavior
+extends "res://src/Scripts/Units/Behaviors/DefaultBehavior.gd"
 
-# Gale Eagle - 风刃连击
+# Gale Eagle - 疾风鹰
 # 每次攻击发射多道风刃
+# Lv3: 可暴击，可触发回响，概率生成额外风刃
 
 var wind_blade_count: int = 2
 var damage_per_blade: float = 0.6
@@ -16,8 +17,6 @@ func on_setup():
 func _update_mechanics():
 	var lvl_stats = unit.unit_data.get("levels", {}).get(str(unit.level), {})
 	var mechanics = lvl_stats.get("mechanics", {})
-
-	# 根据等级设置风刃数量和伤害
 	wind_blade_count = mechanics.get("wind_blade_count", 2)
 	damage_per_blade = mechanics.get("damage_per_blade", 0.6)
 
@@ -51,18 +50,14 @@ func _do_wind_blade_attack(target):
 
 	var pull_time = anim_duration * 0.6
 	await unit.get_tree().create_timer(pull_time).timeout
-
 	if not is_instance_valid(unit): return
 
-	# 发射多道风刃
 	_fire_wind_blades(target_last_pos)
 
 func _fire_wind_blades(target_pos: Vector2):
 	if not GameManager.combat_manager: return
 
 	var base_angle = (target_pos - unit.global_position).angle()
-
-	# 计算风刃之间的角度偏移
 	var total_spread = spread_angle * (wind_blade_count - 1)
 	var start_angle = base_angle - total_spread / 2
 
@@ -70,14 +65,21 @@ func _fire_wind_blades(target_pos: Vector2):
 		var angle = start_angle + spread_angle * i
 		var blade_damage = unit.damage * damage_per_blade
 
-		# 创建风刃弹丸
+		# Lv3 Logic: Can Crit, Trigger Echo
+		var is_crit = false
+		if unit.level >= 3:
+			if randf() < unit.crit_rate:
+				is_crit = true
+				blade_damage *= unit.crit_dmg
+
 		var extra_stats = {
 			"angle": angle,
 			"damage": blade_damage,
 			"proj_override": "feather",
 			"speed": 500.0,
 			"pierce": 1,
-			"source": unit
+			"source": unit,
+			"is_critical": is_crit
 		}
 
 		GameManager.combat_manager.spawn_projectile(
@@ -88,3 +90,30 @@ func _fire_wind_blades(target_pos: Vector2):
 		)
 
 	unit.attack_performed.emit(null)
+
+func on_projectile_hit(target: Node2D, damage: float, projectile: Node2D):
+	if unit.level >= 3:
+		if randf() < 0.20:
+			_spawn_extra_wind_blade(target.global_position)
+
+func _spawn_extra_wind_blade(pos: Vector2):
+	if not GameManager.combat_manager: return
+
+	var angle = randf() * TAU
+	var blade_damage = unit.damage * damage_per_blade
+
+	var extra_stats = {
+		"angle": angle,
+		"damage": blade_damage,
+		"proj_override": "feather",
+		"speed": 500.0,
+		"pierce": 1,
+		"source": unit
+	}
+
+	GameManager.combat_manager.spawn_projectile(
+		unit,
+		pos,
+		null,
+		extra_stats
+	)

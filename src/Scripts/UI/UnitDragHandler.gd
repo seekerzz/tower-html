@@ -4,6 +4,8 @@ var unit_ref # Reference to the Unit (Node2D)
 
 func setup(unit):
 	unit_ref = unit
+	if unit_ref.has_signal("merged"):
+		unit_ref.merged.connect(_on_units_merged)
 
 	# Match unit size using visual_holder if available
 	var color_rect = null
@@ -71,7 +73,7 @@ func _can_drop_data(_at_position, data):
 
 	if data.source == "inventory" and data.has("item"):
 		var id = data.item.get("item_id")
-		if id == "meat" or id == "holy_sword":
+		if id == "meat":
 			return true
 
 	if data.source == "bench" or data.source == "grid":
@@ -88,11 +90,6 @@ func _drop_data(_at_position, data):
 			if GameManager.inventory_manager:
 				GameManager.inventory_manager.remove_item(data.slot_index)
 			return
-		elif id == "holy_sword":
-			if GameManager.use_item_effect("holy_sword", unit_ref):
-				if GameManager.inventory_manager:
-					GameManager.inventory_manager.remove_item(data.slot_index)
-			return
 
 	if !GameManager.grid_manager: return
 
@@ -106,3 +103,13 @@ func _drop_data(_at_position, data):
 			GameManager.grid_manager.handle_bench_drop_at(target_tile, data)
 		elif data.source == "grid":
 			GameManager.grid_manager.handle_grid_move_at(target_tile, data)
+
+func _on_units_merged(consumed_unit):
+	if SoulManager:
+		SoulManager.add_souls_from_unit_merge({
+			"level": consumed_unit.level,
+			"type": consumed_unit.type_key
+		})
+
+	if unit_ref is UnitWolf and consumed_unit is UnitWolf:
+		unit_ref.on_merged_with(consumed_unit)

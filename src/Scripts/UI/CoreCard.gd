@@ -5,12 +5,11 @@ signal card_selected(key)
 const EMOJI_MAP = {
 	"MECHANIC": "⚙️",
 	"NATURE": "🌿",
-	"abundance": "🌾",
-	"moon_well": "🧪",
-	"holy_sword": "🗡️",
 	"cow_totem": "🐮",
 	"bat_totem": "🦇",
-	"viper_totem": "🐍"
+	"viper_totem": "🐍",
+	"butterfly_totem": "🦋",
+	"eagle_totem": "🦅"
 }
 
 @onready var icon_rect = $VBoxContainer/Icon

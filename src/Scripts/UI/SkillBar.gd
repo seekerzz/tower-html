@@ -1,5 +1,9 @@
 extends Control
 
+const AssetLoader = preload("res://src/Scripts/Utils/AssetLoader.gd")
+const UIConstants = preload("res://src/Scripts/Constants/UIConstants.gd")
+const StyleMaker = preload("res://src/Scripts/Utils/StyleMaker.gd")
+
 @onready var container = $PanelContainer/GridContainer
 
 var skill_units = []
@@ -68,7 +72,7 @@ func refresh_skills():
 		card.add_child(layout)
 
 		# Icon (Center)
-		var icon_tex = AssetLoader.get_unit_icon(unit.type_key)
+		var icon_tex = AssetLoader.get_unit_icon(unit.type_key) if AssetLoader else null
 		# Always create TextureRect, even if texture is null (as per requirements)
 		var icon_rect = TextureRect.new()
 		if icon_tex:

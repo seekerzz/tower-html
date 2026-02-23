@@ -1,5 +1,9 @@
 extends Control
 
+const StyleMaker = preload("res://src/Scripts/Utils/StyleMaker.gd")
+const UIConstants = preload("res://src/Scripts/Constants/UIConstants.gd")
+const AssetLoader = preload("res://src/Scripts/Utils/AssetLoader.gd")
+
 const SLOT_COUNT = 9
 
 @onready var slots_container = $PanelContainer/SlotsContainer
