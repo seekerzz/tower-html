@@ -26,13 +26,17 @@ func _apply_spore_shields():
 
 		var id = ally.get_instance_id()
 		var current = unit_spores.get(id, 0)
-		unit_spores[id] = min(current + spore_stacks, 3)
-		ally.set_meta("spore_shield", unit_spores[id])
+		var new_stacks = min(current + spore_stacks, 3)
+		unit_spores[id] = new_stacks
+		ally.set_meta("spore_shield", new_stacks)
 
 		if not ally.is_connected("damage_blocked", _on_spore_blocked):
 			ally.damage_blocked.connect(_on_spore_blocked)
 
 		unit.spawn_buff_effect("🍄")
+
+		# Emit signal for test logging
+		GameManager.heal_stored.emit(unit, spore_stacks, new_stacks)
 
 func _on_spore_blocked(ally: Node, damage: float, source: Node):
 	var id = ally.get_instance_id()

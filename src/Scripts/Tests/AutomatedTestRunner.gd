@@ -74,6 +74,22 @@ func _setup_test():
 	GameManager.unit_devoured.connect(_on_unit_devoured)
 	GameManager.unit_upgraded.connect(_on_unit_upgraded)
 
+	# Connect new buff/debuff/crit/shield events
+	GameManager.buff_applied.connect(_on_buff_applied)
+	GameManager.debuff_applied.connect(_on_debuff_applied)
+	GameManager.shield_generated.connect(_on_shield_generated)
+	GameManager.shield_absorbed.connect(_on_shield_absorbed)
+	GameManager.crit_occurred.connect(_on_crit_occurred)
+	GameManager.echo_triggered.connect(_on_echo_triggered)
+	GameManager.taunt_applied.connect(_on_taunt_applied)
+	GameManager.trap_placed.connect(_on_trap_placed)
+	GameManager.trap_triggered.connect(_on_trap_triggered)
+	GameManager.heal_stored.connect(_on_heal_stored)
+	GameManager.counter_attack.connect(_on_counter_attack)
+	GameManager.poison_damage.connect(_on_poison_damage)
+	GameManager.bleed_damage.connect(_on_bleed_damage)
+	GameManager.orb_hit.connect(_on_orb_hit)
+
 	# 初始化资源追踪
 	_last_gold = GameManager.gold
 	_last_mana = GameManager.mana
@@ -203,6 +219,190 @@ func _on_unit_upgraded(unit, old_level, new_level):
 		"unit_instance_id": unit.get_instance_id(),
 		"old_level": old_level,
 		"new_level": new_level
+	})
+
+# ===== Buff/Debuff/Crit/Shield Event Handlers =====
+
+func _on_buff_applied(target_unit, buff_type, source_unit, amount):
+	if not is_instance_valid(target_unit):
+		return
+	_frame_events.append({
+		"type": "buff_applied",
+		"buff_type": buff_type,
+		"target_id": target_unit.type_key if target_unit.get("type_key") else "unknown",
+		"target_instance_id": target_unit.get_instance_id(),
+		"source_id": source_unit.type_key if source_unit and source_unit.get("type_key") else "unknown",
+		"amount": amount
+	})
+
+func _on_debuff_applied(target_unit, debuff_type, source_unit, stacks):
+	if not is_instance_valid(target_unit):
+		return
+	_frame_events.append({
+		"type": "debuff_applied",
+		"debuff_type": debuff_type,
+		"target_id": target_unit.type_key if target_unit.get("type_key") else "unknown",
+		"target_instance_id": target_unit.get_instance_id(),
+		"source_id": source_unit.type_key if source_unit and source_unit.get("type_key") else "unknown",
+		"stacks": stacks
+	})
+
+func _on_shield_generated(target_unit, shield_amount, source_unit):
+	if not is_instance_valid(target_unit):
+		return
+	_frame_events.append({
+		"type": "shield_generated",
+		"target_id": target_unit.type_key if target_unit.get("type_key") else "unknown",
+		"target_instance_id": target_unit.get_instance_id(),
+		"source_id": source_unit.type_key if source_unit and source_unit.get("type_key") else "unknown",
+		"shield_amount": shield_amount
+	})
+
+func _on_shield_absorbed(target_unit, damage_absorbed, remaining_shield, source_unit):
+	if not is_instance_valid(target_unit):
+		return
+	_frame_events.append({
+		"type": "shield_absorbed",
+		"target_id": target_unit.type_key if target_unit.get("type_key") else "unknown",
+		"target_instance_id": target_unit.get_instance_id(),
+		"damage_absorbed": damage_absorbed,
+		"remaining_shield": remaining_shield,
+		"source_id": source_unit.type_key if source_unit and source_unit.get("type_key") else "unknown"
+	})
+
+func _on_crit_occurred(source_unit, target, damage, is_echo):
+	if not is_instance_valid(source_unit):
+		return
+	var target_id = "unknown"
+	var target_instance_id = 0
+	if target and is_instance_valid(target):
+		target_id = target.type_key if target.get("type_key") else target.name
+		target_instance_id = target.get_instance_id()
+	_frame_events.append({
+		"type": "crit",
+		"source_id": source_unit.type_key if source_unit.get("type_key") else "unknown",
+		"source_instance_id": source_unit.get_instance_id(),
+		"target_id": target_id,
+		"target_instance_id": target_instance_id,
+		"damage": damage,
+		"is_echo": is_echo
+	})
+
+func _on_echo_triggered(source_unit, target, original_damage, echo_damage):
+	if not is_instance_valid(source_unit):
+		return
+	var target_id = "unknown"
+	var target_instance_id = 0
+	if target and is_instance_valid(target):
+		target_id = target.type_key if target.get("type_key") else target.name
+		target_instance_id = target.get_instance_id()
+	_frame_events.append({
+		"type": "echo",
+		"source_id": source_unit.type_key if source_unit.get("type_key") else "unknown",
+		"source_instance_id": source_unit.get_instance_id(),
+		"target_id": target_id,
+		"target_instance_id": target_instance_id,
+		"original_damage": original_damage,
+		"echo_damage": echo_damage
+	})
+
+func _on_taunt_applied(source_unit, radius, duration):
+	if not is_instance_valid(source_unit):
+		return
+	_frame_events.append({
+		"type": "taunt",
+		"source_id": source_unit.type_key if source_unit.get("type_key") else "unknown",
+		"source_instance_id": source_unit.get_instance_id(),
+		"radius": radius,
+		"duration": duration
+	})
+
+func _on_trap_placed(trap_type, position, source_unit):
+	var source_id = "unknown"
+	if source_unit and is_instance_valid(source_unit):
+		source_id = source_unit.type_key if source_unit.get("type_key") else "unknown"
+	_frame_events.append({
+		"type": "trap_placed",
+		"trap_type": trap_type,
+		"position": {"x": position.x, "y": position.y},
+		"source_id": source_id
+	})
+
+func _on_trap_triggered(trap_type, target_enemy, source_unit):
+	if not is_instance_valid(target_enemy):
+		return
+	var source_id = "unknown"
+	if source_unit and is_instance_valid(source_unit):
+		source_id = source_unit.type_key if source_unit.get("type_key") else "unknown"
+	_frame_events.append({
+		"type": "trap_triggered",
+		"trap_type": trap_type,
+		"target_id": target_enemy.type_key if target_enemy.get("type_key") else "unknown",
+		"target_instance_id": target_enemy.get_instance_id(),
+		"source_id": source_id
+	})
+
+func _on_heal_stored(healer_unit, amount, stored_total):
+	if not is_instance_valid(healer_unit):
+		return
+	_frame_events.append({
+		"type": "heal_stored",
+		"healer_id": healer_unit.type_key if healer_unit.get("type_key") else "unknown",
+		"healer_instance_id": healer_unit.get_instance_id(),
+		"amount": amount,
+		"stored_total": stored_total
+	})
+
+func _on_counter_attack(source_unit, damage, hits_taken):
+	if not is_instance_valid(source_unit):
+		return
+	_frame_events.append({
+		"type": "counter_attack",
+		"source_id": source_unit.type_key if source_unit.get("type_key") else "unknown",
+		"source_instance_id": source_unit.get_instance_id(),
+		"damage": damage,
+		"hits_taken": hits_taken
+	})
+
+func _on_poison_damage(target, damage, stacks, source):
+	if not is_instance_valid(target):
+		return
+	var source_id = "unknown"
+	if source and is_instance_valid(source):
+		source_id = source.type_key if source.get("type_key") else "unknown"
+	_frame_events.append({
+		"type": "poison_damage",
+		"target_id": target.type_key if target.get("type_key") else "unknown",
+		"target_instance_id": target.get_instance_id(),
+		"damage": damage,
+		"stacks": stacks,
+		"source_id": source_id
+	})
+
+func _on_bleed_damage(target, damage, stacks, source):
+	if not is_instance_valid(target):
+		return
+	var source_id = "unknown"
+	if source and is_instance_valid(source):
+		source_id = source.type_key if source.get("type_key") else "unknown"
+	_frame_events.append({
+		"type": "bleed_damage",
+		"target_id": target.type_key if target.get("type_key") else "unknown",
+		"target_instance_id": target.get_instance_id(),
+		"damage": damage,
+		"stacks": stacks,
+		"source_id": source_id
+	})
+
+func _on_orb_hit(target, damage, mana_gained, source):
+	if not is_instance_valid(target):
+		return
+	_frame_events.append({
+		"type": "orb_hit",
+		"target_id": target.type_key if target.get("type_key") else "unknown",
+		"target_instance_id": target.get_instance_id(),
+		"damage": damage,
+		"mana_gained": mana_gained
 	})
 
 func _apply_debuffs_to_enemy(enemy):

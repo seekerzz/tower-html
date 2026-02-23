@@ -616,6 +616,10 @@ func _take_bleed_damage(amount: float, source_unit = null, show_text: bool = tru
 
 	GameManager.enemy_hit.emit(self, source_unit, amount)
 
+	# Emit bleed_damage signal for test logging
+	if GameManager.has_signal("bleed_damage"):
+		GameManager.bleed_damage.emit(self, amount, bleed_stacks, source_unit)
+
 	if source_unit:
 		GameManager.damage_dealt.emit(source_unit, amount)
 

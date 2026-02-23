@@ -29,6 +29,9 @@ func _deal_damage():
 	if host and host.has_method("take_damage"):
 		var dmg = base_damage * stacks
 		host.take_damage(dmg, source_unit, "poison")
+		# Emit signal for test logging
+		if GameManager.has_signal("poison_damage"):
+			GameManager.poison_damage.emit(host, dmg, stacks, source_unit)
 
 func _update_visuals():
 	var host = get_parent()

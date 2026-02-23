@@ -54,9 +54,15 @@ func _spawn_trap(pos: Vector2):
 	placed_traps.append(trap)
 	trap.trap_triggered.connect(_on_trap_triggered)
 
+	# Emit signal for test logging
+	GameManager.trap_placed.emit("poison", pos, unit)
+
 func _on_trap_triggered(enemy, trap):
 	# Remove from list if it's there (trap queues free itself)
 	placed_traps.erase(trap)
+
+	# Emit signal for test logging
+	GameManager.trap_triggered.emit("poison", enemy, unit)
 
 	if enemy.has_method("add_poison_stacks"):
 		enemy.add_poison_stacks(2)

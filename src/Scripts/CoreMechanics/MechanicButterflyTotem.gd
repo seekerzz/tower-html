@@ -109,3 +109,6 @@ func calculate_damage_against(_target):
 # 回蓝逻辑
 func on_projectile_hit(target, damage, projectile):
 	GameManager.add_resource("mana", MANA_GAIN)
+	# Emit orb_hit signal for test logging
+	if GameManager.has_signal("orb_hit"):
+		GameManager.orb_hit.emit(target, damage, MANA_GAIN, self)

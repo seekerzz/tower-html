@@ -15,12 +15,17 @@ func _on_wave_start():
 	shield_percent = 0.8 if unit.level < 2 else 1.2
 	shield_amount = unit.max_hp * shield_percent
 	unit.spawn_buff_effect("🛡️")
+	# Emit signal for test logging
+	GameManager.shield_generated.emit(unit, shield_amount, unit)
 
 func on_damage_taken(amount: float, source: Node) -> float:
 	if shield_amount > 0:
 		var shield_absorb = min(shield_amount, amount)
 		shield_amount -= shield_absorb
 		amount -= shield_absorb
+
+		# Emit signal for test logging
+		GameManager.shield_absorbed.emit(unit, shield_absorb, shield_amount, source)
 
 		if source and is_instance_valid(source) and source.has_method("take_damage"):
 			var bonus_damage = shield_absorb * 0.4

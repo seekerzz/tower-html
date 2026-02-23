@@ -350,6 +350,9 @@ func _handle_hit(target_node):
 		var final_damage_type = damage_type
 		if is_critical:
 			final_damage_type = "crit"
+			# Emit crit signal for test logging
+			if GameManager.has_signal("crit_occurred"):
+				GameManager.crit_occurred.emit(source_unit, target_node, damage, false)
 			if GameManager.current_mechanic and GameManager.current_mechanic.has_method("on_projectile_crit"):
 				GameManager.current_mechanic.on_projectile_crit(self, target_node)
 			# Emit global crit signal for units like Storm Eagle

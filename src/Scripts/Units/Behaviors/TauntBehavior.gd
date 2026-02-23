@@ -18,6 +18,8 @@ func _trigger_taunt():
 	# Use AggroManager to apply taunt
 	# Assuming AggroManager is available as Autoload or global class
 	AggroManager.apply_taunt(unit, taunt_radius, taunt_duration)
+	# Emit signal for test logging
+	GameManager.taunt_applied.emit(unit, taunt_radius, taunt_duration)
 	_play_taunt_effect()
 
 func _play_taunt_effect():

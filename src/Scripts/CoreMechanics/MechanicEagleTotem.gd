@@ -12,6 +12,10 @@ func _ready():
 func on_projectile_crit(projectile, target):
 	if randf() < echo_chance:
 		if projectile.has_method("trigger_eagle_echo"):
+			var echo_damage = projectile.damage * echo_mult
 			projectile.trigger_eagle_echo(target, echo_mult)
 			if projectile.source_unit:
-				GameManager.totem_echo_triggered.emit(projectile.source_unit, projectile.damage * echo_mult)
+				GameManager.totem_echo_triggered.emit(projectile.source_unit, echo_damage)
+				# Emit echo_triggered signal for test logging
+				if GameManager.has_signal("echo_triggered"):
+					GameManager.echo_triggered.emit(projectile.source_unit, target, projectile.damage, echo_damage)

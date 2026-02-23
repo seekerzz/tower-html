@@ -49,6 +49,10 @@ func _trigger_shockwave():
 	if GameManager.has_method("trigger_impact"):
 		GameManager.trigger_impact(Vector2.ZERO, 1.0)
 
+	# Emit counter_attack signal for test logging
+	if GameManager.has_signal("counter_attack"):
+		GameManager.counter_attack.emit(unit, 0.0, hits_threshold)
+
 func on_stats_updated():
 	# 当单位升级或属性更新时，重新读取机制参数
 	_update_mechanics()

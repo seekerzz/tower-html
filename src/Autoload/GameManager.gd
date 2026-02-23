@@ -25,6 +25,22 @@ signal unit_devoured(eater_unit, eaten_unit, inherited_stats)
 signal skill_used(unit, skill_id, target_pos)
 signal unit_upgraded(unit, old_level, new_level)
 
+# Buff/Debuff/Shield/Crit events for AI analysis
+signal buff_applied(target_unit, buff_type, source_unit, amount)
+signal debuff_applied(target_unit, debuff_type, source_unit, stacks)
+signal shield_generated(target_unit, shield_amount, source_unit)
+signal shield_absorbed(target_unit, damage_absorbed, remaining_shield, source_unit)
+signal crit_occurred(source_unit, target, damage, is_echo)
+signal echo_triggered(source_unit, target, original_damage, echo_damage)
+signal taunt_applied(source_unit, radius, duration)
+signal trap_placed(trap_type, position, source_unit)
+signal trap_triggered(trap_type, target_enemy, source_unit)
+signal heal_stored(healer_unit, amount, stored_total)
+signal counter_attack(source_unit, damage, hits_taken)
+signal poison_damage(target, damage, stacks, source)
+signal bleed_damage(target, damage, stacks, source)
+signal orb_hit(target, damage, mana_gained, source)
+
 var is_running_test: bool = false
 var current_test_scenario: Dictionary = {}
 
