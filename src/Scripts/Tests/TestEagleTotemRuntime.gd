@@ -252,7 +252,8 @@ func _finish_all_tests():
 	_save_test_results()
 	_save_pitfalls()
 
-	await get_tree().create_timer(0.5).timeout
+	print("[TestEagle] 等待日志保存...")
+	await get_tree().create_timer(2.0).timeout
 	get_tree().quit()
 
 func _save_partial_results():

@@ -27,7 +27,6 @@ signal unit_upgraded(unit, old_level, new_level)
 
 # Buff/Debuff/Shield/Crit events for AI analysis
 signal buff_applied(target_unit, buff_type, source_unit, amount)
-signal debuff_applied(target_unit, debuff_type, source_unit, stacks)
 signal shield_generated(target_unit, shield_amount, source_unit)
 signal shield_absorbed(target_unit, damage_absorbed, remaining_shield, source_unit)
 signal crit_occurred(source_unit, target, damage, is_echo)

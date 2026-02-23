@@ -354,6 +354,10 @@ func _print_final_results():
 	# 保存测试结果
 	_save_test_results(unit_tests)
 
+	# 等待日志保存
+	print("[TestBat] 等待日志保存...")
+	await get_tree().create_timer(2.0).timeout
+
 	# 退出测试
 	get_tree().quit()
 

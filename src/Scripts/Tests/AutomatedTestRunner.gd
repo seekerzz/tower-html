@@ -235,7 +235,7 @@ func _on_buff_applied(target_unit, buff_type, source_unit, amount):
 		"amount": amount
 	})
 
-func _on_debuff_applied(target_unit, debuff_type, source_unit, stacks):
+func _on_debuff_applied(target_unit, debuff_type, stacks):
 	if not is_instance_valid(target_unit):
 		return
 	_frame_events.append({
@@ -243,7 +243,6 @@ func _on_debuff_applied(target_unit, debuff_type, source_unit, stacks):
 		"debuff_type": debuff_type,
 		"target_id": target_unit.type_key if target_unit.get("type_key") else "unknown",
 		"target_instance_id": target_unit.get_instance_id(),
-		"source_id": source_unit.type_key if source_unit and source_unit.get("type_key") else "unknown",
 		"stacks": stacks
 	})
 

@@ -107,6 +107,10 @@ func _start_test_sequence():
 	# 保存结果到文件
 	_save_results_to_file()
 
+	# 等待AutomatedTestRunner保存日志
+	print("[TestCow] 等待日志保存...")
+	await get_tree().create_timer(2.0).timeout
+
 	# 退出
 	get_tree().quit()
 
