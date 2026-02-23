@@ -107,9 +107,11 @@ func _start_test_sequence():
 	# 保存结果到文件
 	_save_results_to_file()
 
-	# 等待AutomatedTestRunner保存日志
-	print("[TestCow] 等待日志保存...")
-	await get_tree().create_timer(2.0).timeout
+	# 触发AutomatedTestRunner保存日志
+	print("[TestCow] 保存测试日志...")
+	if _test_runner and is_instance_valid(_test_runner):
+		_test_runner._teardown("Test Completed")
+		await get_tree().create_timer(1.0).timeout
 
 	# 退出
 	get_tree().quit()

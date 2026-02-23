@@ -37,8 +37,14 @@ func _ready():
 	# 保存结果到文件
 	save_results_to_file()
 
+	# 触发AutomatedTestRunner保存日志
+	print("\n[TestCobra] 保存测试日志...")
+	if _test_runner and is_instance_valid(_test_runner):
+		_test_runner._teardown("Test Completed")
+		await get_tree().create_timer(1.0).timeout
+
 	# 结束测试
-	print("\n测试完成，5秒后退出...")
+	print("测试完成，5秒后退出...")
 	await get_tree().create_timer(5.0).timeout
 	get_tree().quit()
 

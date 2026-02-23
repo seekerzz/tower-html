@@ -252,8 +252,11 @@ func _finish_all_tests():
 	_save_test_results()
 	_save_pitfalls()
 
-	print("[TestEagle] 等待日志保存...")
-	await get_tree().create_timer(2.0).timeout
+	# 触发AutomatedTestRunner保存日志
+	print("[TestEagle] 保存测试日志...")
+	if _test_runner and is_instance_valid(_test_runner):
+		_test_runner._teardown("Test Completed")
+		await get_tree().create_timer(1.0).timeout
 	get_tree().quit()
 
 func _save_partial_results():
