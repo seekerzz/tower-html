@@ -70,6 +70,9 @@ func _setup_test():
 	GameManager.enemy_hit.connect(_on_enemy_hit)
 	GameManager.enemy_died.connect(_on_enemy_died)
 	GameManager.resource_changed.connect(_on_resource_changed)
+	GameManager.skill_activated.connect(_on_skill_activated)
+	GameManager.unit_devoured.connect(_on_unit_devoured)
+	GameManager.unit_upgraded.connect(_on_unit_upgraded)
 
 	# 初始化资源追踪
 	_last_gold = GameManager.gold
@@ -165,6 +168,42 @@ func _on_resource_changed():
 			"max_health": GameManager.max_core_health
 		})
 	_last_core_health = current_core_health
+
+func _on_skill_activated(unit):
+	if not is_instance_valid(unit):
+		return
+	var unit_id = unit.type_key if unit.get("type_key") else "unknown"
+	var skill_name = unit.unit_data.get("skill", "unknown") if unit.get("unit_data") else "unknown"
+	_frame_events.append({
+		"type": "skill_used",
+		"unit_id": unit_id,
+		"unit_instance_id": unit.get_instance_id(),
+		"skill_id": skill_name,
+		"position": {"x": unit.global_position.x, "y": unit.global_position.y}
+	})
+
+func _on_unit_devoured(eater_unit, eaten_unit, inherited_stats):
+	if not is_instance_valid(eater_unit) or not is_instance_valid(eaten_unit):
+		return
+	_frame_events.append({
+		"type": "devour",
+		"eater_id": eater_unit.type_key if eater_unit.get("type_key") else "unknown",
+		"eater_instance_id": eater_unit.get_instance_id(),
+		"eaten_id": eaten_unit.type_key if eaten_unit.get("type_key") else "unknown",
+		"eaten_instance_id": eaten_unit.get_instance_id(),
+		"inherited_stats": inherited_stats if inherited_stats else {}
+	})
+
+func _on_unit_upgraded(unit, old_level, new_level):
+	if not is_instance_valid(unit):
+		return
+	_frame_events.append({
+		"type": "upgrade",
+		"unit_id": unit.type_key if unit.get("type_key") else "unknown",
+		"unit_instance_id": unit.get_instance_id(),
+		"old_level": old_level,
+		"new_level": new_level
+	})
 
 func _apply_debuffs_to_enemy(enemy):
 	"""Apply debuffs specified in test config to spawned enemy."""

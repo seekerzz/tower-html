@@ -75,6 +75,9 @@ func _perform_devour(target: Unit):
     GameManager.spawn_floating_text(global_position, "Devoured %s!" % u_name, Color.RED)
     _play_devour_effect()
 
+    # Emit signal for logging
+    GameManager.unit_devoured.emit(self, target, consumed_data)
+
 func _inherit_mechanics(target: Unit):
     consumed_mechanics.clear()
     # Check target active buffs

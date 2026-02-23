@@ -669,11 +669,13 @@ func can_merge_with(other_unit) -> bool:
 	return true
 
 func merge_with(other_unit):
+	var old_level = level
 	merged.emit(other_unit)
 	level += 1
 	reset_stats()
 	current_hp = max_hp # Full heal on level up
 
+	GameManager.unit_upgraded.emit(self, old_level, level)
 	GameManager.spawn_floating_text(global_position, "Level Up!", Color.GOLD)
 	if visual_holder:
 		var tween = create_tween()
@@ -681,10 +683,12 @@ func merge_with(other_unit):
 		tween.tween_property(visual_holder, "scale", Vector2(1.0, 1.0), 0.2)
 
 func devour(food_unit):
+	var old_level = level
 	level += 1
 	damage += 5
 	stats_multiplier += 0.2
 	update_visuals()
+	GameManager.unit_upgraded.emit(self, old_level, level)
 
 func _on_area_2d_input_event(viewport, event, shape_idx):
 	if !GameManager.is_wave_active:

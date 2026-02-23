@@ -21,6 +21,9 @@ signal enemy_died(enemy, killer_unit)
 signal debuff_applied(enemy, debuff_type, stacks)
 signal totem_echo_triggered(source_unit, damage)
 signal core_healed(amount, overheal)
+signal unit_devoured(eater_unit, eaten_unit, inherited_stats)
+signal skill_used(unit, skill_id, target_pos)
+signal unit_upgraded(unit, old_level, new_level)
 
 var is_running_test: bool = false
 var current_test_scenario: Dictionary = {}
