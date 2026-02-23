@@ -23,6 +23,9 @@ const PHASE_ATTACK: int = 2
 const PHASE_DEFENSE: int = 3
 const PHASE_CLEANUP: int = 4
 
+# Test runner reference
+var _test_runner = null
+
 func _ready():
 	print("============================================================")
 	print("Starting Bat Totem Units RUNTIME Test Suite")
@@ -31,8 +34,40 @@ func _ready():
 	# 等待场景初始化
 	await get_tree().create_timer(0.5).timeout
 
+	# Setup AutomatedTestRunner for unified logging
+	_setup_test_runner()
+
 	# 开始测试流程
 	_start_placement_test()
+
+func _setup_test_runner():
+	# Configure test scenario for AutomatedTestRunner
+	var test_config = {
+		"id": "test_bat_lifesteal",
+		"duration": 60.0,
+		"core_type": "bat_totem",
+		"initial_gold": 2000,
+		"units": [
+			{"id": "vampire_bat", "x": -2, "y": 0},
+			{"id": "plague_spreader", "x": 0, "y": 0},
+			{"id": "blood_mage", "x": 2, "y": 0},
+			{"id": "blood_ancestor", "x": 0, "y": -2}
+		],
+		"enemies": [
+			{"type": "slime", "debuffs": [{"type": "bleed", "stacks": 5}]}
+		]
+	}
+	GameManager.set_test_scenario(test_config)
+	GameManager.is_running_test = true
+
+	# Add AutomatedTestRunner
+	var runner_script = load("res://src/Scripts/Tests/AutomatedTestRunner.gd")
+	if runner_script:
+		_test_runner = runner_script.new()
+		add_child(_test_runner)
+		print("[TestBat] AutomatedTestRunner attached for unified logging")
+	else:
+		printerr("[TestBat] Failed to load AutomatedTestRunner.gd")
 
 func _process(delta):
 	test_timer += delta

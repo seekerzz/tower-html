@@ -13,6 +13,9 @@ var test_results = {
 var test_errors = []
 var test_start_time: float = 0.0
 
+# Test runner reference
+var _test_runner = null
+
 func _ready():
 	print("========================================")
 	print("眼镜蛇图腾系列单位运行时测试")
@@ -21,6 +24,9 @@ func _ready():
 
 	# 等待一帧确保所有管理器初始化
 	await get_tree().process_frame
+
+	# Setup AutomatedTestRunner for unified logging
+	_setup_test_runner()
 
 	# 运行测试
 	await run_tests()
@@ -35,6 +41,33 @@ func _ready():
 	print("\n测试完成，5秒后退出...")
 	await get_tree().create_timer(5.0).timeout
 	get_tree().quit()
+
+func _setup_test_runner():
+	# Configure test scenario for AutomatedTestRunner
+	var test_config = {
+		"id": "test_viper_strategy",
+		"duration": 30.0,
+		"core_type": "viper_totem",
+		"initial_gold": 2000,
+		"units": [
+			{"id": "lure_snake", "x": -1, "y": 0},
+			{"id": "medusa", "x": 1, "y": 0}
+		],
+		"enemies": [
+			{"type": "slime", "debuffs": [{"type": "poison", "stacks": 3}]}
+		]
+	}
+	GameManager.set_test_scenario(test_config)
+	GameManager.is_running_test = true
+
+	# Add AutomatedTestRunner
+	var runner_script = load("res://src/Scripts/Tests/AutomatedTestRunner.gd")
+	if runner_script:
+		_test_runner = runner_script.new()
+		add_child(_test_runner)
+		print("[TestCobra] AutomatedTestRunner attached for unified logging")
+	else:
+		printerr("[TestCobra] Failed to load AutomatedTestRunner.gd")
 
 func run_tests():
 	print("\n--- 开始测试 ---\n")

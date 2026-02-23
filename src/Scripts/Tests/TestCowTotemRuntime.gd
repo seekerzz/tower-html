@@ -25,6 +25,9 @@ var current_test_unit = null
 var current_test_name = ""
 var damage_test_done = false
 
+# Test runner reference
+var _test_runner = null
+
 func _ready():
 	print("============================================================")
 	print("牛图腾系列运行时测试")
@@ -34,11 +37,43 @@ func _ready():
 	# 等待一帧确保场景初始化
 	await get_tree().process_frame
 
+	# Setup AutomatedTestRunner for unified logging
+	_setup_test_runner()
+
 	# 初始化游戏状态
 	_initialize_game_state()
 
 	# 开始测试序列
 	_start_test_sequence()
+
+func _setup_test_runner():
+	# Configure test scenario for AutomatedTestRunner
+	var test_config = {
+		"id": "test_cow_squirrel",
+		"duration": 60.0,
+		"core_type": "cow_totem",
+		"initial_gold": 2000,
+		"units": [
+			{"id": "yak_guardian", "x": 1, "y": 1},
+			{"id": "mushroom_healer", "x": -1, "y": 1},
+			{"id": "rock_armor_cow", "x": 0, "y": 2},
+			{"id": "cow_golem", "x": 0, "y": -2}
+		],
+		"enemies": [
+			{"type": "slime"}
+		]
+	}
+	GameManager.set_test_scenario(test_config)
+	GameManager.is_running_test = true
+
+	# Add AutomatedTestRunner
+	var runner_script = load("res://src/Scripts/Tests/AutomatedTestRunner.gd")
+	if runner_script:
+		_test_runner = runner_script.new()
+		add_child(_test_runner)
+		print("[TestCow] AutomatedTestRunner attached for unified logging")
+	else:
+		printerr("[TestCow] Failed to load AutomatedTestRunner.gd")
 
 func _initialize_game_state():
 	# 设置GameManager引用

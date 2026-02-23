@@ -18,6 +18,9 @@ var _current_test_enemy: Node2D = null
 var _test_errors: Array = []
 var _current_test_name: String = ""
 
+# Test runner reference
+var _test_runner = null
+
 func _ready():
 	test_date = Time.get_datetime_string_from_system()
 	print("============================================================")
@@ -27,6 +30,9 @@ func _ready():
 
 	# 等待初始化完成
 	await get_tree().create_timer(1.0).timeout
+
+	# Setup AutomatedTestRunner for unified logging
+	_setup_test_runner()
 
 	# 依次测试每个单位
 	# 注意: 由于某些单位使用await可能导致崩溃，我们逐个测试并增加延迟
@@ -42,6 +48,35 @@ func _ready():
 	await _test_unit("vulture", "vulture", Vector2i(0, 1))
 
 	_finish_all_tests()
+
+func _setup_test_runner():
+	# Configure test scenario for AutomatedTestRunner
+	var test_config = {
+		"id": "test_eagle_strategy",
+		"duration": 60.0,
+		"core_type": "eagle_totem",
+		"initial_gold": 2000,
+		"units": [
+			{"id": "storm_eagle", "x": 0, "y": -1},
+			{"id": "gale_eagle", "x": -1, "y": 0},
+			{"id": "harpy_eagle", "x": 1, "y": 0},
+			{"id": "vulture", "x": 0, "y": 1}
+		],
+		"enemies": [
+			{"type": "slime"}
+		]
+	}
+	GameManager.set_test_scenario(test_config)
+	GameManager.is_running_test = true
+
+	# Add AutomatedTestRunner
+	var runner_script = load("res://src/Scripts/Tests/AutomatedTestRunner.gd")
+	if runner_script:
+		_test_runner = runner_script.new()
+		add_child(_test_runner)
+		print("[TestEagle] AutomatedTestRunner attached for unified logging")
+	else:
+		printerr("[TestEagle] Failed to load AutomatedTestRunner.gd")
 
 func _test_unit(test_name: String, unit_type: String, grid_pos: Vector2i):
 	print("\n------------------------------------------------------------")
